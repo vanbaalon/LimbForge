@@ -66,6 +66,13 @@ Rolled Comba is slower than schoolbook except for 384-bit `mul`, so B2 is not pu
 throughput saturates near 16,384 lanes (12 ns per lane-step). Callers with ≈ 128 trajectories use
 under 1% of the GPU: batching more trajectories per call is nearly free.
 
+## 6. A second register-band failure (round 19)
+
+Real `fma` with an unpadded 16–32-word addend array gave wrong GPU results from 512 bits (CPU exact,
+cancellation case first), while the same code with the addend padded to 33 words is exact at all
+31 precisions. Treat runtime-indexed arrays of 13–32 words as a correctness risk, not only a speed
+issue, and keep the all-precision GPU fused tests as the gate.
+
 ## Rules for kernel code
 
 1. Do not index arrays of ≤ 32 words with runtime indices in hot loops. Either make every index a

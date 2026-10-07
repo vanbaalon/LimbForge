@@ -273,16 +273,16 @@ template<int N,int W,int A,int B> inline Exact<W> exact_add(LIMBFORGE_THREAD con
     return exact_add_ordered<N,W,B,A>(y,x);
 }
 template<int N> constexpr int product_words(){return scratch(2*N+1);}
-template<int N> inline Exact<product_words<N>()> exact_product(LIMBFORGE_THREAD const Number<N>& a,LIMBFORGE_THREAD const Number<N>& b){
-    Exact<product_words<N>()> r;for(int i=0;i<product_words<N>();++i)r.w[i]=0;
+template<int N,int P=product_words<N>()> inline Exact<P> exact_product(LIMBFORGE_THREAD const Number<N>& a,LIMBFORGE_THREAD const Number<N>& b){
+    Exact<P> r;for(int i=0;i<P;++i)r.w[i]=0;
     r.scale=exponent_type(a.exponent)+b.exponent-2*(32*N-1);r.sign=a.sign*b.sign;if(!r.sign){r.scale=0;return r;}
     for(int i=0;i<N;++i){dword carry=0;
         for(int j=0;j<N;++j){dword v=dword(a.limb[i])*b.limb[j]+r.w[i+j]+carry;r.w[i+j]=word(v);carry=v>>32;}
         r.w[i+N]=word(carry);}
     return r;
 }
-template<int N> inline Exact<product_words<N>()> exact_number(LIMBFORGE_THREAD const Number<N>& c){
-    Exact<product_words<N>()> r;for(int i=0;i<product_words<N>();++i)r.w[i]=i<N?c.limb[i]:0;
+template<int W,int N> inline Exact<W> exact_number(LIMBFORGE_THREAD const Number<N>& c){
+    Exact<W> r;for(int i=0;i<W;++i)r.w[i]=i<N?c.limb[i]:0;
     r.scale=exponent_type(c.exponent)-(32*N-1);r.sign=c.sign;return r;
 }
 template<int N,int W> inline Number<N> round_exact(LIMBFORGE_THREAD const Exact<W>& x){
@@ -291,9 +291,11 @@ template<int N,int W> inline Number<N> round_exact(LIMBFORGE_THREAD const Exact<
 // RN(a*b+c) with a single rounding (MPFR mpfr_fma contract).
 template<int N> inline Number<N> fma(LIMBFORGE_THREAD const Number<N>& a,LIMBFORGE_THREAD const Number<N>& b,LIMBFORGE_THREAD const Number<N>& c){
     word status=a.status|b.status|c.status;if(status)return zero<N>(status);
-    constexpr int P=product_words<N>();
-    auto p=exact_product(a,b);auto q=exact_number(c);
-    return round_exact<N>(exact_add<N,exact_words(N,P,P)>(p,q));
+    // Measured layout (round 19): an unpadded product is fastest below 512 bits; from 512 bits the
+    // 16-32-word addend must be padded, or the GPU returns wrong results (docs/gpu-codegen.md).
+    constexpr int P=2*N+1,C=N>=16?scratch(N):N,FMA_W=scratch(exact_words(N,P,C));
+    auto p=exact_product<N,P>(a,b);auto q=exact_number<C>(c);
+    return round_exact<N>(exact_add<N,FMA_W>(p,q));
 }
 template<int N> inline Number<N> fms(LIMBFORGE_THREAD const Number<N>& a,LIMBFORGE_THREAD const Number<N>& b,LIMBFORGE_THREAD const Number<N>& c){
     Number<N> d=negate(c);return fma(a,b,d);
@@ -306,7 +308,7 @@ template<int N> inline Number<N> dot2_add(LIMBFORGE_THREAD const Number<N>& a,LI
                                           LIMBFORGE_THREAD const Number<N>& d,LIMBFORGE_THREAD const Number<N>& e){
     word status=a.status|b.status|c.status|d.status|e.status;if(status)return zero<N>(status);
     constexpr int P=product_words<N>(),W1=exact_words(N,P,P),W2=exact_words(N,P,W1);
-    Exact<P> t[3]={exact_product(a,b),exact_product(c,d),exact_number(e)};
+    Exact<P> t[3]={exact_product(a,b),exact_product(c,d),exact_number<P>(e)};
     exponent_type key[3];for(int i=0;i<3;++i)key[i]=t[i].sign?exact_msb(t[i]):-(exponent_type(1)<<62);
     // Three named terms ordered by msb, largest first.
     int i1=key[0]>=key[1]?(key[0]>=key[2]?0:2):(key[1]>=key[2]?1:2);
