@@ -18,6 +18,32 @@ steps of 32. Real arithmetic uses round-to-nearest, ties-to-even.
 > operations. The API is evolving, and device validation currently covers an
 > Apple M5 Max. See the [numerical contract](docs/numerics.md).
 
+## GPU versus CPU
+
+**82.3× faster than serial MPFR and 6.7× faster than 18-worker MPFR** in the
+recorded 1024-bit multiplication-chain benchmark on an Apple M5 Max.
+The GPU processes 65,536 independent values through 16 rounded multiplications
+each in **3.94 ms**, including input/output transfers, encoding, submission,
+and waiting.
+
+The same machine, precision, and batch size also show gains for individual
+operations:
+
+| 1024-bit workload | Serial MPFR (ms) | 18-worker MPFR (ms) | GPU wall (ms) | vs serial CPU | vs 18-worker CPU |
+|---|---:|---:|---:|---:|---:|
+| Real multiplication | 18.39 | 1.90 | 1.62 | **11.3×** | **1.17×** |
+| Real division | 40.83 | 3.60 | 2.09 | **19.6×** | **1.73×** |
+| Complex division | 231.63 | 18.84 | 7.96 | **29.1×** | **2.37×** |
+| 16-step multiplication chain (resident) | 324.10 | 26.38 | 3.94 | **82.3×** | **6.70×** |
+
+Measured October 7, 2026; medians of nine warmed samples. GPU wall times include
+transfers; compilation, decimal conversion, and buffer allocation are excluded.
+CPU MPFR variables are preallocated, and results are checked against MPFR with
+the same real rounding steps. Large batches and data reuse offer the strongest
+gains; CPUs can be faster for small batches and simpler operations. See
+[full methodology and measurements](docs/performance.md) and the
+[raw benchmark data](benchmarks/results/final.csv).
+
 ## Features
 
 - Real addition, subtraction, multiplication, and division.

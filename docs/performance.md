@@ -66,6 +66,39 @@ in these host-array measurements. GPU division benefits from exact reciprocal
 quotient estimates. GPU speedups depend on both arithmetic cost and data reuse;
 serial CPU ratios alone do not describe the multicore comparison.
 
+## Speedup against CPU MPFR
+
+These ratios compare CPU elapsed time with **GPU wall time**, including transfers,
+encoding, submission, and waiting. They use the same `final.csv` measurements
+above: 65,536 values and nine warmed samples per case. The chain uses resident
+execution with one upload per input and one final download; individual operations
+use the synchronous host-array interface. Each ratio is CPU median / GPU wall
+median. A value below 1 means the CPU is faster.
+
+| Bits | Workload | vs serial MPFR | vs 18-worker MPFR |
+|---:|---|---:|---:|
+| 256 | Real addition | 2.29× | 0.55× |
+| 256 | Real multiplication | 2.75× | 0.58× |
+| 256 | Real division | 9.63× | 1.72× |
+| 256 | Complex division | 30.76× | 3.65× |
+| 256 | 16-step multiplication chain (resident) | 38.36× | 4.34× |
+| 384 | Real addition | 2.30× | 0.70× |
+| 384 | Real multiplication | 2.36× | 0.48× |
+| 384 | Real division | 6.62× | 1.34× |
+| 384 | Complex division | 36.30× | 2.35× |
+| 384 | 16-step multiplication chain (resident) | 24.84× | 2.09× |
+| 1024 | Real addition | 2.04× | 0.44× |
+| 1024 | Real multiplication | 11.33× | 1.17× |
+| 1024 | Real division | 19.55× | 1.73× |
+| 1024 | Complex division | 29.09× | 2.37× |
+| 1024 | 16-step multiplication chain (resident) | 82.31× | 6.70× |
+
+The README highlights the 1024-bit cases, where the recorded resident chain
+achieves 82.3× the serial MPFR throughput and 6.7× the 18-worker MPFR throughput.
+These are measured workload-specific comparisons on one device. The serial,
+multicore, and GPU implementations preserve rounding after every real operation;
+complex comparisons use the documented composition of real primitives.
+
 ## Sixteen dependent multiplications
 
 Both GPU wall columns include transfers, submission, encoding, and waiting.
