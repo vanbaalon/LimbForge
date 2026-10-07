@@ -30,11 +30,56 @@ x.download(host.data(), host.size());
 ```
 
 `Buffer<Complex<12>>` selects 384-bit complex arithmetic. Real buffers accept
-`add`, `sub`, `mul`, and `div`; complex buffers accept `complex_add`,
+`add`, `sub`, `mul`, `div`, `square`, and `sqrt`; complex buffers accept `complex_add`,
 `complex_mul`, and `complex_div`. Operand and output counts must match. Buffers
 must belong to the engine creating the batch. These checks throw before submission.
 In-place pointwise arithmetic is supported, including several dependent
 operations in one batch.
+
+## Unary operations and reductions
+
+```cpp
+auto total = gpu.make_buffer<F>(1);
+auto batch = gpu.batch();
+batch.run(Operation::square, x, x);
+batch.tree_sum(x, total);
+batch.run(Operation::sqrt, total, total);
+auto timing = batch.submit().wait();
+F norm;
+total.download(&norm, 1);
+```
+
+The unary overload takes one input and one output of matching size. Negative
+square-root inputs produce `invalid`. `tree_sum` accepts an arbitrary input size,
+including zero, and an output of size one. It allocates up to two scratch buffers
+and encodes all levels into the batch; the submission retains the scratch storage
+until completion. For inputs larger than two, real reductions and complex
+reductions through 384 bits use complete power-of-two threadgroups to compute several
+levels in shared memory; the remaining group roots stay on the GPU. Wider
+complex reductions use the global-memory tree. Each
+adjacent pair rounds at each level. See the
+[numerical contract](numerics.md) for the exact order and status behavior.
+
+## Threadgroup tuning
+
+`Engine gpu(EngineOptions{64})` requests 64 threads per group. Zero selects the
+default policy: ordinarily 128; one SIMD group for recurrences and complex
+multiplication/division at 384 bits or above. Explicit sizes must be powers of two
+from 32 through 1024, and a multiple of the pipeline's SIMD width. The engine
+clamps to the pipeline's legal maximum, rounding down to a complete SIMD group.
+`gpu.pipeline_info(bits,op)` reports SIMD width, maximum threads, and the actual
+selected group size for pointwise arithmetic. It compiles the pipeline on first use.
+
+Cooperative reductions cap real groups at 128 threads and complex groups at 64,
+and choose a complete power-of-two group within the pipeline limit.
+`EngineOptions{0,false}` selects the global-memory reduction fallback for
+comparison or investigation; it preserves the same numerical tree. The default
+`cooperative_reductions=true` enables the measured policy rather than forcing
+cooperation at every precision.
+
+Workgroup choices can improve device throughput while having little effect on
+end-to-end wall time. Use `tune_limbforge` or `benchmark_limbforge --threads N`
+for measurements on the target device rather than assuming one size always wins.
 
 ## Ownership
 
@@ -69,3 +114,5 @@ warm each precision/operation before timing steady-state execution.
 array API. Its wall timing includes input/output copies, encoding, submission,
 and waiting, but excludes pipeline compilation. Use resident execution to amortize
 copies and command submission across a chain of arithmetic operations.
+`run_unary(bits,op,a,out,count)` provides the corresponding synchronous interface
+for square and square root.

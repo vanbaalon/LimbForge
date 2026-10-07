@@ -16,6 +16,14 @@ benchmark inputs do not exercise the baseline's known exponent-boundary bug.
 | 3 trial | Derive the product's highest bit from normalization instead of scanning | Rejected. The large 1024-bit complex-division benchmark fails on the GPU, despite CPU agreement and passing smaller tests. |
 | 4 | Reuse an integer reciprocal for exact two-limb quotient estimates | Accepted, `7f25fe5`. One million quotient/remainder checks, all-precision MPFR checks, dense GPU tests, and full matrix pass. |
 | 5 trials | 96-bit Comba multiplication; restrict it to smaller widths; express carries using bounded sums | All rejected, recorded in `fccf54d`. Each passes CPU checks but fails physical GPU checks. The runner stops before benchmarking. Schoolbook multiplication is retained. |
+| 6 | Interleaved workgroup sweep and configurable SIMD-aligned group sizes | Accepted, `0d3cbf7`. Five sizes, three precisions, three counts, seven operations: 315 MPFR-checked rows, with a repeat sweep. Heavy complex kernels use one SIMD group by default. Gains vary by case; no universal policy speedup claimed. |
+| 7 | Word-plane (SoA) layout probe | Experimental harness retained, `db959a2`; public AoS layout retained. Mixed modest device gains and wall regressions; conversions excluded from the probe. |
+| 8 | Unary square with exact symmetric integer products | Accepted, `bea92b5` / `50ae317`, selected only at 384 bits on the GPU. Other widths reuse schoolbook multiplication. All-precision tests and 162-case matrix pass. |
+| 8 trials | Full-width symmetric square and its use in complex division | Rejected: GPU square fails at 992 bits; complex division fails at 384 bits. CPU agreement is insufficient. |
+| 9 | Correctly rounded integer restoring square root | Accepted, `7127a70`. Exact residual controls rounding; negative-domain/status and near-midpoint fixtures pass at all 31 precisions. Full 180-case matrix passes. This is a correctness baseline; multicore MPFR can be faster. |
+| 10 | Fixed-order resident real/complex tree sums | Accepted, `ba14968`. Every precision, empty/odd inputs, cancellation, overflow, barriers, and scratch lifetimes validated. 180 ordinary plus 36 reduction benchmark rows. Many small dispatches limit performance. |
+| 11 | Cooperative shared-memory reduction with the same tree | Numerics validated, `46e1a82`: all-precision checks, 180 ordinary and 36 reduction rows, Metal validation, and two 36-row interleaved comparisons. Full power-of-two groups retain adjacent-pair order. Wider complex performance needs a fallback. |
+| 12 | Select the measured reduction policy | Accepted, `76e997b`. Cooperative real reductions and complex reductions through 384 bits; wider complex and inputs of size 0–2 use the global path. The 1024-bit complex cooperative trial was slower in both interleaved rechecks and is excluded from the default. |
 
 ## Exact arithmetic retained
 
@@ -33,6 +41,27 @@ or approximate convergence criterion enters the result.
 Resident execution changes scheduling and storage ownership. Each arithmetic
 operation still rounds separately. Buffer barriers preserve dependencies, and
 submissions retain their buffers until completion.
+
+## New measurement harnesses
+
+- `tune_limbforge`: interleaves 32, 64, 128, 256, and 512 threads per group; every
+  dispatch is checked against MPFR.
+- `layout_limbforge`: compares AoS and word-plane storage with the same arithmetic
+  core. Uploads and layout conversion are outside the timing; results alone do
+  not justify changing the public representation.
+- `square_limbforge`: interleaves unary square and `mul(x,x)` using resident data.
+  At 384 bits / 65,536 values, the selected square has about a 1.29× device
+  speedup; wall time is effectively unchanged in that comparison. At other widths
+  the selected GPU square uses the same multiplication specialization.
+- `reduction_limbforge`: interleaves serial MPFR, pooled MPFR, resident GPU, and
+  GPU with transfers. All methods follow the same tree and every sample is
+  checked. `--global-tree` selects the original reduction implementation;
+  `--compare` interleaves it with the selected policy.
+
+Raw sweeps, repeat measurements, and test logs are in
+[benchmarks/results](../benchmarks/results). Main pointwise/chain matrices are
+144 rows before square, 162 with square, and 180 with square root. From Round 10
+the runner adds a separate 36-row real/complex reduction matrix.
 
 ## Rejected experiments
 
@@ -59,8 +88,12 @@ operation, batch size, and step count; a ratio above one means the new run is fa
 
 ## Further experiments
 
-Cooperative SIMD arithmetic, alternate layouts, workgroup tuning, specialized
-squaring, and fused primitives remain candidates. Evaluate one change per round,
-retain a reliable fallback, and distinguish small-batch latency from large-batch
-throughput. New primitives need their own explicit rounding contracts and MPFR
-references before performance tuning.
+Cooperative limb arithmetic within a number, a single-round fused multiply-add,
+faster square root with exact certification, and transcendental functions remain
+unfinished. The cooperative reduction parallelizes the summation tree; it does
+not distribute the limbs of one multiplication or division across SIMD lanes.
+Alternate layouts remain experimental. Broader GPU validation is also pending.
+
+Evaluate one change per round, retain a reliable fallback, and distinguish
+small-batch latency from large-batch throughput. New primitives need explicit
+rounding contracts and independent references before performance tuning.

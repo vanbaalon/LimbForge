@@ -42,14 +42,19 @@ CPU MPFR variables are preallocated, and results are checked against MPFR with
 the same real rounding steps. Large batches and data reuse offer the strongest
 gains; CPUs can be faster for small batches and simpler operations. See
 [full methodology and measurements](docs/performance.md) and the
-[raw benchmark data](benchmarks/results/final.csv).
+[raw benchmark data](benchmarks/results/final.csv). Those headline numbers preserve
+the Round 1–5 snapshot; [later rounds](docs/optimizations.md) include workgroup
+tuning, square, square root, and cooperative reductions, with their own raw
+measurements.
 
 ## Features
 
-- Real addition, subtraction, multiplication, and division.
+- Correctly rounded real addition, subtraction, multiplication, division, square, and square root.
 - Complex addition, multiplication, and division composed from rounded real primitives.
 - Typed resident buffers, asynchronous submissions, and dependent operations in one command batch.
 - In-place pointwise arithmetic, cached pipelines, and explicit buffer ownership checks.
+- Fixed-order real and complex tree reductions with GPU-resident intermediate levels.
+- Configurable threadgroup sizes and per-pipeline limits for measured tuning.
 - A generic four-state complex recurrence primitive.
 - Optional MPFR conversion through decimal strings or exact binary values.
 - Reproducible benchmarks against both serial and multicore MPFR.
@@ -70,6 +75,7 @@ cmake --build build -j4
 ctest --test-dir build --output-on-failure
 ./build/limbforge_division
 ./build/limbforge_resident
+./build/limbforge_reduction
 ```
 
 Shaders are embedded and compiled at runtime. The command-line Metal compiler
@@ -107,10 +113,17 @@ Use `Buffer<Complex<12>>` for 384-bit complex values. Buffers stay resident acro
 batches. Mapping and transfers are rejected until the submission is waited;
 previously obtained pointers also require caller coordination. See
 [execution, ownership, and timing](docs/execution.md) and the complete
-[resident example](examples/resident.cpp).
+[resident example](examples/resident.cpp). A [norm example](examples/reduction.cpp)
+combines square, tree sum, and square root in one GPU submission.
+
+Unary operations use `batch.run(Operation::sqrt, x, x)` or
+`batch.run(Operation::square, x, x)`. To sum a resident array, allocate a
+one-element output and call `batch.tree_sum(x, total)`; each adjacent pair rounds
+separately. See the [rounding contract](docs/numerics.md).
 
 For a single operation, `Engine::run(bits, op, a, b, out, count)` provides a
-synchronous host-array interface. Supply precise inputs through decimal strings
+synchronous host-array interface; `run_unary(bits, op, a, out, count)` handles
+square and square root. Supply precise inputs through decimal strings
 or MPFR; converting an existing `double` cannot restore lost digits.
 
 ## Precision and validation
@@ -130,10 +143,12 @@ status bits. There are no NaNs, infinities, signed zeros, or subnormal encodings
 Complex arithmetic preserves rounding after each real primitive; it does not
 promise a single correctly rounded MPC complex result.
 
-Tests cover **507,904 real-operation cases across all 31 supported precisions**,
+Tests cover **761,856 real-operation cases across all 31 supported precisions**,
 complex operations and recurrences, dense 65,536-value complex batches with
 repeated GPU execution, and resident-buffer ownership and lifetime checks.
-One million scalar quotient/remainder cases validate the reciprocal used by
+Reduction tests cover every precision, odd tails, cancellation, statuses,
+barriers, and scratch-buffer lifetimes. One million scalar quotient/remainder
+cases validate the reciprocal used by
 division. MPFR provides independent arithmetic references.
 
 ## Benchmark and optimization rounds
@@ -162,9 +177,10 @@ records rejected experiments.
 ## Scope
 
 The current backend is Apple Metal, with fixed precision per dispatch. Further
-work includes wider device validation, cooperative arithmetic and memory-layout
-experiments, reductions, fused multiply-add, square root, and transcendental
-functions with explicit accuracy contracts. These features are not implemented.
+work includes wider device validation, cooperative SIMD arithmetic, fused
+multiply-add, and transcendental functions with explicit accuracy contracts.
+These features are not implemented. Alternate layouts have been measured as an
+experiment; the public representation remains an array of structs.
 GPU multiprecision has prior art; [related work](docs/prior-art.md) explains the
 context and the Metal target.
 

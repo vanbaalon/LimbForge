@@ -71,8 +71,8 @@ files being present at runtime.
 |---|---|---|
 | `BUILD_TESTING` | `ON` | Build MPFR reference tests |
 | `LIMBFORGE_ENABLE_GPU_TESTS` | `ON` | Register tests that execute Metal kernels |
-| `LIMBFORGE_BUILD_EXAMPLES` | `ON` | Build the division and resident examples |
-| `LIMBFORGE_BUILD_BENCHMARK` | `ON` | Build arithmetic benchmarks |
+| `LIMBFORGE_BUILD_EXAMPLES` | `ON` | Build division, resident-chain, and norm examples |
+| `LIMBFORGE_BUILD_BENCHMARK` | `ON` | Build arithmetic, reduction, and tuning benchmarks |
 | `LIMBFORGE_BUILD_BAXTER_EXAMPLE` | `OFF` | Build the external BSolver4D comparison |
 | `LIMBFORGE_BAXTER_SOURCE_DIR` | Adjacent `BSolver4D/cpp` | Locate the physics reference |
 

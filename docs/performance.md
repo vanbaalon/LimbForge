@@ -2,8 +2,11 @@
 
 The baseline and optimization rounds were recorded on **October 7, 2026**, on an
 **Apple M5 Max** (18 CPU cores, 40 GPU cores), macOS 26.6.2, AppleClang 21, Release
-builds, and MPFR 4.2.2. The current measurements are in
-[final.csv](../benchmarks/results/final.csv); the original arithmetic baseline is
+builds, and MPFR 4.2.2. The original Round 1–5 release snapshot is
+[final.csv](../benchmarks/results/final.csv); the latest pointwise and reduction
+matrices are in [Round 12](../benchmarks/results/round12_reduction_policy.csv) and
+[its reduction matrix](../benchmarks/results/round12_reduction_policy_reduction.csv).
+The original arithmetic baseline is
 [baseline.csv](../benchmarks/results/baseline.csv). See
 [environment.json](../benchmarks/results/environment.json) and the per-round
 metadata and test logs for provenance.
@@ -11,10 +14,12 @@ metadata and test logs for provenance.
 ## Methodology
 
 The default matrix uses 256, 384, and 1024 bits; 256, 4,096, and 65,536 values;
-four real operations; three complex operations; and a 16-step multiplication
-chain. Each case has two warmups and nine measured samples. Inputs use a fixed
+six real operations (including square and square root); three complex
+operations; and a 16-step multiplication chain. The main matrix has 180 rows; the separate reduction matrix has 36.
+Each case has two warmups and nine measured samples. Inputs use a fixed
 seed (`20261007 + bits`); ordinary arithmetic exponents span −5 through +5, and
-chain exponents start at zero. Every final output is compared with independent
+chain exponents start at zero. Square-root inputs are the absolute values of
+the real corpus; other existing input streams remain unchanged. Every final output is compared with independent
 MPFR operations. This benchmark covers moderate exponents; the separate test
 suite covers error statuses and exponent boundaries.
 
@@ -44,7 +49,7 @@ isolated thermal conditions. Some unchanged operations vary substantially across
 runs. Treat individual cross-round ratios as observations, and repeat a targeted
 comparison before choosing a precision-specific kernel.
 
-## Representative current measurements
+## Round 1–5 snapshot
 
 65,536 values, milliseconds, medians of nine warmed samples. Host-array GPU wall
 includes transfers; resident-only operation times are available in the raw CSV.
@@ -132,6 +137,68 @@ addition wall times regress even while device times improve: transfers and host
 scheduling remain a substantial fraction of latency. The comparison supports a
 division improvement on this device, rather than a universal speedup claim.
 
+## Later standalone rounds
+
+Workgroup and layout experiments, square, square root, and reductions have
+separate records; historical measurements above remain unchanged. The current
+pointwise matrix includes six real primitives. These Round 12 host-array results
+use 65,536 values and include transfers, with the same MPFR methodology:
+
+| Bits | Operation | Serial MPFR (ms) | 18-worker MPFR (ms) | GPU wall (ms) | vs serial | vs 18-worker |
+|---:|---|---:|---:|---:|---:|---:|
+| 256 | square | 2.313 | 0.650 | 0.815 | 2.84× | 0.80× |
+| 256 | sqrt | 10.433 | 1.719 | 2.126 | 4.91× | 0.81× |
+| 384 | square | 2.525 | 0.569 | 1.021 | 2.47× | 0.56× |
+| 384 | sqrt | 11.123 | 1.919 | 4.082 | 2.73× | 0.47× |
+| 1024 | square | 7.774 | 1.636 | 1.449 | 5.37× | 1.13× |
+| 1024 | sqrt | 25.572 | 5.215 | 6.743 | 3.79× | 0.77× |
+
+Square uses MPFR `mpfr_sqr`, which can be cheaper than multiplication, for the
+CPU comparison. The symmetric GPU square at 384 bits wins its targeted resident
+device-time comparison, but that does not guarantee a host-array wall-time win.
+Square root is an exact restoring baseline; it does not yet consistently beat
+multicore MPFR.
+
+### Reduction methodology and results
+
+The reduction benchmark uses 257, 4,096, and 65,537 inputs, with both real and
+complex values at 256, 384, and 1024 bits. It interleaves four methods: serial
+MPFR, pooled MPFR, resident GPU, and GPU with transfers. All preserve the same
+adjacent-pair tree. CPU inputs and intermediate MPFR arrays are preallocated;
+the persistent worker pool runs large levels and finishes levels smaller than
+`workers*16` serially. Binary conversion and validation follow timing. GPU
+input/output buffers are preallocated, but batch encoding includes allocation
+of its internal scratch buffers. The resident result excludes upload/download;
+the plain result includes both. Every measured output is checked.
+
+65,537 inputs, nine-sample medians, selected policy with transfers:
+
+| Bits | Reduction | Serial MPFR (ms) | 18-worker MPFR (ms) | GPU wall (ms) | vs serial | vs 18-worker |
+|---:|---|---:|---:|---:|---:|---:|
+| 256 | real | 1.647 | 0.675 | 0.603 | 2.73× | 1.12× |
+| 256 | complex | 3.533 | 3.030 | 1.328 | 2.66× | 2.28× |
+| 384 | real | 1.763 | 0.781 | 0.768 | 2.30× | 1.02× |
+| 384 | complex | 3.785 | 1.555 | 1.752 | 2.16× | 0.89× |
+| 1024 | real | 2.307 | 1.206 | 2.104 | 1.10× | 0.57× |
+| 1024 | complex | 5.020 | 2.257 | 4.635 | 1.08× | 0.49× |
+
+Cooperation reduces dispatches and scratch storage while retaining the same
+rounded tree. The two [interleaved Round 11 comparisons](../benchmarks/results/round11_interleaved_reduction.csv)
+and [repeat](../benchmarks/results/round11_interleaved_reduction_recheck.csv)
+compare both implementations on resident data, checking every dispatch.
+At 65,537 inputs, real wall gains were about 1.46–1.58× at 384 bits and
+1.47–1.51× at 1024 bits; 256/384-bit complex gains were about 1.21–1.46×.
+The 1024-bit complex cooperative kernel was slower in both sweeps
+(0.92–0.95× wall ratio), so the default retains the global-memory tree above
+384-bit complex precision. Inputs of size 0–2 also use the simple global path.
+`EngineOptions{0,false}` disables cooperation for comparison.
+
+The selected policy passes the full arithmetic/reduction matrices and a
+[final interleaved comparison](../benchmarks/results/round12_interleaved_reduction.csv).
+These records show an implementation improvement, not a universal advantage
+over multicore MPFR. Wider device validation and further reduction tuning remain
+necessary.
+
 ## Reproduction
 
 ```sh
@@ -144,6 +211,12 @@ python3 benchmarks/run_round.py my-round
 python3 benchmarks/compare.py benchmarks/results/baseline.csv results.csv
 ```
 
+The round runner also runs `reduction_limbforge` and preserves its separate CSV.
+`reduction_limbforge --compare` interleaves the selected and global-memory
+reduction policies; `--global-tree` benchmarks the latter against CPU MPFR.
+`tune_limbforge`, `layout_limbforge`, and `square_limbforge` provide targeted
+comparisons. Use `--threads N` to override the pointwise workgroup size.
+
 Use `--workers N` to control the MPFR pool. The default is hardware concurrency.
 `--quick` uses 4,096 values at all three benchmark precisions. `--bits` selects
 256, 384, or 1024; `--operation mul_chain` selects the two chain interfaces.
@@ -151,22 +224,26 @@ The benchmark exits with failure on a detected arithmetic mismatch.
 
 ## Test coverage and limitations
 
-Real CPU and GPU arithmetic is checked against MPFR in 507,904 cases across every
+Real CPU and GPU arithmetic is checked against MPFR in 761,856 cases across every
 multiple of 32 bits from 64 to 1024. Fixtures include cancellation, limb and ulp
 alignment, halfway rounding, status propagation, and products rounding across
-both exponent boundaries. One million exact scalar quotient/remainder checks
+both exponent boundaries, square-root domains, negative odd exponents,
+and near-midpoint square-root inputs. One million exact scalar quotient/remainder checks
 exercise the reciprocal primitive.
 
 Complex and generic recurrence tests cover 128, 384, and 1024 bits. An additional
 1024-bit suite tests 65,536 dense complex inputs for all three complex operations,
 with three GPU repeats. Resident tests cover in-place chains, dependent barriers,
 wrong formats and counts, bounds, foreign engines, pending mapping rejection,
-empty batches, repeated waits, and resource lifetimes.
+empty batches, repeated waits, and resource lifetimes. Real and complex
+reductions cover all 31 precisions, zero/one/odd counts, status masks,
+intermediate overflow, fixed pairing under cancellation, dependent operations,
+alternate groups, and scratch storage surviving the original engine.
 
 GitHub Actions runs CPU/MPFR checks and package installation. Physical GPU
 validation runs locally. The final GPU suites also pass with
 `MTL_SHADER_VALIDATION=1`, and the installed resident API passes a separate
-consumer check without MPFR; both logs are committed under `benchmarks/results`. This is substantial empirical coverage, not an exhaustive
+consumer check without MPFR; the logs are committed under `benchmarks/results`. This is substantial empirical coverage, not an exhaustive
 proof over every representable input or validation of other GPU models.
 
 The [optimization log](optimizations.md) records accepted changes and failed
