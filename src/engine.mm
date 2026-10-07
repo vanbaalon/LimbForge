@@ -178,7 +178,9 @@ void CommandBatch::encode_tree_sum(int bits,bool complex,const std::shared_ptr<d
                                    const std::shared_ptr<detail::BufferStorage>& out,std::size_t count){
     if(!impl_||impl_->submitted)throw std::logic_error("batch already submitted or moved");
     validate(bits,count);impl_->retain(input);impl_->retain(out);
-    bool cooperative=impl_->engine->options.cooperative_reductions;
+    // Wider complex values lose in repeated interleaved comparisons. Small
+    // copies/pairs need no local tree or barriers at all.
+    bool cooperative=impl_->engine->options.cooperative_reductions&&count>2&&(!complex||bits<=384);
     int operation=(complex?102:101)+(cooperative?0:2);auto state=impl_->engine->pipeline(bits,operation);
     unsigned group=impl_->engine->group_size(state,bits,operation);
     if(cooperative){
