@@ -1,0 +1,6 @@
+#pragma once
+static const char* limbforge_shader_source=R"LIMBFORGE(
+#include <metal_stdlib>
+@CORE_SOURCE@
+@KERNEL_SOURCE@
+)LIMBFORGE";

@@ -1,0 +1,11 @@
+device=Apple M5 Max
+points=16
+steps=600
+bits=384
+cpu_reference_decimal_digits=110
+preparation_s=0.846095542
+gpu_s=0.09935995835
+gpu_wall_s=0.099766666
+preparation_plus_gpu_wall_s=0.945862208
+mpfr_solver_propagation_s=1.327471041
+max_error_over_1_plus_abs_q=8.973865728e-106

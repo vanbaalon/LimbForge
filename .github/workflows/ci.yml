@@ -1,0 +1,28 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  macos:
+    name: macOS build and MPFR checks
+    runs-on: macos-15
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v7
+      - name: Install dependencies
+        run: brew install cmake mpfr gmp
+      - name: Configure
+        run: cmake -S . -B build -DCMAKE_BUILD_TYPE=Release -DLIMBFORGE_ENABLE_GPU_TESTS=OFF
+      - name: Build
+        run: cmake --build build -j3
+      - name: Check CPU arithmetic against MPFR
+        run: ctest --test-dir build --output-on-failure
+      - name: Verify package installation
+        run: cmake --install build --prefix "$RUNNER_TEMP/limbforge-install"

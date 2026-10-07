@@ -1,0 +1,118 @@
+#import <Foundation/Foundation.h>
+#import <Metal/Metal.h>
+#include "limbforge/engine.hpp"
+#include "shader_source.hpp"
+#include <chrono>
+#include <cstring>
+#include <limits>
+#include <map>
+#include <stdexcept>
+
+namespace limbforge {
+namespace {
+std::string error_message(NSError* error){return error?std::string([[error localizedDescription] UTF8String]):"unknown Metal error";}
+std::size_t checked_size(std::size_t count,std::size_t stride) {
+    if(stride&&count>std::numeric_limits<std::size_t>::max()/stride)throw std::invalid_argument("buffer size overflow");
+    return count*stride;
+}
+void validate(int bits,std::size_t count) {
+    if(bits<64||bits>1024||bits%32)throw std::invalid_argument("bits must be a multiple of 32 in [64,1024]");
+    if(count>std::numeric_limits<std::uint32_t>::max())throw std::invalid_argument("batch exceeds 32-bit indexing");
+}
+struct Params {std::uint32_t count,operation,steps,weight_count,states_per_weight;};
+}
+struct Engine::Impl {
+    id<MTLDevice> device;
+    id<MTLCommandQueue> queue;
+    std::map<int,id<MTLLibrary>> libraries;
+    std::map<std::pair<int,int>,id<MTLComputePipelineState>> pipelines;
+    id<MTLBuffer> buffers[3];
+    Impl() {
+        device=MTLCreateSystemDefaultDevice();
+        if(!device)throw std::runtime_error("no Metal GPU available");
+        queue=[device newCommandQueue];if(!queue)throw std::runtime_error("cannot create Metal command queue");
+    }
+    id<MTLComputePipelineState> pipeline(int bits,int operation) {
+        auto key=std::make_pair(bits,operation);
+        auto existing=pipelines.find(key);if(existing!=pipelines.end())return existing->second;
+        if(!libraries.count(bits)) {
+            NSString* source=[NSString stringWithFormat:@"#define MP_BITS %d\n%s",bits,limbforge_shader_source];
+            MTLCompileOptions* options=[MTLCompileOptions new];
+            options.mathMode=MTLMathModeSafe;options.languageVersion=MTLLanguageVersion3_1;
+            NSError* error=nil;
+            id<MTLLibrary> library=[device newLibraryWithSource:source options:options error:&error];
+            if(!library)throw std::runtime_error("Metal compilation: "+error_message(error));
+            libraries[bits]=library;
+        }
+        NSError* error=nil;id<MTLFunction> function;
+        if(operation==7)function=[libraries[bits] newFunctionWithName:@"recurrence"];
+        else {
+            MTLFunctionConstantValues* constants=[MTLFunctionConstantValues new];
+            std::uint32_t op=operation;[constants setConstantValue:&op type:MTLDataTypeUInt atIndex:0];
+            function=[libraries[bits] newFunctionWithName:operation<4?@"arithmetic":@"complex_arithmetic" constantValues:constants error:&error];
+        }
+        if(!function)throw std::runtime_error("Metal specialization: "+error_message(error));
+        id<MTLComputePipelineState> state=[device newComputePipelineStateWithFunction:function error:&error];
+        if(!state)throw std::runtime_error("Metal pipeline: "+error_message(error));
+        pipelines[key]=state;return state;
+    }
+    void reserve(unsigned index,std::size_t bytes) {
+        if(bytes>device.maxBufferLength)throw std::invalid_argument("buffer exceeds device maximum");
+        if(!buffers[index]||buffers[index].length<bytes) {
+            buffers[index]=[device newBufferWithLength:bytes options:MTLResourceStorageModeShared];
+            if(!buffers[index])throw std::runtime_error("Metal buffer allocation failed");
+        }
+    }
+    Timing dispatch(int bits,int operation,const void* a,std::size_t a_bytes,const void* b,std::size_t b_bytes,
+                    void* out,std::size_t out_bytes,std::size_t count,unsigned steps,unsigned states_per_weight=1) {
+        @autoreleasepool {
+            // Compilation is deliberately excluded from timings; cached per precision/operation.
+            auto state=pipeline(bits,operation);
+            auto start=std::chrono::steady_clock::now();
+            reserve(0,a_bytes);reserve(1,b_bytes);reserve(2,out_bytes);
+            std::memcpy(buffers[0].contents,a,a_bytes);if(b_bytes)std::memcpy(buffers[1].contents,b,b_bytes);
+            id<MTLCommandBuffer> command=[queue commandBuffer];
+            id<MTLComputeCommandEncoder> encoder=[command computeCommandEncoder];
+            if(!command||!encoder)throw std::runtime_error("Metal command allocation failed");
+            [encoder setComputePipelineState:state];
+            for(unsigned i=0;i<3;++i)[encoder setBuffer:buffers[i] offset:0 atIndex:i];
+            Params params={std::uint32_t(count),std::uint32_t(operation),steps,std::uint32_t(count/states_per_weight),states_per_weight};
+            [encoder setBytes:&params length:sizeof(params) atIndex:3];
+            // One SIMD group per recurrence workgroup distributes small batches
+            // across more GPU cores, and limits private-state resource pressure.
+            NSUInteger preferred=operation==7?state.threadExecutionWidth:NSUInteger(128);
+            NSUInteger group=std::min(preferred,state.maxTotalThreadsPerThreadgroup);
+            [encoder dispatchThreads:MTLSizeMake(count,1,1) threadsPerThreadgroup:MTLSizeMake(group,1,1)];
+            [encoder endEncoding];[command commit];[command waitUntilCompleted];
+            if(command.status==MTLCommandBufferStatusError)throw std::runtime_error("Metal execution: "+error_message(command.error));
+            std::memcpy(out,buffers[2].contents,out_bytes);
+            double wall=std::chrono::duration<double>(std::chrono::steady_clock::now()-start).count();
+            return {command.GPUEndTime-command.GPUStartTime,wall};
+        }
+    }
+};
+Engine::Engine():impl(new Impl){} Engine::~Engine()=default;
+std::string Engine::device_name()const{return std::string([impl->device.name UTF8String]);}
+Timing Engine::run(int bits,Operation op,const void* a,const void* b,void* out,std::size_t count) {
+    validate(bits,count);int operation=int(op);
+    if(operation<0||operation>6)throw std::invalid_argument("unknown arithmetic operation");
+    if(!count)return {0,0};
+    if(!a||!b||!out)throw std::invalid_argument("null arithmetic buffer");
+    std::size_t stride=(bits/8+12)*(operation<4?1:2),bytes=checked_size(count,stride);
+    return impl->dispatch(bits,operation,a,bytes,b,bytes,out,bytes,count,0);
+}
+Timing Engine::recurrence(int bits,const void* seeds,const void* weights,void* out,std::size_t count,unsigned steps,unsigned states_per_weight) {
+    validate(bits,count);
+    if(!states_per_weight||count%states_per_weight)throw std::invalid_argument("count must be divisible by states_per_weight");
+    if(!count)return {0,0};
+    if(!seeds||!out||(steps&&!weights))throw std::invalid_argument("null recurrence buffer");
+    // Protect all shader index expressions, not just host byte arithmetic.
+    if(count>std::numeric_limits<std::uint32_t>::max()/4||
+       (steps&&std::uint64_t(steps)*4*(count/states_per_weight)>std::numeric_limits<std::uint32_t>::max()))throw std::invalid_argument("recurrence exceeds 32-bit indexing");
+    std::size_t stride=2*(bits/8+12),bytes=checked_size(count,stride);
+    // Metal requires a bound weights buffer even for a zero-step dispatch.
+    auto seed_bytes=checked_size(bytes,4),weight_bytes=checked_size(bytes/states_per_weight,std::size_t(steps)*4);
+    if(!steps)return impl->dispatch(bits,7,seeds,seed_bytes,seeds,stride,out,bytes,count,0,states_per_weight);
+    return impl->dispatch(bits,7,seeds,seed_bytes,weights,weight_bytes,out,bytes,count,steps,states_per_weight);
+}
+}
