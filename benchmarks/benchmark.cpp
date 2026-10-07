@@ -126,15 +126,15 @@ template<int Bits> void chain(Engine& engine,Workers& workers,std::size_t count,
 }
 template<int Bits> void suite(Engine& e,Workers& w,const std::vector<std::size_t>& counts,int repeats){for(auto n:counts){arithmetic<Bits,false>(e,w,n,repeats);arithmetic<Bits,true>(e,w,n,repeats);chain<Bits>(e,w,n,repeats);}}
 int main(int argc,char** argv){try{
-    std::vector<std::size_t> counts={256,4096,65536};int repeats=9,only_bits=0;unsigned workers=std::max(1u,std::thread::hardware_concurrency());
-    for(int i=1;i<argc;++i){std::string arg=argv[i];if(arg=="--operation"&&i+1<argc)only_operation=argv[++i];else if(arg=="--bits"&&i+1<argc)only_bits=std::stoi(argv[++i]);else if(arg=="--quick")counts={4096};else if(arg=="--repeats"&&i+1<argc)repeats=std::stoi(argv[++i]);
+    std::vector<std::size_t> counts={256,4096,65536};int repeats=9,only_bits=0;unsigned threads=0;unsigned workers=std::max(1u,std::thread::hardware_concurrency());
+    for(int i=1;i<argc;++i){std::string arg=argv[i];if(arg=="--threads"&&i+1<argc)threads=unsigned(std::stoul(argv[++i]));else if(arg=="--operation"&&i+1<argc)only_operation=argv[++i];else if(arg=="--bits"&&i+1<argc)only_bits=std::stoi(argv[++i]);else if(arg=="--quick")counts={4096};else if(arg=="--repeats"&&i+1<argc)repeats=std::stoi(argv[++i]);
         else if(arg=="--workers"&&i+1<argc)workers=unsigned(std::stoul(argv[++i]));else if(arg=="--count"&&i+1<argc)counts={std::stoull(argv[++i])};
-        else throw std::invalid_argument("usage: benchmark_limbforge [--quick|--count N] [--repeats N] [--workers N] [--bits 256|384|1024] [--operation add|sub|mul|div|complex_add|complex_mul|complex_div|mul_chain]");}
+        else throw std::invalid_argument("usage: benchmark_limbforge [--quick|--count N] [--repeats N] [--workers N] [--threads N] [--bits 256|384|1024] [--operation add|sub|mul|div|complex_add|complex_mul|complex_div|mul_chain]");}
     if(repeats<3||repeats>100||!workers||workers>128)throw std::invalid_argument("invalid repeats or workers");
     if(only_bits&&only_bits!=256&&only_bits!=384&&only_bits!=1024)throw std::invalid_argument("unsupported benchmark precision");
     if(!only_operation.empty()){bool found=only_operation=="mul_chain";for(int op=0;op<7;++op)found|=only_operation==name(Operation(op));if(!found)throw std::invalid_argument("unknown benchmark operation");}
     for(auto n:counts)if(!n||n>1000000)throw std::invalid_argument("count must be in 1..1000000");
-    Engine e;Workers w(workers);std::cerr<<"Device: "<<e.device_name()<<"; MPFR "<<mpfr_get_version()<<"; workers="<<workers<<"; repeats="<<repeats<<"; seed=20261007\n";
+    Engine e({threads});Workers w(workers);std::cerr<<"Device: "<<e.device_name()<<"; MPFR "<<mpfr_get_version()<<"; workers="<<workers<<"; threads="<<threads<<"; repeats="<<repeats<<"; seed=20261007\n";
     std::cout<<std::setprecision(10)<<"bits,operation,count,steps,samples,cpu_workers,cpu_serial_s,cpu_parallel_s,gpu_s,wall_median_s,wall_min_s,wall_p90_s\n";
     if(!only_bits||only_bits==256)suite<256>(e,w,counts,repeats);if(!only_bits||only_bits==384)suite<384>(e,w,counts,repeats);if(!only_bits||only_bits==1024)suite<1024>(e,w,counts,repeats);return 0;
 }catch(const std::exception& e){std::cerr<<e.what()<<'\n';return 1;}}

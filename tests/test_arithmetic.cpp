@@ -116,10 +116,12 @@ void test_dense_complex(Engine* engine){
 template<int Bits> void all_precisions(Engine* engine){test_real<Bits>(engine);if constexpr(Bits<1024)all_precisions<Bits+32>(engine);}
 int main(int argc,char** argv) {
     try {
-        bool cpu_only=argc==2&&std::string(argv[1])=="--cpu-only";
-        if(argc>1&&!cpu_only)throw std::invalid_argument("usage: test_limbforge [--cpu-only]");
+        bool cpu_only=false;unsigned threads=0;
+        for(int i=1;i<argc;++i){std::string arg=argv[i];if(arg=="--cpu-only")cpu_only=true;
+            else if(arg=="--threads"&&i+1<argc)threads=unsigned(std::stoul(argv[++i]));
+            else throw std::invalid_argument("usage: test_limbforge [--cpu-only] [--threads N]");}
         std::unique_ptr<Engine> engine;
-        if(!cpu_only){engine=std::make_unique<Engine>();std::cout<<"Device: "<<engine->device_name()<<std::endl;}
+        if(!cpu_only){engine=std::make_unique<Engine>(EngineOptions{threads});std::cout<<"Device: "<<engine->device_name()<<std::endl;}
         else std::cout<<"CPU/MPFR validation (no GPU device created)"<<std::endl;
         test_word_division();
         all_precisions<64>(engine.get());

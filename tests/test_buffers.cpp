@@ -31,4 +31,5 @@ template<int Bits> void run(Engine& e){
     auto empty=e.make_buffer<F>(0);auto next=e.batch();next.run(Operation::add,empty,empty,empty);next.submit().wait();
     std::cout<<Bits<<"-bit resident API passed\n";
 }
-int main(){try{Engine e;run<128>(e);run<384>(e);run<1024>(e);return 0;}catch(const std::exception& error){std::cerr<<error.what()<<'\n';return 1;}}
+int main(){try{rejects([]{Engine bad({31});});rejects([]{Engine bad({2048});});Engine e;
+    auto info=e.pipeline_info(384,Operation::mul);require(info.threads_per_threadgroup<=info.max_threads&&info.threads_per_threadgroup%info.simd_width==0,"invalid pipeline group size");run<128>(e);run<384>(e);run<1024>(e);return 0;}catch(const std::exception& error){std::cerr<<error.what()<<'\n';return 1;}}

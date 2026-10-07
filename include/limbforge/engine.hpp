@@ -8,6 +8,8 @@
 namespace limbforge {
 enum class Operation { add, sub, mul, div, complex_add, complex_mul, complex_div };
 struct Timing { double gpu_seconds, wall_seconds; };
+struct EngineOptions { unsigned threads_per_threadgroup=0; }; // 0 selects the default policy.
+struct PipelineInfo { unsigned simd_width,max_threads,threads_per_threadgroup; };
 namespace detail {
 struct BufferStorage;
 void* mapped(const std::shared_ptr<BufferStorage>&);
@@ -57,9 +59,10 @@ public:
 // One Engine per host thread. Buffers and specialized pipelines are reused.
 class Engine {
 public:
-    Engine(); ~Engine();
+    explicit Engine(EngineOptions options={}); ~Engine();
     Engine(const Engine&)=delete; Engine& operator=(const Engine&)=delete;
     std::string device_name() const;
+    PipelineInfo pipeline_info(int bits,Operation op);
     template<class T> Buffer<T> make_buffer(std::size_t count){
         static_assert(sizeof(T)==std::size_t(detail::Format<T>::bits/8+12)*(detail::Format<T>::complex?2:1),"buffer layout mismatch");
         if(count>std::size_t(-1)/sizeof(T))throw std::invalid_argument("buffer size overflow");

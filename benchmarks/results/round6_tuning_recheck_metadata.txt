@@ -1,0 +1,1 @@
+Apple M5 Max; interleaved workgroup sweep; every dispatch checked against MPFR

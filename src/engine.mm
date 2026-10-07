@@ -40,13 +40,16 @@ void transfer(const std::shared_ptr<BufferStorage>& storage,void* host,std::size
 }
 }
 struct Engine::Impl {
+    EngineOptions options;
     id<MTLDevice> device;
     id<MTLCommandQueue> queue;
     std::map<int,id<MTLLibrary>> libraries;
     std::map<std::pair<int,int>,id<MTLComputePipelineState>> pipelines;
     id<MTLBuffer> buffers[3];
     std::shared_ptr<int> identity=std::make_shared<int>(0);
-    Impl() {
+    explicit Impl(EngineOptions requested):options(requested) {
+        unsigned n=options.threads_per_threadgroup;
+        if(n&&(n<32||n>1024||(n&(n-1))))throw std::invalid_argument("threadgroup size must be zero or a power of two in [32,1024]");
         device=MTLCreateSystemDefaultDevice();
         if(!device)throw std::runtime_error("no Metal GPU available");
         queue=[device newCommandQueue];if(!queue)throw std::runtime_error("cannot create Metal command queue");
@@ -75,6 +78,14 @@ struct Engine::Impl {
         if(!state)throw std::runtime_error("Metal pipeline: "+error_message(error));
         pipelines[key]=state;return state;
     }
+    unsigned group_size(id<MTLComputePipelineState> state,int bits,int operation)const{
+        NSUInteger width=state.threadExecutionWidth,maximum=state.maxTotalThreadsPerThreadgroup;
+        NSUInteger preferred=options.threads_per_threadgroup?options.threads_per_threadgroup:((operation==7||(bits>=384&&(operation==5||operation==6)))?width:NSUInteger(128));
+        if(preferred%width)throw std::invalid_argument("threadgroup size must be a multiple of pipeline SIMD width");
+        NSUInteger result=std::min(preferred,maximum);result-=result%width;
+        if(!result)throw std::runtime_error("pipeline cannot fit one SIMD group");
+        return unsigned(result);
+    }
     void reserve(unsigned index,std::size_t bytes) {
         if(bytes>device.maxBufferLength)throw std::invalid_argument("buffer exceeds device maximum");
         if(!buffers[index]||buffers[index].length<bytes) {
@@ -97,10 +108,7 @@ struct Engine::Impl {
             for(unsigned i=0;i<3;++i)[encoder setBuffer:buffers[i] offset:0 atIndex:i];
             Params params={std::uint32_t(count),std::uint32_t(operation),steps,std::uint32_t(count/states_per_weight),states_per_weight};
             [encoder setBytes:&params length:sizeof(params) atIndex:3];
-            // One SIMD group per recurrence workgroup distributes small batches
-            // across more GPU cores, and limits private-state resource pressure.
-            NSUInteger preferred=operation==7?state.threadExecutionWidth:NSUInteger(128);
-            NSUInteger group=std::min(preferred,state.maxTotalThreadsPerThreadgroup);
+            NSUInteger group=group_size(state,bits,operation);
             [encoder dispatchThreads:MTLSizeMake(count,1,1) threadsPerThreadgroup:MTLSizeMake(group,1,1)];
             [encoder endEncoding];[command commit];[command waitUntilCompleted];
             if(command.status==MTLCommandBufferStatusError)throw std::runtime_error("Metal execution: "+error_message(command.error));
@@ -154,7 +162,7 @@ void CommandBatch::encode(int bits,bool complex,Operation op,const std::shared_p
     auto encoder=impl_->encoder;[encoder setComputePipelineState:state];
     [encoder setBuffer:a->buffer offset:0 atIndex:0];[encoder setBuffer:b->buffer offset:0 atIndex:1];[encoder setBuffer:out->buffer offset:0 atIndex:2];
     Params params={std::uint32_t(count),std::uint32_t(operation),0,std::uint32_t(count),1};[encoder setBytes:&params length:sizeof(params) atIndex:3];
-    NSUInteger group=std::min(NSUInteger(128),state.maxTotalThreadsPerThreadgroup);
+    NSUInteger group=impl_->engine->group_size(state,bits,operation);
     [encoder dispatchThreads:MTLSizeMake(count,1,1) threadsPerThreadgroup:MTLSizeMake(group,1,1)];
 }
 Submission CommandBatch::submit(){
@@ -181,8 +189,12 @@ std::shared_ptr<detail::BufferStorage> Engine::allocate(std::size_t bytes){
     if(!r->buffer)throw std::runtime_error("Metal buffer allocation failed");return r;
 }
 CommandBatch Engine::batch(){return CommandBatch(std::make_unique<CommandBatch::Impl>(impl));}
-Engine::Engine():impl(new Impl){} Engine::~Engine()=default;
+Engine::Engine(EngineOptions options):impl(new Impl(options)){} Engine::~Engine()=default;
 std::string Engine::device_name()const{return std::string([impl->device.name UTF8String]);}
+PipelineInfo Engine::pipeline_info(int bits,Operation op){
+    validate(bits,0);int operation=int(op);if(operation<0||operation>6)throw std::invalid_argument("unknown arithmetic operation");
+    auto state=impl->pipeline(bits,operation);return {unsigned(state.threadExecutionWidth),unsigned(state.maxTotalThreadsPerThreadgroup),impl->group_size(state,bits,operation)};
+}
 Timing Engine::run(int bits,Operation op,const void* a,const void* b,void* out,std::size_t count) {
     validate(bits,count);int operation=int(op);
     if(operation<0||operation>6)throw std::invalid_argument("unknown arithmetic operation");
