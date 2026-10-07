@@ -40,35 +40,41 @@ Key code: `include/limbforge/core.hpp` (all arithmetic, shared CPU/Metal: `pack`
 `divide_word`, `div`, `sqrt`, `cadd/cmul/cdiv`), `src/kernels.metal` (`arithmetic`, `complex_arithmetic`, `recurrence`,
 `*tree_sum*`), `src/engine.mm` (runtime compile per precision with `MP_BITS`, function-constant specialisation, `group_size`
 policy, `CommandBatch::encode`, `encode_tree_sum`), `include/limbforge/engine.hpp` (public API), `mpfr_bridge.hpp`.
-Harnesses: `benchmarks/{benchmark,tune,layout.mm,square,reduction}.cpp`, `benchmarks/run_round.py`, `benchmarks/compare.py`.
+Harnesses: `benchmarks/{benchmark,tune,square,reduction}.cpp`, `benchmarks/layout.mm`, `benchmarks/run_round.py`, `benchmarks/compare.py`.
 Tests: `tests/test_arithmetic.cpp` (all 31 precisions × 4096 cases), `test_buffers.cpp`, `test_reduction.cpp`, `reference.hpp`.
 
 ---
 
 ## 2. Findings that shape this plan (read before touching kernels)
 
-**F1 — One unexplained GPU-only failure class blocks most multiply-level speedups.** Comba (3 variants), the known-top-bit
-`pack`, full-width square and square-in-`cdiv` all pass CPU/MPFR and fail on the GPU. In every failing log the first
-reported case is `case=1`; case 0 is trivially `status=invalid` (`i%101==0`), so **case 1 is the first real product — the
-kernels are wholly wrong above a size threshold, not wrong on edge cases**. Thresholds: Comba fails from N=25 (800 bits)
-and passes N≤24; full square fails at N=31; hybrid Comba fails in *complex* kernels already at 128 bits (more inlined code
-→ same cliff earlier). Schoolbook `mul` passes at N=32. This pattern indicates a compiler codegen/register-allocation cliff
-(large private arrays, dynamic indices, unroll limits), or latent UB exposed by different codegen — not arithmetic errors.
-Fixing or characterising this is the single biggest enabler (Phase A2).
+**F1 — Several multiply-level trials fail GPU validation; their common cause is unresolved.** Comba, the
+known-top-bit `pack`, full-width square, and square-in-`cdiv` pass CPU checks but fail GPU checks. The full and
+32-bit-carry Comba logs first fail at 800 bits / case 1; the full-square log first fails at 992 bits / case 1.
+These show failures on ordinary normalized inputs, not only rounding boundaries. Other logs use different
+reports: the Round 3 known-top-bit trial fails a dense complex-division benchmark, and the restricted Comba
+trial fails complex tests. Tests stop at the first mismatch, so the logs neither count all failures nor prove
+a monotone size threshold. Compiler code generation, register pressure, and latent implementation errors are
+hypotheses to isolate in A2; CPU agreement does not exclude an arithmetic or address-space bug.
 
-**F2 — Published device times are inflated by GPU clock ramp-up.** The same 384-bit `mul` kernel at 65,536 values measures
-0.45 ms device time in `benchmark.cpp` (GPU runs after idle CPU/MPFR phases) but 0.106 ms in `tune.cpp`
-(`round6_tuning.csv`). Per-step cost inside `mul_chain_resident` (2.44 ms / 16 = 0.15 ms) confirms it. Every optimisation
-decision so far was made with noisy, cold-clock numbers; the "384 bits slower per limb than 1024" anomaly is likely this.
-New metrology comes first (A1).
+**F2 — Device timing depends strongly on measurement schedule; the clock explanation is unverified.** The
+384-bit `mul` / 65,536-value timings differ between the CPU-interleaved pointwise benchmark and the interleaved
+GPU workgroup sweep. GPU clock ramp-up is a plausible contributor, along with group size, residency, compiler
+specialization, scheduling, and desktop load. No GPU frequency/counter evidence establishes the cause.
+Pointwise timings include two warmup calls but are not sustained-load measurements; label these schedules
+explicitly. Previous workgroup, layout, square, and reduction decisions also used interleaved GPU A/B probes.
+A1 should add a sustained-load comparison without relabelling historical numbers as controlled cold clocks.
 
-**F3 — Apple GPUs have no native 64-bit integer ALU.** Every `dword` multiply-add/compare in `mul`, `div`, `aligned_add`
-is emulated with several 32-bit ops. Rewriting inner loops in 32-bit form (`a*b` + `mulhi(a,b)`, explicit carries) is a
-plausible 1.3–2× ALU win — a hypothesis to measure, not a promise.
+**F3 — Measure the cost of 64-bit integer operations rather than assuming a hardware implementation.**
+[Metal exposes 64-bit integer types](https://developer.apple.com/documentation/metal/mtldatatype/ulong), but the
+language type alone does not establish the native instruction cost on the M5 Max. Inspect generated code or
+use isolated microbenchmarks before attributing bottlenecks to emulation. Rewriting multiply-accumulate with
+32-bit products, `mulhi`, and explicit carries is an experiment; a 1.3–2× gain remains a hypothesis.
 
-**F4 — Dynamic indexing into private arrays spills to scratch memory.** The `recurrence` kernel comment already notes it.
-Suspects: `div`'s `u[j+i]` sliding window, `sqrt`'s bit loop, `pack`/`extract` with runtime shifts, `aligned_add`'s
-`shifted_limb`. Compile-time indices (fully unrolled / template-generated straight-line code) keep data in registers.
+**F4 — Dynamic private-array indexing may cause scratch traffic.** The `recurrence` comment records an
+implementation motivation, not a measured register-allocation guarantee. `div`'s sliding window, `sqrt`'s bit
+loop, and runtime extraction are candidates for profiling. Compile-time indexing and unrolling can improve
+allocation, but also increase register pressure and spills. `pipeline_info().max_threads` is a launch limit,
+not a direct spill counter; confirm hypotheses with profiling or a controlled A/B experiment.
 
 **F5 — Wall time is dominated by host overhead at ≤ 65k values.** e.g. 1024-bit add: 0.22 ms device vs 1.21 ms wall
 (host-array path: 3 memcpys of 9 MB + commit + `waitUntilCompleted`). Resident paths cut this but per-submission latency
@@ -91,7 +97,7 @@ more lanes per submission (consumer-side batching of points) or intra-number par
 3. **New primitives** need a written rounding contract in `docs/numerics.md` and an *independent* MPFR/MPC reference in
    `tests/reference.hpp` (never compare a kernel against itself on CPU only).
 4. **Measure** with `python3 benchmarks/run_round.py <fresh-label>` (never overwrite results) plus the new warm-clock kernel
-   sweep (A1). Report device-warm, device-cold and wall separately. Repeat any ≤ 15% claim with an interleaved A/B recheck.
+   sweep (A1). Report sustained-load device, CPU-interleaved device and wall separately. Repeat any ≤ 15% claim with an interleaved A/B recheck.
 5. **Record** every round in the `docs/optimizations.md` table, including rejections; save rejected code as
    `benchmarks/experiments/<name>.patch` with base revision and failure log, and a line in `benchmarks/experiments/README.md`.
 6. Match the repo's dense one-liner C++ style.
@@ -107,7 +113,7 @@ Effort: S ≤ 1 day, M 2–4 days, L ≥ 1 week of agent work. Payoff estimates 
 **A1. Warm-clock kernel metrology sweep** — S/M, Track T1
 - New `benchmarks/kernel_sweep.mm` (+ CMake target): for each of the 31 precisions × each op (real add/sub/mul/div/
   square/sqrt, complex add/mul/div, recurrence step), allocate resident buffers, run a ~200 ms GPU warm-up spin, then encode
-  R=32 independent dispatches (separate outputs) in one command buffer; report device time per dispatch, ns/value,
+  R=32 independent dispatches (separate outputs) in one command buffer; report command-buffer device time divided by R as an **amortized** time per dispatch, ns/value,
   effective GB/s, limb-products/s, and `pipeline_info` (`max_threads` is a register-pressure proxy). Check one output set
   against MPFR. Optional: `MTLCounterSampleBuffer` per-dispatch timestamps where supported.
 - Add `--gpu-warm` to `benchmark.cpp` and record both cold and warm GPU columns; fix README claims to say which.
@@ -144,7 +150,8 @@ Effort: S ≤ 1 day, M 2–4 days, L ≥ 1 week of agent work. Payoff estimates 
   select, compile-time `extract` (retry `known_product_top_bit.patch` under A2 rules).
 - **B4. Square everywhere + `|b|²` in `cdiv`** — S, needs A2 (retry `square_full.patch`). Also use square in tree/norm code.
 - **B5. Short (high-half) product with exact fallback** — M. Compute only columns ≥ N−2 plus a rigorous error bound on the
-  omitted low part; if the rounding decision is certain, round; otherwise fall back to the full product (rare, ~2⁻³⁰).
+  omitted low part; if the rounding decision is certain, round; otherwise fall back to the full product. A ~2⁻³⁰ fallback rate is only a random-input hypothesis;
+  adversarial or structured inputs may always need the fallback.
   Expect ~1.6× fewer limb products. Requires a written proof sketch in `docs/numerics.md` and adversarial near-halfway
   fixtures (existing fixtures 8–39 in `test_arithmetic.cpp` are a template).
 - **B6. Addition fast paths** — S. Same-sign small-gap path without the full aligned workspace; compile-time-shift variants
@@ -153,7 +160,7 @@ Effort: S ≤ 1 day, M 2–4 days, L ≥ 1 week of agent work. Payoff estimates 
   reciprocal-based division: compute an (N+1)-limb reciprocal of the divisor once, quotient = high part of a·recip,
   correct with the exact remainder (same final `2r ≥ d` rounding test). `cdiv` shares one reciprocal for both components.
 - **B8. Faster `sqrt`** — M, low priority for consumers. Limb-wise (Zimmermann Karatsuba-sqrt or Newton on reciprocal sqrt
-  with a `double` seed), certified by the existing exact residual test.
+  with a Metal `float` seed (or `double` on the CPU)), certified by the existing exact residual test.
 
 ### Phase C — Runtime, memory layout, host overhead — Track T2 (can run in parallel with B)
 
@@ -163,7 +170,8 @@ Effort: S ≤ 1 day, M 2–4 days, L ≥ 1 week of agent work. Payoff estimates 
 - **C2. Host-array path** — S. Zero-copy `newBufferWithBytesNoCopy` for page-aligned host memory (provide an aligned
   allocator), parallel memcpy for large transfers, buffer reuse; MTLSharedEvent spin-wait option for low-latency waits.
 - **C3. Concurrent encoder with hazard tracking** — S/M. `MTLDispatchTypeConcurrent` encoder; insert a barrier only when a
-  dispatch reads/writes a buffer written earlier in the batch, so independent ops overlap.
+  dispatch has a read-after-write, write-after-read, or write-after-write dependency on an earlier
+  dispatch (including aliased handles and overlapping ranges), so only independent ops overlap.
 - **C4. Completion callbacks (tips #8)** — S. `Submission::on_complete(std::function<void(Timing)>)` via
   `addCompletedHandler`; document thread-safety.
 - **C5. Small-batch CPU path and break-even table (tips #8)** — M. Run `core.hpp` on a CPU thread pool below a measured
@@ -181,15 +189,18 @@ Each item: written contract → MPFR/MPC reference → CPU implementation in `co
 384 bits (plus all-precision smoke) → benchmark vs 18-thread MPFR at qscmx sizes.
 
 - **D1. Faster MPFR/MPC bridge (tips #7)** — S/M, CPU only, start immediately. Direct limb copy when the MPFR precision
-  ≤ target bits: on arm64 a 64-bit MPFR limb is two little-endian 32-bit words, so the top `bits/32` words of the
-  left-aligned MPFR significand map by `memcpy`; LimbForge exponent = MPFR exponent − 1; handle zero/NaN/Inf/precision >
-  bits via the existing slow path. Array versions for `mpfr_t[]` and `mpc_t[]` (`Complex<N>` ↔ `mpc_t`), multithreaded.
+  ≤ target bits: verify the host GMP limb width, endianness, and documented MPFR storage layout before a
+  direct copy. Read only the limbs allocated for the **source** precision, align the significand to the target's
+  high end, and zero-pad missing low words; do not read `bits/32` words from a narrower source allocation.
+  Handle partial 64-bit words explicitly at 224 bits. LimbForge exponent = MPFR exponent − 1; handle
+  zero/NaN/Inf/precision > bits via the existing slow path. Array versions for `mpfr_t[]` and `mpc_t[]` (`Complex<N>` ↔ `mpc_t`), multithreaded.
   Optional fixed-limb layout compatible with `mpfr_custom_init` (ties to C6 padding). Test: round-trip at all 31 precisions,
   including 224 (odd word count) and specials.
 - **D2. Fused multiply-add (tips #2)** — M/L.
   Real `fma(a,b,c)=RN(a·b+c)`, `fms` — single rounding; reference `mpfr_fma`/`mpfr_fms`. Implementation: exact 2N-limb
-  product, addend aligned in a bounded workspace; an addend entirely below the window becomes a signed sticky bit (MPFR
-  technique), so huge exponent gaps stay exact without wide buffers.
+  product, addend aligned in a bounded workspace; omitted low bits require a proved, sign-aware residual
+  bound or an exact fallback. A generic sticky-bit OR is insufficient for opposite-sign tails, cancellation,
+  exact midpoints, or exponent-boundary rescue. Specify these cases before accepting a bounded-window algorithm.
   Complex `cfma(a,b,c)=a·b±c`: preferred contract `re=RN(a.re·b.re − a.im·b.im + c.re)`,
   `im=RN(a.re·b.im + a.im·b.re + c.im)` (one rounding per component); reference: exact products at 2·bits precision
   + `mpfr_sum`. If the exact 3-term sum is too costly, fall back to the documented contract `RN(RN(fmma)+c)` with
@@ -207,7 +218,7 @@ Each item: written contract → MPFR/MPC reference → CPU implementation in `co
   (base `v` and tangent `dv` advanced together: `ds=q·dv+dq·v`, `dv ← dv + p·ds + dp·s`) which removes the stored base
   chain and the separate `r` pass — confirm the `dp/dq` data shape with the qscmx owner before building it.
   Kernel design: one thread per lane; `v` (and `dv`) in registers — check spills with `pipeline_info` at N=7,8 (4 complex
-  ≈ 88 words each); shared `p,q` staged per step in threadgroup memory for the `lanes_per_weight` group. Test: MPFR chains
+  80/88 32-bit words per vector at 224/256 bits, before arithmetic temporaries); shared `p,q` staged per step in threadgroup memory for the `lanes_per_weight` group. Test: MPFR chains
   (same contract) at 224/256 bits, 150 steps, random data with |p qᵀ|≈1 plus cancellation-heavy cases; then qscmx end-to-end.
 - **D5. Batched 4×4 complex LU / solve / inverse / det (tips #5)** — M. One thread per matrix. Specify a deterministic
   pivot rule that needs no rounding (e.g. max of `max(|re|,|im|)` by exact exponent/limb compare, lowest index on ties) so
@@ -225,7 +236,7 @@ For BSolver (≈128 lanes × 600 steps) the GPU runs ~128 threads. Two complemen
 - **E0 (consumer-side, S):** recommend BSolver batch all `u` points / Newton finite-difference evaluations into one
   `recurrence` call (more trajectories per submission) — cheapest win; document in the BSolver integration notes.
 - **E1 (L, research):** one number per 8/16/32 SIMD lanes: limb-parallel multiply with `simd_shuffle` broadcasts, carry
-  resolution with `simd_prefix_exclusive_sum`/ballot loops, normalisation via ballot + `clz`. Prototype `mul` + `add` in a
+  resolution with an associative generate/propagate scan or bounded correction loops (a plain sum of carry flags is insufficient), normalisation via ballot + `clz`. Prototype `mul` + `add` in a
   `recurrence_coop` kernel at 384 bits; compare per-step latency against the thread-per-lane kernel; division via a
   cooperative reciprocal only if the prototype wins. Keep the thread-per-lane kernel as the default for large lane counts.
 
@@ -262,4 +273,4 @@ D6 ← D3 microkernel; C6 ← B (re-measure once compute is cheaper). T3 may add
   BSolver — `cmake -DLIMBFORGE_BUILD_BAXTER_EXAMPLE=ON` then `ctest -R baxter_batch` (80-digit threshold) and
   `./build/baxter_batch 16 600` timings vs `benchmarks/m5_max_baxter.txt`.
 - Docs updated each round: `docs/optimizations.md` (table row), `docs/numerics.md` (contracts),
-  `docs/performance.md`/README (only warm/cold-labelled, MPFR-validated numbers).
+  `docs/performance.md`/README (only schedule-labelled, MPFR-validated numbers).

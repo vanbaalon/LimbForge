@@ -16,15 +16,20 @@ metadata and test logs for provenance.
 The default matrix uses 256, 384, and 1024 bits; 256, 4,096, and 65,536 values;
 six real operations (including square and square root); three complex
 operations; and a 16-step multiplication chain. The main matrix has 180 rows; the separate reduction matrix has 36.
-Each case has two warmups and nine measured samples. Inputs use a fixed
+Each case has two warmup calls and nine measured samples. Warmups initialize
+pipelines and storage; they do not establish a controlled GPU clock frequency. Inputs use a fixed
 seed (`20261007 + bits`); ordinary arithmetic exponents span −5 through +5, and
 chain exponents start at zero. Square-root inputs are the absolute values of
 the real corpus; other existing input streams remain unchanged. Every final output is compared with independent
 MPFR operations. This benchmark covers moderate exponents; the separate test
 suite covers error statuses and exponent boundaries.
 
-MPFR arrays and GPU buffers are preallocated. Decimal conversion and pipeline
-compilation are excluded from warmed measurements. CPU columns report serial
+MPFR input/output arrays and GPU buffers are preallocated. In records through
+Round 12, three MPFR scratch variables are initialized and cleared inside each
+serial or worker job, including that allocation cost in the CPU timing. The audit
+revision reuses thread-local scratch initialized during warmups; new measurements
+are recorded separately. Decimal conversion and pipeline compilation are excluded
+from these measurements. CPU columns report serial
 MPFR and a persistent **18-worker MPFR pool**, including pool dispatch costs.
 Both preserve the same real rounding steps as the GPU. Complex arithmetic does
 not use a different single-round MPC contract.
@@ -41,7 +46,10 @@ The columns distinguish three execution costs:
   includes sixteen host-array calls with repeated copies and waits. CPU chain
   times exclude resetting the preallocated output to its initial value.
 
-Device timestamps measure execution separately. CSV wall statistics include the
+`gpu_s` uses whole command-buffer timestamps. For one dispatch this includes
+command-buffer execution overhead; for chains and reductions it includes the
+entire set of dispatches and barriers. It is not an isolated arithmetic-instruction
+or per-dispatch hardware-counter measurement. CSV wall statistics include the
 median, minimum, and empirical lower-order 90th percentile. The serial and
 parallel CPU execution order alternates for ordinary arithmetic samples. GPU
 samples follow CPU samples; this is a working desktop, with no locked clocks or
@@ -199,6 +207,29 @@ These records show an implementation improvement, not a universal advantage
 over multicore MPFR. Wider device validation and further reduction tuning remain
 necessary.
 
+## Benchmark/documentation audit
+
+The audit started from GitHub revision `f5663e4` on October 7, 2026. It verified
+173 published numeric cells against their committed source CSVs, accepted-record
+row counts and test logs, API descriptions, and local Markdown links. The
+[record validator](../benchmarks/audit_records.py) runs in GitHub Actions to catch
+future numeric or link drift.
+
+The arithmetic core and GPU kernels are unchanged by the audit. The main harness
+now retains thread-local MPFR scratch across warmed jobs, and the round runner
+passes `--workers` and `--repeats` to reductions and requires CPU/GPU suites.
+A fresh [180-row pointwise/chain matrix](../benchmarks/results/audit_20261007.csv)
+and [36-row reduction matrix](../benchmarks/results/audit_20261007_reduction.csv)
+passed independent MPFR comparisons, all four suites, and
+[Metal validation](../benchmarks/results/audit_20261007_metal_tests.txt).
+The original headline and Round 12 records remain separate historical snapshots.
+Differences between runs cannot be attributed to scratch reuse alone: desktop
+load, CPU/GPU scheduling, and clock state were not controlled.
+
+The [option-propagation smoke run](../benchmarks/results/audit_options_20261007_metadata.json)
+checks three samples and one CPU worker in both matrices. Its timings are not
+used as performance evidence.
+
 ## Reproduction
 
 ```sh
@@ -217,10 +248,20 @@ reduction policies; `--global-tree` benchmarks the latter against CPU MPFR.
 `tune_limbforge`, `layout_limbforge`, and `square_limbforge` provide targeted
 comparisons. Use `--threads N` to override the pointwise workgroup size.
 
+`--workers N` and `--repeats N` apply to both benchmarks when invoked through
+the audited round runner. Earlier runners applied these options only to the main
+arithmetic/chain matrix; reduction rows used 9 samples and hardware concurrency.
+`--bits`, `--count`, and `--operation` filter the main matrix; the reduction matrix
+retains its fixed three-precision/three-size coverage.
+
 Use `--workers N` to control the MPFR pool. The default is hardware concurrency.
 `--quick` uses 4,096 values at all three benchmark precisions. `--bits` selects
 256, 384, or 1024; `--operation mul_chain` selects the two chain interfaces.
-The benchmark exits with failure on a detected arithmetic mismatch.
+The main benchmark validates the final output of each host/resident case;
+reduction and targeted A/B harnesses validate every measured dispatch. The
+benchmark exits with failure on a detected arithmetic mismatch. The audited
+round runner requires all four CPU/GPU suites to be registered before benchmarking;
+a CPU-only or test-disabled build cannot be reported as a complete round.
 
 ## Test coverage and limitations
 

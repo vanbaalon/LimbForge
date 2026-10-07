@@ -1,0 +1,40 @@
+{
+  "utc": "2026-10-07T20:07:10.887163+00:00",
+  "revision": "f5663e47fdf0a1e411efddb55423b346e5f2bfaa",
+  "working_tree": "M .github/workflows/ci.yml\n M README.md\n M benchmarks/benchmark.cpp\n M benchmarks/reduction.cpp\n M benchmarks/run_round.py\n M docs/optimization-plan.md\n M docs/performance.md\n?? benchmarks/audit_records.py\n?? benchmarks/results/audit_20261007.csv\n?? benchmarks/results/audit_20261007_metadata.json\n?? benchmarks/results/audit_20261007_metal_tests.txt\n?? benchmarks/results/audit_20261007_reduction.csv\n?? benchmarks/results/audit_20261007_tests.txt",
+  "platform": "macOS-26.6.2-arm64-arm-64bit-Mach-O",
+  "chip": "Apple M5 Max",
+  "benchmark_command": [
+    "/private/tmp/limbforge-audit-20261007/build/benchmark_limbforge",
+    "--repeats",
+    "3",
+    "--workers",
+    "1",
+    "--count",
+    "257",
+    "--bits",
+    "256",
+    "--operation",
+    "complex_mul"
+  ],
+  "status": "passed",
+  "required_tests": [
+    "arithmetic_cpu",
+    "arithmetic_gpu",
+    "resident_buffers",
+    "tree_reduction"
+  ],
+  "benchmark_stderr": "Device: Apple M5 Max; MPFR 4.2.2; workers=1; threads=0; repeats=3; seed=20261007\n",
+  "reduction_command": [
+    "/private/tmp/limbforge-audit-20261007/build/reduction_limbforge",
+    "--repeats",
+    "3",
+    "--workers",
+    "1"
+  ],
+  "reduction_stderr": "Apple M5 Max; cooperative=1; 1 persistent MPFR workers; fixed pair tree; serial tail below workers*16; 2 warmups, 3 samples, four methods interleaved, every sample checked\n",
+  "reduction_rows": 36,
+  "rows": 2,
+  "purpose": "Option propagation smoke test; timing is not performance evidence.",
+  "timing_context": "An unrelated local GPU code-generation probe was active during this smoke test."
+}

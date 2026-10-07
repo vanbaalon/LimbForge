@@ -1,0 +1,15 @@
+{
+  "utc": "2026-10-07T20:10:06.633770+00:00",
+  "revision": "f5663e47fdf0a1e411efddb55423b346e5f2bfaa",
+  "working_tree": "M .github/workflows/ci.yml\n M README.md\n M benchmarks/benchmark.cpp\n M benchmarks/reduction.cpp\n M benchmarks/run_round.py\n M docs/optimization-plan.md\n M docs/performance.md\n M docs/prior-art.md\n?? benchmarks/audit_records.py\n?? benchmarks/results/audit_20261007.csv\n?? benchmarks/results/audit_20261007_examples_tests.txt\n?? benchmarks/results/audit_20261007_metadata.json\n?? benchmarks/results/audit_20261007_metal_tests.txt\n?? benchmarks/results/audit_20261007_reduction.csv\n?? benchmarks/results/audit_20261007_tests.txt\n?? benchmarks/results/audit_options_20261007.csv\n?? benchmarks/results/audit_options_20261007_metadata.json\n?? benchmarks/results/audit_options_20261007_reduction.csv\n?? benchmarks/results/audit_options_20261007_tests.txt",
+  "platform": "macOS-26.6.2-arm64-arm-64bit-Mach-O",
+  "chip": "Apple M5 Max",
+  "benchmark_command": [
+    "/tmp/limbforge-audit-no-tests/benchmark_limbforge",
+    "--repeats",
+    "9"
+  ],
+  "status": "failed",
+  "error": "round requires CPU and GPU suites; missing: arithmetic_cpu, arithmetic_gpu, resident_buffers, tree_reduction",
+  "purpose": "Expected rejection test: a build with testing disabled must not record a passed round."
+}
