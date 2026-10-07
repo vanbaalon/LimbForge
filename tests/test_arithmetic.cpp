@@ -47,17 +47,17 @@ template<int Bits> void test_real(Engine* engine) {
         b[fixture].exponent=fixture%3? -1:0;
     }
     mpz_clears(za,zb,target,remainder,half,nullptr);
-    for(Operation op:{Operation::add,Operation::sub,Operation::mul,Operation::div}) {
-        if(engine)engine->run(Bits,op,a.data(),b.data(),gpu.data(),count);
+    for(Operation op:{Operation::add,Operation::sub,Operation::mul,Operation::div,Operation::square}) {
+        if(engine){if(operation_is_unary(op))engine->run_unary(Bits,op,a.data(),gpu.data(),count);else engine->run(Bits,op,a.data(),b.data(),gpu.data(),count);}
         for(int i=0;i<count;++i){auto expected=reference::real<Bits>(op,a[i],b[i]);F host;
             switch(op){case Operation::add:host=add(a[i],b[i]);break;case Operation::sub:host=sub(a[i],b[i]);break;
-            case Operation::mul:host=mul(a[i],b[i]);break;default:host=div(a[i],b[i]);}
+            case Operation::mul:host=mul(a[i],b[i]);break;case Operation::square:host=square(a[i]);break;default:host=div(a[i],b[i]);}
             std::string label="bits="+std::to_string(Bits)+" op="+std::to_string(int(op))+" case="+std::to_string(i);
             require(reference::equal<Bits>(host,expected),"CPU vs MPFR "+label);
             if(engine)require(reference::equal<Bits>(gpu[i],expected),"GPU vs MPFR "+label);
         }
     }
-    std::cout<<Bits<<" bits: 16384 real MPFR comparisons passed"<<std::endl;
+    std::cout<<Bits<<" bits: 20480 real MPFR comparisons passed"<<std::endl;
 }
 template<int Bits> void test_complex_and_recurrence(Engine* engine) {
     using C=Complex<Bits/32>;std::mt19937_64 rng(Bits);constexpr int count=257;

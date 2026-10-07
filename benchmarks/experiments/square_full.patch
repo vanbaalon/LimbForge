@@ -1,0 +1,23 @@
+--- a/include/limbforge/core.hpp
++++ b/include/limbforge/core.hpp
+@@ -130,11 +130,6 @@
+     return pack<N>(product,exponent_type(a.exponent)+b.exponent-2*(32*N-1),a.sign*b.sign,status);
+ }
+ template<int N> inline Number<N> square(LIMBFORGE_THREAD const Number<N>& a){
+-#ifdef __METAL_VERSION__
+-    // The symmetric implementation is validated on Metal through 384 bits.
+-    // Wider shaders retain the validated schoolbook product.
+-    if(N>12)return mul(a,a);
+-#endif
+     if(a.status||!a.sign)return zero<N>(a.status);
+     word product[2*N+1]={};
+     // Accumulate each off-diagonal product once, then double the exact integer.
+@@ -202,7 +197,7 @@
+ template<int N> inline Complex<N> cadd(Complex<N> a,Complex<N> b){return {add(a.re,b.re),add(a.im,b.im)};}
+ template<int N> inline Complex<N> cmul(Complex<N> a,Complex<N> b){return {sub(mul(a.re,b.re),mul(a.im,b.im)),add(mul(a.re,b.im),mul(a.im,b.re))};}
+ template<int N> inline Complex<N> cdiv(Complex<N> a,Complex<N> b){
+-    Number<N> d=add(mul(b.re,b.re),mul(b.im,b.im));
++    Number<N> d=add(square(b.re),square(b.im));
+     return {div(add(mul(a.re,b.re),mul(a.im,b.im)),d),div(sub(mul(a.im,b.re),mul(a.re,b.im)),d)};
+ }
+ } // namespace limbforge

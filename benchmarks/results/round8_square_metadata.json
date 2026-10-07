@@ -1,0 +1,14 @@
+{
+  "utc": "2026-10-07T19:01:48.390715+00:00",
+  "revision": "db959a2ebc2818874ea8175269a6ce14a1dc6e7a",
+  "working_tree": "M benchmarks/benchmark.cpp\n M benchmarks/run_round.py\n M include/limbforge/core.hpp\n M include/limbforge/engine.hpp\n M src/engine.mm\n M src/kernels.metal\n M tests/reference.hpp\n M tests/test_arithmetic.cpp\n M tests/test_buffers.cpp",
+  "platform": "macOS-26.6.2-arm64-arm-64bit-Mach-O",
+  "chip": "Apple M5 Max",
+  "benchmark_command": [
+    "/Users/k0959535/Dropbox/IntegrabilityProjects/2026 4d SoV/LimbForge/build/benchmark_limbforge",
+    "--repeats",
+    "9"
+  ],
+  "status": "failed",
+  "error": "Command '['ctest', '--test-dir', '/Users/k0959535/Dropbox/IntegrabilityProjects/2026 4d SoV/LimbForge/build', '--output-on-failure']' returned non-zero exit status 8."
+}

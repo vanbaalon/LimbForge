@@ -67,11 +67,11 @@ struct Engine::Impl {
             libraries[bits]=library;
         }
         NSError* error=nil;id<MTLFunction> function;
-        if(operation==7)function=[libraries[bits] newFunctionWithName:@"recurrence"];
+        if(operation==100)function=[libraries[bits] newFunctionWithName:@"recurrence"];
         else {
             MTLFunctionConstantValues* constants=[MTLFunctionConstantValues new];
             std::uint32_t op=operation;[constants setConstantValue:&op type:MTLDataTypeUInt atIndex:0];
-            function=[libraries[bits] newFunctionWithName:operation<4?@"arithmetic":@"complex_arithmetic" constantValues:constants error:&error];
+            function=[libraries[bits] newFunctionWithName:operation>=4&&operation<=6?@"complex_arithmetic":@"arithmetic" constantValues:constants error:&error];
         }
         if(!function)throw std::runtime_error("Metal specialization: "+error_message(error));
         id<MTLComputePipelineState> state=[device newComputePipelineStateWithFunction:function error:&error];
@@ -80,7 +80,7 @@ struct Engine::Impl {
     }
     unsigned group_size(id<MTLComputePipelineState> state,int bits,int operation)const{
         NSUInteger width=state.threadExecutionWidth,maximum=state.maxTotalThreadsPerThreadgroup;
-        NSUInteger preferred=options.threads_per_threadgroup?options.threads_per_threadgroup:((operation==7||(bits>=384&&(operation==5||operation==6)))?width:NSUInteger(128));
+        NSUInteger preferred=options.threads_per_threadgroup?options.threads_per_threadgroup:((operation==100||(bits>=384&&(operation==5||operation==6)))?width:NSUInteger(128));
         if(preferred%width)throw std::invalid_argument("threadgroup size must be a multiple of pipeline SIMD width");
         NSUInteger result=std::min(preferred,maximum);result-=result%width;
         if(!result)throw std::runtime_error("pipeline cannot fit one SIMD group");
@@ -99,13 +99,13 @@ struct Engine::Impl {
             // Compilation is deliberately excluded from timings; cached per precision/operation.
             auto state=pipeline(bits,operation);
             auto start=std::chrono::steady_clock::now();
-            reserve(0,a_bytes);reserve(1,b_bytes);reserve(2,out_bytes);
+            reserve(0,a_bytes);if(b_bytes)reserve(1,b_bytes);reserve(2,out_bytes);
             std::memcpy(buffers[0].contents,a,a_bytes);if(b_bytes)std::memcpy(buffers[1].contents,b,b_bytes);
             id<MTLCommandBuffer> command=[queue commandBuffer];
             id<MTLComputeCommandEncoder> encoder=[command computeCommandEncoder];
             if(!command||!encoder)throw std::runtime_error("Metal command allocation failed");
             [encoder setComputePipelineState:state];
-            for(unsigned i=0;i<3;++i)[encoder setBuffer:buffers[i] offset:0 atIndex:i];
+            for(unsigned i=0;i<3;++i)[encoder setBuffer:buffers[i==1&&!b_bytes?0:i] offset:0 atIndex:i];
             Params params={std::uint32_t(count),std::uint32_t(operation),steps,std::uint32_t(count/states_per_weight),states_per_weight};
             [encoder setBytes:&params length:sizeof(params) atIndex:3];
             NSUInteger group=group_size(state,bits,operation);
@@ -154,7 +154,7 @@ void CommandBatch::encode(int bits,bool complex,Operation op,const std::shared_p
                          const std::shared_ptr<detail::BufferStorage>& b,const std::shared_ptr<detail::BufferStorage>& out,std::size_t count){
     if(!impl_||impl_->submitted)throw std::logic_error("batch already submitted or moved");
     validate(bits,count);int operation=int(op);
-    if(operation<0||operation>6||(operation>=4)!=complex)throw std::invalid_argument("operation and buffer format mismatch");
+    if(!operation_is_valid(op)||operation_is_complex(op)!=complex)throw std::invalid_argument("operation and buffer format mismatch");
     impl_->retain(a);impl_->retain(b);impl_->retain(out);if(!count)return;
     auto state=impl_->engine->pipeline(bits,operation);
     if(!impl_->encoder){impl_->encoder=[impl_->command computeCommandEncoder];if(!impl_->encoder)throw std::runtime_error("Metal encoder allocation failed");}
@@ -192,16 +192,20 @@ CommandBatch Engine::batch(){return CommandBatch(std::make_unique<CommandBatch::
 Engine::Engine(EngineOptions options):impl(new Impl(options)){} Engine::~Engine()=default;
 std::string Engine::device_name()const{return std::string([impl->device.name UTF8String]);}
 PipelineInfo Engine::pipeline_info(int bits,Operation op){
-    validate(bits,0);int operation=int(op);if(operation<0||operation>6)throw std::invalid_argument("unknown arithmetic operation");
+    validate(bits,0);int operation=int(op);if(!operation_is_valid(op))throw std::invalid_argument("unknown arithmetic operation");
     auto state=impl->pipeline(bits,operation);return {unsigned(state.threadExecutionWidth),unsigned(state.maxTotalThreadsPerThreadgroup),impl->group_size(state,bits,operation)};
 }
 Timing Engine::run(int bits,Operation op,const void* a,const void* b,void* out,std::size_t count) {
     validate(bits,count);int operation=int(op);
-    if(operation<0||operation>6)throw std::invalid_argument("unknown arithmetic operation");
+    if(!operation_is_valid(op))throw std::invalid_argument("unknown arithmetic operation");
     if(!count)return {0,0};
-    if(!a||!b||!out)throw std::invalid_argument("null arithmetic buffer");
-    std::size_t stride=(bits/8+12)*(operation<4?1:2),bytes=checked_size(count,stride);
-    return impl->dispatch(bits,operation,a,bytes,b,bytes,out,bytes,count,0);
+    if(!a||(!b&&!operation_is_unary(op))||!out)throw std::invalid_argument("null arithmetic buffer");
+    std::size_t stride=(bits/8+12)*(operation_is_complex(op)?2:1),bytes=checked_size(count,stride);
+    return impl->dispatch(bits,operation,a,bytes,operation_is_unary(op)?a:b,operation_is_unary(op)?0:bytes,out,bytes,count,0);
+}
+Timing Engine::run_unary(int bits,Operation op,const void* a,void* out,std::size_t count){
+    if(!operation_is_unary(op))throw std::invalid_argument("operation requires two inputs");
+    return run(bits,op,a,nullptr,out,count);
 }
 Timing Engine::recurrence(int bits,const void* seeds,const void* weights,void* out,std::size_t count,unsigned steps,unsigned states_per_weight) {
     validate(bits,count);
@@ -214,7 +218,7 @@ Timing Engine::recurrence(int bits,const void* seeds,const void* weights,void* o
     std::size_t stride=2*(bits/8+12),bytes=checked_size(count,stride);
     // Metal requires a bound weights buffer even for a zero-step dispatch.
     auto seed_bytes=checked_size(bytes,4),weight_bytes=checked_size(bytes/states_per_weight,std::size_t(steps)*4);
-    if(!steps)return impl->dispatch(bits,7,seeds,seed_bytes,seeds,stride,out,bytes,count,0,states_per_weight);
-    return impl->dispatch(bits,7,seeds,seed_bytes,weights,weight_bytes,out,bytes,count,steps,states_per_weight);
+    if(!steps)return impl->dispatch(bits,100,seeds,seed_bytes,seeds,stride,out,bytes,count,0,states_per_weight);
+    return impl->dispatch(bits,100,seeds,seed_bytes,weights,weight_bytes,out,bytes,count,steps,states_per_weight);
 }
 }

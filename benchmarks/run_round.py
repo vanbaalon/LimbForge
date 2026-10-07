@@ -16,7 +16,7 @@ p.add_argument("--repeats", type=int, default=9)
 p.add_argument("--workers", type=int)
 p.add_argument("--count", type=int)
 p.add_argument("--bits", type=int, choices=(256, 384, 1024))
-p.add_argument("--operation", choices=("add", "sub", "mul", "div", "complex_add", "complex_mul", "complex_div", "mul_chain"))
+p.add_argument("--operation", choices=("add", "sub", "mul", "div", "complex_add", "complex_mul", "complex_div", "square", "mul_chain"))
 a = p.parse_args()
 if not a.label.replace("-", "").replace("_", "").isalnum():
     p.error("label must contain letters, digits, hyphens, or underscores")
@@ -47,7 +47,7 @@ try:
     run.check_returncode()
     with paths[0].open() as data:
         rows = list(csv.DictReader(data))
-    expected = (1 if a.count else 3) * (1 if a.bits else 3) * (2 if a.operation else 16)
+    expected = int(read(*(cmd + ["--case-count"])))
     if len(rows) != expected:
         raise RuntimeError(f"incomplete benchmark: {len(rows)} rows, expected {expected}")
     meta.update(status="passed", rows=len(rows))

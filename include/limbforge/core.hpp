@@ -129,6 +129,28 @@ template<int N> inline Number<N> mul(LIMBFORGE_THREAD const Number<N>& a,LIMBFOR
     }
     return pack<N>(product,exponent_type(a.exponent)+b.exponent-2*(32*N-1),a.sign*b.sign,status);
 }
+template<int N> inline Number<N> square(LIMBFORGE_THREAD const Number<N>& a){
+#ifdef __METAL_VERSION__
+    // The symmetric implementation is validated on Metal through 384 bits.
+    // Wider shaders retain the validated schoolbook product.
+    if(N>12)return mul(a,a);
+#endif
+    if(a.status||!a.sign)return zero<N>(a.status);
+    word product[2*N+1]={};
+    // Accumulate each off-diagonal product once, then double the exact integer.
+    for(int i=0;i<N-1;++i){dword carry=0;
+        for(int j=i+1;j<N;++j){dword v=dword(a.limb[i])*a.limb[j]+product[i+j]+carry;product[i+j]=word(v);carry=v>>32;}
+        product[i+N]=word(carry);
+    }
+    word carry=0;for(int i=0;i<2*N+1;++i){word old=product[i];product[i]=(old<<1)|carry;carry=old>>31;}
+    // Add the diagonal with bounded sums; never double a full 64-bit product.
+    for(int i=0;i<N;++i){dword p=dword(a.limb[i])*a.limb[i];
+        dword v=dword(product[2*i])+word(p);product[2*i]=word(v);
+        v=dword(product[2*i+1])+(p>>32)+(v>>32);product[2*i+1]=word(v);
+        dword c=v>>32;for(int j=2*i+2;c&&j<2*N+1;++j){v=dword(product[j])+c;product[j]=word(v);c=v>>32;}
+    }
+    return pack<N>(product,2*exponent_type(a.exponent)-2*(32*N-1),1,ok);
+}
 template<int N> inline int limb_compare(LIMBFORGE_THREAD const word (&a)[N+1],LIMBFORGE_THREAD const Number<N>& b) {
     if(a[N])return 1;
     for(int i=N-1;i>=0;--i)if(a[i]!=b.limb[i])return a[i]>b.limb[i]?1:-1;

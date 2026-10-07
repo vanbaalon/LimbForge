@@ -6,6 +6,13 @@
 #include <iostream>
 #include <cstring>
 namespace reference {
+// Keep the oracle finite for products/quotients beyond LimbForge's exponent
+// limits, so conversion can report exponent_overflow rather than MPFR infinity.
+struct ExponentRange {
+    mpfr_exp_t emin=mpfr_get_emin(),emax=mpfr_get_emax();
+    ExponentRange(){if(mpfr_set_emin(-3000000000L)||mpfr_set_emax(3000000000L))throw std::runtime_error("MPFR reference exponent range unsupported");}
+    ~ExponentRange(){mpfr_set_emax(emax);mpfr_set_emin(emin);}
+};
 struct MP {
     mpfr_t x;
     explicit MP(int bits){mpfr_init2(x,bits);mpfr_set_zero(x,1);}
@@ -24,12 +31,13 @@ template<int Bits> bool equal_complex(const limbforge::Complex<Bits/32>& a,const
     return equal<Bits>(a.re,b.re)&&equal<Bits>(a.im,b.im);
 }
 template<int Bits> limbforge::Float<Bits> real(limbforge::Operation op,const limbforge::Float<Bits>& a,const limbforge::Float<Bits>& b) {
-    if(a.status||b.status)return limbforge::zero<Bits/32>(a.status|b.status);
+    if(a.status||(!limbforge::operation_is_unary(op)&&b.status))return limbforge::zero<Bits/32>(a.status|(limbforge::operation_is_unary(op)?0:b.status));
     if(op==limbforge::Operation::div&&!b.sign)return limbforge::zero<Bits/32>(limbforge::division_by_zero);
-    MP x(Bits),y(Bits),z(Bits);limbforge::to_mpfr<Bits>(x.x,a);limbforge::to_mpfr<Bits>(y.x,b);
+    ExponentRange range;MP x(Bits),y(Bits),z(Bits);limbforge::to_mpfr<Bits>(x.x,a);if(!limbforge::operation_is_unary(op))limbforge::to_mpfr<Bits>(y.x,b);
     switch(op){case limbforge::Operation::add:mpfr_add(z.x,x.x,y.x,MPFR_RNDN);break;
     case limbforge::Operation::sub:mpfr_sub(z.x,x.x,y.x,MPFR_RNDN);break;
     case limbforge::Operation::mul:mpfr_mul(z.x,x.x,y.x,MPFR_RNDN);break;
+    case limbforge::Operation::square:mpfr_sqr(z.x,x.x,MPFR_RNDN);break;
     default:mpfr_div(z.x,x.x,y.x,MPFR_RNDN);}
     return limbforge::from_mpfr<Bits>(z.x);
 }

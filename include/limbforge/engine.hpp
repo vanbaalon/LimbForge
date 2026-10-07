@@ -6,7 +6,10 @@
 #include <stdexcept>
 #define LIMBFORGE_RESIDENT_API 1
 namespace limbforge {
-enum class Operation { add, sub, mul, div, complex_add, complex_mul, complex_div };
+enum class Operation { add, sub, mul, div, complex_add, complex_mul, complex_div, square };
+inline bool operation_is_complex(Operation op){return int(op)>=4&&int(op)<=6;}
+inline bool operation_is_unary(Operation op){return op==Operation::square;}
+inline bool operation_is_valid(Operation op){return int(op)>=0&&int(op)<=7;}
 struct Timing { double gpu_seconds, wall_seconds; };
 struct EngineOptions { unsigned threads_per_threadgroup=0; }; // 0 selects the default policy.
 struct PipelineInfo { unsigned simd_width,max_threads,threads_per_threadgroup; };
@@ -51,8 +54,14 @@ class CommandBatch {
 public:
     ~CommandBatch();CommandBatch(CommandBatch&&)noexcept;CommandBatch& operator=(CommandBatch&&)noexcept;
     template<class T> void run(Operation op,const Buffer<T>& a,const Buffer<T>& b,Buffer<T>& out){
+        if(operation_is_unary(op))throw std::invalid_argument("use the unary run overload");
         if(a.size()!=b.size()||a.size()!=out.size())throw std::invalid_argument("buffer counts must match");
         encode(detail::Format<T>::bits,detail::Format<T>::complex,op,a.storage_,b.storage_,out.storage_,a.size());
+    }
+    template<class T> void run(Operation op,const Buffer<T>& a,Buffer<T>& out){
+        if(!operation_is_unary(op))throw std::invalid_argument("operation requires two inputs");
+        if(a.size()!=out.size())throw std::invalid_argument("buffer counts must match");
+        encode(detail::Format<T>::bits,detail::Format<T>::complex,op,a.storage_,a.storage_,out.storage_,a.size());
     }
     Submission submit(); // Single use; explicit barriers order dependent dispatches.
 };
@@ -71,6 +80,7 @@ public:
     CommandBatch batch();
     // Bits must be a multiple of 32 in [64,1024]. Binary struct layouts above.
     Timing run(int bits,Operation op,const void* a,const void* b,void* out,std::size_t count);
+    Timing run_unary(int bits,Operation op,const void* a,void* out,std::size_t count);
     // Four seeds / instance. Adjacent states_per_weight instances share weights;
     // count must be divisible by states_per_weight. Layout is seeds[j*count+i],
     // weights[(step*4+j)*(count/states_per_weight)+i/states_per_weight].
