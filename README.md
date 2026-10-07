@@ -38,7 +38,8 @@ operations:
 
 Measured October 7, 2026; medians of nine warmed samples. GPU wall times include
 transfers; compilation, decimal conversion, and buffer allocation are excluded.
-CPU MPFR variables are preallocated, and results are checked against MPFR with
+CPU MPFR input/output arrays are preallocated; this historical snapshot includes
+per-job scratch initialization in CPU timings. Results are checked against MPFR with
 the same real rounding steps. Large batches and data reuse offer the strongest
 gains; CPUs can be faster for small batches and simpler operations. See
 [full methodology and measurements](docs/performance.md) and the
@@ -162,8 +163,8 @@ python3 benchmarks/compare.py benchmarks/results/baseline.csv results.csv
 
 The default matrix covers three precisions, three batch sizes, real and complex
 operations, and 16-step multiplication chains. It reports device and wall times,
-serial MPFR, and a persistent multicore MPFR worker pool. Every result is checked
-against MPFR. The round runner builds, tests, and benchmarks in order, preserving
+serial MPFR, and a persistent multicore MPFR worker pool. Each main case's final output is checked against MPFR; reduction and targeted
+A/B harnesses check every measured output. The round runner builds, tests, and benchmarks in order, preserving
 logs and stopping on failure.
 
 The original baseline and every optimization round are committed under

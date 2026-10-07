@@ -1,0 +1,4 @@
+Verified 173 published numeric cells, 18 accepted CSV matrices, and local Markdown links.
+Intentional README headline drift was rejected.
+Test-disabled round was rejected before benchmarking.
+Worker/sample options verified in all 38 smoke rows.

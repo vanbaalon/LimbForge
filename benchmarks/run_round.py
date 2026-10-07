@@ -40,6 +40,12 @@ meta = {"utc": datetime.datetime.now(datetime.timezone.utc).isoformat(),
 paths[2].write_text(json.dumps(meta, indent=2) + "\n")
 try:
     subprocess.run(["cmake", "--build", str(build), "-j4"], cwd=ROOT, check=True)
+    inventory = json.loads(read("ctest", "--test-dir", str(build), "--show-only=json-v1"))
+    required = {"arithmetic_cpu", "arithmetic_gpu", "resident_buffers", "tree_reduction"}
+    present = {test["name"] for test in inventory["tests"]}
+    if not required <= present:
+        raise RuntimeError("round requires CPU and GPU suites; missing: " + ", ".join(sorted(required - present)))
+    meta["required_tests"] = sorted(required)
     with paths[1].open("w") as log:
         subprocess.run(["ctest", "--test-dir", str(build), "--output-on-failure"], cwd=ROOT, stdout=log, stderr=subprocess.STDOUT, check=True)
     with paths[0].open("w") as data:
@@ -53,9 +59,12 @@ try:
         raise RuntimeError(f"incomplete benchmark: {len(rows)} rows, expected {expected}")
     reduction = build / "reduction_limbforge"
     if reduction.exists():
-        meta["reduction_command"] = [str(reduction)]
+        reduction_cmd = [str(reduction), "--repeats", str(a.repeats)]
+        if a.workers is not None:
+            reduction_cmd += ["--workers", str(a.workers)]
+        meta["reduction_command"] = reduction_cmd
         with reduction_path.open("w") as data:
-            run = subprocess.run([str(reduction)], cwd=ROOT, stdout=data, stderr=subprocess.PIPE, text=True)
+            run = subprocess.run(reduction_cmd, cwd=ROOT, stdout=data, stderr=subprocess.PIPE, text=True)
         meta["reduction_stderr"] = run.stderr
         run.check_returncode()
         with reduction_path.open() as data:
@@ -64,7 +73,7 @@ try:
             raise RuntimeError(f"incomplete reduction benchmark: {len(reduction_rows)} rows, expected 36")
         meta["reduction_rows"] = len(reduction_rows)
     meta.update(status="passed", rows=len(rows))
-    print(f"{a.label}: tests passed; {len(rows)} benchmark cases validated against MPFR")
+    print(f"{a.label}: tests passed; {len(rows)} arithmetic/chain and {meta.get('reduction_rows', 0)} reduction cases validated against MPFR")
 except Exception as exc:
     meta.update(status="failed", error=str(exc))
     raise

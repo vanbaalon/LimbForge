@@ -7,7 +7,7 @@ arithmetic, but its repository is archived. [MPRES-BLAS](https://github.com/kisu
 provides CUDA multiprecision linear algebra and basic arithmetic; its README
 notes MPFR dependencies for some operations, including division.
 [NVIDIA CGBN](https://github.com/NVlabs/CGBN) covers fixed-width unsigned integers,
-which alone do not supply the solver's real/complex arithmetic.
+which alone do not supply high-precision real/complex arithmetic.
 
 A newer [mpc_cuda project](https://github.com/tkouya/mpc_cuda/blob/main/README.md)
 advertises CUDA ports of GMP/MPFR/MPC plus fixed-precision fast paths. That is a

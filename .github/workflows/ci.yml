@@ -16,6 +16,8 @@ jobs:
     timeout-minutes: 15
     steps:
       - uses: actions/checkout@v7
+      - name: Validate published benchmark records
+        run: python3 benchmarks/audit_records.py
       - name: Install dependencies
         run: brew install cmake mpfr gmp
       - name: Configure

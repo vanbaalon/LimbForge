@@ -13,7 +13,7 @@ template<int Bits,bool IsComplex> void arithmetic(Engine& engine,Workers& worker
     std::vector<T> positive;if constexpr(!IsComplex){positive=a;for(std::size_t i=0;i<count;++i){positive[i].sign=1;mpfr_abs(ai[i],ar[i],MPFR_RNDN);}}
     const std::vector<int> operations=IsComplex?std::vector<int>{4,5,6}:std::vector<int>{0,1,2,3,7,8};
     for(int which:operations){auto op=Operation(which);if(!only_operation.empty()&&only_operation!=name(op))continue;Samples samples;auto input=op==Operation::sqrt?positive.data():a.data();
-        auto cpu=[&](std::size_t lo,std::size_t hi){reference::MP t0(Bits),t1(Bits),den(Bits);
+        auto cpu=[&](std::size_t lo,std::size_t hi){thread_local reference::MP t0(Bits),t1(Bits),den(Bits);
             for(std::size_t i=lo;i<hi;++i){
                 if constexpr(!IsComplex){switch(op){case Operation::add:mpfr_add(rr[i],ar[i],br[i],MPFR_RNDN);break;
                     case Operation::sub:mpfr_sub(rr[i],ar[i],br[i],MPFR_RNDN);break;
