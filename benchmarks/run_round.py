@@ -14,6 +14,7 @@ p.add_argument("label", help="result prefix, e.g. round4")
 p.add_argument("--build", default="build")
 p.add_argument("--repeats", type=int, default=9)
 p.add_argument("--workers", type=int)
+p.add_argument("--gpu-warm", type=float, help="seconds of same-work GPU warm-up before each GPU sample")
 p.add_argument("--count", type=int)
 p.add_argument("--bits", type=int, choices=(256, 384, 1024))
 p.add_argument("--operation", choices=("add", "sub", "mul", "div", "complex_add", "complex_mul", "complex_div", "square", "sqrt", "mul_chain"))
@@ -30,9 +31,9 @@ if any(path.exists() for path in paths + [reduction_path]):
 def read(*cmd):
     return subprocess.check_output(cmd, cwd=ROOT, text=True).strip()
 cmd = [str(build / "benchmark_limbforge"), "--repeats", str(a.repeats)]
-for key in ("workers", "count", "bits", "operation"):
+for key in ("workers", "count", "bits", "operation", "gpu_warm"):
     if getattr(a, key) is not None:
-        cmd += ["--" + key, str(getattr(a, key))]
+        cmd += ["--" + key.replace("_", "-"), str(getattr(a, key))]
 meta = {"utc": datetime.datetime.now(datetime.timezone.utc).isoformat(),
         "revision": read("git", "rev-parse", "HEAD"), "working_tree": read("git", "status", "--short"),
         "platform": platform.platform(), "chip": read("sysctl", "-n", "machdep.cpu.brand_string"),

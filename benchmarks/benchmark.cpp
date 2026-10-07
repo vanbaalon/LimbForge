@@ -34,6 +34,7 @@ template<int Bits,bool IsComplex> void arithmetic(Engine& engine,Workers& worker
             auto serial=[&]{auto start=Clock::now();cpu(0,count);samples.cpu.push_back(std::chrono::duration<double>(Clock::now()-start).count());};
             auto parallel=[&]{auto start=Clock::now();workers.run(count,cpu);samples.parallel.push_back(std::chrono::duration<double>(Clock::now()-start).count());};
             if(repeat%2){parallel();serial();}else{serial();parallel();}
+            keep_gpu_busy([&]{engine.run(Bits,op,input,b.data(),out.data(),count);});
             auto t=engine.run(Bits,op,input,b.data(),out.data(),count);samples.device.push_back(t.gpu_seconds);samples.wall.push_back(t.wall_seconds);
         }
         for(std::size_t i=0;i<count;++i){bool equal;
@@ -51,7 +52,8 @@ template<int Bits,bool IsComplex> void arithmetic(Engine& engine,Workers& worker
 #ifdef LIMBFORGE_RESIDENT_API
         auto da=engine.make_buffer<T>(count),db=engine.make_buffer<T>(count),dc=engine.make_buffer<T>(count);
         da.upload(input,count);db.upload(b.data(),count);Samples resident;resident.cpu=samples.cpu;resident.parallel=samples.parallel;
-        for(int repeat=-2;repeat<repeats;++repeat){auto batch=engine.batch();if(operation_is_unary(op))batch.run(op,da,dc);else batch.run(op,da,db,dc);auto t=batch.submit().wait();
+        auto resident_run=[&]{auto batch=engine.batch();if(operation_is_unary(op))batch.run(op,da,dc);else batch.run(op,da,db,dc);return batch.submit().wait();};
+        for(int repeat=-2;repeat<repeats;++repeat){keep_gpu_busy(resident_run);auto t=resident_run();
             if(repeat>=0){resident.device.push_back(t.gpu_seconds);resident.wall.push_back(t.wall_seconds);}}
         dc.download(out.data(),count);
         for(std::size_t i=0;i<count;++i){bool equal;
@@ -71,6 +73,7 @@ template<int Bits> void chain(Engine& engine,Workers& workers,std::size_t count,
     auto reset=[&]{for(std::size_t i=0;i<count;++i)mpfr_set(rr[i],ar[i],MPFR_RNDN);};Samples samples;
     for(int repeat=-2;repeat<repeats;++repeat){reset();auto start=Clock::now();cpu(0,count);double serial=std::chrono::duration<double>(Clock::now()-start).count();
         reset();start=Clock::now();workers.run(count,cpu);double parallel=std::chrono::duration<double>(Clock::now()-start).count();
+        keep_gpu_busy([&]{engine.run(Bits,Operation::mul,a.data(),b.data(),out.data(),count);});
         out=a;double device=0;start=Clock::now();for(unsigned s=0;s<steps;++s)device+=engine.run(Bits,Operation::mul,out.data(),b.data(),out.data(),count).gpu_seconds;
         double wall=std::chrono::duration<double>(Clock::now()-start).count();
         if(repeat>=0){samples.cpu.push_back(serial);samples.parallel.push_back(parallel);samples.device.push_back(device);samples.wall.push_back(wall);}
@@ -80,7 +83,8 @@ template<int Bits> void chain(Engine& engine,Workers& workers,std::size_t count,
 #ifdef LIMBFORGE_RESIDENT_API
     auto x=engine.make_buffer<F>(count),y=engine.make_buffer<F>(count);Samples resident;
     resident.cpu=samples.cpu;resident.parallel=samples.parallel;
-    for(int repeat=-2;repeat<repeats;++repeat){auto start=Clock::now();x.upload(a.data(),count);y.upload(b.data(),count);
+    for(int repeat=-2;repeat<repeats;++repeat){keep_gpu_busy([&]{auto warm=engine.batch();warm.run(Operation::mul,y,y,x);warm.submit().wait();});
+        auto start=Clock::now();x.upload(a.data(),count);y.upload(b.data(),count);
         auto batch=engine.batch();for(unsigned s=0;s<steps;++s)batch.run(Operation::mul,x,y,x);
         auto t=batch.submit().wait();x.download(out.data(),count);double wall=std::chrono::duration<double>(Clock::now()-start).count();
         if(repeat>=0){resident.device.push_back(t.gpu_seconds);resident.wall.push_back(wall);}}
@@ -91,9 +95,9 @@ template<int Bits> void chain(Engine& engine,Workers& workers,std::size_t count,
 template<int Bits> void suite(Engine& e,Workers& w,const std::vector<std::size_t>& counts,int repeats){for(auto n:counts){arithmetic<Bits,false>(e,w,n,repeats);arithmetic<Bits,true>(e,w,n,repeats);chain<Bits>(e,w,n,repeats);}}
 int main(int argc,char** argv){try{
     std::vector<std::size_t> counts={256,4096,65536};int repeats=9,only_bits=0;bool case_count=false;unsigned threads=0;unsigned workers=std::max(1u,std::thread::hardware_concurrency());
-    for(int i=1;i<argc;++i){std::string arg=argv[i];if(arg=="--case-count")case_count=true;else if(arg=="--threads"&&i+1<argc)threads=unsigned(std::stoul(argv[++i]));else if(arg=="--operation"&&i+1<argc)only_operation=argv[++i];else if(arg=="--bits"&&i+1<argc)only_bits=std::stoi(argv[++i]);else if(arg=="--quick")counts={4096};else if(arg=="--repeats"&&i+1<argc)repeats=std::stoi(argv[++i]);
+    for(int i=1;i<argc;++i){std::string arg=argv[i];if(arg=="--case-count")case_count=true;else if(arg=="--threads"&&i+1<argc)threads=unsigned(std::stoul(argv[++i]));else if(arg=="--operation"&&i+1<argc)only_operation=argv[++i];else if(arg=="--bits"&&i+1<argc)only_bits=std::stoi(argv[++i]);else if(arg=="--quick")counts={4096};else if(arg=="--gpu-warm"&&i+1<argc)gpu_warm_seconds=std::stod(argv[++i]);else if(arg=="--repeats"&&i+1<argc)repeats=std::stoi(argv[++i]);
         else if(arg=="--workers"&&i+1<argc)workers=unsigned(std::stoul(argv[++i]));else if(arg=="--count"&&i+1<argc)counts={std::stoull(argv[++i])};
-        else throw std::invalid_argument("usage: benchmark_limbforge [--quick|--count N] [--repeats N] [--workers N] [--threads N] [--bits 256|384|1024] [--operation add|sub|mul|div|complex_add|complex_mul|complex_div|square|sqrt|mul_chain]");}
+        else throw std::invalid_argument("usage: benchmark_limbforge [--quick|--count N] [--repeats N] [--workers N] [--threads N] [--gpu-warm SECONDS] [--bits 256|384|1024] [--operation add|sub|mul|div|complex_add|complex_mul|complex_div|square|sqrt|mul_chain]");}
     if(repeats<3||repeats>100||!workers||workers>128)throw std::invalid_argument("invalid repeats or workers");
     if(only_bits&&only_bits!=256&&only_bits!=384&&only_bits!=1024)throw std::invalid_argument("unsupported benchmark precision");
     if(!only_operation.empty()){bool found=only_operation=="mul_chain";for(int op=0;op<9;++op)found|=only_operation==name(Operation(op));if(!found)throw std::invalid_argument("unknown benchmark operation");}

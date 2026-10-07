@@ -31,6 +31,11 @@ struct MPArray {
     mpfr_ptr operator[](std::size_t i){return values[i];}
 };
 struct Samples {std::vector<double> cpu,parallel,device,wall;};
+// --gpu-warm: repeat the GPU sample's own work for this long right before timing it, so the
+// sample sees warm GPU clocks. Zero (default) keeps the cold, CPU-interleaved measurement.
+inline double gpu_warm_seconds=0;
+template<class F> void keep_gpu_busy(F&& work){if(gpu_warm_seconds<=0)return;
+    for(auto start=Clock::now();std::chrono::duration<double>(Clock::now()-start).count()<gpu_warm_seconds;)work();}
 double quantile(std::vector<double> x,double q){std::sort(x.begin(),x.end());return x[std::size_t(q*(x.size()-1))];}
 const char* name(Operation op){static const char* names[]={"add","sub","mul","div","complex_add","complex_mul","complex_div","square","sqrt"};return names[int(op)];}
 void report(int bits,const char* operation,std::size_t count,unsigned steps,Workers& workers,const Samples& s){
