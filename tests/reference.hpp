@@ -38,6 +38,7 @@ template<int Bits> limbforge::Float<Bits> real(limbforge::Operation op,const lim
     case limbforge::Operation::sub:mpfr_sub(z.x,x.x,y.x,MPFR_RNDN);break;
     case limbforge::Operation::mul:mpfr_mul(z.x,x.x,y.x,MPFR_RNDN);break;
     case limbforge::Operation::square:mpfr_sqr(z.x,x.x,MPFR_RNDN);break;
+    case limbforge::Operation::sqrt:mpfr_sqrt(z.x,x.x,MPFR_RNDN);break;
     default:mpfr_div(z.x,x.x,y.x,MPFR_RNDN);}
     return limbforge::from_mpfr<Bits>(z.x);
 }

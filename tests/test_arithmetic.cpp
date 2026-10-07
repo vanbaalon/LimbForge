@@ -47,17 +47,31 @@ template<int Bits> void test_real(Engine* engine) {
         b[fixture].exponent=fixture%3? -1:0;
     }
     mpz_clears(za,zb,target,remainder,half,nullptr);
-    for(Operation op:{Operation::add,Operation::sub,Operation::mul,Operation::div,Operation::square}) {
-        if(engine){if(operation_is_unary(op))engine->run_unary(Bits,op,a.data(),gpu.data(),count);else engine->run(Bits,op,a.data(),b.data(),gpu.data(),count);}
-        for(int i=0;i<count;++i){auto expected=reference::real<Bits>(op,a[i],b[i]);F host;
+    std::vector<F> roots=a;roots[0]=zero<N>();roots[1]=one;roots[2]=from_decimal<Bits>("2");roots[3]=from_decimal<Bits>("4");
+    // Neighboring inputs around root rounding boundaries, with both exponent parities.
+    mpz_inits(za,zb,target,remainder,half,nullptr);
+    for(int fixture=40;fixture<104;++fixture){auto q=reference::random_number<Bits>(rng,0);q.sign=1;
+        mpz_import(za,N,-1,4,0,0,q.limb);mpz_mul(zb,za,za);mpz_add(zb,zb,za); // floor((q+1/2)^2)
+        int parity=int(mpz_sizeinbase(zb,2)==2*Bits);int shift=Bits-1+parity;
+        mpz_fdiv_q_2exp(zb,zb,shift);if(fixture%2)mpz_add_ui(zb,zb,1);
+        // The upper neighboring input can cross the significand binade.
+        if(mpz_sizeinbase(zb,2)>Bits)mpz_sub_ui(zb,zb,1);
+        roots[fixture]=zero<N>();std::size_t exported;mpz_export(roots[fixture].limb,&exported,-1,4,0,0,zb);
+        roots[fixture].sign=1;roots[fixture].exponent=parity-(fixture%3?0:2);
+    }
+    mpz_clears(za,zb,target,remainder,half,nullptr);
+    for(Operation op:{Operation::add,Operation::sub,Operation::mul,Operation::div,Operation::square,Operation::sqrt}) {
+        const auto& input=op==Operation::sqrt?roots:a;
+        if(engine){if(operation_is_unary(op))engine->run_unary(Bits,op,input.data(),gpu.data(),count);else engine->run(Bits,op,input.data(),b.data(),gpu.data(),count);}
+        for(int i=0;i<count;++i){auto expected=reference::real<Bits>(op,input[i],b[i]);F host;
             switch(op){case Operation::add:host=add(a[i],b[i]);break;case Operation::sub:host=sub(a[i],b[i]);break;
-            case Operation::mul:host=mul(a[i],b[i]);break;case Operation::square:host=square(a[i]);break;default:host=div(a[i],b[i]);}
+            case Operation::mul:host=mul(a[i],b[i]);break;case Operation::square:host=square(input[i]);break;case Operation::sqrt:host=limbforge::sqrt(input[i]);break;default:host=div(a[i],b[i]);}
             std::string label="bits="+std::to_string(Bits)+" op="+std::to_string(int(op))+" case="+std::to_string(i);
             require(reference::equal<Bits>(host,expected),"CPU vs MPFR "+label);
             if(engine)require(reference::equal<Bits>(gpu[i],expected),"GPU vs MPFR "+label);
         }
     }
-    std::cout<<Bits<<" bits: 20480 real MPFR comparisons passed"<<std::endl;
+    std::cout<<Bits<<" bits: 24576 real MPFR comparisons passed"<<std::endl;
 }
 template<int Bits> void test_complex_and_recurrence(Engine* engine) {
     using C=Complex<Bits/32>;std::mt19937_64 rng(Bits);constexpr int count=257;

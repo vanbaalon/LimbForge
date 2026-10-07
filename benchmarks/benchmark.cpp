@@ -32,7 +32,7 @@ struct MPArray {
 };
 struct Samples {std::vector<double> cpu,parallel,device,wall;};
 double quantile(std::vector<double> x,double q){std::sort(x.begin(),x.end());return x[std::size_t(q*(x.size()-1))];}
-const char* name(Operation op){static const char* names[]={"add","sub","mul","div","complex_add","complex_mul","complex_div","square"};return names[int(op)];}
+const char* name(Operation op){static const char* names[]={"add","sub","mul","div","complex_add","complex_mul","complex_div","square","sqrt"};return names[int(op)];}
 void report(int bits,const char* operation,std::size_t count,unsigned steps,Workers& workers,const Samples& s){
     std::cout<<bits<<','<<operation<<','<<count<<','<<steps<<','<<s.wall.size()<<','<<workers.size()<<','
         <<quantile(s.cpu,.5)<<','<<quantile(s.parallel,.5)<<','<<quantile(s.device,.5)<<','
@@ -48,13 +48,14 @@ template<int Bits,bool IsComplex> void arithmetic(Engine& engine,Workers& worker
             to_mpfr<Bits>(ar[i],a[i].re);to_mpfr<Bits>(ai[i],a[i].im);to_mpfr<Bits>(br[i],b[i].re);to_mpfr<Bits>(bi[i],b[i].im);
         }else{a[i]=reference::random_number<Bits>(rng,5);b[i]=reference::random_number<Bits>(rng,5);to_mpfr<Bits>(ar[i],a[i]);to_mpfr<Bits>(br[i],b[i]);}
     }
-    const std::vector<int> operations=IsComplex?std::vector<int>{4,5,6}:std::vector<int>{0,1,2,3,7};
-    for(int which:operations){auto op=Operation(which);if(!only_operation.empty()&&only_operation!=name(op))continue;Samples samples;
+    std::vector<T> positive;if constexpr(!IsComplex){positive=a;for(std::size_t i=0;i<count;++i){positive[i].sign=1;mpfr_abs(ai[i],ar[i],MPFR_RNDN);}}
+    const std::vector<int> operations=IsComplex?std::vector<int>{4,5,6}:std::vector<int>{0,1,2,3,7,8};
+    for(int which:operations){auto op=Operation(which);if(!only_operation.empty()&&only_operation!=name(op))continue;Samples samples;auto input=op==Operation::sqrt?positive.data():a.data();
         auto cpu=[&](std::size_t lo,std::size_t hi){reference::MP t0(Bits),t1(Bits),den(Bits);
             for(std::size_t i=lo;i<hi;++i){
                 if constexpr(!IsComplex){switch(op){case Operation::add:mpfr_add(rr[i],ar[i],br[i],MPFR_RNDN);break;
                     case Operation::sub:mpfr_sub(rr[i],ar[i],br[i],MPFR_RNDN);break;
-                    case Operation::mul:mpfr_mul(rr[i],ar[i],br[i],MPFR_RNDN);break;case Operation::square:mpfr_sqr(rr[i],ar[i],MPFR_RNDN);break;default:mpfr_div(rr[i],ar[i],br[i],MPFR_RNDN);}}
+                    case Operation::mul:mpfr_mul(rr[i],ar[i],br[i],MPFR_RNDN);break;case Operation::square:mpfr_sqr(rr[i],ar[i],MPFR_RNDN);break;case Operation::sqrt:mpfr_sqrt(rr[i],ai[i],MPFR_RNDN);break;default:mpfr_div(rr[i],ar[i],br[i],MPFR_RNDN);}}
                 else if(op==Operation::complex_add){mpfr_add(rr[i],ar[i],br[i],MPFR_RNDN);mpfr_add(ri[i],ai[i],bi[i],MPFR_RNDN);}
                 else if(op==Operation::complex_mul){
                     mpfr_mul(t0.x,ar[i],br[i],MPFR_RNDN);mpfr_mul(t1.x,ai[i],bi[i],MPFR_RNDN);mpfr_sub(rr[i],t0.x,t1.x,MPFR_RNDN);
@@ -66,12 +67,12 @@ template<int Bits,bool IsComplex> void arithmetic(Engine& engine,Workers& worker
                 }
             }
         };
-        for(int warm=0;warm<2;++warm){cpu(0,count);workers.run(count,cpu);engine.run(Bits,op,a.data(),b.data(),out.data(),count);}
+        for(int warm=0;warm<2;++warm){cpu(0,count);workers.run(count,cpu);engine.run(Bits,op,input,b.data(),out.data(),count);}
         for(int repeat=0;repeat<repeats;++repeat){
             auto serial=[&]{auto start=Clock::now();cpu(0,count);samples.cpu.push_back(std::chrono::duration<double>(Clock::now()-start).count());};
             auto parallel=[&]{auto start=Clock::now();workers.run(count,cpu);samples.parallel.push_back(std::chrono::duration<double>(Clock::now()-start).count());};
             if(repeat%2){parallel();serial();}else{serial();parallel();}
-            auto t=engine.run(Bits,op,a.data(),b.data(),out.data(),count);samples.device.push_back(t.gpu_seconds);samples.wall.push_back(t.wall_seconds);
+            auto t=engine.run(Bits,op,input,b.data(),out.data(),count);samples.device.push_back(t.gpu_seconds);samples.wall.push_back(t.wall_seconds);
         }
         for(std::size_t i=0;i<count;++i){bool equal;
             if constexpr(IsComplex)equal=reference::equal_complex<Bits>(out[i],T{from_mpfr<Bits>(rr[i]),from_mpfr<Bits>(ri[i])});
@@ -87,7 +88,7 @@ template<int Bits,bool IsComplex> void arithmetic(Engine& engine,Workers& worker
         report(Bits,name(op),count,1,workers,samples);
 #ifdef LIMBFORGE_RESIDENT_API
         auto da=engine.make_buffer<T>(count),db=engine.make_buffer<T>(count),dc=engine.make_buffer<T>(count);
-        da.upload(a.data(),count);db.upload(b.data(),count);Samples resident;resident.cpu=samples.cpu;resident.parallel=samples.parallel;
+        da.upload(input,count);db.upload(b.data(),count);Samples resident;resident.cpu=samples.cpu;resident.parallel=samples.parallel;
         for(int repeat=-2;repeat<repeats;++repeat){auto batch=engine.batch();if(operation_is_unary(op))batch.run(op,da,dc);else batch.run(op,da,db,dc);auto t=batch.submit().wait();
             if(repeat>=0){resident.device.push_back(t.gpu_seconds);resident.wall.push_back(t.wall_seconds);}}
         dc.download(out.data(),count);
@@ -130,12 +131,12 @@ int main(int argc,char** argv){try{
     std::vector<std::size_t> counts={256,4096,65536};int repeats=9,only_bits=0;bool case_count=false;unsigned threads=0;unsigned workers=std::max(1u,std::thread::hardware_concurrency());
     for(int i=1;i<argc;++i){std::string arg=argv[i];if(arg=="--case-count")case_count=true;else if(arg=="--threads"&&i+1<argc)threads=unsigned(std::stoul(argv[++i]));else if(arg=="--operation"&&i+1<argc)only_operation=argv[++i];else if(arg=="--bits"&&i+1<argc)only_bits=std::stoi(argv[++i]);else if(arg=="--quick")counts={4096};else if(arg=="--repeats"&&i+1<argc)repeats=std::stoi(argv[++i]);
         else if(arg=="--workers"&&i+1<argc)workers=unsigned(std::stoul(argv[++i]));else if(arg=="--count"&&i+1<argc)counts={std::stoull(argv[++i])};
-        else throw std::invalid_argument("usage: benchmark_limbforge [--quick|--count N] [--repeats N] [--workers N] [--threads N] [--bits 256|384|1024] [--operation add|sub|mul|div|complex_add|complex_mul|complex_div|square|mul_chain]");}
+        else throw std::invalid_argument("usage: benchmark_limbforge [--quick|--count N] [--repeats N] [--workers N] [--threads N] [--bits 256|384|1024] [--operation add|sub|mul|div|complex_add|complex_mul|complex_div|square|sqrt|mul_chain]");}
     if(repeats<3||repeats>100||!workers||workers>128)throw std::invalid_argument("invalid repeats or workers");
     if(only_bits&&only_bits!=256&&only_bits!=384&&only_bits!=1024)throw std::invalid_argument("unsupported benchmark precision");
-    if(!only_operation.empty()){bool found=only_operation=="mul_chain";for(int op=0;op<8;++op)found|=only_operation==name(Operation(op));if(!found)throw std::invalid_argument("unknown benchmark operation");}
+    if(!only_operation.empty()){bool found=only_operation=="mul_chain";for(int op=0;op<9;++op)found|=only_operation==name(Operation(op));if(!found)throw std::invalid_argument("unknown benchmark operation");}
     for(auto n:counts)if(!n||n>1000000)throw std::invalid_argument("count must be in 1..1000000");
-    if(case_count){std::cout<<(only_bits?1:3)*counts.size()*(only_operation.empty()?18:2)<<"\n";return 0;}
+    if(case_count){std::cout<<(only_bits?1:3)*counts.size()*(only_operation.empty()?20:2)<<"\n";return 0;}
     Engine e({threads});Workers w(workers);std::cerr<<"Device: "<<e.device_name()<<"; MPFR "<<mpfr_get_version()<<"; workers="<<workers<<"; threads="<<threads<<"; repeats="<<repeats<<"; seed=20261007\n";
     std::cout<<std::setprecision(10)<<"bits,operation,count,steps,samples,cpu_workers,cpu_serial_s,cpu_parallel_s,gpu_s,wall_median_s,wall_min_s,wall_p90_s\n";
     if(!only_bits||only_bits==256)suite<256>(e,w,counts,repeats);if(!only_bits||only_bits==384)suite<384>(e,w,counts,repeats);if(!only_bits||only_bits==1024)suite<1024>(e,w,counts,repeats);return 0;

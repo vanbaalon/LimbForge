@@ -16,7 +16,7 @@ p.add_argument("--repeats", type=int, default=9)
 p.add_argument("--workers", type=int)
 p.add_argument("--count", type=int)
 p.add_argument("--bits", type=int, choices=(256, 384, 1024))
-p.add_argument("--operation", choices=("add", "sub", "mul", "div", "complex_add", "complex_mul", "complex_div", "square", "mul_chain"))
+p.add_argument("--operation", choices=("add", "sub", "mul", "div", "complex_add", "complex_mul", "complex_div", "square", "sqrt", "mul_chain"))
 a = p.parse_args()
 if not a.label.replace("-", "").replace("_", "").isalnum():
     p.error("label must contain letters, digits, hyphens, or underscores")

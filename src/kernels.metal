@@ -10,6 +10,7 @@ kernel void arithmetic(device const Number<N>* a [[buffer(0)]],
     if(i>=p.count)return;
     Number<N> x=a[i],z;
     if(selected_operation==7)z=square(x);
+    else if(selected_operation==8)z=limbforge::sqrt(x);
     else {Number<N> y=b[i];switch(selected_operation){case 0:z=add(x,y);break;case 1:z=sub(x,y);break;case 2:z=mul(x,y);break;default:z=div(x,y);}}
     out[i]=z;
 }

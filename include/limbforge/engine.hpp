@@ -6,10 +6,10 @@
 #include <stdexcept>
 #define LIMBFORGE_RESIDENT_API 1
 namespace limbforge {
-enum class Operation { add, sub, mul, div, complex_add, complex_mul, complex_div, square };
+enum class Operation { add, sub, mul, div, complex_add, complex_mul, complex_div, square, sqrt };
 inline bool operation_is_complex(Operation op){return int(op)>=4&&int(op)<=6;}
-inline bool operation_is_unary(Operation op){return op==Operation::square;}
-inline bool operation_is_valid(Operation op){return int(op)>=0&&int(op)<=7;}
+inline bool operation_is_unary(Operation op){return op==Operation::square||op==Operation::sqrt;}
+inline bool operation_is_valid(Operation op){return int(op)>=0&&int(op)<=8;}
 struct Timing { double gpu_seconds, wall_seconds; };
 struct EngineOptions { unsigned threads_per_threadgroup=0; }; // 0 selects the default policy.
 struct PipelineInfo { unsigned simd_width,max_threads,threads_per_threadgroup; };

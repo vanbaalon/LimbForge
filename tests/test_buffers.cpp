@@ -22,6 +22,8 @@ template<int Bits> void run(Engine& e){
     auto short_buffer=e.make_buffer<F>(n-1);rejects([&]{auto next=e.batch();next.run(Operation::add,x,y,short_buffer);});
     x.upload(a.data(),n);auto unary=e.batch();unary.run(Operation::square,x,x);unary.submit().wait();x.download(out.data(),n);
     for(std::size_t i=0;i<n;++i)require(reference::equal<Bits>(out[i],reference::real<Bits>(Operation::square,a[i],b[i])),"resident square differs from MPFR");
+    x.upload(a.data(),n);auto roots=e.batch();roots.run(Operation::sqrt,x,z);roots.submit().wait();z.download(out.data(),n);
+    for(std::size_t i=0;i<n;++i)require(reference::equal<Bits>(out[i],reference::real<Bits>(Operation::sqrt,a[i],b[i])),"resident sqrt differs from MPFR");
     rejects([&]{auto bad=e.batch();bad.run(Operation::square,x,y,z);});
     rejects([&]{auto bad=e.batch();bad.run(Operation::mul,x,z);});
     // A ticket owns buffers and the command even after the batch and engine die.

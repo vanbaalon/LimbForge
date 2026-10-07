@@ -199,6 +199,26 @@ template<int N> inline Number<N> div(LIMBFORGE_THREAD const Number<N>& a,LIMBFOR
     if(halfway>0||(halfway==0&&(r.limb[0]&1)))increment(r);
     return checked(r);
 }
+template<int N> inline Number<N> sqrt(LIMBFORGE_THREAD const Number<N>& a){
+    if(a.status||!a.sign)return zero<N>(a.status);
+    if(a.sign<0)return zero<N>(invalid);
+    int e=a.exponent/2;if(a.exponent<0&&a.exponent%2)--e;
+    int odd=a.exponent-2*e,shift=32*N-1+odd;
+    Number<N> root=zero<N>();root.sign=1;root.exponent=e;
+    word remainder[N+1]={},trial[N+1]={};
+    for(int bit=32*N-1;bit>=0;--bit){
+        int position=2*bit;word pair=(shifted_limb(a,shift,position/32)>>(position%32))&3;
+        word carry=pair;for(int i=0;i<N+1;++i){word old=remainder[i];remainder[i]=(old<<2)|carry;carry=old>>30;}
+        carry=0;for(int i=0;i<N;++i){word old=root.limb[i];root.limb[i]=(old<<1)|carry;carry=old>>31;}
+        carry=1;for(int i=0;i<N;++i){word old=root.limb[i];trial[i]=(old<<1)|carry;carry=old>>31;}trial[N]=carry;
+        int cmp=0;for(int i=N;i>=0;--i)if(remainder[i]!=trial[i]){cmp=remainder[i]>trial[i]?1:-1;break;}
+        if(cmp>=0){dword borrow=0;for(int i=0;i<N+1;++i){dword v=dword(trial[i])+borrow;word old=remainder[i];remainder[i]=word(dword(old)-v);borrow=dword(old)<v;}root.limb[0]|=1;}
+    }
+    // Integer radicand: sqrt(Z) > q+1/2 exactly when Z-q*q > q.
+    // Equality to a half-integer is impossible, so no tie-breaking is needed.
+    if(limb_compare<N>(remainder,root)>0)increment(root);
+    return checked(root);
+}
 template<int N> inline Complex<N> cadd(Complex<N> a,Complex<N> b){return {add(a.re,b.re),add(a.im,b.im)};}
 template<int N> inline Complex<N> cmul(Complex<N> a,Complex<N> b){return {sub(mul(a.re,b.re),mul(a.im,b.im)),add(mul(a.re,b.im),mul(a.im,b.re))};}
 template<int N> inline Complex<N> cdiv(Complex<N> a,Complex<N> b){
