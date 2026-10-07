@@ -74,7 +74,7 @@ struct Engine::Impl {
             function=[libraries[bits] newFunctionWithName:@"vector_recurrence" constantValues:constants error:&error];
         }
         else if(operation>=100){
-            NSString* names[]={@"recurrence",@"tree_sum_real",@"tree_sum_complex",@"global_tree_sum_real",@"global_tree_sum_complex"};
+            NSString* names[]={@"recurrence",@"tree_sum_real",@"tree_sum_complex",@"global_tree_sum_real",@"global_tree_sum_complex",@"recurrence_coop16",@"recurrence_coop32"};
             function=[libraries[bits] newFunctionWithName:names[operation-100]];
         }
         else {
@@ -90,7 +90,7 @@ struct Engine::Impl {
     }
     unsigned group_size(id<MTLComputePipelineState> state,int bits,int operation)const{
         NSUInteger width=state.threadExecutionWidth,maximum=state.maxTotalThreadsPerThreadgroup;
-        NSUInteger preferred=options.threads_per_threadgroup?options.threads_per_threadgroup:((operation==100||operation>=200||(bits>=384&&(operation==5||operation==6||operation==11||operation==12)))?width:NSUInteger(128));
+        NSUInteger preferred=options.threads_per_threadgroup?options.threads_per_threadgroup:((operation==100||operation==105||operation==106||operation>=200||(bits>=384&&(operation==5||operation==6||operation==11||operation==12)))?width:NSUInteger(128));
         if(preferred%width)throw std::invalid_argument("threadgroup size must be a multiple of pipeline SIMD width");
         NSUInteger result=std::min(preferred,maximum);result-=result%width;
         if(!result)throw std::runtime_error("pipeline cannot fit one SIMD group");
@@ -136,7 +136,7 @@ struct Engine::Impl {
         }
     }
     Timing dispatch(int bits,int operation,const void* a,std::size_t a_bytes,const void* b,std::size_t b_bytes,
-                    void* out,std::size_t out_bytes,std::size_t count,unsigned steps,unsigned states_per_weight=1,const void* c=nullptr,std::size_t c_bytes=0) {
+                    void* out,std::size_t out_bytes,std::size_t count,unsigned steps,unsigned states_per_weight=1,const void* c=nullptr,std::size_t c_bytes=0,unsigned threads_per_item=1) {
         @autoreleasepool {
             // Compilation is deliberately excluded from timings; cached per precision/operation.
             auto state=pipeline(bits,operation);
@@ -153,7 +153,7 @@ struct Engine::Impl {
             [encoder setBytes:&params length:sizeof(params) atIndex:3];
             if(c_bytes)[encoder setBuffer:buffers[3] offset:0 atIndex:4];
             NSUInteger group=group_size(state,bits,operation);
-            [encoder dispatchThreads:MTLSizeMake(count,1,1) threadsPerThreadgroup:MTLSizeMake(group,1,1)];
+            [encoder dispatchThreads:MTLSizeMake(count*threads_per_item,1,1) threadsPerThreadgroup:MTLSizeMake(group,1,1)];
             [encoder endEncoding];[command commit];[command waitUntilCompleted];
             if(command.status==MTLCommandBufferStatusError)throw std::runtime_error("Metal execution: "+error_message(command.error));
             std::memcpy(out,buffers[2].contents,out_bytes);
@@ -319,7 +319,10 @@ Timing Engine::recurrence(int bits,const void* seeds,const void* weights,void* o
     std::size_t stride=2*(bits/8+12),bytes=checked_size(count,stride);
     // Metal requires a bound weights buffer even for a zero-step dispatch.
     auto seed_bytes=checked_size(bytes,4),weight_bytes=checked_size(bytes/states_per_weight,std::size_t(steps)*4);
+    // Few trajectories leave the GPU idle: spread each over 32 (<= 128) or 16 (<= 1,024) SIMD lanes.
+    // Measured crossover in round 17; results are bit-identical.
+    unsigned g=impl->options.cooperative_recurrence&&steps?(count<=128?32:count<=1024?16:1):1;int op=g==32?106:g==16?105:100;
     if(!steps)return impl->dispatch(bits,100,seeds,seed_bytes,seeds,stride,out,bytes,count,0,states_per_weight);
-    return impl->dispatch(bits,100,seeds,seed_bytes,weights,weight_bytes,out,bytes,count,steps,states_per_weight);
+    return impl->dispatch(bits,op,seeds,seed_bytes,weights,weight_bytes,out,bytes,count,steps,states_per_weight,nullptr,0,g);
 }
 }

@@ -13,7 +13,9 @@ inline bool operation_is_unary(Operation op){return op==Operation::square||op==O
 inline bool operation_is_ternary(Operation op){return int(op)>=9&&int(op)<=12;}
 inline bool operation_is_valid(Operation op){return int(op)>=0&&int(op)<=12;}
 struct Timing { double gpu_seconds, wall_seconds; };
-struct EngineOptions { unsigned threads_per_threadgroup=0; bool cooperative_reductions=true; }; // 0 selects the default policy.
+// 0 selects the default policy. cooperative_recurrence spreads each trajectory over 16/32 SIMD lanes
+// for small counts (bit-identical; docs/experiments.md).
+struct EngineOptions { unsigned threads_per_threadgroup=0; bool cooperative_reductions=true; bool cooperative_recurrence=true; };
 struct PipelineInfo { unsigned simd_width,max_threads,threads_per_threadgroup; };
 // Shape and options of Engine::vector_recurrence (docs/numerics.md, "Vector recurrences").
 // Complex arrays are component-major: element j of lane i is at [j*lanes + i].

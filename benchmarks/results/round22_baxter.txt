@@ -1,0 +1,12 @@
+device=Apple M5 Max
+points=16
+steps=600
+bits=384
+cpu_reference_decimal_digits=110
+preparation_s=0.556643625
+gpu_s=0.01652345835
+gpu_wall_s=0.016888375
+preparation_plus_gpu_wall_s=0.573532
+mpfr_solver_propagation_s=1.349139958
+max_error_over_1_plus_abs_q=8.973865728e-106
+# round 22: cooperative recurrence (G=32 for 128 trajectories); compare benchmarks/m5_max_baxter.txt (one-thread kernel). Host load average ~200 (other work).

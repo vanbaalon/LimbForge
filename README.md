@@ -56,7 +56,7 @@ measurements.
 - In-place pointwise arithmetic, cached pipelines, and explicit buffer ownership checks.
 - Fixed-order real and complex tree reductions with GPU-resident intermediate levels.
 - Configurable threadgroup sizes and per-pipeline limits for measured tuning.
-- A generic four-state complex recurrence primitive, and a batched four-component vector recurrence (rank-one, matrix, affine, tangent and all-steps forms).
+- A generic four-state complex recurrence primitive (with cooperative multi-lane execution for small batches), and a batched four-component vector recurrence (rank-one, matrix, affine, tangent and all-steps forms).
 - Optional MPFR/MPC conversion through decimal strings or direct limb copies, with multithreaded `mpfr_t[]` / `mpc_t[]` array versions.
 - Reproducible benchmarks against both serial and multicore MPFR.
 

@@ -236,6 +236,7 @@ For BSolver (≈128 lanes × 600 steps) the GPU runs ~128 threads. Two complemen
 - **E0 (consumer-side, S):** round 13 measured ~165 µs per 384-bit recurrence step independent of lane
   count up to 4,096 lanes (saturation near 16,384). Recommend BSolver batch all `u` points / Newton finite-difference evaluations into one
   `recurrence` call (more trajectories per submission) — cheapest win; document in the BSolver integration notes.
+- **E1 status (rounds 17, 22):** cooperative G = 16/32 recurrence is in `Engine::recurrence` for ≤ 1,024 trajectories (BSolver `baxter_batch`: 6× with warm clocks, 2× when the call follows idle CPU work — GPU clock ramp-up now dominates; consider keeping the GPU busy or batching more work per call). Open: G = 4/8 under shader validation; a cooperative vector recurrence only if small-lane D4 shapes appear.
 - **E1 (L, research):** one number per 8/16/32 SIMD lanes: limb-parallel multiply with `simd_shuffle` broadcasts, carry
   resolution with `simd_prefix_exclusive_sum`/ballot loops, normalisation via ballot + `clz`. Prototype `mul` + `add` in a
   `recurrence_coop` kernel at 384 bits; compare per-step latency against the thread-per-lane kernel; division via a
