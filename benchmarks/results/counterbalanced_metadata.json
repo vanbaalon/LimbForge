@@ -1,0 +1,21 @@
+{
+  "utc": "2026-10-07T18:39:36.163570+00:00",
+  "order": [
+    "baseline_recheck_a",
+    "final_recheck_a",
+    "final_recheck_b",
+    "baseline_recheck_b"
+  ],
+  "count": 65536,
+  "samples_per_case_per_run": 9,
+  "warmups": 2,
+  "cpu_workers": 18,
+  "aggregation": "arithmetic mean of the two run medians; speedup is ratio of these means",
+  "baseline_core_revision": "773329f13fd82fe89f82067401d125675edb888e",
+  "baseline_harness_revision": "8fbcc79",
+  "final_core_revision": "7f25fe58826b73193d545e3818a09304b0e7408c",
+  "final_tree_revision": "fccf54d4419e834bbf01ba1498f6a41d4494ab2f",
+  "frozen_baseline_sha256": "b61445657faf51d54031b18828dcfc18de68bb4b7fb8e49b1f39a750fda60e87",
+  "final_binary_sha256": "b5487e1c23b8f2cdf7fe157bab75c461e4a5f38a01d8ac14cf3ae4aa056ed3b2",
+  "all_four_runs": "passed MPFR comparisons; 24 baseline and 48 final cases per run"
+}

@@ -1,149 +1,148 @@
 # LimbForge
 
-**GPU-powered multiprecision arithmetic for Apple Silicon.**
+**Multiprecision arithmetic on the Apple Silicon GPU.**
 
 [![CI](https://github.com/vanbaalon/LimbForge/actions/workflows/ci.yml/badge.svg)](https://github.com/vanbaalon/LimbForge/actions/workflows/ci.yml)
 [![MIT License](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
 [![C++17](https://img.shields.io/badge/C%2B%2B-17-00599C.svg)](https://en.cppreference.com/w/cpp/17)
 [![Backend: Metal](https://img.shields.io/badge/backend-Metal-555555.svg)](https://developer.apple.com/metal/)
 
-LimbForge brings high-precision real and complex arithmetic to the Mac GPU.
-It represents numbers with integer limbs and a separate exponent, then executes
-batches through precision-specialized Metal kernels. The initial implementation
-supports **64–1024 significand bits**, nearest-even real rounding, and fused
-four-term complex recurrences.
+LimbForge is a standalone library for batched, high-precision real and complex
+arithmetic. It stores significands in 32-bit integer limbs and executes
+precision-specialized Metal kernels, supporting **64–1024 significand bits** in
+steps of 32. Real arithmetic uses round-to-nearest, ties-to-even.
 
 **Author: Nikolay Gromov.**
 
-> **Development preview:** the implemented operations are tested against MPFR on
-> an Apple M5 Max. The API is evolving; this is a focused arithmetic library,
-> with transcendental functions and broader linear algebra still to come.
+> **Development preview:** CPU and physical GPU validation use independent MPFR
+> operations. The API is evolving, and device validation currently covers an
+> Apple M5 Max. See the [numerical contract](docs/numerics.md).
 
-## What it does
+## Features
 
-- **Real arithmetic:** addition, subtraction, multiplication, and division.
-- **Complex arithmetic:** addition, multiplication, and division built from the rounded real operations.
-- **Fused recurrences:** propagate independent four-state trajectories in one GPU dispatch, with coefficients shared between trajectories when useful.
-- **Selectable precision:** any multiple of 32 bits from 64 through 1024, fixed within a dispatch.
-- **MPFR interoperability:** optional host-side conversion without passing through ordinary floating-point values.
-- **Reusable execution:** cached pipelines and buffers, with device and wall timings reported separately.
+- Real addition, subtraction, multiplication, and division.
+- Complex addition, multiplication, and division composed from rounded real primitives.
+- Typed resident buffers, asynchronous submissions, and dependent operations in one command batch.
+- In-place pointwise arithmetic, cached pipelines, and explicit buffer ownership checks.
+- A generic four-state complex recurrence primitive.
+- Optional MPFR conversion through decimal strings or exact binary values.
+- Reproducible benchmarks against both serial and multicore MPFR.
 
-The GPU library depends on Metal and Foundation. MPFR/GMP support the optional
-conversion header, tests, and examples; Boost is needed only for the Baxter
-comparison.
+The GPU library depends on Metal and Foundation. MPFR/GMP are needed for the
+optional conversion header, tests, benchmarks, and examples.
 
-## Quick start
+## Build and test
 
-Use a Mac running **macOS 15 or newer**, with a Metal GPU and Apple Command Line
-Tools installed. GPU validation and timings have been performed on an M5 Max;
-other Metal devices have not yet been validated.
+Use macOS 15 or newer, a Metal GPU, and Apple Command Line Tools:
 
 ```sh
 git clone https://github.com/vanbaalon/LimbForge.git
 cd LimbForge
 brew install cmake mpfr gmp
-
 cmake -S . -B build -DCMAKE_BUILD_TYPE=Release
 cmake --build build -j4
 ctest --test-dir build --output-on-failure
 ./build/limbforge_division
+./build/limbforge_resident
 ```
 
-The example computes a batch of `1 / 3` values at 384 bits and prints 100 decimal
-digits. Shaders are embedded and compiled at runtime; the command-line Metal
-compiler and a full Xcode installation are unnecessary.
+Shaders are embedded and compiled at runtime. The command-line Metal compiler
+and a full Xcode installation are unnecessary. Link `LimbForge::limbforge` in a
+CMake consumer; [building and installation](docs/building.md) covers integration,
+CPU-only validation, and building the GPU library without MPFR.
 
-## A small example
+## Keep a computation on the GPU
 
 ```cpp
 #include <limbforge/engine.hpp>
 #include <limbforge/mpfr_bridge.hpp>
 #include <vector>
 
-limbforge::Engine gpu;  // Reuse this object across dispatches.
-using F = limbforge::Float<384>;
+using namespace limbforge;
+using F = Float<384>;
+Engine gpu;
+std::vector<F> values(65536, from_decimal<384>("1"));
+std::vector<F> factors(values.size(), from_decimal<384>("1.01"));
+auto x = gpu.make_buffer<F>(values.size());
+auto y = gpu.make_buffer<F>(values.size());
+x.upload(values.data(), values.size());
+y.upload(factors.data(), factors.size());
 
-std::vector<F> a(65536, limbforge::from_decimal<384>("1"));
-std::vector<F> b(65536, limbforge::from_decimal<384>("3"));
-std::vector<F> result(a.size());
-
-auto timing = gpu.run(384, limbforge::Operation::div,
-                     a.data(), b.data(), result.data(), result.size());
-// Inspect result[i].status, then convert with to_mpfr<384>().
+auto batch = gpu.batch();
+for (int step = 0; step < 16; ++step)
+    batch.run(Operation::mul, x, y, x);
+auto submission = batch.submit();
+// Do independent CPU work while the GPU executes.
+auto timing = submission.wait();
+x.download(values.data(), values.size());
 ```
 
-Link the `LimbForge::limbforge` CMake target. The optional MPFR bridge also needs
-MPFR/GMP includes and libraries. A complete executable is in
-[examples/division.cpp](examples/division.cpp); integration and installation
-instructions are in [docs/building.md](docs/building.md).
+Use `Buffer<Complex<12>>` for 384-bit complex values. Buffers stay resident across
+batches. Mapping and transfers are rejected until the submission is waited;
+previously obtained pointers also require caller coordination. See
+[execution, ownership, and timing](docs/execution.md) and the complete
+[resident example](examples/resident.cpp).
 
-Use decimal strings or MPFR values to supply precise inputs. Converting a value
-that already passed through `double` cannot restore the missing digits.
+For a single operation, `Engine::run(bits, op, a, b, out, count)` provides a
+synchronous host-array interface. Supply precise inputs through decimal strings
+or MPFR; converting an existing `double` cannot restore lost digits.
 
-## Precision and correctness
+## Precision and validation
 
 | Significand bits | Approximate decimal capacity |
 |---:|---:|
 | 128 | 39 digits |
 | 256 | 77 digits |
-| 288 | 87 digits |
 | 384 | 116 digits |
 | 1024 | 308 digits |
 
-These are representation capacities, not guarantees of final numerical accuracy.
-Choose guard precision for cancellation and conditioning. Precision does not
-change the exponent range: the representation uses a separate binary exponent
-from −1,000,000,000 through +1,000,000,000.
+Capacity does not guarantee final numerical accuracy: cancellation and
+conditioning may require guard precision. The separate binary exponent ranges
+from −1,000,000,000 through +1,000,000,000. Arithmetic errors produce explicit
+status bits. There are no NaNs, infinities, signed zeros, or subnormal encodings.
 
-Real operations round to nearest, ties to even. Complex operations compose
-those rounded real operations; they do not promise a single correctly rounded
-MPC complex result. Arithmetic failures carry explicit status bits. See the
-[numerical contract and recurrence layout](docs/numerics.md).
+Complex arithmetic preserves rounding after each real primitive; it does not
+promise a single correctly rounded MPC complex result.
 
-Validation includes **81,920 real-operation cases** at five precisions, comparing
-both the shared CPU implementation and actual GPU results with independent MPFR
-operations. Additional tests cover complex arithmetic, recurrence trajectories,
-shared coefficients, cancellation, halfway rounding, and error propagation.
-The [Baxter example](benchmarks/baxter_batch.cpp) compares 600-shift Q-propagation
-in both directions with the existing MPFR-based
-[BSolver4D](https://github.com/vanbaalon/BSolver4D) solver.
+Tests cover **507,904 real-operation cases across all 31 supported precisions**,
+complex operations and recurrences, dense 65,536-value complex batches with
+repeated GPU execution, and resident-buffer ownership and lifetime checks.
+One million scalar quotient/remainder cases validate the reciprocal used by
+division. MPFR provides independent arithmetic references.
 
-## Measured performance
+## Benchmark and optimization rounds
 
-Representative multiplication measurements on an **Apple M5 Max**, for 65,536
-independent values. Times are medians of five warmed runs; the CPU baseline is
-**single-threaded MPFR** with preallocated variables.
+```sh
+./build/benchmark_limbforge > results.csv
+./build/benchmark_limbforge --bits 384 --count 65536 --operation div --repeats 9
+python3 benchmarks/run_round.py my-round
+python3 benchmarks/compare.py benchmarks/results/baseline.csv results.csv
+```
 
-| Precision | MPFR CPU | GPU wall time | CPU / GPU wall |
-|---:|---:|---:|---:|
-| 256 bits | 2.08 ms | 0.81 ms | 2.58× |
-| 384 bits | 2.93 ms | 1.24 ms | 2.36× |
-| 1024 bits | 22.29 ms | 3.00 ms | 7.43× |
+The default matrix covers three precisions, three batch sizes, real and complex
+operations, and 16-step multiplication chains. It reports device and wall times,
+serial MPFR, and a persistent multicore MPFR worker pool. Every result is checked
+against MPFR. The round runner builds, tests, and benchmarks in order, preserving
+logs and stopping on failure.
 
-GPU wall time includes input/output copies, submission, and synchronization;
-shader compilation and decimal conversion are excluded. These measurements do
-not compare against MPFR using all CPU cores, and do not establish a full-solver
-speedup. Batch size and the cost of preparing data matter.
+The original baseline and every optimization round are committed under
+[benchmarks/results](benchmarks/results). Resident batches substantially reduce
+repeated transfers and submission costs; exact reciprocal division and reduced
+addition storage improve arithmetic throughput. Improvements depend on precision,
+batch size, and workload. [Performance measurements](docs/performance.md) include
+raw records and limitations; the [optimization log](docs/optimizations.md) also
+records rejected experiments.
 
-See [benchmark methodology and results](docs/performance.md) for all operations,
-the Baxter experiment, raw records, and reproduction commands.
+## Scope
 
-## Scope and next steps
+The current backend is Apple Metal, with fixed precision per dispatch. Further
+work includes wider device validation, cooperative arithmetic and memory-layout
+experiments, reductions, fused multiply-add, square root, and transcendental
+functions with explicit accuracy contracts. These features are not implemented.
+GPU multiprecision has prior art; [related work](docs/prior-art.md) explains the
+context and the Metal target.
 
-The current backend is **Apple Metal**. Precision is fixed per dispatch, and
-execution is synchronous. The library currently has no transcendental functions,
-reductions, matrix solvers, public device-resident asynchronous API, or
-multi-GPU backend. GPU multiprecision already exists in other libraries;
-[related work](docs/prior-art.md) explains the context and the local Metal use case.
-
-Useful next contributions include broader device validation, improved batch and
-memory layouts, device-resident execution, and new operations with independent
-MPFR checks. See [CONTRIBUTING.md](CONTRIBUTING.md).
-
-## People and license
-
+See [CONTRIBUTING.md](CONTRIBUTING.md) for the validation and measurement workflow.
 Authored by **Nikolay Gromov** and maintained by
-[vanbaalon](https://github.com/vanbaalon). See [AUTHORS.md](AUTHORS.md).
-
-LimbForge is distributed under the [MIT license](LICENSE). MPFR, GMP, Boost,
-and Apple's frameworks retain their own licenses and terms.
+[vanbaalon](https://github.com/vanbaalon); see [AUTHORS.md](AUTHORS.md).
+LimbForge is distributed under the [MIT license](LICENSE).

@@ -65,36 +65,23 @@ Set `CMAKE_PREFIX_PATH=/path/to/limbforge-install` when configuring the consumer
 The installed library embeds its shader source and does not depend on source
 files being present at runtime.
 
-## Baxter comparison
-
-The optional physics example needs a separate BSolver4D checkout and Boost:
-
-```sh
-brew install boost
-git clone https://github.com/vanbaalon/BSolver4D.git ../BSolver4D
-cmake -S . -B build -DCMAKE_BUILD_TYPE=Release \
-  -DLIMBFORGE_BUILD_BAXTER_EXAMPLE=ON \
-  -DLIMBFORGE_BAXTER_SOURCE_DIR=../BSolver4D/cpp
-cmake --build build -j4
-./build/baxter_batch 16 600
-```
-
-The source path can point to another checkout. BSolver4D sources are not bundled
-in LimbForge. The example performs CPU seed/coefficient preparation, GPU
-propagation, and a comparison with the existing solver.
-
 ## CMake options
 
 | Option | Default | Purpose |
 |---|---|---|
 | `BUILD_TESTING` | `ON` | Build MPFR reference tests |
 | `LIMBFORGE_ENABLE_GPU_TESTS` | `ON` | Register tests that execute Metal kernels |
-| `LIMBFORGE_BUILD_EXAMPLES` | `ON` | Build the basic division example |
+| `LIMBFORGE_BUILD_EXAMPLES` | `ON` | Build the division and resident examples |
 | `LIMBFORGE_BUILD_BENCHMARK` | `ON` | Build arithmetic benchmarks |
 | `LIMBFORGE_BUILD_BAXTER_EXAMPLE` | `OFF` | Build the external BSolver4D comparison |
 | `LIMBFORGE_BAXTER_SOURCE_DIR` | Adjacent `BSolver4D/cpp` | Locate the physics reference |
 
 An `Engine` owns cached pipelines, a command queue, and reusable shared buffers.
-Use one engine per calling host thread. Dispatches block until completion and
-copy results back to the supplied output array. The caller owns all arrays and
-must match their element layout to the selected precision and operation.
+Use one engine per calling host thread. `Engine::run` accepts host arrays and
+blocks until their results are copied back. Typed resident buffers and command
+batches support asynchronous execution and dependent arithmetic without repeated
+host copies; see [execution and ownership](execution.md).
+
+The external Baxter comparison remains an optional, disabled CMake target for
+historical experiments. It is not required by the library, its benchmark matrix,
+or its default tests.

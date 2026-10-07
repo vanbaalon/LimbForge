@@ -26,8 +26,13 @@ tests that merely compare the shared CPU and GPU implementations are insufficien
 
 For an optimization, report hardware, compiler, precision, batch size, warm-up,
 sample count, and both device and wall timings. Include the cost of copies and
-preparation when claiming an application speedup. Identify whether the CPU
-baseline is single-threaded. Run the Baxter example when changing recurrences.
+preparation when claiming an application speedup. Include both serial and multicore CPU
+comparisons. Run the generic recurrence tests when changing that primitive.
+
+Use `python3 benchmarks/run_round.py my-round` to build, test, and benchmark a
+round. Keep the baseline unchanged, record rejected experiments, and require
+independent MPFR agreement before accepting a faster kernel. Device timing and
+end-to-end timing answer different questions; report both.
 
 New features should include a minimal example and update the numeric contract
 where relevant. Contributions are distributed under the project's MIT license.

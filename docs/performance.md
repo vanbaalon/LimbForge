@@ -1,95 +1,143 @@
 # Performance and validation
 
-## Arithmetic benchmark
+The baseline and optimization rounds were recorded on **October 7, 2026**, on an
+**Apple M5 Max** (18 CPU cores, 40 GPU cores), macOS 26.6.2, AppleClang 21, Release
+builds, and MPFR 4.2.2. The current measurements are in
+[final.csv](../benchmarks/results/final.csv); the original arithmetic baseline is
+[baseline.csv](../benchmarks/results/baseline.csv). See
+[environment.json](../benchmarks/results/environment.json) and the per-round
+metadata and test logs for provenance.
 
-The committed [CSV](../benchmarks/m5_max_arithmetic.csv) was recorded on
-October 7, 2026, on an Apple M5 Max, with Release builds and AppleClang 21.
-It contains addition, multiplication, and division at 256, 384, and 1024 bits,
-with 65,536 independent values per dispatch.
+## Methodology
 
-```sh
-./build/benchmark_limbforge 65536
-```
+The default matrix uses 256, 384, and 1024 bits; 256, 4,096, and 65,536 values;
+four real operations; three complex operations; and a 16-step multiplication
+chain. Each case has two warmups and nine measured samples. Inputs use a fixed
+seed (`20261007 + bits`); ordinary arithmetic exponents span −5 through +5, and
+chain exponents start at zero. Every final output is compared with independent
+MPFR operations. This benchmark covers moderate exponents; the separate test
+suite covers error statuses and exponent boundaries.
 
-Each operation is warmed once. The benchmark then takes five samples and reports
-medians. Inputs and MPFR variables are prepared outside the timed region. MPFR
-uses one CPU thread and reuses its initialized variables. GPU pipelines compile
-outside the timed region; buffers are reused. GPU wall time includes input/output
-copies, encoding, submission, and synchronization. Device timestamps report GPU
-time separately. Results are checked against MPFR after the measurements.
+MPFR arrays and GPU buffers are preallocated. Decimal conversion and pipeline
+compilation are excluded from warmed measurements. CPU columns report serial
+MPFR and a persistent **18-worker MPFR pool**, including pool dispatch costs.
+Both preserve the same real rounding steps as the GPU. Complex arithmetic does
+not use a different single-round MPC contract.
 
-| Bits | Operation | MPFR CPU (ms) | GPU device (ms) | GPU wall (ms) | CPU / GPU wall |
+The columns distinguish three execution costs:
+
+- Host-array operations: GPU wall time includes input/output copies, encoding,
+  submission, and synchronization.
+- Standalone `_resident` operations: inputs are uploaded before timing; wall
+  time covers batch construction, encoding, submission, and waiting. These
+  columns exclude upload/download costs and describe reuse of existing data.
+- `mul_chain_resident`: wall time includes one upload of each input, all sixteen
+  dependent dispatches, waiting, and the final download. `mul_chain_host`
+  includes sixteen host-array calls with repeated copies and waits. CPU chain
+  times exclude resetting the preallocated output to its initial value.
+
+Device timestamps measure execution separately. CSV wall statistics include the
+median, minimum, and empirical lower-order 90th percentile. The serial and
+parallel CPU execution order alternates for ordinary arithmetic samples. GPU
+samples follow CPU samples; this is a working desktop, with no locked clocks or
+isolated thermal conditions. Some unchanged operations vary substantially across
+runs. Treat individual cross-round ratios as observations, and repeat a targeted
+comparison before choosing a precision-specific kernel.
+
+## Representative current measurements
+
+65,536 values, milliseconds, medians of nine warmed samples. Host-array GPU wall
+includes transfers; resident-only operation times are available in the raw CSV.
+
+| Bits | Operation | Serial MPFR | 18-worker MPFR | GPU device | GPU wall |
 |---:|---|---:|---:|---:|---:|
-| 256 | add | 1.631 | 0.110 | 0.797 | 2.05× |
-| 256 | multiply | 2.080 | 0.118 | 0.805 | 2.58× |
-| 256 | divide | 6.230 | 0.683 | 1.321 | 4.72× |
-| 384 | add | 1.791 | 0.160 | 0.928 | 1.93× |
-| 384 | multiply | 2.930 | 0.454 | 1.242 | 2.36× |
-| 384 | divide | 7.977 | 1.301 | 2.070 | 3.85× |
-| 1024 | add | 2.250 | 0.459 | 1.487 | 1.51× |
-| 1024 | multiply | 22.295 | 0.486 | 3.001 | 7.43× |
-| 1024 | divide | 43.747 | 2.482 | 6.540 | 6.69× |
+| 256 | add | 1.834 | 0.437 | 0.092 | 0.800 |
+| 256 | mul | 2.242 | 0.472 | 0.119 | 0.815 |
+| 256 | div | 6.560 | 1.168 | 0.278 | 0.681 |
+| 384 | add | 1.856 | 0.561 | 0.118 | 0.806 |
+| 384 | mul | 2.858 | 0.583 | 0.452 | 1.213 |
+| 384 | div | 8.903 | 1.804 | 0.689 | 1.345 |
+| 1024 | add | 2.469 | 0.538 | 0.216 | 1.212 |
+| 1024 | mul | 18.387 | 1.902 | 0.482 | 1.622 |
+| 1024 | div | 40.831 | 3.604 | 0.787 | 2.088 |
 
-These are measurements of this batch on this device. A multicore CPU baseline,
-other batch sizes, and other GPUs may give different comparisons. In particular,
-single-scalar dispatches are not the intended use case.
+Real addition and small-precision multiplication remain faster on multicore MPFR
+in these host-array measurements. GPU division benefits from exact reciprocal
+quotient estimates. GPU speedups depend on both arithmetic cost and data reuse;
+serial CPU ratios alone do not describe the multicore comparison.
 
-## Baxter propagation experiment
+## Sixteen dependent multiplications
 
-The [recorded experiment](../benchmarks/m5_max_baxter.txt) evaluates 16 complex
-points, with four Q-functions in each of two propagation directions: 128
-trajectories, each taking 600 shifts. GPU arithmetic uses 384 significand bits;
-the reference and CPU preparation use 110 decimal digits. Asymptotic series
-construction is common setup and excluded from both measurements.
+Both GPU wall columns include transfers, submission, encoding, and waiting.
+Buffers are allocated outside the timed region for both interfaces.
+
+| Bits | 18-worker MPFR (ms) | Repeated GPU host calls (ms) | Resident GPU chain (ms) | Host / resident |
+|---:|---:|---:|---:|---:|
+| 256 | 8.277 | 9.583 | 1.909 | 5.02× |
+| 384 | 6.661 | 17.060 | 3.187 | 5.35× |
+| 1024 | 26.384 | 27.910 | 3.937 | 7.09× |
+
+## Counterbalanced baseline comparison
+
+After the final matrix, the frozen original executable and the final executable
+were run in baseline–final–final–baseline order, each using 65,536 values and nine
+samples. All four runs passed MPFR comparisons. The table uses the arithmetic
+mean of each version's two run medians; ratios divide those means. Raw records
+are `baseline_recheck_a/b.csv` and `final_recheck_a/b.csv`; see
+[counterbalanced metadata](../benchmarks/results/counterbalanced_metadata.json)
+and the [complete comparison](../benchmarks/results/counterbalanced_comparison.csv).
+
+| Bits | Operation | Baseline wall (ms) | Final wall (ms) | Wall speedup | Device speedup |
+|---:|---|---:|---:|---:|---:|
+| 256 | divide | 1.224 | 1.024 | 1.20× | 2.43× |
+| 384 | divide | 1.934 | 1.009 | 1.92× | 3.06× |
+| 1024 | divide | 4.081 | 1.946 | 2.10× | 3.15× |
+
+The unchanged schoolbook multiplier also varies across these runs, so changes in
+its timing should not be attributed to a new multiplication algorithm. Some
+addition wall times regress even while device times improve: transfers and host
+scheduling remain a substantial fraction of latency. The comparison supports a
+division improvement on this device, rather than a universal speedup claim.
+
+## Reproduction
 
 ```sh
-./build/baxter_batch 16 600
+cmake -S . -B build -DCMAKE_BUILD_TYPE=Release
+cmake --build build -j4
+ctest --test-dir build --output-on-failure
+./build/benchmark_limbforge > results.csv
+./build/benchmark_limbforge --bits 384 --count 65536 --operation div --repeats 9
+python3 benchmarks/run_round.py my-round
+python3 benchmarks/compare.py benchmarks/results/baseline.csv results.csv
 ```
 
-| Measurement | Seconds |
-|---|---:|
-| CPU seed/coefficient preparation and packing | 0.8461 |
-| GPU propagation, device time | 0.0994 |
-| GPU propagation, wall time | 0.0998 |
-| Preparation plus GPU wall time | 0.9459 |
-| Existing MPFR solver's Q evaluations | 1.3275 |
+Use `--workers N` to control the MPFR pool. The default is hardware concurrency.
+`--quick` uses 4,096 values at all three benchmark precisions. `--bits` selects
+256, 384, or 1024; `--operation mul_chain` selects the two chain interfaces.
+The benchmark exits with failure on a detected arithmetic mismatch.
 
-The largest error scaled by `1 + abs(Q_reference)` is **8.97 × 10⁻¹⁰⁶**.
-These application timings are a single warmed measurement, not five-run medians.
-Preparation plus propagation is about 1.40× faster than this serial reference
-in the recorded experiment. GPU-only ratios omit a substantial preparation cost.
+## Test coverage and limitations
 
-The weights rearrange the Baxter recurrence algebraically, changing rounding
-order relative to the solver. Validation checks the resulting Q-values against
-an independent MPFR computation, with an 80-digit scaled-error threshold.
-It does not certify asymptotic boundary conditions for arbitrary inputs or
-validate GPU quantization, Newton steps, connection matrices, or coupling/gluing.
-The production BSolver4D executable remains MPFR-based.
+Real CPU and GPU arithmetic is checked against MPFR in 507,904 cases across every
+multiple of 32 bits from 64 to 1024. Fixtures include cancellation, limb and ulp
+alignment, halfway rounding, status propagation, and products rounding across
+both exponent boundaries. One million exact scalar quotient/remainder checks
+exercise the reciprocal primitive.
 
-## Implemented optimizations
+Complex and generic recurrence tests cover 128, 384, and 1024 bits. An additional
+1024-bit suite tests 65,536 dense complex inputs for all three complex operations,
+with three GPU repeats. Resident tests cover in-place chains, dependent barriers,
+wrong formats and counts, bounds, foreign engines, pending mapping rejection,
+empty batches, repeated waits, and resource lifetimes.
 
-- Compile-time limb counts and operation specialization through Metal function constants.
-- Normalized base-2^32 arithmetic with full-width integer intermediates.
-- Quadratic-time Knuth division, avoiding a bit-at-a-time quotient loop.
-- No device heap allocation; local working storage has fixed capacity.
-- Exact alignment before the final nearest-even rounding of addition/subtraction.
-- Reused host-visible Metal buffers and cached pipelines.
-- One dispatch per recurrence batch; four persistent states per trajectory.
-- Shared coefficients for groups of trajectories, such as the four Baxter Q-functions.
+GitHub Actions runs CPU/MPFR checks and package installation. Physical GPU
+validation runs locally. The final GPU suites also pass with
+`MTL_SHADER_VALIDATION=1`, and the installed resident API passes a separate
+consumer check without MPFR; both logs are committed under `benchmarks/results`. This is substantial empirical coverage, not an exhaustive
+proof over every representable input or validation of other GPU models.
 
-The initial implementation has not been exhaustively tuned for every precision
-or GPU. Better data layouts, CPU multicore comparisons, larger recurrence batches,
-and a device-resident public API are useful next experiments.
-
-## Test coverage
-
-`ctest` runs CPU checks and, when enabled, GPU checks. Real arithmetic is compared
-with independent MPFR operations in 81,920 cases across 64, 128, 256, 384, and
-1024 bits. Inputs include zero, invalid status, cancellation, alignment changes,
-halfway rounding, and exponent boundaries. Complex results are compared with
-MPFR real operations in the documented order. Recurrence tests compare complete
-trajectories, including shared coefficients and zero-step behavior.
-
-GitHub Actions builds the macOS library, runs CPU/MPFR checks, and installs the
-package. It does not claim GPU execution coverage. Physical-device validation
-was performed locally on the M5 Max.
+The [optimization log](optimizations.md) records accepted changes and failed
+experiments. Files named `round3_rejected*` contain an incomplete failed benchmark;
+`round5_*` trials stop after GPU test failures. They are not accepted speedup
+records. Historical `m5_max_arithmetic.csv` and the optional application comparison
+predate this standalone benchmark workflow and are excluded from the tables above.

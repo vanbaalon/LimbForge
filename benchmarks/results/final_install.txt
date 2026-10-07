@@ -1,0 +1,24 @@
+-- Install configuration: "Release"
+-- Installing: /tmp/limbforge-rounds/install/lib/liblimbforge.a
+-- Installing: /tmp/limbforge-rounds/install/include
+-- Installing: /tmp/limbforge-rounds/install/include/limbforge
+-- Installing: /tmp/limbforge-rounds/install/include/limbforge/engine.hpp
+-- Installing: /tmp/limbforge-rounds/install/include/limbforge/mpfr_bridge.hpp
+-- Installing: /tmp/limbforge-rounds/install/include/limbforge/core.hpp
+-- Installing: /tmp/limbforge-rounds/install/lib/cmake/LimbForge/LimbForgeTargets.cmake
+-- Installing: /tmp/limbforge-rounds/install/lib/cmake/LimbForge/LimbForgeTargets-release.cmake
+-- Installing: /tmp/limbforge-rounds/install/lib/cmake/LimbForge/LimbForgeConfig.cmake
+-- Installing: /tmp/limbforge-rounds/install/lib/cmake/LimbForge/LimbForgeConfigVersion.cmake
+-- The CXX compiler identification is AppleClang 21.0.0.21000101
+-- Detecting CXX compiler ABI info
+-- Detecting CXX compiler ABI info - done
+-- Check for working CXX compiler: /usr/bin/c++ - skipped
+-- Detecting CXX compile features
+-- Detecting CXX compile features - done
+-- Configuring done (3.0s)
+-- Generating done (0.0s)
+-- Build files have been written to: /tmp/limbforge-rounds/consumer-build
+[ 50%] Building CXX object CMakeFiles/consumer.dir/main.cpp.o
+[100%] Linking CXX executable consumer
+[100%] Built target consumer
+Installed resident API passed without MPFR
