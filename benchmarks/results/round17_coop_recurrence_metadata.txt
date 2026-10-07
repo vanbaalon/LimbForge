@@ -1,0 +1,29 @@
+Round 17-L4 cooperative recurrence experiment. Apple M5 Max, macOS 26.6.2, Apple clang 21.0.0, Release build, 2026-10-07.
+Base revision 3e1446d plus benchmarks/coop_recurrence.mm (committed with these files). No library source changed.
+Command (repeat 1): ./build/coop_recurrence --bits 256,384,1024 --lanes 32,128,512,2048,8192,16384,32768 --steps 64 --samples 9 --warm 0.2
+Command (repeat 2): same with --no-check (bit-exactness already established in repeat 1; outputs still memcmp-checked).
+Columns: repeat; bits; lanes = trajectories; kernel = thread (existing kernels.metal `recurrence`, one thread per
+  trajectory, threadgroup 32 as Engine) or coop (`recurrence_coopG`, G SIMD lanes per trajectory, threadgroup 32);
+  limbs_per_lane = ceil(N/G); threads = lanes*G; median/min device microseconds per step = (GPUEndTime-GPUStartTime)/64
+  over 9 samples; speedup_vs_thread = median(thread)/median(coop) in the same repeat.
+Protocol: one 64-step dispatch per sample; all lanes share one weight sequence (states_per_weight = lanes, as kernel_sweep).
+  Per (bits, lanes) cell: 0.2 s warm-up cycling all five kernels, then 9 interleaved rounds, each running every kernel once
+  in rotated order (A/B interleaving). Every timed cooperative output is memcmp-equal to the existing kernel's output.
+Correctness before timing (repeat 1, and separately all 31 precisions with --all-bits --no-time): real add/sub/mul on
+  4,096 random pairs + cancellation, alignment-gap (1..32N+40), tie, carry, all-ones, structured-limb, zero, status and
+  exponent-overflow pairs; complex add/mul; recurrences 17x31 (tests/test_arithmetic.cpp data, per-lane weights),
+  68x31 replicated/shared weights, 256x64 and 96x200 shared weights; checked bit for bit against the core (CPU) and the
+  existing GPU kernel. 0 mismatches at all 31 precisions for G = 4, 8, 16, 32. Ten injected arithmetic faults (round
+  half-up, no sticky jam, no product carry scan, dropped h or H carries, wrong far-gap cutoff, lost rounding overflow,
+  lost add carry-out, wrong magnitude-compare lane, no increment carry) are each detected.
+  Log of the final all-precision run: round17_coop_recurrence_tests.txt (124/124 width x G cases, 0 mismatches).
+MTL_SHADER_VALIDATION=1 (round17_coop_recurrence_metal_validation.txt = full --all-bits --keep-going run):
+  G=16 and G=32 pass at every width in every validated run. G=4 recurrences fail nondeterministically from 512 bits
+  (L >= 4 limbs per lane): a few trajectories, often one SIMD group, and the failing widths change between runs
+  (final run: 512, 544, 576, 640, 768, 800, 832 bits; earlier runs: 896 bits, and 1024 bits in 5/5 runs, but 1024
+  passed in the final run). G=8 failed once at 768 bits (L=3; 4/68 trajectories). Real/complex unit kernels pass.
+  Without shader validation every run passes, as does MTL_DEBUG_LAYER=1 alone. round17_coop_recurrence_stress.txt:
+  no validation, 512/576/768/800/1024 bits, 128 and 2,048 lanes, G=4/8, every dispatch (4 s warm-up + 9 samples,
+  64 steps) compared with the existing kernel: 0 of 2,216 dispatches differ.
+Host load: load average 120-226 throughout (other users' CPU work); the two repeats agree within ~5% except the
+  thread kernel at 8192-32768 lanes (up to 15%).

@@ -1,0 +1,158 @@
+2026-10-07 18:51:42.350 coop_recurrence[78662:14494701] Metal GPU Validation Enabled
+Apple M5 Max; cooperative recurrence experiment (L4); every cooperative result compared bit for bit
+bits,lanes,kernel,G,limbs_per_lane,threads,steps,samples,median_us_per_step,min_us_per_step,speedup_vs_thread
+# 64 bits G=4 L=1: real 0, complex 0, recurrence 0 mismatches (cumulative)
+# 64 bits G=8 L=1: real 0, complex 0, recurrence 0 mismatches (cumulative)
+# 64 bits G=16 L=1: real 0, complex 0, recurrence 0 mismatches (cumulative)
+# 64 bits G=32 L=1: real 0, complex 0, recurrence 0 mismatches (cumulative)
+# 96 bits G=4 L=1: real 0, complex 0, recurrence 0 mismatches (cumulative)
+# 96 bits G=8 L=1: real 0, complex 0, recurrence 0 mismatches (cumulative)
+# 96 bits G=16 L=1: real 0, complex 0, recurrence 0 mismatches (cumulative)
+# 96 bits G=32 L=1: real 0, complex 0, recurrence 0 mismatches (cumulative)
+# 128 bits G=4 L=1: real 0, complex 0, recurrence 0 mismatches (cumulative)
+# 128 bits G=8 L=1: real 0, complex 0, recurrence 0 mismatches (cumulative)
+# 128 bits G=16 L=1: real 0, complex 0, recurrence 0 mismatches (cumulative)
+# 128 bits G=32 L=1: real 0, complex 0, recurrence 0 mismatches (cumulative)
+# 160 bits G=4 L=2: real 0, complex 0, recurrence 0 mismatches (cumulative)
+# 160 bits G=8 L=1: real 0, complex 0, recurrence 0 mismatches (cumulative)
+# 160 bits G=16 L=1: real 0, complex 0, recurrence 0 mismatches (cumulative)
+# 160 bits G=32 L=1: real 0, complex 0, recurrence 0 mismatches (cumulative)
+# 192 bits G=4 L=2: real 0, complex 0, recurrence 0 mismatches (cumulative)
+# 192 bits G=8 L=1: real 0, complex 0, recurrence 0 mismatches (cumulative)
+# 192 bits G=16 L=1: real 0, complex 0, recurrence 0 mismatches (cumulative)
+# 192 bits G=32 L=1: real 0, complex 0, recurrence 0 mismatches (cumulative)
+# 224 bits G=4 L=2: real 0, complex 0, recurrence 0 mismatches (cumulative)
+# 224 bits G=8 L=1: real 0, complex 0, recurrence 0 mismatches (cumulative)
+# 224 bits G=16 L=1: real 0, complex 0, recurrence 0 mismatches (cumulative)
+# 224 bits G=32 L=1: real 0, complex 0, recurrence 0 mismatches (cumulative)
+# 256 bits G=4 L=2: real 0, complex 0, recurrence 0 mismatches (cumulative)
+# 256 bits G=8 L=1: real 0, complex 0, recurrence 0 mismatches (cumulative)
+# 256 bits G=16 L=1: real 0, complex 0, recurrence 0 mismatches (cumulative)
+# 256 bits G=32 L=1: real 0, complex 0, recurrence 0 mismatches (cumulative)
+# 288 bits G=4 L=3: real 0, complex 0, recurrence 0 mismatches (cumulative)
+# 288 bits G=8 L=2: real 0, complex 0, recurrence 0 mismatches (cumulative)
+# 288 bits G=16 L=1: real 0, complex 0, recurrence 0 mismatches (cumulative)
+# 288 bits G=32 L=1: real 0, complex 0, recurrence 0 mismatches (cumulative)
+# 320 bits G=4 L=3: real 0, complex 0, recurrence 0 mismatches (cumulative)
+# 320 bits G=8 L=2: real 0, complex 0, recurrence 0 mismatches (cumulative)
+# 320 bits G=16 L=1: real 0, complex 0, recurrence 0 mismatches (cumulative)
+# 320 bits G=32 L=1: real 0, complex 0, recurrence 0 mismatches (cumulative)
+# 352 bits G=4 L=3: real 0, complex 0, recurrence 0 mismatches (cumulative)
+# 352 bits G=8 L=2: real 0, complex 0, recurrence 0 mismatches (cumulative)
+# 352 bits G=16 L=1: real 0, complex 0, recurrence 0 mismatches (cumulative)
+# 352 bits G=32 L=1: real 0, complex 0, recurrence 0 mismatches (cumulative)
+# 384 bits G=4 L=3: real 0, complex 0, recurrence 0 mismatches (cumulative)
+# 384 bits G=8 L=2: real 0, complex 0, recurrence 0 mismatches (cumulative)
+# 384 bits G=16 L=1: real 0, complex 0, recurrence 0 mismatches (cumulative)
+# 384 bits G=32 L=1: real 0, complex 0, recurrence 0 mismatches (cumulative)
+# 416 bits G=4 L=4: real 0, complex 0, recurrence 0 mismatches (cumulative)
+# 416 bits G=8 L=2: real 0, complex 0, recurrence 0 mismatches (cumulative)
+# 416 bits G=16 L=1: real 0, complex 0, recurrence 0 mismatches (cumulative)
+# 416 bits G=32 L=1: real 0, complex 0, recurrence 0 mismatches (cumulative)
+# 448 bits G=4 L=4: real 0, complex 0, recurrence 0 mismatches (cumulative)
+# 448 bits G=8 L=2: real 0, complex 0, recurrence 0 mismatches (cumulative)
+# 448 bits G=16 L=1: real 0, complex 0, recurrence 0 mismatches (cumulative)
+# 448 bits G=32 L=1: real 0, complex 0, recurrence 0 mismatches (cumulative)
+# 480 bits G=4 L=4: real 0, complex 0, recurrence 0 mismatches (cumulative)
+# 480 bits G=8 L=2: real 0, complex 0, recurrence 0 mismatches (cumulative)
+# 480 bits G=16 L=1: real 0, complex 0, recurrence 0 mismatches (cumulative)
+# 480 bits G=32 L=1: real 0, complex 0, recurrence 0 mismatches (cumulative)
+512 bits G=4 recurrence 256x64 spw=1 coop-vs-existing: 2/256 mismatches, first case 90
+512 bits G=4 recurrence 96x200 spw=96 coop-vs-existing: 2/96 mismatches, first case 75
+# 512 bits G=4 L=4: real 0, complex 0, recurrence 4 mismatches (cumulative)
+# 512 bits G=8 L=2: real 0, complex 0, recurrence 4 mismatches (cumulative)
+# 512 bits G=16 L=1: real 0, complex 0, recurrence 4 mismatches (cumulative)
+# 512 bits G=32 L=1: real 0, complex 0, recurrence 4 mismatches (cumulative)
+544 bits G=4 recurrence 256x64 spw=1 coop-vs-existing: 9/256 mismatches, first case 64
+544 bits G=4 recurrence 96x200 spw=96 coop-vs-existing: 1/96 mismatches, first case 47
+# 544 bits G=4 L=5: real 0, complex 0, recurrence 10 mismatches (cumulative)
+# 544 bits G=8 L=3: real 0, complex 0, recurrence 10 mismatches (cumulative)
+# 544 bits G=16 L=2: real 0, complex 0, recurrence 10 mismatches (cumulative)
+# 544 bits G=32 L=1: real 0, complex 0, recurrence 10 mismatches (cumulative)
+576 bits G=4 recurrence 68x31 spw=4 coop-vs-cpu: 16/68 mismatches, first case 0
+576 bits G=4 recurrence 68x31 spw=4 coop-vs-existing: 16/68 mismatches, first case 0
+576 bits G=4 recurrence 256x64 spw=1 coop-vs-existing: 16/256 mismatches, first case 112
+576 bits G=4 recurrence 96x200 spw=96 coop-vs-cpu: 8/12 mismatches, first case 0
+576 bits G=4 recurrence 96x200 spw=96 coop-vs-existing: 16/96 mismatches, first case 0
+# 576 bits G=4 L=5: real 0, complex 0, recurrence 72 mismatches (cumulative)
+# 576 bits G=8 L=3: real 0, complex 0, recurrence 72 mismatches (cumulative)
+# 576 bits G=16 L=2: real 0, complex 0, recurrence 72 mismatches (cumulative)
+# 576 bits G=32 L=1: real 0, complex 0, recurrence 72 mismatches (cumulative)
+# 608 bits G=4 L=5: real 0, complex 0, recurrence 0 mismatches (cumulative)
+# 608 bits G=8 L=3: real 0, complex 0, recurrence 0 mismatches (cumulative)
+# 608 bits G=16 L=2: real 0, complex 0, recurrence 0 mismatches (cumulative)
+# 608 bits G=32 L=1: real 0, complex 0, recurrence 0 mismatches (cumulative)
+640 bits G=4 recurrence 256x64 spw=1 coop-vs-existing: 2/256 mismatches, first case 50
+640 bits G=4 recurrence 96x200 spw=96 coop-vs-cpu: 1/12 mismatches, first case 5
+640 bits G=4 recurrence 96x200 spw=96 coop-vs-existing: 1/96 mismatches, first case 5
+# 640 bits G=4 L=5: real 0, complex 0, recurrence 4 mismatches (cumulative)
+# 640 bits G=8 L=3: real 0, complex 0, recurrence 4 mismatches (cumulative)
+# 640 bits G=16 L=2: real 0, complex 0, recurrence 4 mismatches (cumulative)
+# 640 bits G=32 L=1: real 0, complex 0, recurrence 4 mismatches (cumulative)
+# 672 bits G=4 L=6: real 0, complex 0, recurrence 0 mismatches (cumulative)
+# 672 bits G=8 L=3: real 0, complex 0, recurrence 0 mismatches (cumulative)
+# 672 bits G=16 L=2: real 0, complex 0, recurrence 0 mismatches (cumulative)
+# 672 bits G=32 L=1: real 0, complex 0, recurrence 0 mismatches (cumulative)
+# 704 bits G=4 L=6: real 0, complex 0, recurrence 0 mismatches (cumulative)
+# 704 bits G=8 L=3: real 0, complex 0, recurrence 0 mismatches (cumulative)
+# 704 bits G=16 L=2: real 0, complex 0, recurrence 0 mismatches (cumulative)
+# 704 bits G=32 L=1: real 0, complex 0, recurrence 0 mismatches (cumulative)
+# 736 bits G=4 L=6: real 0, complex 0, recurrence 0 mismatches (cumulative)
+# 736 bits G=8 L=3: real 0, complex 0, recurrence 0 mismatches (cumulative)
+# 736 bits G=16 L=2: real 0, complex 0, recurrence 0 mismatches (cumulative)
+# 736 bits G=32 L=1: real 0, complex 0, recurrence 0 mismatches (cumulative)
+768 bits G=4 recurrence 17x31 spw=1 coop-vs-cpu: 3/17 mismatches, first case 0
+768 bits G=4 recurrence 17x31 spw=1 coop-vs-existing: 3/17 mismatches, first case 0
+768 bits G=4 recurrence 68x31 spw=4 coop-vs-cpu: 6/68 mismatches, first case 16
+768 bits G=4 recurrence 68x31 spw=4 coop-vs-existing: 6/68 mismatches, first case 16
+768 bits G=4 recurrence 256x64 spw=1 coop-vs-cpu: 1/12 mismatches, first case 3
+768 bits G=4 recurrence 256x64 spw=1 coop-vs-existing: 5/256 mismatches, first case 3
+768 bits G=4 recurrence 96x200 spw=96 coop-vs-cpu: 2/12 mismatches, first case 6
+768 bits G=4 recurrence 96x200 spw=96 coop-vs-existing: 14/96 mismatches, first case 6
+# 768 bits G=4 L=6: real 0, complex 0, recurrence 40 mismatches (cumulative)
+768 bits G=8 recurrence 68x31 spw=4 coop-vs-cpu: 4/68 mismatches, first case 56
+768 bits G=8 recurrence 68x31 spw=4 coop-vs-existing: 4/68 mismatches, first case 56
+# 768 bits G=8 L=3: real 0, complex 0, recurrence 48 mismatches (cumulative)
+# 768 bits G=16 L=2: real 0, complex 0, recurrence 48 mismatches (cumulative)
+# 768 bits G=32 L=1: real 0, complex 0, recurrence 48 mismatches (cumulative)
+800 bits G=4 recurrence 17x31 spw=1 coop-vs-cpu: 8/17 mismatches, first case 0
+800 bits G=4 recurrence 17x31 spw=1 coop-vs-existing: 8/17 mismatches, first case 0
+800 bits G=4 recurrence 68x31 spw=4 coop-vs-cpu: 40/68 mismatches, first case 8
+800 bits G=4 recurrence 68x31 spw=4 coop-vs-existing: 40/68 mismatches, first case 8
+800 bits G=4 recurrence 256x64 spw=1 coop-vs-existing: 24/256 mismatches, first case 48
+800 bits G=4 recurrence 96x200 spw=96 coop-vs-cpu: 12/12 mismatches, first case 0
+800 bits G=4 recurrence 96x200 spw=96 coop-vs-existing: 96/96 mismatches, first case 0
+# 800 bits G=4 L=7: real 0, complex 0, recurrence 228 mismatches (cumulative)
+# 800 bits G=8 L=4: real 0, complex 0, recurrence 228 mismatches (cumulative)
+# 800 bits G=16 L=2: real 0, complex 0, recurrence 228 mismatches (cumulative)
+# 800 bits G=32 L=1: real 0, complex 0, recurrence 228 mismatches (cumulative)
+832 bits G=4 recurrence 96x200 spw=96 coop-vs-existing: 16/96 mismatches, first case 64
+# 832 bits G=4 L=7: real 0, complex 0, recurrence 16 mismatches (cumulative)
+# 832 bits G=8 L=4: real 0, complex 0, recurrence 16 mismatches (cumulative)
+# 832 bits G=16 L=2: real 0, complex 0, recurrence 16 mismatches (cumulative)
+# 832 bits G=32 L=1: real 0, complex 0, recurrence 16 mismatches (cumulative)
+# 864 bits G=4 L=7: real 0, complex 0, recurrence 0 mismatches (cumulative)
+# 864 bits G=8 L=4: real 0, complex 0, recurrence 0 mismatches (cumulative)
+# 864 bits G=16 L=2: real 0, complex 0, recurrence 0 mismatches (cumulative)
+# 864 bits G=32 L=1: real 0, complex 0, recurrence 0 mismatches (cumulative)
+# 896 bits G=4 L=7: real 0, complex 0, recurrence 0 mismatches (cumulative)
+# 896 bits G=8 L=4: real 0, complex 0, recurrence 0 mismatches (cumulative)
+# 896 bits G=16 L=2: real 0, complex 0, recurrence 0 mismatches (cumulative)
+# 896 bits G=32 L=1: real 0, complex 0, recurrence 0 mismatches (cumulative)
+# 928 bits G=4 L=8: real 0, complex 0, recurrence 0 mismatches (cumulative)
+# 928 bits G=8 L=4: real 0, complex 0, recurrence 0 mismatches (cumulative)
+# 928 bits G=16 L=2: real 0, complex 0, recurrence 0 mismatches (cumulative)
+# 928 bits G=32 L=1: real 0, complex 0, recurrence 0 mismatches (cumulative)
+# 960 bits G=4 L=8: real 0, complex 0, recurrence 0 mismatches (cumulative)
+# 960 bits G=8 L=4: real 0, complex 0, recurrence 0 mismatches (cumulative)
+# 960 bits G=16 L=2: real 0, complex 0, recurrence 0 mismatches (cumulative)
+# 960 bits G=32 L=1: real 0, complex 0, recurrence 0 mismatches (cumulative)
+# 992 bits G=4 L=8: real 0, complex 0, recurrence 0 mismatches (cumulative)
+# 992 bits G=8 L=4: real 0, complex 0, recurrence 0 mismatches (cumulative)
+# 992 bits G=16 L=2: real 0, complex 0, recurrence 0 mismatches (cumulative)
+# 992 bits G=32 L=1: real 0, complex 0, recurrence 0 mismatches (cumulative)
+# 1024 bits G=4 L=8: real 0, complex 0, recurrence 0 mismatches (cumulative)
+# 1024 bits G=8 L=4: real 0, complex 0, recurrence 0 mismatches (cumulative)
+# 1024 bits G=16 L=2: real 0, complex 0, recurrence 0 mismatches (cumulative)
+# 1024 bits G=32 L=1: real 0, complex 0, recurrence 0 mismatches (cumulative)
+7 precision(s) with cooperative mismatches

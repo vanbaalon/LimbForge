@@ -1,0 +1,118 @@
+--- a/benchmarks/coop_recurrence.mm	2026-10-07 18:48:25
++++ b/benchmarks/coop_recurrence.mm	2026-10-07 18:48:25
+@@ -79,9 +79,9 @@
+ // General left shift of the 2M-slot workspace: whole blocks by one shuffle source, then limbs+bits from the previous block.
+ template<int G> inline void shift_left(thread CW<limbs(G)>& w,uint sh,Ctx c){
+     constexpr int L=limbs(G);uint wl=sh/32,s=sh%32,wb=wl/L,wr=wl%L;
+-    if(simd_any(wb!=0)){uint src=c.base+((c.k-wb)&(G-1));bool in=c.k>=wb,in2=c.k+G>=wb;
++    if(wb){uint src=c.base+((c.k-wb)&(G-1));bool in=c.k>=wb,in2=c.k+G>=wb;
+         for(int j=0;j<L;++j){uint xl=shfl(w.lo[j],src),xh=shfl(w.hi[j],src);w.lo[j]=in?xl:0u;w.hi[j]=in?xh:in2?xl:0u;}}
+-    if(simd_any(wr!=0||s!=0)){uint src=c.base+((c.k-1)&(G-1)),cl[2*L],ch[2*L];bool first=c.k==0;
++    if(wr||s){uint src=c.base+((c.k-1)&(G-1)),cl[2*L],ch[2*L];bool first=c.k==0;
+         for(int j=0;j<L;++j){uint xl=shfl(w.lo[j],src),xh=shfl(w.hi[j],src);cl[j]=first?0u:xl;ch[j]=first?xl:xh;cl[L+j]=w.lo[j];ch[L+j]=w.hi[j];}
+         for(int j=0;j<L;++j){uint l0=0,l1=0,h0=0,h1=0;
+             for(int r=0;r<L;++r)if(uint(r)==wr){l0=cl[L+j-r];l1=cl[L+j-r-1];h0=ch[L+j-r];h1=ch[L+j-r-1];}
+@@ -92,9 +92,9 @@
+     constexpr int L=limbs(G),M=G*L;uint lost=0;
+     for(int j=0;j<L;++j){uint q=32*(c.k*L+j);lost|=lost_bits(w.lo[j],q,sh)|lost_bits(w.hi[j],q+32*M,sh);}
+     bool sticky=vote<G>(lost!=0,c.base)!=0;uint wl=sh/32,s=sh%32,wb=wl/L,wr=wl%L;
+-    if(simd_any(wb!=0)){uint src=c.base+((c.k+wb)&(G-1)),t=c.k+wb;
++    if(wb){uint src=c.base+((c.k+wb)&(G-1)),t=c.k+wb;
+         for(int j=0;j<L;++j){uint xl=shfl(w.lo[j],src),xh=shfl(w.hi[j],src);w.lo[j]=t<G?xl:t<2*G?xh:0u;w.hi[j]=t<G?xh:0u;}}
+-    if(simd_any(wr!=0||s!=0)){uint src=c.base+((c.k+1)&(G-1)),cl[2*L],ch[2*L];bool last=c.k==G-1;
++    if(wr||s){uint src=c.base+((c.k+1)&(G-1)),cl[2*L],ch[2*L];bool last=c.k==G-1;
+         for(int j=0;j<L;++j){uint xl=shfl(w.lo[j],src),xh=shfl(w.hi[j],src);cl[j]=w.lo[j];ch[j]=w.hi[j];cl[L+j]=last?xh:xl;ch[L+j]=last?0u:xh;}
+         for(int j=0;j<L;++j){uint l0=0,l1=0,h0=0,h1=0;
+             for(int r=0;r<L;++r)if(uint(r)==wr){l0=cl[j+r];l1=cl[j+r+1];h0=ch[j+r];h1=ch[j+r+1];}
+@@ -105,63 +105,58 @@
+ // round to nearest even from the round bit and sticky bits, as core pack()/increment()/checked().
+ template<int G> inline CN<limbs(G)> round(thread const CW<limbs(G)>& w,long e,int sign,uint status,Ctx c){
+     constexpr int L=limbs(G),M=G*L,P=M-N,R=2*M-N-1,BR=R/L,PR=R%L,KQ=P/L,PQ=P%L;
+-    bool range=e>1000000000||e< -1000000001;uint below=0;bool rb;
++    if(e>1000000000||e< -1000000001)return czero<L>(status|exponent_overflow);
++    uint below=0;bool rb;
+     for(int j=0;j<L;++j){int q=int(c.k)*L+j,q2=q+M;below|=q<R?w.lo[j]:q==R?w.lo[j]&0x7fffffffu:0u;below|=q2<R?w.hi[j]:q2==R?w.hi[j]&0x7fffffffu:0u;}
+     if(BR<G)rb=c.k==uint(BR)&&(w.lo[PR]>>31);else rb=c.k==uint(BR-G)&&(w.hi[PR]>>31);
+     bool lsb=c.k==uint(KQ)&&(w.hi[PQ]&1);
+     bool up=vote<G>(rb,c.base)!=0&&vote<G>(below!=0||lsb,c.base)!=0;
+     CN<L> r;r.sign=sign;r.status=status;
+     for(int j=0;j<L;++j)r.l[j]=int(c.k)*L+j>=P?w.hi[j]:0u;
+-    if(simd_any(up)){uint cc=up&&c.k==uint(KQ)?1u:0u;bool prop=c.k>uint(KQ)&&all_ones(r.l);
++    if(up){uint cc=c.k==uint(KQ)?1u:0u;bool prop=c.k>uint(KQ)&&all_ones(r.l);
+         for(int j=PQ;j<L;++j){ulong v=ulong(r.l[j])+cc;r.l[j]=uint(v);cc=uint(v>>32);}
+         ulong C=carries(vote<G>(cc!=0,c.base),vote<G>(prop,c.base),0);add_small(r.l,uint(C>>c.k)&1);
+         if((C>>G)&1){for(int j=0;j<L;++j)r.l[j]=0;if(c.k==G-1)r.l[L-1]=0x80000000u;++e;}}
+-    r.exponent=int(e);
+-    return range||e>1000000000||e< -1000000000?czero<L>(status|exponent_overflow):r;
++    if(e>1000000000||e< -1000000000)return czero<L>(status|exponent_overflow);
++    r.exponent=int(e);return r;
+ }
+ // General pack(): value = w * 2^scale.
+ template<int G> inline CN<limbs(G)> pack(thread CW<limbs(G)>& w,long scale,int sign,uint status,Ctx c){
+     constexpr int L=limbs(G),M=G*L;
+     ulong z=vote<G>(any_set(w.lo),c.base)|(vote<G>(any_set(w.hi),c.base)<<G);
+-    uint tb=z?63-uint(clz(z)):0;int hb=shfl(tb>=uint(G)?top_bit(w.hi):top_bit(w.lo),c.base+(tb&(G-1)));
+-    long h=max(long(tb)*32*L+hb,0L);shift_left<G>(w,uint(64*M-1-h),c);
+-    CN<L> r=round<G>(w,scale+h,sign,status,c);return z?r:czero<L>(status);
++    if(!z)return czero<L>(status);
++    uint tb=63-uint(clz(z));int hb=shfl(tb>=uint(G)?top_bit(w.hi):top_bit(w.lo),c.base+(tb&(G-1)));
++    long h=long(tb)*32*L+hb;shift_left<G>(w,uint(64*M-1-h),c);
++    return round<G>(w,scale+h,sign,status,c);
+ }
+-template<int L> inline CN<L> pick(bool p,thread const CN<L>& x,thread const CN<L>& y){
+-    CN<L> r;for(int j=0;j<L;++j)r.l[j]=p?x.l[j]:y.l[j];r.exponent=p?x.exponent:y.exponent;r.sign=p?x.sign:y.sign;r.status=p?x.status:y.status;return r;}
+-// Every branch that contains a SIMD shuffle or ballot is uniform across the whole SIMD group (simd_any/simd_all);
+-// group-specific special cases are selected afterwards (docs/experiments.md: SIMD ops in divergent control flow).
+ template<int G> inline CN<limbs(G)> mul(thread const CN<limbs(G)>& a,thread const CN<limbs(G)>& b,Ctx c){
+     constexpr int L=limbs(G);
+-    uint status=a.status|b.status;bool special=status||!a.sign||!b.sign;CN<L> r=czero<L>(status);
+-    if(!simd_all(special)){CW<L> w=product<G>(a,b,c);
+-        // Normalized inputs: the product's msb is bit 64M-1 or 64M-2.
+-        uint d=(shfl(w.hi[L-1],c.base+G-1)>>31)^1;shift_left_small<G>(w,d,c);
+-        CN<L> p=round<G>(w,long(a.exponent)+b.exponent+1-d,a.sign*b.sign,0,c);r=pick(special,r,p);}
+-    return r;
++    uint status=a.status|b.status;if(status||!a.sign||!b.sign)return czero<L>(status);
++    CW<L> w=product<G>(a,b,c);
++    // Normalized inputs: the product's msb is bit 64M-1 or 64M-2.
++    uint d=(shfl(w.hi[L-1],c.base+G-1)>>31)^1;shift_left_small<G>(w,d,c);
++    return round<G>(w,long(a.exponent)+b.exponent+1-d,a.sign*b.sign,0,c);
+ }
+ // add(): order by magnitude; A>>1 leaves a carry bit; B aligned by gap+1 with its lost bits jammed into bit 0
+ // (>= 32N-1 bits below A's lsb, so the jam cannot move a rounding boundary). Exact otherwise; gap > 32N+2 returns A.
+ template<int G> inline CN<limbs(G)> add(CN<limbs(G)> a,CN<limbs(G)> b,Ctx c){
+     constexpr int L=limbs(G),M=G*L;
+-    uint status=a.status|b.status;CN<L> early=status?czero<L>(status):!a.sign?b:a;bool special=status||!a.sign||!b.sign;
++    uint status=a.status|b.status;if(status)return czero<L>(status);
++    if(!a.sign)return b;if(!b.sign)return a;
+     int cmp=a.exponent>b.exponent?1:a.exponent<b.exponent?-1:0;
+-    if(simd_any(!cmp)){int lc=0;for(int j=L-1;j>=0;--j)lc=lc?lc:a.l[j]>b.l[j]?1:a.l[j]<b.l[j]?-1:0;
+-        ulong m=vote<G>(lc!=0,c.base);int t=shfl(lc,c.base+(m?63-uint(clz(m)):0));cmp=cmp?cmp:m?t:0;}
++    if(!cmp){int lc=0;for(int j=L-1;j>=0;--j)lc=lc?lc:a.l[j]>b.l[j]?1:a.l[j]<b.l[j]?-1:0;
++        ulong m=vote<G>(lc!=0,c.base);cmp=m?shfl(lc,c.base+63-uint(clz(m))):0;}
+     if(cmp<0){CN<L> t=a;a=b;b=t;}
+-    long gap=long(a.exponent)-b.exponent;if(!special&&gap>32*N+2){special=true;early=a;}
+-    CN<L> r=early;
+-    if(!simd_all(special)){
+-        CW<L> x,y;bool last=c.k==G-1;uint nx=shfl(a.l[0],c.base+((c.k+1)&(G-1)));
+-        for(int j=0;j<L;++j){x.hi[j]=funnel_right(j<L-1?a.l[j<L-1?j+1:0]:last?0u:nx,a.l[j],1);x.lo[j]=0;y.lo[j]=0;y.hi[j]=b.l[j];}
+-        x.lo[L-1]=last?nx<<31:0u;
+-        if(shift_right<G>(y,uint(clamp(gap,0L,long(32*N+2)))+1,c)&&!c.k)y.lo[0]|=1;
+-        bool subtract=a.sign!=b.sign;uint m=subtract?~0u:0u;ulong cl=0,ch=0;
+-        for(int j=0;j<L;++j){ulong v=ulong(x.lo[j])+(y.lo[j]^m)+cl;x.lo[j]=uint(v);cl=v>>32;v=ulong(x.hi[j])+(y.hi[j]^m)+ch;x.hi[j]=uint(v);ch=v>>32;}
+-        ulong C=carries(vote<G>(cl!=0,c.base)|(vote<G>(ch!=0,c.base)<<G),vote<G>(all_ones(x.lo),c.base)|(vote<G>(all_ones(x.hi),c.base)<<G),subtract?1:0);
+-        add_small(x.lo,uint(C>>c.k)&1);add_small(x.hi,uint(C>>(c.k+G))&1);
+-        CN<L> p=pack<G>(x,long(a.exponent)+2-64*M,a.sign,0,c);r=pick(special,r,p);}
+-    return r;
++    long gap=long(a.exponent)-b.exponent;if(gap>32*N+2)return a;
++    CW<L> x,y;bool last=c.k==G-1;uint nx=shfl(a.l[0],c.base+((c.k+1)&(G-1)));
++    for(int j=0;j<L;++j){x.hi[j]=funnel_right(j<L-1?a.l[j<L-1?j+1:0]:last?0u:nx,a.l[j],1);x.lo[j]=0;y.lo[j]=0;y.hi[j]=b.l[j];}
++    x.lo[L-1]=last?nx<<31:0u;
++    if(shift_right<G>(y,uint(gap)+1,c)&&!c.k)y.lo[0]|=1;
++    bool subtract=a.sign!=b.sign;uint m=subtract?~0u:0u;ulong cl=0,ch=0;
++    for(int j=0;j<L;++j){ulong v=ulong(x.lo[j])+(y.lo[j]^m)+cl;x.lo[j]=uint(v);cl=v>>32;v=ulong(x.hi[j])+(y.hi[j]^m)+ch;x.hi[j]=uint(v);ch=v>>32;}
++    ulong C=carries(vote<G>(cl!=0,c.base)|(vote<G>(ch!=0,c.base)<<G),vote<G>(all_ones(x.lo),c.base)|(vote<G>(all_ones(x.hi),c.base)<<G),subtract?1:0);
++    add_small(x.lo,uint(C>>c.k)&1);add_small(x.hi,uint(C>>(c.k+G))&1);
++    return pack<G>(x,long(a.exponent)+2-64*M,a.sign,0,c);
+ }
+ template<int G> inline CN<limbs(G)> sub(CN<limbs(G)> a,CN<limbs(G)> b,Ctx c){return add<G>(a,cnegate(b),c);}
+ template<int G> inline CC<limbs(G)> cadd(CC<limbs(G)> a,CC<limbs(G)> b,Ctx c){return {add<G>(a.re,b.re,c),add<G>(a.im,b.im,c)};}

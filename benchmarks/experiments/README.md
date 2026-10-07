@@ -19,6 +19,16 @@ GPU/MPFR validation and was removed from the installed implementation.
   at 384 bits. The public GPU symmetric square is selected only at 384 bits;
   complex division retains ordinary multiplication.
 
+- `coop_divergent_branches.patch`: based on round 17-L4 (`3e1446d` plus
+  `benchmarks/coop_recurrence.mm`; apply to that file). It is the first
+  cooperative prototype: its shuffles and ballots sit in branches that are
+  uniform within a trajectory's lane group but divergent across the groups of a
+  SIMD. It is bit-exact on the physical GPU without validation, but under
+  `MTL_SHADER_VALIDATION=1` (with `MTL_DEBUG_LAYER=1`) 1024-bit G=4/8 recurrences
+  and one SIMD group of the G=4 `cmul` kernel fail nondeterministically. The kept
+  version branches only on SIMD-uniform conditions, but its G=4 shapes (from 512
+  bits) still fail under validation; see ../../docs/experiments.md.
+
 The cause of these GPU mismatches is unresolved. Do not treat the rejected
 measurements as validated performance results. The accepted library uses exact
 schoolbook multiplication and a restricted, separately validated unary square. See ../../docs/optimizations.md and the `round5_*`

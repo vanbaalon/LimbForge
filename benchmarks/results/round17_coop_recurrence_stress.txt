@@ -1,0 +1,22 @@
+Apple M5 Max; cooperative recurrence experiment (L4); every cooperative result compared bit for bit
+bits,lanes,kernel,G,limbs_per_lane,threads,steps,samples,median_us_per_step,min_us_per_step,speedup_vs_thread
+# 512 bits 128 lanes G=4: 0/187 dispatches differ
+# 512 bits 128 lanes G=8: 0/187 dispatches differ
+# 512 bits 2048 lanes G=4: 0/156 dispatches differ
+# 512 bits 2048 lanes G=8: 0/156 dispatches differ
+# 576 bits 128 lanes G=4: 0/146 dispatches differ
+# 576 bits 128 lanes G=8: 0/146 dispatches differ
+# 576 bits 2048 lanes G=4: 0/127 dispatches differ
+# 576 bits 2048 lanes G=8: 0/127 dispatches differ
+# 768 bits 128 lanes G=4: 0/110 dispatches differ
+# 768 bits 128 lanes G=8: 0/110 dispatches differ
+# 768 bits 2048 lanes G=4: 0/97 dispatches differ
+# 768 bits 2048 lanes G=8: 0/97 dispatches differ
+# 800 bits 128 lanes G=4: 0/88 dispatches differ
+# 800 bits 128 lanes G=8: 0/88 dispatches differ
+# 800 bits 2048 lanes G=4: 0/66 dispatches differ
+# 800 bits 2048 lanes G=8: 0/66 dispatches differ
+# 1024 bits 128 lanes G=4: 0/75 dispatches differ
+# 1024 bits 128 lanes G=8: 0/75 dispatches differ
+# 1024 bits 2048 lanes G=4: 0/56 dispatches differ
+# 1024 bits 2048 lanes G=8: 0/56 dispatches differ
