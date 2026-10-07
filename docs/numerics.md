@@ -73,6 +73,30 @@ chunk's exception after all chunks finish; other chunks may already be written.
 before writing. The MPC functions appear when `<mpc.h>` is on the include path,
 need no libmpc symbols, and are disabled by `LIMBFORGE_NO_MPC`.
 
+## Fused multiply-add
+
+`Operation::fma` and `fms` return `RN(a·b + c)` and `RN(a·b − c)` with a single rounding, as
+`mpfr_fma` / `mpfr_fms`. `complex_fma` and `complex_fms` round each component once from its exact
+value:
+
+```
+re = RN(a.re·b.re − a.im·b.im ± c.re)
+im = RN(a.re·b.im + a.im·b.re ± c.im)
+```
+
+This is more accurate than the composed `complex_mul` followed by `complex_add` (up to four
+roundings per component) and is not the MPC contract for `mpc_fma`. Products are formed exactly;
+terms are combined exactly in a bounded workspace. A term more than one bit below the extended
+window of a larger term (at least `bits + 34` bits below that term's leading bit) only contributes
+the sign of a sticky unit, which cannot change a `bits`-bit round-to-nearest decision. For three
+terms the two largest are summed exactly before the smallest is added, so cancellation between them
+never exposes a collapsed term. Statuses propagate as for other real operations; intermediate
+products may exceed the exponent range when the final result does not. Independent references:
+`mpfr_fma`/`mpfr_fms`, and exact products at twice the precision summed by `mpfr_sum`.
+
+Use the ternary overloads `CommandBatch::run(op, a, b, c, out)` and
+`Engine::run_ternary(bits, op, a, b, c, out, count)`; any operand may alias `out`.
+
 ## Square and square root
 
 `square(a)` computes the exact integer product and rounds once, as `mul(a,a)`

@@ -51,6 +51,7 @@ measurements.
 
 - Correctly rounded real addition, subtraction, multiplication, division, square, and square root.
 - Complex addition, multiplication, and division composed from rounded real primitives.
+- Fused real `fma`/`fms` and complex `complex_fma`/`complex_fms`, each component rounded once.
 - Typed resident buffers, asynchronous submissions, and dependent operations in one command batch.
 - In-place pointwise arithmetic, cached pipelines, and explicit buffer ownership checks.
 - Fixed-order real and complex tree reductions with GPU-resident intermediate levels.

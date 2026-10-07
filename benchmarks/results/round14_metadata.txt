@@ -1,0 +1,10 @@
+Round 14 (B0: pad runtime-indexed scratch on Metal). Apple M5 Max, macOS 26.6.2, Release, 2026-10-07.
+Interleaved A/B with warm kernel_sweep (--cold 0 --samples 5), base = 703751d built in a separate worktree,
+order per repeat: base then new. Host heavily loaded by other work (load average 50-180): treat single
+ratios within +/-15% as noise; a change counts only when both repeats agree beyond that.
+round14_ab_base_{1,2}.csv / round14_ab_pad_all_{1,2}.csv: all ops, policy v1 (pad all 13-32-word scratch,
+  including complex compositions and small additions).
+round14_ab2_base_{1,2}.csv / round14_ab2_add_from512_{1,2}.csv: add + complex + recurrence, policy v2
+  (addition workspace padded only from 512 bits).
+Accepted policy v3 = v2 with complex compositions (cmul/cdiv, recurrence) using unpadded mul/div, so their
+code below 512 bits is identical to the base; real mul/square/div gains are those of v1/v2.

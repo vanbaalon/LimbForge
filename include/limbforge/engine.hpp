@@ -6,10 +6,12 @@
 #include <stdexcept>
 #define LIMBFORGE_RESIDENT_API 1
 namespace limbforge {
-enum class Operation { add, sub, mul, div, complex_add, complex_mul, complex_div, square, sqrt };
-inline bool operation_is_complex(Operation op){return int(op)>=4&&int(op)<=6;}
+// fma/fms: RN(a*b +/- c); complex_fma/complex_fms: each component one rounding of its exact value.
+enum class Operation { add, sub, mul, div, complex_add, complex_mul, complex_div, square, sqrt, fma, fms, complex_fma, complex_fms };
+inline bool operation_is_complex(Operation op){return (int(op)>=4&&int(op)<=6)||op==Operation::complex_fma||op==Operation::complex_fms;}
 inline bool operation_is_unary(Operation op){return op==Operation::square||op==Operation::sqrt;}
-inline bool operation_is_valid(Operation op){return int(op)>=0&&int(op)<=8;}
+inline bool operation_is_ternary(Operation op){return int(op)>=9&&int(op)<=12;}
+inline bool operation_is_valid(Operation op){return int(op)>=0&&int(op)<=12;}
 struct Timing { double gpu_seconds, wall_seconds; };
 struct EngineOptions { unsigned threads_per_threadgroup=0; bool cooperative_reductions=true; }; // 0 selects the default policy.
 struct PipelineInfo { unsigned simd_width,max_threads,threads_per_threadgroup; };
@@ -48,7 +50,7 @@ public:
 class CommandBatch {
     struct Impl;std::unique_ptr<Impl> impl_;
     explicit CommandBatch(std::unique_ptr<Impl> impl);
-    void encode(int,bool,Operation,const std::shared_ptr<detail::BufferStorage>&,
+    void encode(int,bool,Operation,const std::shared_ptr<detail::BufferStorage>&,const std::shared_ptr<detail::BufferStorage>&,
                 const std::shared_ptr<detail::BufferStorage>&,const std::shared_ptr<detail::BufferStorage>&,std::size_t);
     void encode_tree_sum(int,bool,const std::shared_ptr<detail::BufferStorage>&,
                          const std::shared_ptr<detail::BufferStorage>&,std::size_t);
@@ -56,14 +58,20 @@ class CommandBatch {
 public:
     ~CommandBatch();CommandBatch(CommandBatch&&)noexcept;CommandBatch& operator=(CommandBatch&&)noexcept;
     template<class T> void run(Operation op,const Buffer<T>& a,const Buffer<T>& b,Buffer<T>& out){
-        if(operation_is_unary(op))throw std::invalid_argument("use the unary run overload");
+        if(operation_is_unary(op)||operation_is_ternary(op))throw std::invalid_argument("operation requires a different number of inputs");
         if(a.size()!=b.size()||a.size()!=out.size())throw std::invalid_argument("buffer counts must match");
-        encode(detail::Format<T>::bits,detail::Format<T>::complex,op,a.storage_,b.storage_,out.storage_,a.size());
+        encode(detail::Format<T>::bits,detail::Format<T>::complex,op,a.storage_,b.storage_,a.storage_,out.storage_,a.size());
+    }
+    // fma/fms/complex_fma/complex_fms: out = a*b +/- c. Any operand may alias out.
+    template<class T> void run(Operation op,const Buffer<T>& a,const Buffer<T>& b,const Buffer<T>& c,Buffer<T>& out){
+        if(!operation_is_ternary(op))throw std::invalid_argument("operation does not take three inputs");
+        if(a.size()!=b.size()||a.size()!=c.size()||a.size()!=out.size())throw std::invalid_argument("buffer counts must match");
+        encode(detail::Format<T>::bits,detail::Format<T>::complex,op,a.storage_,b.storage_,c.storage_,out.storage_,a.size());
     }
     template<class T> void run(Operation op,const Buffer<T>& a,Buffer<T>& out){
         if(!operation_is_unary(op))throw std::invalid_argument("operation requires two inputs");
         if(a.size()!=out.size())throw std::invalid_argument("buffer counts must match");
-        encode(detail::Format<T>::bits,detail::Format<T>::complex,op,a.storage_,a.storage_,out.storage_,a.size());
+        encode(detail::Format<T>::bits,detail::Format<T>::complex,op,a.storage_,a.storage_,a.storage_,out.storage_,a.size());
     }
     // Adjacent pairs are rounded at each tree level; an odd tail is copied.
     // The output has one element. An empty input produces canonical zero.
@@ -89,6 +97,7 @@ public:
     // Bits must be a multiple of 32 in [64,1024]. Binary struct layouts above.
     Timing run(int bits,Operation op,const void* a,const void* b,void* out,std::size_t count);
     Timing run_unary(int bits,Operation op,const void* a,void* out,std::size_t count);
+    Timing run_ternary(int bits,Operation op,const void* a,const void* b,const void* c,void* out,std::size_t count);
     // Four seeds / instance. Adjacent states_per_weight instances share weights;
     // count must be divisible by states_per_weight. Layout is seeds[j*count+i],
     // weights[(step*4+j)*(count/states_per_weight)+i/states_per_weight].

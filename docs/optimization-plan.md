@@ -247,8 +247,8 @@ For BSolver (≈128 lanes × 600 steps) the GPU runs ~128 threads. Two complemen
 | Sprint | T1 kernels (owns `core.hpp`) | T2 runtime (`engine.*`) | T3 consumer prims | T4 linear algebra |
 |---|---|---|---|---|
 | 0 | commit this plan (`docs/optimization-plan.md`) and `tips.md` | — | — | — |
-| 1 | A1 ✓, A2 ✓ (round 13), A3; **B0** | C1 operand descriptors | D1 bridge ✓ (round 13-D1) | — |
-| 2 | B3/B4 (under gpu-codegen rules) | C2, C3, C4 | D2 fma (CPU+ref first) | — |
+| 1 | A1 ✓, A2 ✓ (round 13), A3; B0 ✓ (round 14) | C1 operand descriptors | D1 bridge ✓ (13-D1); D2 fma ✓ (round 15) | — |
+| 2 | B3/B4 (under gpu-codegen rules); B0 for `sqrt`/`pack` | C2, C3, C4 | D2 tuning; D3 segmented dot | — |
 | 3 | B5 short product, B6 | C7 prewarm | D3 segmented dot, D4 vector recurrence | D5 batched 4×4 |
 | 4 | B7 division | C5 CPU path + break-even table | D4 tangent mode, qscmx integration | D6 SYRK/GEMM |
 | 5 | E1 prototype; B8 | C6 layout v2 | — | D6 Cholesky |

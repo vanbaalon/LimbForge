@@ -45,7 +45,7 @@ struct Engine::Impl {
     id<MTLCommandQueue> queue;
     std::map<int,id<MTLLibrary>> libraries;
     std::map<std::pair<int,int>,id<MTLComputePipelineState>> pipelines;
-    id<MTLBuffer> buffers[3];
+    id<MTLBuffer> buffers[4];
     std::shared_ptr<int> identity=std::make_shared<int>(0);
     explicit Impl(EngineOptions requested):options(requested) {
         unsigned n=options.threads_per_threadgroup;
@@ -74,7 +74,8 @@ struct Engine::Impl {
         else {
             MTLFunctionConstantValues* constants=[MTLFunctionConstantValues new];
             std::uint32_t op=operation==7&&bits!=384?2:operation;[constants setConstantValue:&op type:MTLDataTypeUInt atIndex:0];
-            function=[libraries[bits] newFunctionWithName:operation>=4&&operation<=6?@"complex_arithmetic":@"arithmetic" constantValues:constants error:&error];
+            NSString* name=operation>=4&&operation<=6?@"complex_arithmetic":operation==9||operation==10?@"fused_arithmetic":operation>=11?@"complex_fused":@"arithmetic";
+            function=[libraries[bits] newFunctionWithName:name constantValues:constants error:&error];
         }
         if(!function)throw std::runtime_error("Metal specialization: "+error_message(error));
         id<MTLComputePipelineState> state=[device newComputePipelineStateWithFunction:function error:&error];
@@ -83,7 +84,7 @@ struct Engine::Impl {
     }
     unsigned group_size(id<MTLComputePipelineState> state,int bits,int operation)const{
         NSUInteger width=state.threadExecutionWidth,maximum=state.maxTotalThreadsPerThreadgroup;
-        NSUInteger preferred=options.threads_per_threadgroup?options.threads_per_threadgroup:((operation==100||(bits>=384&&(operation==5||operation==6)))?width:NSUInteger(128));
+        NSUInteger preferred=options.threads_per_threadgroup?options.threads_per_threadgroup:((operation==100||(bits>=384&&(operation==5||operation==6||operation==11||operation==12)))?width:NSUInteger(128));
         if(preferred%width)throw std::invalid_argument("threadgroup size must be a multiple of pipeline SIMD width");
         NSUInteger result=std::min(preferred,maximum);result-=result%width;
         if(!result)throw std::runtime_error("pipeline cannot fit one SIMD group");
@@ -103,13 +104,14 @@ struct Engine::Impl {
         }
     }
     Timing dispatch(int bits,int operation,const void* a,std::size_t a_bytes,const void* b,std::size_t b_bytes,
-                    void* out,std::size_t out_bytes,std::size_t count,unsigned steps,unsigned states_per_weight=1) {
+                    void* out,std::size_t out_bytes,std::size_t count,unsigned steps,unsigned states_per_weight=1,const void* c=nullptr,std::size_t c_bytes=0) {
         @autoreleasepool {
             // Compilation is deliberately excluded from timings; cached per precision/operation.
             auto state=pipeline(bits,operation);
             auto start=std::chrono::steady_clock::now();
             reserve(0,a_bytes);if(b_bytes)reserve(1,b_bytes);reserve(2,out_bytes);
-            std::memcpy(buffers[0].contents,a,a_bytes);if(b_bytes)std::memcpy(buffers[1].contents,b,b_bytes);
+            if(c_bytes)reserve(3,c_bytes);
+            std::memcpy(buffers[0].contents,a,a_bytes);if(b_bytes)std::memcpy(buffers[1].contents,b,b_bytes);if(c_bytes)std::memcpy(buffers[3].contents,c,c_bytes);
             id<MTLCommandBuffer> command=[queue commandBuffer];
             id<MTLComputeCommandEncoder> encoder=[command computeCommandEncoder];
             if(!command||!encoder)throw std::runtime_error("Metal command allocation failed");
@@ -117,6 +119,7 @@ struct Engine::Impl {
             for(unsigned i=0;i<3;++i)[encoder setBuffer:buffers[i==1&&!b_bytes?0:i] offset:0 atIndex:i];
             Params params={std::uint32_t(count),std::uint32_t(operation),steps,std::uint32_t(count/states_per_weight),states_per_weight};
             [encoder setBytes:&params length:sizeof(params) atIndex:3];
+            if(c_bytes)[encoder setBuffer:buffers[3] offset:0 atIndex:4];
             NSUInteger group=group_size(state,bits,operation);
             [encoder dispatchThreads:MTLSizeMake(count,1,1) threadsPerThreadgroup:MTLSizeMake(group,1,1)];
             [encoder endEncoding];[command commit];[command waitUntilCompleted];
@@ -159,17 +162,18 @@ CommandBatch::CommandBatch(std::unique_ptr<Impl> p):impl_(std::move(p)){}
 CommandBatch::~CommandBatch()=default;
 CommandBatch::CommandBatch(CommandBatch&&)noexcept=default;
 CommandBatch& CommandBatch::operator=(CommandBatch&&)noexcept=default;
-void CommandBatch::encode(int bits,bool complex,Operation op,const std::shared_ptr<detail::BufferStorage>& a,
-                         const std::shared_ptr<detail::BufferStorage>& b,const std::shared_ptr<detail::BufferStorage>& out,std::size_t count){
+void CommandBatch::encode(int bits,bool complex,Operation op,const std::shared_ptr<detail::BufferStorage>& a,const std::shared_ptr<detail::BufferStorage>& b,
+                         const std::shared_ptr<detail::BufferStorage>& c,const std::shared_ptr<detail::BufferStorage>& out,std::size_t count){
     if(!impl_||impl_->submitted)throw std::logic_error("batch already submitted or moved");
     validate(bits,count);int operation=int(op);
     if(!operation_is_valid(op)||operation_is_complex(op)!=complex)throw std::invalid_argument("operation and buffer format mismatch");
-    impl_->retain(a);impl_->retain(b);impl_->retain(out);if(!count)return;
+    impl_->retain(a);impl_->retain(b);impl_->retain(c);impl_->retain(out);if(!count)return;
     auto state=impl_->engine->pipeline(bits,operation);
     if(!impl_->encoder){impl_->encoder=[impl_->command computeCommandEncoder];if(!impl_->encoder)throw std::runtime_error("Metal encoder allocation failed");}
     else [impl_->encoder memoryBarrierWithScope:MTLBarrierScopeBuffers];
     auto encoder=impl_->encoder;[encoder setComputePipelineState:state];
     [encoder setBuffer:a->buffer offset:0 atIndex:0];[encoder setBuffer:b->buffer offset:0 atIndex:1];[encoder setBuffer:out->buffer offset:0 atIndex:2];
+    if(operation_is_ternary(op))[encoder setBuffer:c->buffer offset:0 atIndex:4];
     Params params={std::uint32_t(count),std::uint32_t(operation),0,std::uint32_t(count),1};[encoder setBytes:&params length:sizeof(params) atIndex:3];
     NSUInteger group=impl_->engine->group_size(state,bits,operation);
     [encoder dispatchThreads:MTLSizeMake(count,1,1) threadsPerThreadgroup:MTLSizeMake(group,1,1)];
@@ -235,6 +239,7 @@ PipelineInfo Engine::pipeline_info(int bits,Operation op){
 Timing Engine::run(int bits,Operation op,const void* a,const void* b,void* out,std::size_t count) {
     validate(bits,count);int operation=int(op);
     if(!operation_is_valid(op))throw std::invalid_argument("unknown arithmetic operation");
+    if(operation_is_ternary(op))throw std::invalid_argument("use run_ternary for fused operations");
     if(!count)return {0,0};
     if(!a||(!b&&!operation_is_unary(op))||!out)throw std::invalid_argument("null arithmetic buffer");
     std::size_t stride=(bits/8+12)*(operation_is_complex(op)?2:1),bytes=checked_size(count,stride);
@@ -243,6 +248,13 @@ Timing Engine::run(int bits,Operation op,const void* a,const void* b,void* out,s
 Timing Engine::run_unary(int bits,Operation op,const void* a,void* out,std::size_t count){
     if(!operation_is_unary(op))throw std::invalid_argument("operation requires two inputs");
     return run(bits,op,a,nullptr,out,count);
+}
+Timing Engine::run_ternary(int bits,Operation op,const void* a,const void* b,const void* c,void* out,std::size_t count){
+    validate(bits,count);if(!operation_is_ternary(op))throw std::invalid_argument("operation does not take three inputs");
+    if(!count)return {0,0};
+    if(!a||!b||!c||!out)throw std::invalid_argument("null arithmetic buffer");
+    std::size_t stride=(bits/8+12)*(operation_is_complex(op)?2:1),bytes=checked_size(count,stride);
+    return impl->dispatch(bits,int(op),a,bytes,b,bytes,out,bytes,count,0,1,c,bytes);
 }
 Timing Engine::recurrence(int bits,const void* seeds,const void* weights,void* out,std::size_t count,unsigned steps,unsigned states_per_weight) {
     validate(bits,count);

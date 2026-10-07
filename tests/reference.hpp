@@ -53,6 +53,27 @@ template<int Bits> limbforge::Complex<Bits/32> complex(limbforge::Operation op,l
     return {real<Bits>(O::div,plus(times(a.re,b.re),times(a.im,b.im)),d),
             real<Bits>(O::div,minus(times(a.im,b.re),times(a.re,b.im)),d)};
 }
+// RN(a*b + c) or RN(a*b - c) with one rounding: mpfr_fma / mpfr_fms.
+template<int Bits> limbforge::Float<Bits> fused(const limbforge::Float<Bits>& a,const limbforge::Float<Bits>& b,const limbforge::Float<Bits>& c,bool subtract=false){
+    if(a.status|b.status|c.status)return limbforge::zero<Bits/32>(a.status|b.status|c.status);
+    ExponentRange range;MP x(Bits),y(Bits),z(Bits),r(Bits);limbforge::to_mpfr<Bits>(x.x,a);limbforge::to_mpfr<Bits>(y.x,b);limbforge::to_mpfr<Bits>(z.x,c);
+    if(subtract)mpfr_fms(r.x,x.x,y.x,z.x,MPFR_RNDN);else mpfr_fma(r.x,x.x,y.x,z.x,MPFR_RNDN);
+    return limbforge::from_mpfr<Bits>(r.x);
+}
+// RN(a*b + c*d + e) with one rounding: exact products at 2*Bits, then a correctly rounded mpfr_sum.
+template<int Bits> limbforge::Float<Bits> dot2_add(const limbforge::Float<Bits>& a,const limbforge::Float<Bits>& b,const limbforge::Float<Bits>& c,
+                                                   const limbforge::Float<Bits>& d,const limbforge::Float<Bits>& e){
+    limbforge::word status=a.status|b.status|c.status|d.status|e.status;if(status)return limbforge::zero<Bits/32>(status);
+    ExponentRange range;MP xa(Bits),xb(Bits),xc(Bits),xd(Bits),xe(Bits),p(2*Bits),q(2*Bits),r(Bits);
+    limbforge::to_mpfr<Bits>(xa.x,a);limbforge::to_mpfr<Bits>(xb.x,b);limbforge::to_mpfr<Bits>(xc.x,c);limbforge::to_mpfr<Bits>(xd.x,d);limbforge::to_mpfr<Bits>(xe.x,e);
+    if(mpfr_mul(p.x,xa.x,xb.x,MPFR_RNDN)||mpfr_mul(q.x,xc.x,xd.x,MPFR_RNDN))throw std::runtime_error("inexact reference product");
+    mpfr_ptr terms[3]={p.x,q.x,xe.x};mpfr_sum(r.x,terms,3,MPFR_RNDN);
+    return limbforge::from_mpfr<Bits>(r.x);
+}
+template<int Bits> limbforge::Complex<Bits/32> complex_fused(const limbforge::Complex<Bits/32>& a,const limbforge::Complex<Bits/32>& b,limbforge::Complex<Bits/32> c,bool subtract=false){
+    if(subtract)c={limbforge::negate(c.re),limbforge::negate(c.im)};
+    return {dot2_add<Bits>(a.re,b.re,limbforge::negate(a.im),b.im,c.re),dot2_add<Bits>(a.re,b.im,a.im,b.re,c.im)};
+}
 // MPFR at each adjacent-pair level, matching the public tree_sum contract.
 template<int Bits,class T> T tree_sum(std::vector<T> input){
     constexpr bool is_complex=limbforge::detail::Format<T>::complex;

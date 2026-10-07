@@ -23,6 +23,17 @@ kernel void complex_arithmetic(device const Complex<N>* a [[buffer(0)]],
     switch(selected_operation){case 4:z=cadd(x,y);break;case 5:z=cmul(x,y);break;default:z=cdiv(x,y);}
     out[i]=z;
 }
+// Fused a*b +/- c with one rounding per real component; operands may alias out.
+kernel void fused_arithmetic(device const Number<N>* a [[buffer(0)]],device const Number<N>* b [[buffer(1)]],device Number<N>* out [[buffer(2)]],
+                             constant Params& p [[buffer(3)]],device const Number<N>* c [[buffer(4)]],uint i [[thread_position_in_grid]]) {
+    if(i>=p.count)return;
+    Number<N> x=a[i],y=b[i],z=c[i];out[i]=selected_operation==10?limbforge::fms(x,y,z):limbforge::fma(x,y,z);
+}
+kernel void complex_fused(device const Complex<N>* a [[buffer(0)]],device const Complex<N>* b [[buffer(1)]],device Complex<N>* out [[buffer(2)]],
+                          constant Params& p [[buffer(3)]],device const Complex<N>* c [[buffer(4)]],uint i [[thread_position_in_grid]]) {
+    if(i>=p.count)return;
+    Complex<N> x=a[i],y=b[i],z=c[i];out[i]=selected_operation==12?cfms(x,y,z):cfma(x,y,z);
+}
 kernel void recurrence(device const Complex<N>* seeds [[buffer(0)]],
                        device const Complex<N>* weights [[buffer(1)]],
                        device Complex<N>* out [[buffer(2)]],
