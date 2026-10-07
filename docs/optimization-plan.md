@@ -274,3 +274,334 @@ D6 ← D3 microkernel; C6 ← B (re-measure once compute is cheaper). T3 may add
   `./build/baxter_batch 16 600` timings vs `benchmarks/m5_max_baxter.txt`.
 - Docs updated each round: `docs/optimizations.md` (table row), `docs/numerics.md` (contracts),
   `docs/performance.md`/README (only warm/cold-labelled, MPFR-validated numbers).
+
+---
+
+## 7. Additional APIs motivated by BSolver and QSC (2026-10-07)
+
+**Design proposal, not implemented functionality.** This extends C/D/E rather than replacing them.
+LimbForge remains a standalone numerical library: model equations, gluing rules, branch selection,
+Newton/LM acceptance and truncation choices belong to consumers. API names below are sketches.
+Priorities are inferred from inspected consumer code, not measured speedup claims.
+
+### Public API design rule: general operations, specialised implementations
+
+BSolver and QSC supply demanding workloads and integration tests. The public API must express
+numerical operations that another application can use without knowing either solver.
+
+- **Separate three layers.** Core arithmetic supplies numbers, rounding and status; numerical operations
+  supply polynomials, series, reductions, recurrences and factorizations; consumer adapters compose
+  these into model equations. Keep adapters and solver fixtures in examples/integration code. Public
+  headers must not import solver types or expose coupling, twists, gluing, Baxter or QSC options.
+- **Make mathematical shape explicit.** Polynomial degree, batch count, recurrence order, vector
+  dimension, jet order, matrix dimensions, RHS count and series truncation are caller-supplied shapes.
+  A four-state or 4x4 kernel is an optimised specialisation of a documented operation. Describe the
+  supported shapes and backend limits explicitly; unsupported shapes fail before submission or use
+  an explicitly selected CPU backend. Do not imply arbitrary dimensions are already supported.
+- **Use common views and execution rules.** Reuse typed resident buffers, checked offsets/strides,
+  broadcasting, workspace queries and asynchronous submissions across operation families. Publish
+  coefficient ordering, transpose versus conjugate-transpose, aliasing, ownership and output layouts.
+  Provide a straightforward host-array entry point where practical, backed by the same contracts.
+- **Keep numerical choices explicit.** Precision, accumulation order, fused/composed arithmetic,
+  rank thresholds and backend choice must have documented semantics. Diagnostics describe numerical
+  quantities and failing indices; consumers decide convergence, acceptance and precision retries.
+  For example, `scaled_residual` takes residual and scale arrays supplied by the caller, rather than
+  assuming a Baxter equation or a QSC gluing condition.
+- **Keep plans independent of physical parameters.** Library caches key on operation, shape, precision,
+  layout and explicit data-generation identifiers. Consumers invalidate their model-dependent tables
+  when their own parameters change. A library plan must not interpret those parameters.
+- **Validate reuse without speculative abstraction.** Before stabilising a family, demonstrate it in
+  a solver fixture and an independent example. Start with a small concrete API and measured kernels;
+  add general-purpose composition through buffers and plans rather than a new GPU expression language.
+
+| API family | Independent example demonstrating the same contract |
+|---|---|
+| Polynomial values and jets | Batched response-polynomial evaluation and local Taylor expansions |
+| Scalar/vector recurrences | Time-dependent linear state updates and transfer-matrix chains |
+| Truncated series / Toeplitz operations | Formal power-series arithmetic and finite causal convolution |
+| Norms and status summaries | Batched linear-system residual diagnostics |
+| Reusable QR / LU / Cholesky | Multiple-RHS least squares and dense linear systems |
+| Casts and execution plans | Repeated numerical pipelines at an explicitly chosen precision |
+
+These examples are planned acceptance fixtures, not claims of implemented features. The supported
+shape subset can grow independently of specialised fast paths, while each public contract stays useful
+outside the motivating solvers. Prioritise the intersection of demonstrated consumer value and reuse.
+
+### Source evidence
+
+| Consumer code | Repeated operation or missing capability |
+|---|---|
+| BSolver4D `cpp/numeric.hpp`: `eval`, `polynomialJet`, `productJet` | Polynomial evaluation and Taylor coefficients through second order |
+| BSolver4D `cpp/baxter.hpp`: `largeAllJets`, `lattice`, `derivativeGrid`, `jetLattice` | Shared asymptotic seeds; selected trajectory outputs; recurrence jets in both shift directions |
+| BSolver4D `cpp/baxter.hpp`: `omega`, `newton`, `recurrenceResidual` | Same matrix with four RHS; central differences; maximum and scaled residual reductions |
+| qsccpp `include/series.hpp`: `ser_mul`, `ser_inv`, Laurent `LS` | Truncated convolution and inversion with explicit known coefficient ranges |
+| qsccpp `include/mx.hpp`: `large_tri`, `cons`, `toe_mul`, `mul_toe` | Lower-triangular products/solves and Toeplitz structure |
+| qsccpp `include/mx.hpp`: `QR`, `makeQRD`, `project`, `solve` | Reused QR; many RHS for the constraint chain rule; real/imaginary Jacobian columns |
+| qsccpp `include/mx.hpp`: `glue_fit`, `glue_modes`, damping trials in `solve` | Residual norms, separate unfitted-mode diagnostics, repeated same-shape evaluations |
+
+Paths refer to the local consumer checkouts; their equations are evidence for demand, not library dependencies.
+
+### S1. Polynomial evaluation with jets — first additional compute API
+
+Sketch: `poly_eval(coeffs, points, out)` and `poly_eval_jet<2>(coeffs, points, jets)`.
+Accept shared coefficient sets, batched points and C1 views. Coefficients use ascending powers.
+Jets mean Taylor coefficients `(f, f', f''/2!)`, matching BSolver, with a compile-time order cap of
+two initially. Use simultaneous Horner evaluation, updating higher jet orders first so each update
+uses the previous state. This avoids separate value/derivative passes and explicit power tables.
+
+- First kernel: real and complex Horner, shared coefficients, optional jets. No transcendental dependency.
+- Inverse-power evaluation is explicit `points = 1/u`; jets are with respect to that argument.
+  A consumer must apply the chain rule and its exponential/power prefactor to obtain derivatives in `u`.
+- Offer a documented composed arithmetic mode matching existing consumer operations and an explicit
+  fused mode after D2 is certified. Each has its own reference; fusion can change output bits.
+- QSC already precomputes power tables: benchmark Horner against D3 shared-table dots before choosing
+  either for that workload. Keep both available when the table is reused across many Jacobian columns.
+- Gate: degrees 0, 1, 23, 31, 61 and 100; empty polynomial = zero; cancellation, complex points,
+  and analytic jet identities, against independent MPFR/MPC implementations.
+
+### S2. Recurrence outputs and jets — extend the existing recurrence APIs
+
+Sketch: `RecurrencePlan::run(seeds, weights, output_selection)` and
+`run_jets<2>(seed_jets, weight_jets, output_selection)`. This adds capabilities to the scalar ring
+recurrence and D4 vector recurrence; it is not a second competing recurrence abstraction.
+
+- Select final state, final ring, an explicit ordered list of step indices, or full trajectory.
+  Define step zero as the seed state and every later index as the state after that many updates.
+  A selected ring must preserve the documented logical order, independently of physical ring rotation.
+- Iterate forward or reverse through coefficient views, preserving sequential arithmetic within each
+  trajectory. Outputs remain resident, so matching/solves/reductions can follow in the same batch.
+- Normalised Taylor jets use truncated product convolution. Differentiate a division using the
+  triangular coefficient relation with one shared reciprocal of the zeroth-order denominator;
+  report a zero denominator per trajectory. This covers BSolver's `jetLattice` pole calculations.
+- Bound registers and scratch: separate order-0/1/2 kernels and an explicit workspace requirement;
+  benchmark fused jets against separate passes before adopting fusion at each precision.
+- D4 forward tangents cover parameter directions; S2 jets cover a scalar Taylor expansion. Keep that
+  distinction explicit rather than pretending that either already supplies a complete solver Jacobian.
+
+### S3. Structured series algebra — general kernels, QSC-driven priority
+
+Sketch: `convolve_truncated(a,b,n,out)`, `series_inverse(a,n,out)`,
+`toeplitz_apply(coeffs,x,out)` and `triangular_solve(A,B,out)` with multiple RHS.
+
+Start with direct convolution and fixed-order triangular kernels at the small series lengths seen
+in these solvers. Parallelise independent output coefficients and series; respect sequential
+dependencies in inversion and triangular solves. Reuse D2/D3 accumulation contracts.
+
+Treat Laurent valuation and the range of known coefficients as metadata. Truncation is a mathematical
+contract separate from floating-point precision: never fill an unknown coefficient with zero.
+Initial low-level kernels can take ordinary coefficient arrays; a Laurent wrapper comes only when
+range propagation rules have independent tests. Support shared triangular matrices across RHS,
+exact zero-pivot status, and deterministic reductions. FFT convolution is a later measured alternative,
+requiring its own accuracy contract; it is not a prerequisite for this family.
+
+### S4. Device-side convergence summaries — small API, broad usefulness
+
+Sketch: `norm_inf`, `norm2`, `scaled_residual`, and `summarize_status`, with optional segmented outputs.
+Return multiprecision scalars and a status summary in resident buffers; host double conversion is an
+explicit presentation operation. QSC currently converts several norms to double, while BSolver uses
+maximum absolute residuals and a separate scaled recurrence residual.
+
+- Define complex infinity norm as `max_i |z_i|`, separately from a componentwise max norm.
+- For the 2-norm, use exponent scaling and a fixed reduction tree to avoid preventable intermediate
+  overflow/underflow. Document every rounding step; this does not promise a correctly rounded exact norm.
+- Specify empty-input values, exact tie rules for argmax, and zero-scale handling. Aggregate all existing
+  fatal status bits and the first failing index; failed lanes must not disappear from a norm reduction.
+- Support threshold comparison on-device, followed by one small readback for the host's acceptance
+  decision. Damping/line-search order remains the consumer's existing order, even if trials run in parallel.
+
+### S5. Reusable factorizations and accurate least squares — promote QR in D6
+
+Sketch: `factor_qr(A, workspace, options) -> QRFactor`, `factor.solve(B)`,
+`factor.apply_q(B, transpose)`, plus factor/solve separation for D5 LU and D6 Cholesky.
+Both real and complex multiple-RHS operations matter: QSC explicitly factors `JCD` once and solves
+each column of `JCF`; BSolver's Omega construction solves the same 4x4 matrix four times.
+
+Introduce full-rank Householder QR first; then deterministic column pivoting with explicit rank
+tolerance and per-factor rank/status. Rank-deficient least squares needs a separately specified
+complete orthogonal factorization or SVD path; basic pivoted QR alone must not claim minimum-norm solutions.
+[LAPACK's least-squares API](https://www.netlib.org/lapack/lug/node27.html) distinguishes these contracts
+and supports multiple RHS. Provide reusable factor objects, rather than silently caching by buffer address:
+updating A invalidates its factor unless the caller explicitly supplies a new generation.
+
+For LM, offer QR of the augmented system `[J; sqrt(mu) D]`, with the consumer supplying its damping
+diagonal D, alongside D6 normal equations. Compare linear residual and solver convergence near difficult
+points before choosing a default. CPU factorization with resident GPU products is a valid first backend;
+move QR to the GPU only if end-to-end timing justifies it. Optional iterative refinement must recompute
+residuals at an explicitly higher supported precision and report stagnation, not certify the entire solver.
+
+### S6. Explicit precision conversion and reusable execution plans
+
+Two runtime additions make the above practical across many iterations:
+
+1. `cast<ToBits>(input,out)`: exact widening, nearest-even narrowing, componentwise for complex values,
+   with existing status propagation and exponent-overflow checks. A consumer may explicitly switch among
+   supported 32-bit-multiple precisions, rebuild precision-specific tables, and retry. Widening rounded
+   data cannot recover lost digits; verification must recompute from the original inputs.
+2. `ExecutionPlan`: reusable operation descriptions, buffer bindings and preallocated workspace for
+   same-shape repeated evaluations. Separate preparation, rebinding and submission. Validate shapes,
+   precision, aliasing and RAW/WAR/WAW dependencies; retain resources until completion. The first backend
+   may re-encode each submission with cached metadata. Measure that before adding a Metal indirect
+   command-buffer backend; do not assume arbitrary existing kernels can be captured and replayed.
+
+Plans complement `CommandBatch` and C7 pipeline prewarming. They accept existing library operations;
+arbitrary CPU residual callbacks cannot execute on the GPU. Shared tables require explicit data-generation
+keys; consumers invalidate their tables when model parameters, truncation, nodes or precision change. Benchmark preparation
+cost, amortisation, replay/encoding cost and workspace bytes separately.
+
+### Later: matrix-free sensitivities, only after the forward path is productive
+
+Extend D4 with blocks of directional tangents (`Jv`); consider an adjoint recurrence (`J^T v`) with
+checkpoint/recompute control if profiling shows dense Jacobian storage or construction dominates.
+Derivatives refer to the mathematical recurrence evaluated with a specified rounded arithmetic sequence,
+not the discontinuous derivative of a floating-point program. QSC's Hermitian fit and antiholomorphic
+rows require real parameter directions and real inner-product adjoints; a holomorphic shortcut is unsafe
+for the complete residual. End-to-end JVP/VJP requires consumer derivatives of seeds, constraints,
+matching and fits, not just a differentiated recurrence kernel. Do not replace the current solver algorithm
+until directional finite-difference checks and convergence comparisons pass.
+
+### Implementation order and benchmark gates
+
+**First establish fixtures**, then add S1 and S4; extend recurrence outputs before recurrence jets;
+build S3 on D2/D3; introduce factor handles and multiple-RHS solves alongside D5/D6, bringing QR ahead
+of optional GPU Cholesky if consumer timings support it. Add casts early where needed and execution
+plans after the repeated operation sequence is known. Matrix-free adjoints remain a later project.
+
+For each API round, record a CPU MPFR/MPC baseline and the current composition of existing operations
+before implementation. Use real consumer input shapes and cancellation-heavy cases at 224/256 bits
+for QSC and 384 bits for the existing BSolver benchmark, plus the all-precision checks in section 6.
+Include small BSolver batches and large QSC Jacobian batches, shared tables, multiple RHS, memory use,
+device time and full wall time. Compare serial and available multicore CPU paths under equivalent
+arithmetic contracts; charge setup and conversions consistently. A new arithmetic mode must be tested
+against its own independent reference, not assumed bit-identical to an older composition.
+
+After every accepted round, rerun affected solver fixtures and the existing regression suite. Check
+BSolver's independent on-shell verification with increased terms/shifts and QSC's unfitted mode diagnostics,
+not only an internal recurrence identity. Working precision and small residuals alone are not certified
+solution accuracy. Publish performance claims only after correctness and matched CPU/GPU timing pass.
+Before stabilising each API family, also run its independent example from the reuse table above and
+verify that its public interface requires no solver-specific types or assumptions.
+
+---
+
+## 8. Literature-driven experiments (surveyed 2026-10-07)
+
+These are research candidates, not accepted speedups. The target machine was checked locally:
+Apple M5 Max, macOS 26.6.2, installed macOS SDK 26.5. Separate what each source demonstrates
+from the proposed Metal adaptation. Preserve the generic public operations from section 7.
+
+### L1. Ozaki Scheme II / residue-number GEMM — highest-upside new direction
+
+[Ozaki, Uchino and Imamura (2025)](https://arxiv.org/abs/2504.08009) reconstruct matrix products
+using modular arithmetic and the Chinese remainder theorem, with low-precision GEMMs as building
+blocks. A [2026 multiple-precision CPU follow-up](https://arxiv.org/abs/2609.27831) tests 53–2048-bit
+significands; its shared-exponent conversion introduces an accuracy issue, and the reported within-one-ulp
+results are not a proof of correct rounding. The [2026 FP8 adaptation](https://arxiv.org/abs/2603.10634)
+extends the approach to FP8 matrix units.
+
+**Our proposed adaptation:** an experimental backend for dense `gemm`/`syrk`, retaining the limb
+backend for pointwise arithmetic and recurrences. Apple documents M5 acceleration through
+[Metal TensorOps](https://developer.apple.com/videos/play/wwdc2026/330/), including quantized inputs.
+That API availability alone does not establish exact integer accumulation or an applicable error bound.
+
+First probe the installed SDK's supported operand/accumulator types and small integer products.
+Then derive safe digit sizes, bounded inner-product lengths, and partial-sum bounds. If an FP16/FP32
+route is used, every intermediate partial sum must fit its exactness bound; quantized input support
+must not be mistaken for INT8-to-INT32 arithmetic. Check cancellation and dequantization semantics.
+Only proceed if those requirements can be established, rather than relying on empirical agreement alone.
+
+At 224/256/384 bits, include all residue planes, reconstruction, scaling and transfers in wall time.
+The CPU follow-up notes that byte-sized coprime moduli alone have insufficient reconstruction capacity
+for its higher precisions, so include multi-digit residue costs. Account for the full input exponent spread:
+shared-exponent conversion can lose small entries. Either prove a rounding decision with conversion-error
+bounds and an exact fallback, or expose a separately named accuracy mode. Dense matrices are the initial
+target; four-component updates are too small to assume the same benefit.
+
+### L2. Certified approximations with compacted exact retries
+
+The established [MPFR rounding-certification mechanism](https://mpfr.org/mpfr-current/mpfr.html#Rounding_002dRelated-Functions)
+determines whether an approximation with a known error bound permits the requested rounding.
+This is an older idea, not a newly published GPU algorithm.
+
+**Our proposed GPU design:** extend B5's bounded partial-product idea to selected fused dots and
+matrix outputs. Compute an approximation and an outward error enclosure; accept only when all values
+in that enclosure round to the same target value, including ties and exponent boundaries. Compact
+uncertain output indices into a second exact kernel instead of making a whole SIMD group follow a
+long fallback branch. Replay from original inputs. Do not certify only the last stage of a rounded
+recurrence and assume the whole trajectory has the same bits.
+
+This can preserve a single-round exact-dot contract. It does not automatically preserve D3's sequential
+FMA contract, which needs its own validation. Measure retry rates, enclosure cost and compaction cost;
+adversarial halfway and catastrophic-cancellation cases must exercise the fallback. Approximate low
+precision alone cannot generally supply hundreds of correct bits.
+
+### L3. Delayed normalisation and exact dot accumulation
+
+[MPFR's sum/dot interface](https://mpfr.org/mpfr-current/mpfr.html#Arithmetic-Functions) supplies useful
+single-round reference semantics; its dot operation is marked experimental and does not handle
+intermediate overflows/underflows, so supplement it with independently exact references for those cases.
+
+**Our experiment:** accumulate unrounded limb products in bounded integer bins or a carry-save
+representation, then propagate carries and normalise once per output. This could reduce repeated
+packing in long dots, Gram products and Fourier projections. Benchmark an opt-in `exact_dot` mode
+alongside sequential and pairwise modes; all three have distinct rounding contracts.
+
+Do not allocate a dense accumulator spanning the library's entire exponent range. Start with measured
+bounded exponent spans, prove accumulator capacity including segment length, and provide an exact
+wider/sparse fallback. No silent discard of tiny terms: cancellation can expose them. Delayed carry
+propagation also requires an explicit overflow bound before any integer addition is deferred.
+
+### L4. Cooperative limb arithmetic with scan-based carries
+
+[Oancea and Watt, GPU Implementations for Midsize Integer Addition and Multiplication (2024)](https://cs.uwaterloo.ca/~smwatt/pub/reprints/2024-langcompan-gpu-arith.pdf)
+describes parallel carry propagation and register-oriented multiplication work partitioning.
+Its largest-integer results do not predict performance at LimbForge's 64–1024 bits.
+
+Use it to make E1 concrete: prototype 4/8/16/32 cooperating SIMD lanes per number, with an associative
+generate/propagate carry scan and a bounded number of limbs per lane. Preserve the exact integer result
+before existing packing. Measure recurrence step latency at small trajectory counts separately from
+large-batch throughput. This is an alternative backend selected by shape, not a universal replacement
+for one-thread-per-number kernels. FFT multiplication is not justified at current widths by that paper.
+
+### L5. Multiple-component arithmetic — useful comparison, hardware-specific port
+
+[Chen and Verschelde, Multiple Double Arithmetic on NVIDIA Tensor Cores (2026)](https://arxiv.org/abs/2607.06881)
+separates matrix work from expansion renormalisation using an Ozaki-like approach on FP64 tensor cores.
+Treat this as an alternate representation/backend study; the demonstrated FP64 hardware path is not
+an Apple implementation. An FP32-component Metal variant would require new range, error and rounding
+analysis. Do not equate component count with a guaranteed number of accurate bits or replace the public
+limb representation without evidence that conversion and renormalisation costs pay off.
+
+### L6. Mixed-precision linear solves — established method, modern accelerator opportunity
+
+[Carson and Higham (2018)](https://epubs.siam.org/doi/10.1137/17M1140819) analyses iterative refinement
+using distinct factorization, working and residual precisions, with explicit convergence conditions.
+This supplies a foundation for S5's refinement proposal rather than a new core arithmetic contract.
+
+Try a cheaper factorization/preconditioner and higher-precision residuals on the linear systems built
+by consumers. Benchmark supported limb precisions first; an accelerated native-precision factorization
+is a separate backend experiment. Report convergence/stagnation and fall back when needed. A small
+backward error does not imply small forward error for an ill-conditioned system, and this experiment
+does not establish correctness of a nonlinear solver's branch selection or truncation.
+
+### Recent comparator: GPU multiprecision already has active implementations
+
+[Kouya, Construction and Performance Evaluation of an Arbitrary-Precision Floating-Point Arithmetic Environment on CUDA (2026)](https://arxiv.org/abs/2608.00085)
+describes `mpc_cuda`, per-thread scratch arenas and compile-time fixed-precision types. It claims
+host-identical arithmetic for those types but gives a different accuracy contract for fixed-precision
+elementary functions. These are reported CUDA results, not reproduced Metal benchmarks.
+
+Use its contracts and workloads when designing comparisons. LimbForge's fixed-size core is already
+allocation-free; adding an arena to basic arithmetic would not address the same bottleneck. Explicit
+workspace sizing/reuse may matter later for transcendental or dynamically sized operations. Match
+precision, rounding, operation order and timing boundaries before comparing implementations.
+
+### Research order
+
+Run a small **L1 Metal arithmetic-capability probe** first; stop that branch if exactness requirements
+cannot be met or established. In parallel conceptually, L4 supplies the strongest direct candidate for
+small-batch recurrence latency. Next measure L3 packing/normalisation cost before investing in L2's
+certified retry machinery. L6 depends on the linear-algebra APIs; L5 remains a comparison study.
+
+For every experiment: preserve a trusted baseline, specify the arithmetic contract, test against an
+independent reference on the physical GPU, then measure total wall time and memory on representative
+shapes. No performance ratios from another GPU or paper are promised for this Mac.
