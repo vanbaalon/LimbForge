@@ -1,4 +1,20 @@
 #include "benchmark_support.hpp"
+template<int Bits,bool IsComplex>void compare(Engine& cooperative,Engine& global,std::size_t count){
+    using T=std::conditional_t<IsComplex,Complex<Bits/32>,Float<Bits>>;
+    std::mt19937_64 rng(20261007+Bits);std::vector<T> input(count);
+    for(auto& x:input){if constexpr(IsComplex)x={reference::random_number<Bits>(rng,5),reference::random_number<Bits>(rng,5)};else x=reference::random_number<Bits>(rng,5);}
+    auto expected=reference::tree_sum<Bits>(input);
+    Buffer<T> x[]={global.make_buffer<T>(count),cooperative.make_buffer<T>(count)},out[]={global.make_buffer<T>(1),cooperative.make_buffer<T>(1)};
+    Engine* engines[]={&global,&cooperative};std::vector<double> gpu[2],wall[2];
+    for(auto& buffer:x)buffer.upload(input.data(),count);
+    for(int repeat=-2;repeat<9;++repeat)for(int k=0;k<2;++k){int method=(repeat+2+k)%2;
+        auto b=engines[method]->batch();b.tree_sum(x[method],out[method]);auto t=b.submit().wait();T actual;out[method].download(&actual,1);
+        bool equal;if constexpr(IsComplex)equal=reference::equal_complex<Bits>(actual,expected);else equal=reference::equal<Bits>(actual,expected);
+        if(!equal)throw std::runtime_error("interleaved reduction MPFR mismatch");
+        if(repeat>=0){gpu[method].push_back(t.gpu_seconds);wall[method].push_back(t.wall_seconds);}
+    }
+    for(int method=0;method<2;++method)std::cout<<Bits<<','<<count<<','<<(IsComplex?"complex":"real")<<','<<(method?"cooperative":"global")<<",9,"<<quantile(gpu[method],.5)<<','<<quantile(wall[method],.5)<<std::endl;
+}
 template<int Bits,bool IsComplex>void cases(Engine& e,Workers& workers,std::size_t count){
     using T=std::conditional_t<IsComplex,Complex<Bits/32>,Float<Bits>>;
     std::mt19937_64 rng(20261007+Bits);std::vector<T> input(count);
@@ -37,8 +53,12 @@ template<int Bits,bool IsComplex>void cases(Engine& e,Workers& workers,std::size
         std::string label=IsComplex?"complex_tree_sum":"tree_sum";if(!method)label+="_resident";
         report(Bits,label.c_str(),count,levels,workers,samples);}
 }
-int main(){try{Engine e;Workers workers(std::max(1u,std::thread::hardware_concurrency()));
-    std::cerr<<e.device_name()<<"; "<<workers.size()<<" persistent MPFR workers; fixed pair tree; serial tail below workers*16; 2 warmups, 9 samples, four methods interleaved, every sample checked\n";
+int main(int argc,char** argv){try{bool cooperative=true,comparison=false;if(argc==2&&std::string(argv[1])=="--global-tree")cooperative=false;else if(argc==2&&std::string(argv[1])=="--compare")comparison=true;else if(argc!=1)throw std::invalid_argument("usage: reduction_limbforge [--global-tree|--compare]");Engine e({0,cooperative});
+    if(comparison){Engine global({0,false});std::cerr<<e.device_name()<<"; interleaved cooperative/global resident reductions; every dispatch checked against MPFR\n";
+        std::cout<<std::setprecision(10)<<"bits,count,format,method,samples,gpu_median_s,wall_median_s\n";
+        for(auto n:{257u,4096u,65537u}){compare<256,false>(e,global,n);compare<256,true>(e,global,n);compare<384,false>(e,global,n);compare<384,true>(e,global,n);compare<1024,false>(e,global,n);compare<1024,true>(e,global,n);}return 0;}
+    Workers workers(std::max(1u,std::thread::hardware_concurrency()));
+    std::cerr<<e.device_name()<<"; cooperative="<<cooperative<<"; "<<workers.size()<<" persistent MPFR workers; fixed pair tree; serial tail below workers*16; 2 warmups, 9 samples, four methods interleaved, every sample checked\n";
     std::cout<<std::setprecision(10)<<"bits,operation,count,steps,samples,cpu_workers,cpu_serial_s,cpu_parallel_s,gpu_s,wall_median_s,wall_min_s,wall_p90_s\n";
     for(auto n:{257u,4096u,65537u}){cases<256,false>(e,workers,n);cases<256,true>(e,workers,n);cases<384,false>(e,workers,n);cases<384,true>(e,workers,n);cases<1024,false>(e,workers,n);cases<1024,true>(e,workers,n);}return 0;
 }catch(const std::exception& error){std::cerr<<error.what()<<'\n';return 1;}}

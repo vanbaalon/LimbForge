@@ -67,7 +67,10 @@ struct Engine::Impl {
             libraries[bits]=library;
         }
         NSError* error=nil;id<MTLFunction> function;
-        if(operation>=100)function=[libraries[bits] newFunctionWithName:operation==100?@"recurrence":operation==101?@"tree_sum_real":@"tree_sum_complex"];
+        if(operation>=100){
+            NSString* names[]={@"recurrence",@"tree_sum_real",@"tree_sum_complex",@"global_tree_sum_real",@"global_tree_sum_complex"};
+            function=[libraries[bits] newFunctionWithName:names[operation-100]];
+        }
         else {
             MTLFunctionConstantValues* constants=[MTLFunctionConstantValues new];
             std::uint32_t op=operation==7&&bits!=384?2:operation;[constants setConstantValue:&op type:MTLDataTypeUInt atIndex:0];
@@ -175,22 +178,30 @@ void CommandBatch::encode_tree_sum(int bits,bool complex,const std::shared_ptr<d
                                    const std::shared_ptr<detail::BufferStorage>& out,std::size_t count){
     if(!impl_||impl_->submitted)throw std::logic_error("batch already submitted or moved");
     validate(bits,count);impl_->retain(input);impl_->retain(out);
-    int operation=complex?102:101;auto state=impl_->engine->pipeline(bits,operation);
-    std::size_t stride=std::size_t(bits/8+12)*(complex?2:1);
+    bool cooperative=impl_->engine->options.cooperative_reductions;
+    int operation=(complex?102:101)+(cooperative?0:2);auto state=impl_->engine->pipeline(bits,operation);
+    unsigned group=impl_->engine->group_size(state,bits,operation);
+    if(cooperative){
+        unsigned limit=std::min(group,complex?64u:128u);group=1;while(group<=limit/2)group*=2;
+        if(group%state.threadExecutionWidth)throw std::runtime_error("reduction group cannot fit one SIMD group");
+    }
+    std::size_t span=cooperative?2*group:2;
+    auto reduced=[&](std::size_t n){return std::max(std::size_t(1),n/span+(n%span!=0));};
+    std::size_t stride=std::size_t(bits/8+12)*(complex?2:1),first=reduced(count),second=reduced(first);
     std::shared_ptr<detail::BufferStorage> scratch[2];
-    if(count>2){scratch[0]=impl_->engine->allocate(checked_size(count/2+count%2,stride));impl_->retain(scratch[0]);}
-    if(count>4){std::size_t half=count/2+count%2;scratch[1]=impl_->engine->allocate(checked_size(half/2+half%2,stride));impl_->retain(scratch[1]);}
+    if(first>1){scratch[0]=impl_->engine->allocate(checked_size(first,stride));impl_->retain(scratch[0]);}
+    if(second>1){scratch[1]=impl_->engine->allocate(checked_size(second,stride));impl_->retain(scratch[1]);}
     auto source=input;unsigned level=0;
     do {
-        std::size_t next=std::max(std::size_t(1),count/2+count%2);
+        std::size_t next=reduced(count);
         auto destination=next==1?out:scratch[level%2];
         if(!impl_->encoder){impl_->encoder=[impl_->command computeCommandEncoder];if(!impl_->encoder)throw std::runtime_error("Metal encoder allocation failed");}
         else [impl_->encoder memoryBarrierWithScope:MTLBarrierScopeBuffers];
         auto encoder=impl_->encoder;[encoder setComputePipelineState:state];
         [encoder setBuffer:source->buffer offset:0 atIndex:0];[encoder setBuffer:destination->buffer offset:0 atIndex:2];
         Params params={std::uint32_t(count),std::uint32_t(operation),0,0,1};[encoder setBytes:&params length:sizeof(params) atIndex:3];
-        unsigned group=impl_->engine->group_size(state,bits,operation);
-        [encoder dispatchThreads:MTLSizeMake(next,1,1) threadsPerThreadgroup:MTLSizeMake(group,1,1)];
+        if(cooperative)[encoder dispatchThreadgroups:MTLSizeMake(next,1,1) threadsPerThreadgroup:MTLSizeMake(group,1,1)];
+        else [encoder dispatchThreads:MTLSizeMake(next,1,1) threadsPerThreadgroup:MTLSizeMake(group,1,1)];
         source=destination;count=next;++level;
     }while(count>1);
 }

@@ -31,6 +31,11 @@ void ordering_and_lifetime(Engine& e){
     std::vector<F> input={big,one,negative,one};auto x=e.make_buffer<F>(4),out=e.make_buffer<F>(1);x.upload(input.data(),4);
     auto batch=e.batch();batch.tree_sum(x,out);batch.submit().wait();F actual;out.download(&actual,1);
     require(reference::equal<384>(actual,zero<12>()),"reduction changed its rounding order");
+    auto maximum=one;maximum.exponent=1000000000;auto minus_maximum=maximum;minus_maximum.sign=-1;
+    std::vector<F> limits={maximum,maximum,minus_maximum,minus_maximum};x.upload(limits.data(),4);
+    auto overflow=e.batch();overflow.tree_sum(x,out);overflow.submit().wait();out.download(&actual,1);
+    require(reference::equal<384>(actual,reference::tree_sum<384>(limits)),"intermediate reduction overflow changed");
+    x.upload(input.data(),4);
     auto expected=input;for(auto& v:expected)v=reference::real<384>(Operation::square,v,v);
     auto sum=reference::tree_sum<384>(expected);sum=reference::real<384>(Operation::sqrt,sum,sum);
     auto dependent=e.batch();dependent.run(Operation::square,x,x);dependent.tree_sum(x,out);dependent.run(Operation::sqrt,out,out);
@@ -45,5 +50,7 @@ void ordering_and_lifetime(Engine& e){
     pending.wait();survivor.download(&actual,1);require(reference::equal<384>(actual,zero<12>()),"reduction scratch lifetime failure");
 }
 int main(){try{Engine e;widths<64>(e);check<1024>(e,65537);check<1024,true>(e,65537);ordering_and_lifetime(e);
+    for(auto group:{32u,64u,128u,256u}){Engine tuned({group});check<64>(tuned,4097);check<384>(tuned,4097);check<1024>(tuned,4097);check<1024,true>(tuned,4097);}
+    Engine global({0,false});check<64>(global,4097);check<384>(global,4097);check<1024>(global,65537);check<1024,true>(global,65537);ordering_and_lifetime(global);
     std::cout<<"All reductions passed.\n";return 0;
 }catch(const std::exception& ex){std::cerr<<ex.what()<<'\n';return 1;}}
