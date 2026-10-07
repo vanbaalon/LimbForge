@@ -539,6 +539,14 @@ least 5× faster than the limb GEMM baseline at n ≥ 512 and 256 bits, includin
   against a straightforward sequential-`fma` limb GEMM at n = 128…2048 (that baseline doubles as D6's
   first kernel). Cost model to check: ~136 int8 GEMMs ≈ 7 ms at n = 1000 versus ~0.4 s estimated for
   limb `fma` (to be measured).
+  **L1b result (round 18, `benchmarks/residue_gemm.mm`):** exact, equal to GMP on every checked output
+  (all 16,384 at n = 128). 33 moduli. n = 512: 4.2 ms vs 59 ms composed `mul`+`add` limb GEMM (14×) and
+  469 ms `fma` limb GEMM; n = 1024: 21 ms vs 419 ms (20×) / 3,759 ms; n = 2048: 104 ms. **Gate passed**
+  (baselines untiled, so the ratio is an upper estimate; a tiled limb GEMM is the fair D6 comparison).
+  At n = 1024 the int8 products take 6.2 ms (≈ 45 TOPS); Garner reconstruction (8.4 ms, 32-bit divisions)
+  and residue conversion (5.3 ms) dominate next: use Barrett/Montgomery reduction and fewer, wider limb
+  passes. Side finding: the generic `fma` is ~8× slower than composed `mul`+`add` in this loop, so D2
+  needs a specialised two-term path.
 - **L1c — floating-point layer.** Scale rows/columns to fixed point with exact handling of the input
   exponent spread (exponent bands or an exact fallback; never silent truncation), then one rounding of
   each exact dot product. This is the L3 `exact_dot` contract; reference: exact MPFR products plus
@@ -625,7 +633,7 @@ precision, rounding, operation order and timing boundaries before comparing impl
 
 ### Research order
 
-*Status (2026-10-07): the L1 capability probe passed (see L1); next are L1b and, independently, L4.*
+*Status (2026-10-07): L1 probe and L1b passed (see L1); next are L1c, L1b reduction costs, and L4 (in progress).*
 
 Run a small **L1 Metal arithmetic-capability probe** first; stop that branch if exactness requirements
 cannot be met or established. In parallel conceptually, L4 supplies the strongest direct candidate for

@@ -1,0 +1,9 @@
+Round 18 (plan L1b). Apple M5 Max, macOS 26.6.2, Release, 2026-10-07; host load average 140-258 (other work).
+./build/residue_gemm --size n --verify V (V = 16384 = every output at n = 128; 64 random outputs otherwise).
+Exact product of n x n signed 256-bit integer matrices: 33 primes <= 65279, balanced residues as two int8
+digits, three TensorOps int8 GEMMs per modulus (A1*B1, A0*B0, [A1 A0]*[B0;B1]), 32-bit combine, Garner
+reconstruction on the GPU. All checked outputs equal GMP. GPU device times, median of 3 command buffers;
+stage times are separate command buffers. Baselines: one thread per output, LimbForge 256-bit floating
+sequential fma or composed mul+add (not tiled); baseline fma spot-checked against the CPU core. Baselines
+round each step and so compute a different (floating) quantity: the comparison is a cost gate, not a
+like-for-like accuracy comparison. 0 = not run.
