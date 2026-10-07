@@ -24,6 +24,7 @@ benchmark inputs do not exercise the baseline's known exponent-boundary bug.
 | 10 | Fixed-order resident real/complex tree sums | Accepted, `ba14968`. Every precision, empty/odd inputs, cancellation, overflow, barriers, and scratch lifetimes validated. 180 ordinary plus 36 reduction benchmark rows. Many small dispatches limit performance. |
 | 11 | Cooperative shared-memory reduction with the same tree | Numerics validated, `46e1a82`: all-precision checks, 180 ordinary and 36 reduction rows, Metal validation, and two 36-row interleaved comparisons. Full power-of-two groups retain adjacent-pair order. Wider complex performance needs a fallback. |
 | 12 | Select the measured reduction policy | Accepted, `76e997b`. Cooperative real reductions and complex reductions through 384 bits; wider complex and inputs of size 0–2 use the global path. The 1024-bit complex cooperative trial was slower in both interleaved rechecks and is excluded from the default. |
+| 13 | Warm-clock sweep (`kernel_sweep`) and GPU codegen probe (`gpu_codegen_probe`) | Measurement and diagnosis, no library change; see [gpu-codegen.md](gpu-codegen.md). Cold single dispatches are 2–4× slower than warm. Runtime-indexed arrays of ≤ 32 words cause a 3–5× multiply/divide cliff at 288–480 bits. Comba failures are lost stores when a column-built product is consumed in registers; 32-bit `mulhi` products are not faster. |
 
 ## Exact arithmetic retained
 

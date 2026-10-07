@@ -1,0 +1,1 @@
+Apple M5 Max; warm sweep: 32 dispatches per command buffer, every output MPFR-checked

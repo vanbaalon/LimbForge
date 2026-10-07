@@ -1,0 +1,8 @@
+Round 13 (A1 metrology, A2 codegen probe). Apple M5 Max, macOS 26.6.2, Release build, 2026-10-07.
+Base revision f5663e4 plus uncommitted round-13 harnesses (committed with these files).
+round13_sweep.csv: ./build/kernel_sweep (65,536 values, 32 dispatches per command buffer after 0.2 s warm-up,
+  7 samples; cold column = single dispatch after 100 ms idle, 3 samples; recurrence: 4,096 lanes x 64 steps).
+  Every output checked against MPFR. The host was shared with other work during the run (load average ~40).
+round13_probe_variants.csv: ./build/gpu_codegen_probe (4,096 values, all widths, 7 variants).
+round13_probe_schoolbook_timing.csv: ./build/gpu_codegen_probe --variant V --count 65536 --time for
+  schoolbook, schoolbook_rolled, schoolbook_outer_rolled; "_us" rows give warm microseconds per dispatch.

@@ -137,6 +137,16 @@ Effort: S ≤ 1 day, M 2–4 days, L ≥ 1 week of agent work. Payoff estimates 
 
 ### Phase B — Core arithmetic kernels (benefit every consumer) — Track T1, after A1 (+A2 where noted)
 
+> **Round 13 outcome** ([gpu-codegen.md](gpu-codegen.md)): A1 and A2 are done. B1 is dropped (32-bit
+> `mulhi` products are not faster). B2 is not pursued (rolled Comba is slower; unrolled Comba hits a
+> compiler store bug). A new top item, **B0**, removes the register-array cliff.
+
+- **B0. Remove runtime-indexed small register arrays** — S/M, highest payoff. Apply rule 1 of
+  `gpu-codegen.md` to `mul`, `square`, `div` (`u`, `twice`), `aligned_add` workspaces, `sqrt`, and `pack`:
+  pad scratch to ≥ 33 words or fully unroll, chosen per width by warm `kernel_sweep`. The probe shows
+  3–4.7× faster 288–480-bit multiplication (384 bits: 104 → 35 µs). Validate in real, complex, chain,
+  and recurrence kernels at all 31 precisions.
+
 - **B1. 32-bit-native multiply-accumulate** (F3) — M. Rewrite schoolbook inner loop with `a*b`/`mulhi` and explicit 32-bit
   carries on Metal (keep CPU path or use the same code). Measure per precision with A1.
 - **B2. Product-scanning (Comba) multiply** — M, needs A2. Accumulators in registers, one store per column.
@@ -222,7 +232,8 @@ Each item: written contract → MPFR/MPC reference → CPU implementation in `co
 ### Phase E — Latency-bound workloads: cooperative intra-number arithmetic — Track T1, after B
 
 For BSolver (≈128 lanes × 600 steps) the GPU runs ~128 threads. Two complementary steps:
-- **E0 (consumer-side, S):** recommend BSolver batch all `u` points / Newton finite-difference evaluations into one
+- **E0 (consumer-side, S):** round 13 measured ~165 µs per 384-bit recurrence step independent of lane
+  count up to 4,096 lanes (saturation near 16,384). Recommend BSolver batch all `u` points / Newton finite-difference evaluations into one
   `recurrence` call (more trajectories per submission) — cheapest win; document in the BSolver integration notes.
 - **E1 (L, research):** one number per 8/16/32 SIMD lanes: limb-parallel multiply with `simd_shuffle` broadcasts, carry
   resolution with `simd_prefix_exclusive_sum`/ballot loops, normalisation via ballot + `clz`. Prototype `mul` + `add` in a
@@ -236,8 +247,8 @@ For BSolver (≈128 lanes × 600 steps) the GPU runs ~128 threads. Two complemen
 | Sprint | T1 kernels (owns `core.hpp`) | T2 runtime (`engine.*`) | T3 consumer prims | T4 linear algebra |
 |---|---|---|---|---|
 | 0 | commit this plan (`docs/optimization-plan.md`) and `tips.md` | — | — | — |
-| 1 | A1, A3, then A2 | C1 operand descriptors | D1 bridge (CPU only) | — |
-| 2 | B1, B3/B4/B2 (if A2 succeeded) | C2, C3, C4 | D2 fma (CPU+ref first) | — |
+| 1 | A1 ✓, A2 ✓ (round 13), A3; **B0** | C1 operand descriptors | D1 bridge ✓ (round 13-D1) | — |
+| 2 | B3/B4 (under gpu-codegen rules) | C2, C3, C4 | D2 fma (CPU+ref first) | — |
 | 3 | B5 short product, B6 | C7 prewarm | D3 segmented dot, D4 vector recurrence | D5 batched 4×4 |
 | 4 | B7 division | C5 CPU path + break-even table | D4 tangent mode, qscmx integration | D6 SYRK/GEMM |
 | 5 | E1 prototype; B8 | C6 layout v2 | — | D6 Cholesky |

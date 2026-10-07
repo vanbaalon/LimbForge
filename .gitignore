@@ -3,3 +3,4 @@ build-*/
 *.dSYM/
 .DS_Store
 .idea/
+.claude/
