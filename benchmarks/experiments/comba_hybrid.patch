@@ -1,0 +1,28 @@
+diff --git a/include/limbforge/core.hpp b/include/limbforge/core.hpp
+index 12b9ce5..8281319 100644
+--- a/include/limbforge/core.hpp
++++ b/include/limbforge/core.hpp
+@@ -123,10 +123,23 @@ template<int N> inline Number<N> sub(Number<N> a,Number<N> b){return add(a,negat
+ template<int N> inline Number<N> mul(LIMBFORGE_THREAD const Number<N>& a,LIMBFORGE_THREAD const Number<N>& b) {
+     word status=a.status|b.status;if(status||!a.sign||!b.sign)return zero<N>(status);
+     word product[2*N+1]={};
++    if(N<=12){
++    // Column multiplication: retain a 96-bit accumulator, then emit one limb.
++    // Up to 32 full 64-bit products occur per column; 64 bits alone is unsafe.
++    dword low=0;word high=0;
++    for(int column=0;column<2*N-1;++column){
++        int first=column<N?0:column-(N-1),last=column<N?column:N-1;
++        for(int i=first;i<=last;++i){dword term=dword(a.limb[i])*b.limb[column-i];
++            dword old=low;low+=term;high+=word(low<old);}
++        product[column]=word(low);low=(low>>32)|(dword(high)<<32);high=0;
++    }
++    product[2*N-1]=word(low);
++    }else{
+     for(int i=0;i<N;++i){dword carry=0;
+         for(int j=0;j<N;++j){dword v=dword(a.limb[i])*b.limb[j]+product[i+j]+carry;product[i+j]=word(v);carry=v>>32;}
+         product[i+N]=word(carry);
+     }
++    }
+     return pack<N>(product,exponent_type(a.exponent)+b.exponent-2*(32*N-1),a.sign*b.sign,status);
+ }
+ template<int N> inline int limb_compare(LIMBFORGE_THREAD const word (&a)[N+1],LIMBFORGE_THREAD const Number<N>& b) {

@@ -1,0 +1,14 @@
+{
+  "utc": "2026-10-07T18:31:24.410005+00:00",
+  "revision": "7f25fe58826b73193d545e3818a09304b0e7408c",
+  "working_tree": "M CMakeLists.txt\n M CONTRIBUTING.md\n M README.md\n M docs/building.md\n M docs/numerics.md\n M include/limbforge/core.hpp\n?? benchmarks/experiments/\n?? benchmarks/results/round5_comba_metadata.json\n?? benchmarks/results/round5_comba_tests.txt\n?? docs/execution.md\n?? examples/resident.cpp",
+  "platform": "macOS-26.6.2-arm64-arm-64bit-Mach-O",
+  "chip": "Apple M5 Max",
+  "benchmark_command": [
+    "/Users/k0959535/Dropbox/IntegrabilityProjects/2026 4d SoV/LimbForge/build/benchmark_limbforge",
+    "--repeats",
+    "9"
+  ],
+  "status": "failed",
+  "error": "Command '['ctest', '--test-dir', '/Users/k0959535/Dropbox/IntegrabilityProjects/2026 4d SoV/LimbForge/build', '--output-on-failure']' returned non-zero exit status 8."
+}

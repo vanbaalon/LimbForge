@@ -70,8 +70,8 @@ template<int Bits> void test_complex_and_recurrence(Engine* engine) {
         for(int i=0;i<count;++i){
             auto expected=reference::complex<Bits>(op,a[i],b[i]);
             auto host=op==Operation::complex_add?cadd(a[i],b[i]):op==Operation::complex_mul?cmul(a[i],b[i]):cdiv(a[i],b[i]);
-            require(reference::equal_complex<Bits>(host,expected),"CPU complex MPFR mismatch bits="+std::to_string(Bits));
-            if(engine)require(reference::equal_complex<Bits>(out[i],expected),"GPU complex MPFR mismatch bits="+std::to_string(Bits));
+            require(reference::equal_complex<Bits>(host,expected),"CPU complex MPFR mismatch bits="+std::to_string(Bits)+" op="+std::to_string(int(op))+" case="+std::to_string(i));
+            if(engine)require(reference::equal_complex<Bits>(out[i],expected),"GPU complex MPFR mismatch bits="+std::to_string(Bits)+" op="+std::to_string(int(op))+" case="+std::to_string(i));
         }
     }
     constexpr int batch=17,steps=31;

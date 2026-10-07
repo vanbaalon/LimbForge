@@ -1,0 +1,31 @@
+--- a/include/limbforge/core.hpp
++++ b/include/limbforge/core.hpp
+@@ -66,8 +66,8 @@
+     if(r.exponent>1000000000||r.exponent< -1000000000)return zero<N>(r.status|exponent_overflow);
+     return r;
+ }
+-template<int N,int W> inline Number<N> pack(LIMBFORGE_THREAD const word (&a)[W],exponent_type scale,int sign,word status) {
+-    int h=highest(a);if(h<0)return zero<N>(status);
++template<int N,int W> inline Number<N> pack_at(LIMBFORGE_THREAD const word (&a)[W],exponent_type scale,int sign,word status,int h) {
++    if(h<0)return zero<N>(status);
+     exponent_type e=scale+h;
+     // Rounding can carry a result at emin-1 back into the supported range.
+     if(e>1000000000||e< -1000000001)return zero<N>(status|exponent_overflow);
+@@ -85,6 +85,7 @@
+         }
+     }return checked(r);
+ }
++template<int N,int W> inline Number<N> pack(LIMBFORGE_THREAD const word (&a)[W],exponent_type scale,int sign,word status){return pack_at<N>(a,scale,sign,status,highest(a));}
+ template<int N> inline int magnitude_compare(LIMBFORGE_THREAD const Number<N>& a,LIMBFORGE_THREAD const Number<N>& b) {
+     if(!a.sign)return b.sign?-1:0;if(!b.sign)return 1;
+     if(a.exponent!=b.exponent)return a.exponent>b.exponent?1:-1;
+@@ -127,7 +128,8 @@
+         for(int j=0;j<N;++j){dword v=dword(a.limb[i])*b.limb[j]+product[i+j]+carry;product[i+j]=word(v);carry=v>>32;}
+         product[i+N]=word(carry);
+     }
+-    return pack<N>(product,exponent_type(a.exponent)+b.exponent-2*(32*N-1),a.sign*b.sign,status);
++    int h=64*N-2+int((product[2*N-1]>>31)!=0);
++    return pack_at<N>(product,exponent_type(a.exponent)+b.exponent-2*(32*N-1),a.sign*b.sign,status,h);
+ }
+ template<int N> inline int limb_compare(LIMBFORGE_THREAD const word (&a)[N+1],LIMBFORGE_THREAD const Number<N>& b) {
+     if(a[N])return 1;

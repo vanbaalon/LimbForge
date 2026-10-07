@@ -1,0 +1,47 @@
+Test project /Users/k0959535/Dropbox/IntegrabilityProjects/2026 4d SoV/LimbForge/build
+    Start 1: arithmetic_cpu
+1/3 Test #1: arithmetic_cpu ...................   Passed    2.35 sec
+    Start 2: arithmetic_gpu
+2/3 Test #2: arithmetic_gpu ...................***Failed   22.28 sec
+Device: Apple M5 Max
+1000000 exact reciprocal quotient/remainder checks passed
+64 bits: 16384 real MPFR comparisons passed
+96 bits: 16384 real MPFR comparisons passed
+128 bits: 16384 real MPFR comparisons passed
+160 bits: 16384 real MPFR comparisons passed
+192 bits: 16384 real MPFR comparisons passed
+224 bits: 16384 real MPFR comparisons passed
+256 bits: 16384 real MPFR comparisons passed
+288 bits: 16384 real MPFR comparisons passed
+320 bits: 16384 real MPFR comparisons passed
+352 bits: 16384 real MPFR comparisons passed
+384 bits: 16384 real MPFR comparisons passed
+416 bits: 16384 real MPFR comparisons passed
+448 bits: 16384 real MPFR comparisons passed
+480 bits: 16384 real MPFR comparisons passed
+512 bits: 16384 real MPFR comparisons passed
+544 bits: 16384 real MPFR comparisons passed
+576 bits: 16384 real MPFR comparisons passed
+608 bits: 16384 real MPFR comparisons passed
+640 bits: 16384 real MPFR comparisons passed
+672 bits: 16384 real MPFR comparisons passed
+704 bits: 16384 real MPFR comparisons passed
+736 bits: 16384 real MPFR comparisons passed
+768 bits: 16384 real MPFR comparisons passed
+GPU vs MPFR bits=800 op=2 case=1
+
+    Start 3: resident_buffers
+3/3 Test #3: resident_buffers .................***Failed    1.39 sec
+128-bit resident API passed
+384-bit resident API passed
+resident chain differs from MPFR
+
+
+33% tests passed, 2 tests failed out of 3
+
+Total Test time (real) =  26.02 sec
+
+The following tests FAILED:
+	  2 - arithmetic_gpu (Failed)
+	  3 - resident_buffers (Failed)
+Errors while running CTest

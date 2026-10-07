@@ -1,0 +1,26 @@
+diff --git a/include/limbforge/core.hpp b/include/limbforge/core.hpp
+index 12b9ce5..926c56d 100644
+--- a/include/limbforge/core.hpp
++++ b/include/limbforge/core.hpp
+@@ -122,11 +122,17 @@ template<int N> inline Number<N> add(Number<N> a,Number<N> b) {
+ template<int N> inline Number<N> sub(Number<N> a,Number<N> b){return add(a,negate(b));}
+ template<int N> inline Number<N> mul(LIMBFORGE_THREAD const Number<N>& a,LIMBFORGE_THREAD const Number<N>& b) {
+     word status=a.status|b.status;if(status||!a.sign||!b.sign)return zero<N>(status);
+-    word product[2*N+1]={};
+-    for(int i=0;i<N;++i){dword carry=0;
+-        for(int j=0;j<N;++j){dword v=dword(a.limb[i])*b.limb[j]+product[i+j]+carry;product[i+j]=word(v);carry=v>>32;}
+-        product[i+N]=word(carry);
++    // A 96-bit column accumulator. Each carry uses a bounded 33-bit sum;
++    // avoid depending on wrapped 64-bit addition in GPU carry detection.
++    word product[2*N+1]={},low=0,middle=0,high=0;
++    for(int column=0;column<2*N-1;++column){
++        int first=column<N?0:column-(N-1),last=column<N?column:N-1;
++        for(int i=first;i<=last;++i){dword term=dword(a.limb[i])*b.limb[column-i];
++            dword sum=dword(low)+word(term);low=word(sum);
++            sum=dword(middle)+(term>>32)+(sum>>32);middle=word(sum);high+=word(sum>>32);}
++        product[column]=low;low=middle;middle=high;high=0;
+     }
++    product[2*N-1]=low;
+     return pack<N>(product,exponent_type(a.exponent)+b.exponent-2*(32*N-1),a.sign*b.sign,status);
+ }
+ template<int N> inline int limb_compare(LIMBFORGE_THREAD const word (&a)[N+1],LIMBFORGE_THREAD const Number<N>& b) {
