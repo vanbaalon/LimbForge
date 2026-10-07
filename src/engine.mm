@@ -67,7 +67,7 @@ struct Engine::Impl {
             libraries[bits]=library;
         }
         NSError* error=nil;id<MTLFunction> function;
-        if(operation==100)function=[libraries[bits] newFunctionWithName:@"recurrence"];
+        if(operation>=100)function=[libraries[bits] newFunctionWithName:operation==100?@"recurrence":operation==101?@"tree_sum_real":@"tree_sum_complex"];
         else {
             MTLFunctionConstantValues* constants=[MTLFunctionConstantValues new];
             std::uint32_t op=operation==7&&bits!=384?2:operation;[constants setConstantValue:&op type:MTLDataTypeUInt atIndex:0];
@@ -85,6 +85,12 @@ struct Engine::Impl {
         NSUInteger result=std::min(preferred,maximum);result-=result%width;
         if(!result)throw std::runtime_error("pipeline cannot fit one SIMD group");
         return unsigned(result);
+    }
+    std::shared_ptr<detail::BufferStorage> allocate(std::size_t bytes){
+        if(bytes>device.maxBufferLength)throw std::invalid_argument("buffer exceeds device maximum");
+        auto r=std::make_shared<detail::BufferStorage>();r->owner=identity;r->bytes=bytes;
+        r->buffer=[device newBufferWithLength:std::max(std::size_t(1),bytes) options:MTLResourceStorageModeShared];
+        if(!r->buffer)throw std::runtime_error("Metal buffer allocation failed");return r;
     }
     void reserve(unsigned index,std::size_t bytes) {
         if(bytes>device.maxBufferLength)throw std::invalid_argument("buffer exceeds device maximum");
@@ -165,6 +171,29 @@ void CommandBatch::encode(int bits,bool complex,Operation op,const std::shared_p
     NSUInteger group=impl_->engine->group_size(state,bits,operation);
     [encoder dispatchThreads:MTLSizeMake(count,1,1) threadsPerThreadgroup:MTLSizeMake(group,1,1)];
 }
+void CommandBatch::encode_tree_sum(int bits,bool complex,const std::shared_ptr<detail::BufferStorage>& input,
+                                   const std::shared_ptr<detail::BufferStorage>& out,std::size_t count){
+    if(!impl_||impl_->submitted)throw std::logic_error("batch already submitted or moved");
+    validate(bits,count);impl_->retain(input);impl_->retain(out);
+    int operation=complex?102:101;auto state=impl_->engine->pipeline(bits,operation);
+    std::size_t stride=std::size_t(bits/8+12)*(complex?2:1);
+    std::shared_ptr<detail::BufferStorage> scratch[2];
+    if(count>2){scratch[0]=impl_->engine->allocate(checked_size(count/2+count%2,stride));impl_->retain(scratch[0]);}
+    if(count>4){std::size_t half=count/2+count%2;scratch[1]=impl_->engine->allocate(checked_size(half/2+half%2,stride));impl_->retain(scratch[1]);}
+    auto source=input;unsigned level=0;
+    do {
+        std::size_t next=std::max(std::size_t(1),count/2+count%2);
+        auto destination=next==1?out:scratch[level%2];
+        if(!impl_->encoder){impl_->encoder=[impl_->command computeCommandEncoder];if(!impl_->encoder)throw std::runtime_error("Metal encoder allocation failed");}
+        else [impl_->encoder memoryBarrierWithScope:MTLBarrierScopeBuffers];
+        auto encoder=impl_->encoder;[encoder setComputePipelineState:state];
+        [encoder setBuffer:source->buffer offset:0 atIndex:0];[encoder setBuffer:destination->buffer offset:0 atIndex:2];
+        Params params={std::uint32_t(count),std::uint32_t(operation),0,0,1};[encoder setBytes:&params length:sizeof(params) atIndex:3];
+        unsigned group=impl_->engine->group_size(state,bits,operation);
+        [encoder dispatchThreads:MTLSizeMake(next,1,1) threadsPerThreadgroup:MTLSizeMake(group,1,1)];
+        source=destination;count=next;++level;
+    }while(count>1);
+}
 Submission CommandBatch::submit(){
     if(!impl_||impl_->submitted)throw std::logic_error("batch already submitted or moved");
     auto ticket=std::make_shared<Submission::Impl>();ticket->resources=impl_->resources;ticket->command=impl_->command;ticket->start=impl_->start;
@@ -182,12 +211,7 @@ bool Submission::ready()const{
     return impl_->command.status==MTLCommandBufferStatusCompleted||impl_->command.status==MTLCommandBufferStatusError;
 }
 Timing Submission::wait(){if(!impl_)throw std::logic_error("empty submission");impl_->finish();if(!impl_->error.empty())throw std::runtime_error("Metal execution: "+impl_->error);return impl_->timing;}
-std::shared_ptr<detail::BufferStorage> Engine::allocate(std::size_t bytes){
-    if(bytes>impl->device.maxBufferLength)throw std::invalid_argument("buffer exceeds device maximum");
-    auto r=std::make_shared<detail::BufferStorage>();r->owner=impl->identity;r->bytes=bytes;
-    r->buffer=[impl->device newBufferWithLength:std::max(std::size_t(1),bytes) options:MTLResourceStorageModeShared];
-    if(!r->buffer)throw std::runtime_error("Metal buffer allocation failed");return r;
-}
+std::shared_ptr<detail::BufferStorage> Engine::allocate(std::size_t bytes){return impl->allocate(bytes);}
 CommandBatch Engine::batch(){return CommandBatch(std::make_unique<CommandBatch::Impl>(impl));}
 Engine::Engine(EngineOptions options):impl(new Impl(options)){} Engine::~Engine()=default;
 std::string Engine::device_name()const{return std::string([impl->device.name UTF8String]);}

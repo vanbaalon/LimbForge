@@ -53,4 +53,23 @@ template<int Bits> limbforge::Complex<Bits/32> complex(limbforge::Operation op,l
     return {real<Bits>(O::div,plus(times(a.re,b.re),times(a.im,b.im)),d),
             real<Bits>(O::div,minus(times(a.im,b.re),times(a.re,b.im)),d)};
 }
+// MPFR at each adjacent-pair level, matching the public tree_sum contract.
+template<int Bits,class T> T tree_sum(std::vector<T> input){
+    constexpr bool is_complex=limbforge::detail::Format<T>::complex;
+    if(input.empty()){
+        if constexpr(is_complex)return {limbforge::zero<Bits/32>(),limbforge::zero<Bits/32>()};
+        else return limbforge::zero<Bits/32>();
+    }
+    while(input.size()>1){
+        std::size_t n=input.size(),next=n/2+n%2;
+        for(std::size_t i=0;i<next;++i){std::size_t j=2*i;
+            if(j+1==n)input[i]=input[j];
+            else if constexpr(is_complex)input[i]=complex<Bits>(limbforge::Operation::complex_add,input[j],input[j+1]);
+            else input[i]=real<Bits>(limbforge::Operation::add,input[j],input[j+1]);
+        }
+        input.resize(next);
+    }
+    return input[0];
+}
+
 }

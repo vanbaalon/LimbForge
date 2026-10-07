@@ -50,6 +50,8 @@ class CommandBatch {
     explicit CommandBatch(std::unique_ptr<Impl> impl);
     void encode(int,bool,Operation,const std::shared_ptr<detail::BufferStorage>&,
                 const std::shared_ptr<detail::BufferStorage>&,const std::shared_ptr<detail::BufferStorage>&,std::size_t);
+    void encode_tree_sum(int,bool,const std::shared_ptr<detail::BufferStorage>&,
+                         const std::shared_ptr<detail::BufferStorage>&,std::size_t);
     friend class Engine;
 public:
     ~CommandBatch();CommandBatch(CommandBatch&&)noexcept;CommandBatch& operator=(CommandBatch&&)noexcept;
@@ -62,6 +64,12 @@ public:
         if(!operation_is_unary(op))throw std::invalid_argument("operation requires two inputs");
         if(a.size()!=out.size())throw std::invalid_argument("buffer counts must match");
         encode(detail::Format<T>::bits,detail::Format<T>::complex,op,a.storage_,a.storage_,out.storage_,a.size());
+    }
+    // Adjacent pairs are rounded at each tree level; an odd tail is copied.
+    // The output has one element. An empty input produces canonical zero.
+    template<class T> void tree_sum(const Buffer<T>& input,Buffer<T>& out){
+        if(out.size()!=1)throw std::invalid_argument("tree_sum output must contain one element");
+        encode_tree_sum(detail::Format<T>::bits,detail::Format<T>::complex,input.storage_,out.storage_,input.size());
     }
     Submission submit(); // Single use; explicit barriers order dependent dispatches.
 };

@@ -1,0 +1,20 @@
+{
+  "utc": "2026-10-07T19:23:32.262341+00:00",
+  "revision": "7127a707156fa881209bee54c28a43098c6a242f",
+  "working_tree": "M CMakeLists.txt\n M benchmarks/benchmark.cpp\n M benchmarks/run_round.py\n M include/limbforge/engine.hpp\n M src/engine.mm\n M src/kernels.metal\n M tests/reference.hpp\n?? benchmarks/benchmark_support.hpp\n?? benchmarks/reduction.cpp\n?? tests/test_reduction.cpp",
+  "platform": "macOS-26.6.2-arm64-arm-64bit-Mach-O",
+  "chip": "Apple M5 Max",
+  "benchmark_command": [
+    "/Users/k0959535/Dropbox/IntegrabilityProjects/2026 4d SoV/LimbForge/build/benchmark_limbforge",
+    "--repeats",
+    "9"
+  ],
+  "status": "passed",
+  "benchmark_stderr": "Device: Apple M5 Max; MPFR 4.2.2; workers=18; threads=0; repeats=9; seed=20261007\n",
+  "reduction_command": [
+    "/Users/k0959535/Dropbox/IntegrabilityProjects/2026 4d SoV/LimbForge/build/reduction_limbforge"
+  ],
+  "reduction_stderr": "Apple M5 Max; 18 persistent MPFR workers; fixed pair tree; serial tail below workers*16; 2 warmups, 9 samples, four methods interleaved, every sample checked\n",
+  "reduction_rows": 36,
+  "rows": 180
+}

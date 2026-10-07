@@ -43,3 +43,21 @@ kernel void recurrence(device const Complex<N>* seeds [[buffer(0)]],
     }
     out[i]=q3;
 }
+
+// A fixed adjacent-pair tree. Carrying an odd tail does not round it again.
+kernel void tree_sum_real(device const Number<N>* input [[buffer(0)]],
+                          device Number<N>* out [[buffer(2)]],
+                          constant Params& p [[buffer(3)]],uint i [[thread_position_in_grid]]) {
+    if(!p.count){if(!i)out[0]=zero<N>();return;}
+    uint next=p.count/2+p.count%2;if(i>=next)return;
+    uint j=2*i;Number<N> x=input[j];
+    if(j+1<p.count){Number<N> y=input[j+1];x=add(x,y);}out[i]=x;
+}
+kernel void tree_sum_complex(device const Complex<N>* input [[buffer(0)]],
+                             device Complex<N>* out [[buffer(2)]],
+                             constant Params& p [[buffer(3)]],uint i [[thread_position_in_grid]]) {
+    if(!p.count){if(!i)out[0]={zero<N>(),zero<N>()};return;}
+    uint next=p.count/2+p.count%2;if(i>=next)return;
+    uint j=2*i;Complex<N> x=input[j];
+    if(j+1<p.count){Complex<N> y=input[j+1];x=cadd(x,y);}out[i]=x;
+}
