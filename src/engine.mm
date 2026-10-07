@@ -26,6 +26,22 @@ void validate(int bits,std::size_t count) {
 }
 struct Params {std::uint32_t count,operation,steps,weight_count,states_per_weight;};
 }
+namespace {
+// Required element counts for start, p, q, r, base, dp, dq and out (complex elements).
+std::array<std::size_t,8> vector_elements(int bits,const VectorRecurrence& s){
+    validate(bits,s.lanes);
+    if(!s.lanes_per_weight||!s.lanes_per_base||!s.lanes_per_tangent||s.lanes%s.lanes_per_weight||s.lanes%s.lanes_per_base||s.lanes%s.lanes_per_tangent)
+        throw std::invalid_argument("lanes must be divisible by lanes_per_weight, lanes_per_base and lanes_per_tangent");
+    if(s.matrix&&s.tangent)throw std::invalid_argument("tangent mode requires the rank-one form");
+    // Every shader index is 64-bit, but the lane count and per-step strides must fit 32 bits.
+    if(s.lanes>std::numeric_limits<std::uint32_t>::max()/16)throw std::invalid_argument("vector recurrence exceeds 32-bit indexing");
+    std::size_t steps=s.steps,G=s.lanes/s.lanes_per_weight,coefficients=s.matrix?16:4;
+    return {4*s.lanes,steps?checked_size(steps*coefficients,G):0,steps&&!s.matrix?checked_size(steps*4,G):0,steps&&s.affine?checked_size(steps*4,s.lanes):0,
+            s.tangent&&steps?checked_size((steps+1)*4,s.lanes/s.lanes_per_base):0,s.tangent&&steps?checked_size(steps*4,s.lanes/s.lanes_per_tangent):0,
+            s.tangent&&steps?checked_size(steps*4,s.lanes/s.lanes_per_tangent):0,checked_size(s.all_steps?(steps+1)*4:4,s.lanes)};
+}
+unsigned vector_flags(const VectorRecurrence& s){return (s.affine?1:0)|(s.matrix?2:0)|(s.all_steps?4:0)|(s.reverse?8:0)|(s.tangent?16:0)|(s.fused?32:0);}
+}
 namespace detail {
 struct BufferStorage {
     id<MTLBuffer> buffer;std::shared_ptr<int> owner;std::atomic<bool> busy{false};std::size_t bytes;
@@ -210,6 +226,24 @@ void CommandBatch::encode(int bits,bool complex,Operation op,const std::shared_p
     NSUInteger group=impl_->engine->group_size(state,bits,operation);
     [encoder dispatchThreads:MTLSizeMake(count,1,1) threadsPerThreadgroup:MTLSizeMake(group,1,1)];
 }
+void CommandBatch::encode_vector(int bits,const VectorRecurrence& s,const std::shared_ptr<detail::BufferStorage>* in,const std::size_t* sizes,
+                                 const std::shared_ptr<detail::BufferStorage>& out,std::size_t out_size){
+    if(!impl_||impl_->submitted)throw std::logic_error("batch already submitted or moved");
+    auto n=vector_elements(bits,s);
+    for(int i=0;i<7;++i){if(n[i]&&(!in[i]||sizes[i]<n[i]))throw std::invalid_argument("vector recurrence buffer too small or missing");if(in[i])impl_->retain(in[i]);}
+    if(out_size<n[7])throw std::invalid_argument("vector recurrence output too small");impl_->retain(out);if(!s.lanes)return;
+    int operation=200+int(vector_flags(s));auto state=impl_->engine->pipeline(bits,operation);
+    if(!impl_->encoder){impl_->encoder=[impl_->command computeCommandEncoder];if(!impl_->encoder)throw std::runtime_error("Metal encoder allocation failed");}
+    else [impl_->encoder memoryBarrierWithScope:MTLBarrierScopeBuffers];
+    auto encoder=impl_->encoder;[encoder setComputePipelineState:state];
+    // Unused inputs are bound to start; the kernel never reads them.
+    const unsigned slot[7]={0,1,4,5,6,7,8};
+    for(int i=0;i<7;++i)[encoder setBuffer:(in[i]?in[i]:in[0])->buffer offset:0 atIndex:slot[i]];
+    [encoder setBuffer:out->buffer offset:0 atIndex:2];
+    std::uint32_t params[5]={std::uint32_t(s.lanes),s.steps,s.lanes_per_weight,s.lanes_per_base,s.lanes_per_tangent};
+    [encoder setBytes:params length:sizeof(params) atIndex:3];
+    [encoder dispatchThreads:MTLSizeMake(s.lanes,1,1) threadsPerThreadgroup:MTLSizeMake(impl_->engine->group_size(state,bits,operation),1,1)];
+}
 void CommandBatch::encode_tree_sum(int bits,bool complex,const std::shared_ptr<detail::BufferStorage>& input,
                                    const std::shared_ptr<detail::BufferStorage>& out,std::size_t count){
     if(!impl_||impl_->submitted)throw std::logic_error("batch already submitted or moved");
@@ -290,23 +324,12 @@ Timing Engine::run_ternary(int bits,Operation op,const void* a,const void* b,con
 }
 Timing Engine::vector_recurrence(int bits,const VectorRecurrence& s,const void* start,const void* p,const void* q,const void* r,void* out,
                                  const void* base,const void* dp,const void* dq){
-    validate(bits,s.lanes);
-    if(!s.lanes_per_weight||!s.lanes_per_base||!s.lanes_per_tangent||s.lanes%s.lanes_per_weight||s.lanes%s.lanes_per_base||s.lanes%s.lanes_per_tangent)
-        throw std::invalid_argument("lanes must be divisible by lanes_per_weight, lanes_per_base and lanes_per_tangent");
-    if(s.matrix&&s.tangent)throw std::invalid_argument("tangent mode requires the rank-one form");
-    if(!s.lanes)return {0,0};
-    if(!start||!out||(s.steps&&!p)||(s.steps&&!s.matrix&&!q)||(s.steps&&s.affine&&!r)||(s.tangent&&s.steps&&(!base||!dp||!dq)))throw std::invalid_argument("null vector recurrence buffer");
-    std::size_t stride=2*(bits/8+12),G=s.lanes/s.lanes_per_weight,coefficients=s.matrix?16:4;
-    // Every shader index is 64-bit, but the lane count and per-step strides must fit 32 bits.
-    if(s.lanes>std::numeric_limits<std::uint32_t>::max()/16)throw std::invalid_argument("vector recurrence exceeds 32-bit indexing");
-    auto bytes=[&](std::size_t elements){return checked_size(elements,stride);};
-    std::size_t steps=s.steps;
-    std::size_t start_bytes=bytes(4*s.lanes),p_bytes=steps?bytes(checked_size(steps*coefficients,G)):0,q_bytes=steps&&!s.matrix?bytes(checked_size(steps*4,G)):0,
-        r_bytes=steps&&s.affine?bytes(checked_size(steps*4,s.lanes)):0,out_bytes=bytes(checked_size(s.all_steps?(steps+1)*4:4,s.lanes)),
-        base_bytes=s.tangent&&steps?bytes(checked_size((steps+1)*4,s.lanes/s.lanes_per_base)):0,
-        d_bytes=s.tangent&&steps?bytes(checked_size(steps*4,s.lanes/s.lanes_per_tangent)):0;
-    unsigned flags=(s.affine?1:0)|(s.matrix?2:0)|(s.all_steps?4:0)|(s.reverse?8:0)|(s.tangent?16:0)|(s.fused?32:0);
-    return impl->vector_dispatch(bits,200+int(flags),s,{start,p,q,r,base,dp,dq},{start_bytes,p_bytes,q_bytes,r_bytes,base_bytes,d_bytes,d_bytes},out,out_bytes);
+    auto n=vector_elements(bits,s);if(!s.lanes)return {0,0};
+    const void* in[7]={start,p,q,r,base,dp,dq};
+    for(int i=0;i<7;++i)if(n[i]&&!in[i])throw std::invalid_argument("null vector recurrence buffer");
+    if(!out)throw std::invalid_argument("null vector recurrence buffer");
+    std::size_t stride=2*(bits/8+12);std::array<std::size_t,7> bytes;for(int i=0;i<7;++i)bytes[i]=checked_size(n[i],stride);
+    return impl->vector_dispatch(bits,200+int(vector_flags(s)),s,{start,p,q,r,base,dp,dq},bytes,out,checked_size(n[7],stride));
 }
 Timing Engine::recurrence(int bits,const void* seeds,const void* weights,void* out,std::size_t count,unsigned steps,unsigned states_per_weight) {
     validate(bits,count);

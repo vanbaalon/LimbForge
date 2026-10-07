@@ -67,6 +67,8 @@ class CommandBatch {
     explicit CommandBatch(std::unique_ptr<Impl> impl);
     void encode(int,bool,Operation,const std::shared_ptr<detail::BufferStorage>&,const std::shared_ptr<detail::BufferStorage>&,
                 const std::shared_ptr<detail::BufferStorage>&,const std::shared_ptr<detail::BufferStorage>&,std::size_t);
+    void encode_vector(int,const VectorRecurrence&,const std::shared_ptr<detail::BufferStorage>* in,const std::size_t* sizes,
+                       const std::shared_ptr<detail::BufferStorage>& out,std::size_t out_size);
     void encode_tree_sum(int,bool,const std::shared_ptr<detail::BufferStorage>&,
                          const std::shared_ptr<detail::BufferStorage>&,std::size_t);
     friend class Engine;
@@ -93,6 +95,15 @@ public:
     template<class T> void tree_sum(const Buffer<T>& input,Buffer<T>& out){
         if(out.size()!=1)throw std::invalid_argument("tree_sum output must contain one element");
         encode_tree_sum(detail::Format<T>::bits,detail::Format<T>::complex,input.storage_,out.storage_,input.size());
+    }
+    // Resident Engine::vector_recurrence (same shapes, layouts and contract). Unused inputs may be
+    // empty buffers. out may alias start; a tangent pass may read an earlier pass's out as base.
+    template<class T> void vector_recurrence(const VectorRecurrence& shape,const Buffer<T>& start,const Buffer<T>& p,const Buffer<T>& q,const Buffer<T>& r,
+                                             Buffer<T>& out,const Buffer<T>& base=Buffer<T>(),const Buffer<T>& dp=Buffer<T>(),const Buffer<T>& dq=Buffer<T>()){
+        static_assert(detail::Format<T>::complex,"vector recurrences use complex buffers");
+        const std::shared_ptr<detail::BufferStorage> in[7]={start.storage_,p.storage_,q.storage_,r.storage_,base.storage_,dp.storage_,dq.storage_};
+        const std::size_t sizes[7]={start.size(),p.size(),q.size(),r.size(),base.size(),dp.size(),dq.size()};
+        encode_vector(detail::Format<T>::bits,shape,in,sizes,out.storage_,out.size());
     }
     Submission submit(); // Single use; explicit barriers order dependent dispatches.
 };

@@ -158,6 +158,11 @@ sequence position. Layouts are component-major (`[j][lane]`); coefficients share
 `lanes_per_tangent` in the same way. The independent reference (`tests/test_vector_recurrence.cpp`)
 implements this sequence with MPFR (`mpfr_sum` per fused component).
 
+`CommandBatch::vector_recurrence(shape, start, p, q, r, out, base, dp, dq)` encodes the same operation
+on resident buffers (unused inputs may be empty buffers; `out` may alias `start`). A base pass with
+`all_steps` and the tangent pass reading its output can share one batch, so the base chain never
+leaves the GPU; buffer sizes are checked against the shape before encoding.
+
 Current limits: shapes are validated before submission; widths through 512 bits are tested. At
 1024 bits the Metal compiler failed while specialising this kernel (the exact complex `fma`
 workspaces are large); wider widths are not supported yet. Pipeline compilation for a new
