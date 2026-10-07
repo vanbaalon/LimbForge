@@ -13,7 +13,7 @@ batches through precision-specialized Metal kernels. The initial implementation
 supports **64–1024 significand bits**, nearest-even real rounding, and fused
 four-term complex recurrences.
 
-The project is developed under the supervision of **Nikolay Gromov**.
+**Author: Nikolay Gromov.**
 
 > **Development preview:** the implemented operations are tested against MPFR on
 > an Apple M5 Max. The API is evolving; this is a focused arithmetic library,
@@ -142,8 +142,8 @@ MPFR checks. See [CONTRIBUTING.md](CONTRIBUTING.md).
 
 ## People and license
 
-Maintained by [vanbaalon](https://github.com/vanbaalon), with **Nikolay Gromov as
-project supervisor**. See [AUTHORS.md](AUTHORS.md).
+Authored by **Nikolay Gromov** and maintained by
+[vanbaalon](https://github.com/vanbaalon). See [AUTHORS.md](AUTHORS.md).
 
 LimbForge is distributed under the [MIT license](LICENSE). MPFR, GMP, Boost,
 and Apple's frameworks retain their own licenses and terms.
