@@ -516,6 +516,34 @@ shared-exponent conversion can lose small entries. Either prove a rounding decis
 bounds and an exact fallback, or expose a separately named accuracy mode. Dense matrices are the initial
 target; four-component updates are too small to assume the same benefit.
 
+**Result of the capability probe (round 16, `tests/tensorops_probe.mm`,
+`benchmarks/results/round16_tensorops_probe.txt`).** On this M5 Max with the installed SDK,
+`matmul2d` (`relaxed_precision=false`, MSL 4.0 compiled at run time, tensors built in-shader from
+device pointers) gives:
+
+- int8×int8→int32 and uint8×uint8→int32 products equal to 64-bit CPU sums for K ≤ 16,384 on random
+  data and on sampled entries of 2048³/4096³ products.
+- int32 overflow **wraps modulo 2³²** (deterministic, not saturating), exactly at the predicted K
+  (131,072 for int8 extremes; 33,026 for uint8 extremes). The accumulator is therefore an exact residue
+  mod 2³² for any K, and an exact integer for K ≤ 33,025 (uint8) or ≤ 131,071 (int8).
+- 29–54 int8 TOPS for 2048³–4096³ on a heavily loaded host (raw bit-throughput ≈ 2.5× our scalar
+  limb products; the advantage for GEMM would come from matrix-unit data reuse).
+
+The exactness gate is passed, so L1 continues with the two steps below. Stop L1 if step L1b is not at
+least 5× faster than the limb GEMM baseline at n ≥ 512 and 256 bits, including all conversion costs.
+
+- **L1b — exact integer residue GEMM.** For integer matrices with ≤ 256-bit entries (one shared
+  scale), compute C = A·B exactly: 16-bit coprime moduli covering 2·256 + log₂K + guard bits (≈ 34
+  moduli), each residue split into two uint8 digits (4 digit GEMMs per modulus, K blocked at ≤ 33,025),
+  per-modulus reduction, and GPU CRT reconstruction. Validate against GMP; measure the full pipeline
+  against a straightforward sequential-`fma` limb GEMM at n = 128…2048 (that baseline doubles as D6's
+  first kernel). Cost model to check: ~136 int8 GEMMs ≈ 7 ms at n = 1000 versus ~0.4 s estimated for
+  limb `fma` (to be measured).
+- **L1c — floating-point layer.** Scale rows/columns to fixed point with exact handling of the input
+  exponent spread (exponent bands or an exact fallback; never silent truncation), then one rounding of
+  each exact dot product. This is the L3 `exact_dot` contract; reference: exact MPFR products plus
+  `mpfr_sum`. Report the band count and fallback rate on QSC-shaped Jacobians.
+
 ### L2. Certified approximations with compacted exact retries
 
 The established [MPFR rounding-certification mechanism](https://mpfr.org/mpfr-current/mpfr.html#Rounding_002dRelated-Functions)
@@ -596,6 +624,8 @@ workspace sizing/reuse may matter later for transcendental or dynamically sized 
 precision, rounding, operation order and timing boundaries before comparing implementations.
 
 ### Research order
+
+*Status (2026-10-07): the L1 capability probe passed (see L1); next are L1b and, independently, L4.*
 
 Run a small **L1 Metal arithmetic-capability probe** first; stop that branch if exactness requirements
 cannot be met or established. In parallel conceptually, L4 supplies the strongest direct candidate for

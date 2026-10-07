@@ -1,0 +1,15 @@
+Apple M5 Max; TensorOps matmul2d, relaxed_precision=false
+int8 random M=128 N=96 K=32: exact
+int8 random M=128 N=96 K=1000: exact
+int8 random M=128 N=96 K=16384: exact
+uint8 random M=128 N=96 K=32: exact
+uint8 random M=128 N=96 K=1000: exact
+uint8 random M=128 N=96 K=16384: exact
+int8 (-128)*(-128) K=131071 exact=2147467264 got=2147467264 -> exact
+int8 (-128)*(-128) K=131072 exact=2147483648 got=-2147483648 -> wraps mod 2^32
+int8 (-128)*(-128) K=262144 exact=4294967296 got=0 -> wraps mod 2^32
+int8 (-128)*127 K=262144 exact=-4261412864 got=33554432 -> wraps mod 2^32
+uint8 255*255 K=33025 exact=2147450625 got=2147450625 -> exact
+uint8 255*255 K=33026 exact=2147515650 got=-2147451646 -> wraps mod 2^32
+int8 GEMM 2048^3: 0.596807 ms, 28.7863 TOPS; 256 sampled outputs exact
+int8 GEMM 4096^3: 2.52644 ms, 54.4002 TOPS; 256 sampled outputs exact
