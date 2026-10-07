@@ -1,0 +1,9 @@
+Test project /Users/k0959535/Dropbox/IntegrabilityProjects/2026 4d SoV/LimbForge/build
+    Start 1: arithmetic_cpu
+1/2 Test #1: arithmetic_cpu ...................   Passed    1.44 sec
+    Start 2: arithmetic_gpu
+2/2 Test #2: arithmetic_gpu ...................   Passed   33.05 sec
+
+100% tests passed out of 2
+
+Total Test time (real) =  34.49 sec

@@ -22,6 +22,20 @@ template<int Bits> void test_real(Engine* engine) {
     a[5]=one;a[5].exponent=1000000000;b[5]=from_decimal<Bits>("2");
     a[6]=one;a[6].exponent=-1000000000;b[6]=from_decimal<Bits>("0.5");
     a[7]=one;b[7]=one;for(auto& l:a[7].limb)l=0xffffffffu;for(auto& l:b[7].limb)l=0xffffffffu;
+    // Exact products just below a binade boundary: rounding can rescue emin-1.
+    mpz_t za,zb,target,remainder,half;mpz_inits(za,zb,target,remainder,half,nullptr);
+    mpz_set_ui(target,1);mpz_mul_2exp(target,target,2*Bits-1);
+    mpz_set_ui(half,1);mpz_mul_2exp(half,half,Bits-2);
+    for(int fixture=8;fixture<40;++fixture){
+        do {a[fixture]=reference::random_number<Bits>(rng,0);
+            mpz_import(za,N,-1,4,0,0,a[fixture].limb);mpz_fdiv_qr(zb,remainder,target,za);
+        }while(mpz_sgn(remainder)==0||mpz_cmp(remainder,half)>=0);
+        b[fixture]=zero<N>();std::size_t exported;mpz_export(b[fixture].limb,&exported,-1,4,0,0,zb);
+        a[fixture].sign=b[fixture].sign=fixture%2?-1:1;
+        a[fixture].exponent=fixture%3? -1000000000:1000000000;
+        b[fixture].exponent=fixture%3? -1:0;
+    }
+    mpz_clears(za,zb,target,remainder,half,nullptr);
     for(Operation op:{Operation::add,Operation::sub,Operation::mul,Operation::div}) {
         if(engine)engine->run(Bits,op,a.data(),b.data(),gpu.data(),count);
         for(int i=0;i<count;++i){auto expected=reference::real<Bits>(op,a[i],b[i]);F host;
@@ -71,6 +85,7 @@ template<int Bits> void test_complex_and_recurrence(Engine* engine) {
     if(engine)for(int i=0;i<batch;++i)for(int a=0;a<lanes;++a)require(reference::equal_complex<Bits>(shared_result[i*lanes+a],expected[i]),"shared-weight recurrence");
     std::cout<<Bits<<" bits: complex arithmetic and fused recurrence passed"<<std::endl;
 }
+template<int Bits> void all_precisions(Engine* engine){test_real<Bits>(engine);if constexpr(Bits<1024)all_precisions<Bits+32>(engine);}
 int main(int argc,char** argv) {
     try {
         bool cpu_only=argc==2&&std::string(argv[1])=="--cpu-only";
@@ -78,7 +93,7 @@ int main(int argc,char** argv) {
         std::unique_ptr<Engine> engine;
         if(!cpu_only){engine=std::make_unique<Engine>();std::cout<<"Device: "<<engine->device_name()<<std::endl;}
         else std::cout<<"CPU/MPFR validation (no GPU device created)"<<std::endl;
-        test_real<64>(engine.get());test_real<128>(engine.get());test_real<256>(engine.get());test_real<384>(engine.get());test_real<1024>(engine.get());
+        all_precisions<64>(engine.get());
         test_complex_and_recurrence<128>(engine.get());test_complex_and_recurrence<384>(engine.get());test_complex_and_recurrence<1024>(engine.get());
         if(engine){
             bool rejected=false;try{engine->run(80,Operation::add,nullptr,nullptr,nullptr,1);}catch(const std::invalid_argument&){rejected=true;}

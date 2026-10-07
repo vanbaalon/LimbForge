@@ -25,7 +25,11 @@ template<int N> struct Number {
     int sign;     // -1, 0, +1; canonical unsigned zero
     word status;
 };
-template<int Bits> using Float = Number<Bits/32>;
+template<int Bits> struct FloatType {
+    static_assert(Bits>=64&&Bits<=1024&&Bits%32==0,"precision must be a multiple of 32 in [64,1024]");
+    using type=Number<Bits/32>;
+};
+template<int Bits> using Float = typename FloatType<Bits>::type;
 template<int N> struct Complex { Number<N> re, im; };
 template<int N> inline Number<N> zero(word status=ok) {
     Number<N> r; for(int i=0;i<N;++i)r.limb[i]=0;
@@ -65,7 +69,8 @@ template<int N> inline Number<N> checked(Number<N> r) {
 template<int N,int W> inline Number<N> pack(LIMBFORGE_THREAD const word (&a)[W],exponent_type scale,int sign,word status) {
     int h=highest(a);if(h<0)return zero<N>(status);
     exponent_type e=scale+h;
-    if(e>1000000000||e< -1000000000)return zero<N>(status|exponent_overflow);
+    // Rounding can carry a result at emin-1 back into the supported range.
+    if(e>1000000000||e< -1000000001)return zero<N>(status|exponent_overflow);
     Number<N> r=zero<N>(status);r.sign=sign;r.exponent=int(e);
     int shift=h-(32*N-1);
     if(shift>=0) {
@@ -129,7 +134,7 @@ template<int N> inline Number<N> div(LIMBFORGE_THREAD const Number<N>& a,LIMBFOR
     word u[2*N+1]={};insert(u,a,shift);
     Number<N> r=zero<N>();r.sign=a.sign*b.sign;
     exponent_type e=exponent_type(a.exponent)-b.exponent-(cmp<0);
-    if(e>1000000000||e< -1000000000)return zero<N>(exponent_overflow);
+    if(e>1000000000||e< -1000000001)return zero<N>(exponent_overflow);
     r.exponent=int(e);
     constexpr dword B=dword(1)<<32;
     for(int j=N;j>=0;--j) {
