@@ -7,6 +7,10 @@
 #include <limits>
 #include <map>
 #include <stdexcept>
+#include <atomic>
+#include <mutex>
+#include <vector>
+#include <algorithm>
 
 namespace limbforge {
 namespace {
@@ -21,12 +25,27 @@ void validate(int bits,std::size_t count) {
 }
 struct Params {std::uint32_t count,operation,steps,weight_count,states_per_weight;};
 }
+namespace detail {
+struct BufferStorage {
+    id<MTLBuffer> buffer;std::shared_ptr<int> owner;std::atomic<bool> busy{false};std::size_t bytes;
+};
+void* mapped(const std::shared_ptr<BufferStorage>& storage){
+    if(!storage)throw std::invalid_argument("empty buffer handle");
+    if(storage->busy.load(std::memory_order_acquire))throw std::logic_error("buffer belongs to an unwaited submission");
+    return storage->buffer.contents;
+}
+void transfer(const std::shared_ptr<BufferStorage>& storage,void* host,std::size_t bytes,bool upload){
+    auto data=mapped(storage);if(bytes>storage->bytes||(!host&&bytes))throw std::invalid_argument("invalid transfer");
+    if(bytes){if(upload)std::memcpy(data,host,bytes);else std::memcpy(host,data,bytes);}
+}
+}
 struct Engine::Impl {
     id<MTLDevice> device;
     id<MTLCommandQueue> queue;
     std::map<int,id<MTLLibrary>> libraries;
     std::map<std::pair<int,int>,id<MTLComputePipelineState>> pipelines;
     id<MTLBuffer> buffers[3];
+    std::shared_ptr<int> identity=std::make_shared<int>(0);
     Impl() {
         device=MTLCreateSystemDefaultDevice();
         if(!device)throw std::runtime_error("no Metal GPU available");
@@ -91,6 +110,77 @@ struct Engine::Impl {
         }
     }
 };
+struct Submission::Impl {
+    id<MTLCommandBuffer> command;
+    std::vector<std::shared_ptr<detail::BufferStorage>> resources;
+    std::chrono::steady_clock::time_point start;
+    std::once_flag finished;Timing timing{};std::string error;
+    void finish(){std::call_once(finished,[&]{
+        [command waitUntilCompleted];
+        if(command.status==MTLCommandBufferStatusError)error=error_message(command.error);
+        timing={command.GPUEndTime-command.GPUStartTime,std::chrono::duration<double>(std::chrono::steady_clock::now()-start).count()};
+        for(auto& r:resources)r->busy.store(false,std::memory_order_release);
+    });}
+    ~Impl(){finish();}
+};
+struct CommandBatch::Impl {
+    std::shared_ptr<Engine::Impl> engine;
+    id<MTLCommandBuffer> command;id<MTLComputeCommandEncoder> encoder;
+    std::vector<std::shared_ptr<detail::BufferStorage>> resources;
+    std::chrono::steady_clock::time_point start=std::chrono::steady_clock::now();bool submitted=false;
+    explicit Impl(std::shared_ptr<Engine::Impl> e):engine(std::move(e)){
+        command=[engine->queue commandBuffer];if(!command)throw std::runtime_error("Metal command allocation failed");
+    }
+    ~Impl(){if(encoder)[encoder endEncoding];}
+    void retain(const std::shared_ptr<detail::BufferStorage>& r){
+        if(!r||r->owner!=engine->identity)throw std::invalid_argument("buffer belongs to another engine");
+        if(r->busy.load(std::memory_order_acquire))throw std::logic_error("buffer belongs to an unwaited submission");
+        if(std::find(resources.begin(),resources.end(),r)==resources.end())resources.push_back(r);
+    }
+};
+CommandBatch::CommandBatch(std::unique_ptr<Impl> p):impl_(std::move(p)){}
+CommandBatch::~CommandBatch()=default;
+CommandBatch::CommandBatch(CommandBatch&&)noexcept=default;
+CommandBatch& CommandBatch::operator=(CommandBatch&&)noexcept=default;
+void CommandBatch::encode(int bits,bool complex,Operation op,const std::shared_ptr<detail::BufferStorage>& a,
+                         const std::shared_ptr<detail::BufferStorage>& b,const std::shared_ptr<detail::BufferStorage>& out,std::size_t count){
+    if(!impl_||impl_->submitted)throw std::logic_error("batch already submitted or moved");
+    validate(bits,count);int operation=int(op);
+    if(operation<0||operation>6||(operation>=4)!=complex)throw std::invalid_argument("operation and buffer format mismatch");
+    impl_->retain(a);impl_->retain(b);impl_->retain(out);if(!count)return;
+    auto state=impl_->engine->pipeline(bits,operation);
+    if(!impl_->encoder){impl_->encoder=[impl_->command computeCommandEncoder];if(!impl_->encoder)throw std::runtime_error("Metal encoder allocation failed");}
+    else [impl_->encoder memoryBarrierWithScope:MTLBarrierScopeBuffers];
+    auto encoder=impl_->encoder;[encoder setComputePipelineState:state];
+    [encoder setBuffer:a->buffer offset:0 atIndex:0];[encoder setBuffer:b->buffer offset:0 atIndex:1];[encoder setBuffer:out->buffer offset:0 atIndex:2];
+    Params params={std::uint32_t(count),std::uint32_t(operation),0,std::uint32_t(count),1};[encoder setBytes:&params length:sizeof(params) atIndex:3];
+    NSUInteger group=std::min(NSUInteger(128),state.maxTotalThreadsPerThreadgroup);
+    [encoder dispatchThreads:MTLSizeMake(count,1,1) threadsPerThreadgroup:MTLSizeMake(group,1,1)];
+}
+Submission CommandBatch::submit(){
+    if(!impl_||impl_->submitted)throw std::logic_error("batch already submitted or moved");
+    auto ticket=std::make_shared<Submission::Impl>();ticket->resources=impl_->resources;ticket->command=impl_->command;ticket->start=impl_->start;
+    std::size_t claimed=0;
+    for(auto& r:impl_->resources){bool expected=false;if(!r->busy.compare_exchange_strong(expected,true)){
+        for(std::size_t i=0;i<claimed;++i)impl_->resources[i]->busy.store(false);
+        ticket->resources.clear();ticket->command=nil;throw std::logic_error("buffer belongs to an unwaited submission");}
+        ++claimed;
+    }
+    if(impl_->encoder){[impl_->encoder endEncoding];impl_->encoder=nil;}
+    impl_->submitted=true;[impl_->command commit];return Submission(std::move(ticket));
+}
+bool Submission::ready()const{
+    if(!impl_)throw std::logic_error("empty submission");
+    return impl_->command.status==MTLCommandBufferStatusCompleted||impl_->command.status==MTLCommandBufferStatusError;
+}
+Timing Submission::wait(){if(!impl_)throw std::logic_error("empty submission");impl_->finish();if(!impl_->error.empty())throw std::runtime_error("Metal execution: "+impl_->error);return impl_->timing;}
+std::shared_ptr<detail::BufferStorage> Engine::allocate(std::size_t bytes){
+    if(bytes>impl->device.maxBufferLength)throw std::invalid_argument("buffer exceeds device maximum");
+    auto r=std::make_shared<detail::BufferStorage>();r->owner=impl->identity;r->bytes=bytes;
+    r->buffer=[impl->device newBufferWithLength:std::max(std::size_t(1),bytes) options:MTLResourceStorageModeShared];
+    if(!r->buffer)throw std::runtime_error("Metal buffer allocation failed");return r;
+}
+CommandBatch Engine::batch(){return CommandBatch(std::make_unique<CommandBatch::Impl>(impl));}
 Engine::Engine():impl(new Impl){} Engine::~Engine()=default;
 std::string Engine::device_name()const{return std::string([impl->device.name UTF8String]);}
 Timing Engine::run(int bits,Operation op,const void* a,const void* b,void* out,std::size_t count) {

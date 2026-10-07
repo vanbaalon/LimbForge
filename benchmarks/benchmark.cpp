@@ -77,6 +77,18 @@ template<int Bits,bool IsComplex> void arithmetic(Engine& engine,Workers& worker
             if(!equal)throw std::runtime_error("benchmark MPFR mismatch: "+std::string(name(op)));
         }
         report(Bits,name(op),count,1,workers,samples);
+#ifdef LIMBFORGE_RESIDENT_API
+        auto da=engine.make_buffer<T>(count),db=engine.make_buffer<T>(count),dc=engine.make_buffer<T>(count);
+        da.upload(a.data(),count);db.upload(b.data(),count);Samples resident;resident.cpu=samples.cpu;resident.parallel=samples.parallel;
+        for(int repeat=-2;repeat<repeats;++repeat){auto batch=engine.batch();batch.run(op,da,db,dc);auto t=batch.submit().wait();
+            if(repeat>=0){resident.device.push_back(t.gpu_seconds);resident.wall.push_back(t.wall_seconds);}}
+        dc.download(out.data(),count);
+        for(std::size_t i=0;i<count;++i){bool equal;
+            if constexpr(IsComplex)equal=reference::equal_complex<Bits>(out[i],T{from_mpfr<Bits>(rr[i]),from_mpfr<Bits>(ri[i])});
+            else equal=reference::equal<Bits>(out[i],from_mpfr<Bits>(rr[i]));
+            if(!equal)throw std::runtime_error("resident benchmark MPFR mismatch");}
+        auto label=std::string(name(op))+"_resident";report(Bits,label.c_str(),count,1,workers,resident);
+#endif
     }
 }
 template<int Bits> void chain(Engine& engine,Workers& workers,std::size_t count,int repeats){
@@ -93,6 +105,16 @@ template<int Bits> void chain(Engine& engine,Workers& workers,std::size_t count,
     }
     for(std::size_t i=0;i<count;++i)if(!reference::equal<Bits>(out[i],from_mpfr<Bits>(rr[i])))throw std::runtime_error("chain MPFR mismatch");
     report(Bits,"mul_chain_host",count,steps,workers,samples);
+#ifdef LIMBFORGE_RESIDENT_API
+    auto x=engine.make_buffer<F>(count),y=engine.make_buffer<F>(count);Samples resident;
+    resident.cpu=samples.cpu;resident.parallel=samples.parallel;
+    for(int repeat=-2;repeat<repeats;++repeat){auto start=Clock::now();x.upload(a.data(),count);y.upload(b.data(),count);
+        auto batch=engine.batch();for(unsigned s=0;s<steps;++s)batch.run(Operation::mul,x,y,x);
+        auto t=batch.submit().wait();x.download(out.data(),count);double wall=std::chrono::duration<double>(Clock::now()-start).count();
+        if(repeat>=0){resident.device.push_back(t.gpu_seconds);resident.wall.push_back(wall);}}
+    for(std::size_t i=0;i<count;++i)if(!reference::equal<Bits>(out[i],from_mpfr<Bits>(rr[i])))throw std::runtime_error("resident chain MPFR mismatch");
+    report(Bits,"mul_chain_resident",count,steps,workers,resident);
+#endif
 }
 template<int Bits> void suite(Engine& e,Workers& w,const std::vector<std::size_t>& counts,int repeats){for(auto n:counts){arithmetic<Bits,false>(e,w,n,repeats);arithmetic<Bits,true>(e,w,n,repeats);chain<Bits>(e,w,n,repeats);}}
 int main(int argc,char** argv){try{
