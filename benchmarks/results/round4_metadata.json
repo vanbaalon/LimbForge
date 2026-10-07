@@ -1,0 +1,15 @@
+{
+  "utc": "2026-10-07T18:27:49.126725+00:00",
+  "revision": "2172965c0f18e4278ec3b879afcf487699fec43a",
+  "working_tree": "M docs/building.md\n M docs/numerics.md\n M include/limbforge/core.hpp\n M tests/test_arithmetic.cpp\n?? benchmarks/compare.py\n?? benchmarks/run_round.py\n?? docs/execution.md",
+  "platform": "macOS-26.6.2-arm64-arm-64bit-Mach-O",
+  "chip": "Apple M5 Max",
+  "benchmark_command": [
+    "/Users/k0959535/Dropbox/IntegrabilityProjects/2026 4d SoV/LimbForge/build/benchmark_limbforge",
+    "--repeats",
+    "9"
+  ],
+  "status": "passed",
+  "benchmark_stderr": "Device: Apple M5 Max; MPFR 4.2.2; workers=18; repeats=9; seed=20261007\n",
+  "rows": 144
+}

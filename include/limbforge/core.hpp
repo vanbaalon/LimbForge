@@ -134,6 +134,18 @@ template<int N> inline int limb_compare(LIMBFORGE_THREAD const word (&a)[N+1],LI
     for(int i=N-1;i>=0;--i)if(a[i]!=b.limb[i])return a[i]>b.limb[i]?1:-1;
     return 0;
 }
+// Exact two-limb / normalized one-limb quotient using a reused reciprocal.
+// Preconditions: d >= 2^31, high < d; inv = floor((2^64-1)/d) - 2^32.
+struct WordDivision { word quotient,remainder; };
+inline WordDivision divide_word(word high,word low,word d,word inv){
+    dword product=dword(high)*inv;
+    dword sum=dword(word(product))+low;
+    word q=word((product>>32)+high+1+(sum>>32));
+    word r=low-q*d;
+    if(r>word(sum)){--q;r+=d;}
+    if(r>=d){++q;r-=d;}
+    return {q,r};
+}
 template<int N> inline Number<N> div(LIMBFORGE_THREAD const Number<N>& a,LIMBFORGE_THREAD const Number<N>& b) {
     word status=a.status|b.status;if(status)return zero<N>(status);
     if(!b.sign)return zero<N>(division_by_zero);if(!a.sign)return zero<N>();
@@ -146,10 +158,12 @@ template<int N> inline Number<N> div(LIMBFORGE_THREAD const Number<N>& a,LIMBFOR
     if(e>1000000000||e< -1000000001)return zero<N>(exponent_overflow);
     r.exponent=int(e);
     constexpr dword B=dword(1)<<32;
+    word d=b.limb[N-1],inv=word(~dword(0)/d-B);
     for(int j=N;j>=0;--j) {
         dword top=(dword(u[j+N])<<32)|u[j+N-1];
-        dword q=top/b.limb[N-1],rem=top%b.limb[N-1];
-        if(q>=B){q=B-1;rem=top-q*b.limb[N-1];}
+        dword q,rem;
+        if(u[j+N]>=d){q=B-1;rem=top-q*d;}
+        else {auto estimate=divide_word(u[j+N],u[j+N-1],d,inv);q=estimate.quotient;rem=estimate.remainder;}
         if(N>1)while(rem<B&&q*b.limb[N-2]>(rem<<32)+u[j+N-2]){--q;rem+=b.limb[N-1];}
         dword borrow=0;
         for(int i=0;i<N;++i){dword p=q*b.limb[i]+borrow;word low=word(p),old=u[j+i];u[j+i]=old-low;borrow=(p>>32)+(old<low);}

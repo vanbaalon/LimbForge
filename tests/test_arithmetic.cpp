@@ -2,6 +2,17 @@
 #include <stdexcept>
 using namespace limbforge;
 void require(bool condition,const std::string& message){if(!condition)throw std::runtime_error(message);}
+void test_word_division(){
+    std::mt19937_64 rng(20261007);constexpr dword B=dword(1)<<32;
+    for(int i=0;i<1000000;++i){word d=word(rng())|0x80000000u;
+        if(i%7==0)d=0x80000000u;if(i%11==0)d=0xffffffffu;
+        word high=word(rng()%d),low=word(rng());
+        if(i%13==0)high=d-1;if(i%17==0)high=0;if(i%19==0)low=0;if(i%23==0)low=0xffffffffu;
+        auto result=divide_word(high,low,d,word(~dword(0)/d-B));dword numerator=(dword(high)<<32)|low;
+        require(result.quotient==numerator/d&&result.remainder==numerator%d,"reciprocal quotient/remainder case="+std::to_string(i));
+    }
+    std::cout<<"1000000 exact reciprocal quotient/remainder checks passed"<<std::endl;
+}
 template<int Bits> void test_real(Engine* engine) {
     constexpr int N=Bits/32;using F=Float<Bits>;
     static_assert(sizeof(F)==Bits/8+12,"Metal struct layout");
@@ -110,6 +121,7 @@ int main(int argc,char** argv) {
         std::unique_ptr<Engine> engine;
         if(!cpu_only){engine=std::make_unique<Engine>();std::cout<<"Device: "<<engine->device_name()<<std::endl;}
         else std::cout<<"CPU/MPFR validation (no GPU device created)"<<std::endl;
+        test_word_division();
         all_precisions<64>(engine.get());
         test_complex_and_recurrence<128>(engine.get());test_complex_and_recurrence<384>(engine.get());test_complex_and_recurrence<1024>(engine.get());
         test_dense_complex(engine.get());
