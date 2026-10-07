@@ -1,0 +1,27 @@
+Round 20 (plan D6 via L1c): dense SYRK/GEMM with one rounding per output (include/limbforge/linalg.hpp).
+Apple M5 Max, macOS 26.6.2, Release build, base revision 22c7164 plus this round's working tree, 2026-10-07 19:34-19:40 EDT.
+Host heavily loaded by other work: load average 146-216 during the runs (18 CPU cores). Read ratios, not absolute times;
+differences below ~15% are noise (e.g. the n = 200 rows vary by 2x between runs).
+
+Commands:
+  ./build/linalg_limbforge --repeats 9 --gpu-warm 0.3 --cholesky-max 400                     > round20_linalg.csv
+  ./build/linalg_limbforge --repeats 9 --gpu-warm 0.3 --moderate --serial-budget 1e7 --parallel-budget 1e8 > round20_linalg_moderate.csv
+
+Data: A is 2n x n (QSC normal-equation shape J^T J). syrk_lower: C = A^T A, lower triangle (n(n+1)/2 outputs, K = 2n).
+gemm_AtB: C = A^T B with a second 2n x n matrix (n^2 outputs, K = 2n).
+  qsc: QSC-like Jacobian columns: column scale 2^[-60,60], entries within 2^-25..2^5 of it, 25% exact zeros,
+       one entry 2^-150 below the column scale in every 17th column (these columns take a second exponent band).
+  moderate: all entries random with exponents in [-4, 4], no zeros (one band per line).
+Columns:
+  residue_device_ms / residue_wall_ms: Linalg (default options: band_bits 64, max_bands 4, max_spread 512), median of 9 calls after
+    0.3 s of warm-up calls. Device = one Metal command buffer (digits, int8 products, combine, reconstruct, finish);
+    wall = whole host call (band analysis, GPU, assembly). Inputs/outputs are page-aligned vectors, used in place (upload ~0.05 ms).
+  lines_by_bands: lines with 1;2;3;4 bands. pairs: band-pair sub-blocks. moduli_max: primes per product. int8_gemms = 3 per modulus.
+  multi_band_outputs / fallback_outputs: outputs accumulated over several band pairs / computed by the exact host path (none here).
+  limb_composed_*: baseline, one GPU thread per output, sequential s = add(s, mul(a, b)) with LimbForge 224/256-bit arithmetic
+    (rounds every step: a different, less accurate quantity), median of 9 after warm-up; limb_fma: same with fma (n <= 400 only, 0 = not run).
+  mpfr_serial_s / mpfr_parallel_s: consumer-style MPFR loop (mpfr_mul + mpfr_add per term, each rounded) on 1 / 18 threads.
+    Measured on evenly spaced sampled output rows (serial_sampled_share / parallel_sampled_share of the outputs) and extrapolated by
+    output count. mpfr_t arrays are prepared beforehand (not timed).
+  cholesky_mpfr_s: serial MPFR right-looking Cholesky of the SYRK result (n <= 400; 0 = not run).
+  verified: random outputs checked bit for bit against exact MPFR products + mpfr_sum (all passed; the run aborts otherwise).

@@ -70,6 +70,16 @@ template<int Bits> limbforge::Float<Bits> dot2_add(const limbforge::Float<Bits>&
     mpfr_ptr terms[3]={p.x,q.x,xe.x};mpfr_sum(r.x,terms,3,MPFR_RNDN);
     return limbforge::from_mpfr<Bits>(r.x);
 }
+// RN(sum_k a[k*sa]*b[k*sb]) with one rounding: every product exact at 2*Bits, then one mpfr_sum. Empty K is zero.
+template<int Bits> limbforge::Float<Bits> dot(const limbforge::Float<Bits>* a,std::ptrdiff_t sa,const limbforge::Float<Bits>* b,std::ptrdiff_t sb,std::size_t K){
+    limbforge::word status=0;for(std::size_t k=0;k<K;++k)status|=a[std::ptrdiff_t(k)*sa].status|b[std::ptrdiff_t(k)*sb].status;
+    if(status)return limbforge::zero<Bits/32>(status);
+    ExponentRange range;MP x(Bits),y(Bits),r(Bits);std::unique_ptr<__mpfr_struct[]> p(new __mpfr_struct[K?K:1]);std::vector<mpfr_ptr> terms(K);
+    for(std::size_t k=0;k<K;++k){mpfr_init2(&p[k],2*Bits);terms[k]=&p[k];limbforge::to_mpfr<Bits>(x.x,a[std::ptrdiff_t(k)*sa]);limbforge::to_mpfr<Bits>(y.x,b[std::ptrdiff_t(k)*sb]);
+        if(mpfr_mul(&p[k],x.x,y.x,MPFR_RNDN))throw std::runtime_error("inexact reference product");}
+    mpfr_sum(r.x,terms.data(),K,MPFR_RNDN);for(std::size_t k=0;k<K;++k)mpfr_clear(&p[k]);
+    return limbforge::from_mpfr<Bits>(r.x);
+}
 template<int Bits> limbforge::Complex<Bits/32> complex_fused(const limbforge::Complex<Bits/32>& a,const limbforge::Complex<Bits/32>& b,limbforge::Complex<Bits/32> c,bool subtract=false){
     if(subtract)c={limbforge::negate(c.re),limbforge::negate(c.im)};
     return {dot2_add<Bits>(a.re,b.re,limbforge::negate(a.im),b.im,c.re),dot2_add<Bits>(a.re,b.im,a.im,b.re,c.im)};

@@ -227,6 +227,16 @@ Each item: written contract → MPFR/MPC reference → CPU implementation in `co
   D3 sequential-fma order over k (reproducible); A/B tiles in threadgroup memory. `syrk` (`JᵀJ`, lower triangle) first —
   it dominates for J ≈ 2n×n. Cholesky: start on CPU (n³/3), move to a GPU blocked right-looking version if profiling shows
   it dominates. QR optional later. Sizes 200–1000, 256 bits.
+  **Status (round 20-D6): SYRK/GEMM done through L1c, with a stronger contract than sequential fma.**
+  `include/limbforge/linalg.hpp` (`Linalg::syrk`, `Linalg::gemm`, host arrays) rounds every output once from
+  the exact dot product. Contract and algorithm: `docs/numerics.md`, "Dense products". At n = 1000 (K = 2000,
+  256 bits, QSC-like columns) SYRK takes 18.5 ms device and 22 ms wall, against 529 ms for a one-thread-per-output
+  composed limb kernel and an estimated 17 s for 18-thread MPFR (`benchmarks/results/round20_linalg.csv`).
+  The CPU MPFR Cholesky now dominates the normal equations (2.2 s serial at n = 400; n^3/6 multiply-adds).
+  Next steps:
+  - a parallel or GPU blocked Cholesky (trailing updates through `gemm`), or LimbForge `fma` on the CPU;
+  - resident `Buffer` operands in a `CommandBatch` (design note in `numerics.md`);
+  - QR (S5).
 - **D7. Transcendentals at buffer level (tips #8)** — L, lowest priority: complex `exp`, `log`, integer `powi` with explicit
   accuracy contracts (faithful or correctly rounded via Ziv-style retry).
 
@@ -553,6 +563,22 @@ least 5× faster than the limb GEMM baseline at n ≥ 512 and 256 bits, includin
   exponent spread (exponent bands or an exact fallback; never silent truncation), then one rounding of
   each exact dot product. This is the L3 `exact_dot` contract; reference: exact MPFR products plus
   `mpfr_sum`. Report the band count and fallback rate on QSC-shaped Jacobians.
+  **L1c result (round 20-D6, `src/linalg.mm`, `benchmarks/linalg.mm`).** Each line (row of the left operand,
+  column of the right) is split into exponent bands of at most G = 64 bits. Every entry is an exact
+  (bits+G)-bit integer, and all bands of one side are concatenated into one extended operand, so one
+  residue GEMM per modulus holds every band pair. Single-band outputs are rounded straight from the Garner
+  integer; multi-band outputs are rounded from an exact accumulator. The exact host `exact_dot` takes lines
+  with more than 4 bands or a spread above 512 bits. Output is bit-identical to MPFR at 64–1024 bits, including
+  ties. On QSC-like data (column scales 2^±60, 25% zeros, rare 2^-150 outliers), 4–5% of columns need two bands
+  and none fall back. The cost is 37 moduli at 256 bits (34 for one-exponent-range data).
+  Stages at n = 1000 (moderate data):
+  - int8 products: ≈ 8 ms (≈ 36 TOPS, near the TensorOps peak, so further gains need fewer int8 operations);
+  - digits: 3.9 ms (Barrett, 4 moduli per input read);
+  - reconstruction: 2.5 ms;
+  - combine: 1.5 ms;
+  - host: ≈ 4 ms.
+  Possible further steps: fuse the three products and the combine through cooperative tensors to save the
+  int32 round trip; try 14-bit moduli with Karatsuba digits (3 GEMMs of K instead of 4K-equivalent per modulus).
 
 ### L2. Certified approximations with compacted exact retries
 
@@ -635,7 +661,7 @@ precision, rounding, operation order and timing boundaries before comparing impl
 
 ### Research order
 
-*Status (2026-10-07): L1 probe and L1b passed (see L1); next are L1c, L1b reduction costs, and L4 (in progress).*
+*Status (2026-10-07): L1 probe, L1b and L1c passed (see L1; L1c is the D6 `Linalg` API, round 20-D6). Next is L4 (in progress).*
 
 Run a small **L1 Metal arithmetic-capability probe** first; stop that branch if exactness requirements
 cannot be met or established. In parallel conceptually, L4 supplies the strongest direct candidate for

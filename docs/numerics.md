@@ -178,3 +178,98 @@ weights are `weights[(step*4+j)*count+i]`. When adjacent trajectories share
 coefficients, pass `states_per_weight`; the weight layout becomes
 `weights[(step*4+j)*(count/states_per_weight)+i/states_per_weight]`. The output is
 the final `q3`; zero steps return the fourth seed.
+
+## Dense products: SYRK and GEMM
+
+`include/limbforge/linalg.hpp` (`class Linalg`, with its own Metal device, queue and MSL 4.0 library):
+
+```cpp
+Linalg la;                                     // LinalgOptions: band_bits, max_bands, max_spread, host_threads
+la.syrk(bits, A, rows, cols, C, lower_only);   // C (cols x cols) = A^T A
+la.gemm(bits, transpose_a, A, B, m, n, k, C);  // C (m x n) = op(A) B; B is k x n; op(A) = A (m x k) or A^T (A is k x m)
+la.report();                                   // bands, fallbacks, moduli and stage times of the last call
+```
+
+Matrices are host arrays, row-major, with elements `Float<bits>` (`Number<bits/32>`, `bits/8 + 12`
+bytes), and `bits` a multiple of 32 in [64, 1024]. C must not overlap A or B. With `lower_only`,
+SYRK writes `C[i][j]` for `i >= j` and leaves the rest of C untouched; otherwise it writes the full
+symmetric matrix. The GPU uses page-aligned inputs and outputs in place (no copy). The call returns
+after the GPU has finished.
+
+**Contract.** Every output is one rounding of the exact dot product,
+`C[i][j] = RN(sum_k L[i][k] * R[k][j])`, round to nearest, ties to even. This holds for any K,
+term order, exponent spread, or cancellation. Products and partial sums are never rounded, and
+tiny entries are never dropped. Statuses propagate as for the other real operations: if any entry
+of row i of the left operand or column j of the right operand has a status, the output is zero
+with the OR of those statuses. An empty K, an all-zero line, or exact cancellation gives canonical
+zero. A rounded result outside ±1,000,000,000 gives `exponent_overflow`; intermediate products
+may lie outside that range. SYRK results are exactly symmetric. The independent reference
+(`reference::dot` in `tests/reference.hpp`) forms every product exactly with MPFR at `2*bits` and
+sums them with one `mpfr_sum`.
+
+**Algorithm.** A *line* is a row of the left operand or a column of the right operand (for SYRK,
+a column of A on both sides). Each line is split into exponent *bands*. Starting from the largest
+remaining exponent `hi`, the band `[hi - G, hi]` (`G = band_bits`, default 64) takes every entry
+in that range, and `lo` is the smallest exponent in it. An entry with mantissa `m` and exponent `e`
+becomes the exact integer `X = m * 2^(e - lo)` of at most `bits + G` bits, scaled by
+`2^(lo - bits + 1)`, so nothing is truncated. All bands of one side are concatenated into an
+*extended* operand, so one integer GEMM per modulus computes every band pair `(b, c)` as a
+sub-block. The integer GEMM is the exact residue GEMM of plan item L1b:
+
+- primes `m <= 65279`;
+- balanced residues split into two int8 digits;
+- three TensorOps int8 matrix products per modulus, exact in int32 for `K <= 65472`;
+- the products recombined modulo `m`.
+
+The modulus count makes `prod m > 4 * K * 2^(Pb + Pc)`, where `Pb` and `Pc` are the widest integer
+widths (`bits` plus the widest band). This is strictly more than the `2 * |sum|` that the signed
+Garner reconstruction needs. When both lines of an output have one band, its reconstructed integer
+is rounded directly with `pack`, as in every other operation. Otherwise the band-pair integers of
+that output are added exactly into a two's-complement accumulator, at their offsets from the
+lowest bands (bounded by `max_spread`), and the total is rounded once. SYRK computes only the lower
+triangle and skips tiles above the diagonal. An off-diagonal band pair `(b, c)` with `b > c` also
+supplies the transposed `(c, b)` terms. It is reconstructed in two dispatches so that no two
+threads of one dispatch update the same accumulator.
+
+**Exact host fallback.** `exact_dot` on the CPU (threads: `host_threads`, default all) computes:
+
+- every line whose nonzero exponents need more than `max_bands` bands (default 4);
+- every line whose nonzero exponents span more than `max_spread` bits (default 512);
+- every line when `K > 65472`.
+
+`exact_dot` sorts the exact products by exponent. It starts a new cluster whenever every remaining
+product lies more than `bits + ceil(log2 K) + 4` bits below the current cluster's lowest bit, and
+sums each cluster exactly. Let `S` be the first nonzero cluster sum (a multiple of `2^lsb`) and `F`
+the rest. Then `|F| < 2^(lsb - bits - 2)`, so no midpoint of the target precision lies strictly
+between `S + F` and `S + sign(F)·eps`. Each nonzero cluster dominates everything below it, so
+`sign(F)` is the sign of the next nonzero cluster. Hence `RN(S + F) = RN(S + sign(F)·eps)` exactly,
+including ties. `exact_dot<N>(a, stride_a, b, stride_b, K)` is public and host-only. The host
+resolves statuses and zero lines without arithmetic.
+
+`LinalgReport` lists:
+
+- lines per band count (index 0: zero or status lines);
+- fallback lines and outputs, and multi-band outputs;
+- band pairs and extended GEMM sizes;
+- the number of int8 GEMMs (three per modulus);
+- host stage times.
+
+Bands help only when a few lines carry entries far below their neighbours. With one narrow band
+per line the modulus count is at its minimum: 33 at 256 bits for K = 2000 when each line has a
+single exponent. A spread up to `G` within a band costs about `2*spread/16` extra moduli, and the
+widest line sets this for the whole product.
+
+**Cholesky and QR (design note).** The normal-equation consumer factors `C = J^T J` next. For
+J of 2n × n, SYRK costs n^3 multiply-adds and Cholesky n^3/6, so SYRK dominates. Cholesky starts on
+the CPU (MPFR or LimbForge `fma`) from the correctly rounded C. A blocked right-looking GPU version
+would reuse `gemm` for its trailing updates. `C22 -= L21 L21^T` is then a SYRK with one rounding
+per entry, a different and more accurate contract than a sequential update. Plan item S5 prefers
+QR of `[J; sqrt(mu) D]` for difficult Levenberg–Marquardt points.
+
+**Resident buffers (later).** The host-array API owns its own device and queue. A resident version
+would take `Buffer<Float<bits>>` operands and encode the same pipeline into a `CommandBatch`. Band
+analysis needs the exponents on the host, or a small GPU pass over exponent and status words
+followed by a readback. The natural form is therefore to run `analyze` once per matrix generation.
+Digits, products, combine, reconstruct and finish are then encoded as ordinary dispatches into the
+caller's batch, with scratch planes from a workspace query. Fallback lines would then need a host
+step after the submission, or a GPU `exact_dot` kernel.

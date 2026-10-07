@@ -1,0 +1,8 @@
+#pragma once
+static const char* limbforge_linalg_source=R"LIMBFORGE(
+#include <metal_stdlib>
+#include <metal_tensor>
+#include <MetalPerformancePrimitives/MetalPerformancePrimitives.h>
+@CORE_SOURCE@
+@LINALG_SOURCE@
+)LIMBFORGE";
