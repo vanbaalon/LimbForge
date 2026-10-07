@@ -1,0 +1,1 @@
+Apple M5 Max; interleaved AoS/SoA; uploads and layout conversion excluded; every dispatch checked against MPFR
