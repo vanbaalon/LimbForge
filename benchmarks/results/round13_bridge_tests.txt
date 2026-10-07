@@ -1,0 +1,46 @@
+Test project /Users/k0959535/Dropbox/IntegrabilityProjects/2026 4d SoV/LimbForge/.claude/worktrees/agent-a9cb162a9f56bfcb7/build
+    Start 1: arithmetic_cpu
+1/5 Test #1: arithmetic_cpu ...................   Passed    2.08 sec
+    Start 2: bridge_cpu
+2/5 Test #2: bridge_cpu .......................   Passed    4.51 sec
+    Start 3: arithmetic_gpu
+3/5 Test #3: arithmetic_gpu ...................   Passed    9.07 sec
+    Start 4: resident_buffers
+4/5 Test #4: resident_buffers .................   Passed    0.37 sec
+    Start 5: tree_reduction
+5/5 Test #5: tree_reduction ...................   Passed    0.65 sec
+100% tests passed out of 5
+Total Test time (real) =  16.68 sec
+MPC 1.4.1 checks enabled
+64 bits: 636643 bridge checks passed
+96 bits: 643130 bridge checks passed
+128 bits: 646014 bridge checks passed
+160 bits: 652466 bridge checks passed
+192 bits: 652481 bridge checks passed
+224 bits: 652373 bridge checks passed
+256 bits: 652469 bridge checks passed
+288 bits: 652494 bridge checks passed
+320 bits: 652435 bridge checks passed
+352 bits: 652413 bridge checks passed
+384 bits: 652436 bridge checks passed
+416 bits: 652372 bridge checks passed
+448 bits: 652363 bridge checks passed
+480 bits: 652464 bridge checks passed
+512 bits: 652359 bridge checks passed
+544 bits: 652435 bridge checks passed
+576 bits: 652458 bridge checks passed
+608 bits: 652479 bridge checks passed
+640 bits: 652291 bridge checks passed
+672 bits: 652420 bridge checks passed
+704 bits: 650202 bridge checks passed
+736 bits: 650132 bridge checks passed
+768 bits: 650112 bridge checks passed
+800 bits: 650125 bridge checks passed
+832 bits: 650187 bridge checks passed
+864 bits: 650102 bridge checks passed
+896 bits: 650035 bridge checks passed
+928 bits: 650089 bridge checks passed
+960 bits: 650128 bridge checks passed
+992 bits: 650128 bridge checks passed
+1024 bits: 650187 bridge checks passed
+20168422 bridge checks passed at 31 precisions

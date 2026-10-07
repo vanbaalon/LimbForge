@@ -1,0 +1,9 @@
+Round 13-D1 MPFR/MPC bridge; base revision a6f4a37 + branch round13-bridge working tree; date 2026-10-07
+Device: Apple M5 Max (18 cores); macOS 26.6.2; Apple clang 21.0.0; MPFR 4.2.2; MPC 1.4.1; Release build
+Command: ./build/bridge_limbforge 65536 15  (65,536 values per run, 1 warm-up + 15 samples, median and min ns/value)
+old = detail::from_mpfr_slow / to_mpfr_slow (mpz import/export); new = from_mpfr / to_mpfr scalar loop;
+new_array = *_array with threads=1; *_threads = threads=0 auto policy (grain 2^22/bits values, 2^21/bits complex);
+old_threads = the slow path through the same chunking. mpfr_prec bits+64 rows round on input (from) and are exact
+on output (to); bits-32 rows are exact on input and round on output. Every new result was checked against old.
+Caveat: the machine was shared with unrelated CPU-heavy processes (WolframKernel, load average 41-46 during the run),
+so absolute and multithreaded times are noisy; same-run ratios are the meaningful quantity.

@@ -56,7 +56,7 @@ measurements.
 - Fixed-order real and complex tree reductions with GPU-resident intermediate levels.
 - Configurable threadgroup sizes and per-pipeline limits for measured tuning.
 - A generic four-state complex recurrence primitive.
-- Optional MPFR conversion through decimal strings or exact binary values.
+- Optional MPFR/MPC conversion through decimal strings or direct limb copies, with multithreaded `mpfr_t[]` / `mpc_t[]` array versions.
 - Reproducible benchmarks against both serial and multicore MPFR.
 
 The GPU library depends on Metal and Foundation. MPFR/GMP are needed for the

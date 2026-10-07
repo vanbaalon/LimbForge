@@ -13,6 +13,9 @@ cmake --build build -j4
 ctest --test-dir build --output-on-failure
 ```
 
+Optional `brew install libmpc` enables the `mpc_t` checks in `bridge_cpu` and the
+complex rows of `bridge_limbforge`; CMake skips them when MPC is absent.
+
 Tests run both CPU/MPFR and GPU/MPFR checks. A machine without an exposed Metal
 device can build the project and run CPU checks:
 
@@ -46,7 +49,8 @@ target_link_libraries(my_application PRIVATE LimbForge::limbforge)
 
 The target supplies public headers, C++17 requirements, and Metal/Foundation
 frameworks. If using `limbforge/mpfr_bridge.hpp`, also supply MPFR/GMP include
-paths and link both libraries in your application.
+paths and link both libraries in your application. Its `mpc_t` functions are
+enabled when `<mpc.h>` is on the include path and need no libmpc symbols.
 
 ## Install and find the package
 

@@ -40,6 +40,39 @@ The same core header works on the CPU and inside a Metal shader. Include
 bytes; a complex struct occupies twice that. Input and output buffers must match
 the requested precision and operation.
 
+## MPFR and MPC bridge
+
+`from_mpfr<bits>(x)` rounds to nearest, ties to even, to `bits`; NaN and
+infinity give `invalid`, either zero gives canonical zero, and a rounded
+LimbForge exponent (MPFR exponent − 1) outside ±1,000,000,000 gives
+`exponent_overflow`. `to_mpfr<bits>(out, x)` is exact when
+`mpfr_get_prec(out) >= bits` and otherwise rounds to nearest, ties to even, to
+the output precision; zero becomes +0 and an error status throws. Both set the
+MPFR inexact flag exactly when they round.
+
+On little-endian 64-bit-limb GMP builds (arm64 macOS), a 64-bit MPFR limb is two
+LimbForge words, low half first. The significand is therefore copied by
+`memcpy` between the top words of MPFR's left-aligned significand and
+`limb[]`; lower MPFR words are zero-filled. A wider MPFR input is rounded from
+its discarded words directly; a narrower output is rounded at bit position
+`prec`. The value is then installed with `mpfr_custom_init_set`, which also
+works for numbers with `mpfr_custom_init` storage. These fast paths agree bit
+for bit, including flags, with the former `mpz` conversion, which is retained
+as `detail::from_mpfr_slow` / `detail::to_mpfr_slow`. Cases that touch the
+current MPFR exponent range use that path: an input or result outside
+`[emin, emax]`, a rounding carry at `emax`, or a range that excludes `bits`.
+
+`from_mpfr_array`, `to_mpfr_array`, `from_mpc_array`, and `to_mpc_array`
+convert contiguous `mpfr_t[]` / `mpc_t[]` arrays. Elements match the scalar
+calls. With `threads=0`, each thread receives at least `2^22/bits` values
+(`2^21/bits` for complex), with a single thread below twice that. Worker
+threads adopt the caller's MPFR exponent range, which is thread-local in MPFR.
+If an element has an error status, the array call rethrows the lowest failing
+chunk's exception after all chunks finish; other chunks may already be written.
+`from_mpc` / `to_mpc` convert `Complex<bits/32>`; `to_mpc` checks both statuses
+before writing. The MPC functions appear when `<mpc.h>` is on the include path,
+need no libmpc symbols, and are disabled by `LIMBFORGE_NO_MPC`.
+
 ## Square and square root
 
 `square(a)` computes the exact integer product and rounds once, as `mul(a,a)`
