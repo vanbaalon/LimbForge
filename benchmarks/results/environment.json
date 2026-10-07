@@ -1,0 +1,24 @@
+{
+  "date": "2026-10-07",
+  "core_revision": "773329f13fd82fe89f82067401d125675edb888e",
+  "device": "Apple M5 Max",
+  "os": "26.6.2",
+  "compiler": "Apple clang version 21.0.0 (clang-2100.1.1.101)",
+  "build_type": "Release",
+  "significand_bits": [
+    256,
+    384,
+    1024
+  ],
+  "batch_sizes": [
+    256,
+    4096,
+    65536
+  ],
+  "samples": 9,
+  "warmups": 2,
+  "cpu_workers": 18,
+  "seed": 20261007,
+  "scope": "standalone arithmetic and 16-step multiplication chains",
+  "baseline_boundary_bug": "known, not exercised by moderate-exponent benchmark inputs"
+}
