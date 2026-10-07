@@ -132,6 +132,37 @@ tree in shared memory, then reduce their roots. Padding a final block with
 canonical zero preserves the valid-input result and error behavior. Group size
 changes scheduling and storage without changing the mathematical tree.
 
+## Vector recurrences
+
+`Engine::vector_recurrence(bits, shape, start, p, q, r, out, base, dp, dq)` advances many
+independent four-component complex vectors (one GPU thread each; plan D4). Each multiply-add `mac(a, b, c)` is either composed, `cadd(c, cmul(a, b))` (default; the rounding of
+the existing complex operations), or fused with `shape.fused = true`, `cfma(a, b, c)` with one rounding
+per component (see "Fused multiply-add"; currently ~30× slower). With
+`dot(a, v) = mac(a3, v3, mac(a2, v2, mac(a1, v1, mac(a0, v0, 0))))`, one step with coefficient index
+`k` is (writing `cfma` for `mac`):
+
+```
+rank-one (default):  s = dot(q[k], v);  v_i = cfma(p[k]_i, s, v_i)
+matrix:              v_i = dot(M[k]_i, v)           (all components from the previous v)
+tangent:             s = dot(q[k], v);  sb = dot(q[k], b);  tq = dot(dq[k], b)
+                     v_i = cadd(cfma(p_i, s, v_i), cfma(p_i, tq, cfma(dp_i, sb, 0)))
+affine (any form):   v_i = cadd(v_i, r[k]_i)       (applied last)
+```
+
+The tangent form evaluates `dv + p (q·dv) + dp (q·b) + p (dq·b)` for a stored base trajectory `b`
+(an `all_steps` run of the base recurrence in the same direction; `b[t]` is the state before step
+`t`). `reverse` applies coefficient steps `k = steps−1, …, 0`; outputs and base states are indexed by
+sequence position. Layouts are component-major (`[j][lane]`); coefficients shared by
+`lanes_per_weight` adjacent lanes are `[steps][4][G]` (`[steps][4][4][G]` for `M`), with
+`G = lanes / lanes_per_weight`; `r` is `[steps][4][lanes]`; tangent inputs use `lanes_per_base` and
+`lanes_per_tangent` in the same way. The independent reference (`tests/test_vector_recurrence.cpp`)
+implements this sequence with MPFR (`mpfr_sum` per fused component).
+
+Current limits: shapes are validated before submission; widths through 512 bits are tested. At
+1024 bits the Metal compiler failed while specialising this kernel (the exact complex `fma`
+workspaces are large); wider widths are not supported yet. Pipeline compilation for a new
+width/flag combination can take minutes on first use, so warm the pipelines before timing.
+
 ## Recurrences
 
 `Engine::recurrence` computes independent trajectories:

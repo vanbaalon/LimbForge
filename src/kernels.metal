@@ -108,3 +108,53 @@ kernel void tree_sum_complex(device const Complex<N>* input [[buffer(0)]],
     }
     if(!tid){Complex<N> result=partial[0];out[gid.x]=result;}
 }
+
+// Batched four-component vector recurrence (plan D4). One thread per lane. Contract
+// (docs/numerics.md): dot(a,v) = cfma chain over components 0..3 starting from cfma(a0,v0,0);
+// rank-1 step v_i <- cfma(p_i, dot(q,v), v_i); matrix step v_i <- dot(M_i,v); the affine source is
+// added last with cadd. Loops stay rolled so each exact cfma is instantiated once: fully inlined
+// copies made shader compilation take tens of minutes.
+constant uint vr_flags [[function_constant(2)]];
+constant bool vr_affine=(vr_flags&1)!=0,vr_matrix=(vr_flags&2)!=0,vr_all=(vr_flags&4)!=0,vr_reverse=(vr_flags&8)!=0,vr_tangent=(vr_flags&16)!=0,vr_fused=(vr_flags&32)!=0;
+struct VectorParams { uint lanes,steps,lanes_per_weight,lanes_per_base,lanes_per_tangent; };
+inline Complex<N> czero(){return {zero<N>(),zero<N>()};}
+// c + a*b: fused (one rounding per component) or composed (cadd(c, cmul(a,b))).
+inline Complex<N> mac(Complex<N> a,Complex<N> b,Complex<N> c){return vr_fused?cfma(a,b,c):cadd(c,cmul(a,b));}
+// sum_j a[j*stride] * v[j] as a cfma chain; v is a 4-element private array.
+inline Complex<N> dot4(device const Complex<N>* a,ulong stride,thread const Complex<N> (&v)[4]){
+    Complex<N> s=czero();
+    _Pragma("clang loop unroll(disable)") for(uint j=0;j<4;++j){Complex<N> x=a[j*stride],y=v[j];s=mac(x,y,s);}
+    return s;
+}
+kernel void vector_recurrence(device const Complex<N>* start [[buffer(0)]],device const Complex<N>* pw [[buffer(1)]],device Complex<N>* out [[buffer(2)]],
+                              constant VectorParams& p [[buffer(3)]],device const Complex<N>* qw [[buffer(4)]],device const Complex<N>* r [[buffer(5)]],
+                              device const Complex<N>* base [[buffer(6)]],device const Complex<N>* dp [[buffer(7)]],device const Complex<N>* dq [[buffer(8)]],
+                              uint lane [[thread_position_in_grid]]) {
+    if(lane>=p.lanes)return;
+    const ulong L=p.lanes,G=p.lanes/p.lanes_per_weight,g=lane/p.lanes_per_weight;
+    const ulong B=p.lanes/p.lanes_per_base,b=lane/p.lanes_per_base,T=p.lanes/p.lanes_per_tangent,h=lane/p.lanes_per_tangent;
+    Complex<N> v[4],n[4],bs[4];
+    for(uint j=0;j<4;++j){v[j]=start[j*L+lane];if(vr_all)out[j*L+lane]=v[j];}
+    _Pragma("clang loop unroll(disable)") for(uint t=0;t<p.steps;++t){
+        ulong k=vr_reverse?p.steps-1-t:t;
+        if(vr_matrix){
+            _Pragma("clang loop unroll(disable)") for(uint i=0;i<4;++i)n[i]=dot4(pw+(k*16+i*4)*G+g,G,v);
+            for(uint i=0;i<4;++i)v[i]=n[i];
+        }else{
+            Complex<N> s=dot4(qw+k*4*G+g,G,v),sb,tq;
+            if(vr_tangent){
+                // v holds the tangent; base[t] is the base state before this step.
+                for(uint j=0;j<4;++j)bs[j]=base[(ulong(t)*4+j)*B+b];
+                sb=dot4(qw+k*4*G+g,G,bs);tq=dot4(dq+k*4*T+h,T,bs);
+            }
+            _Pragma("clang loop unroll(disable)") for(uint i=0;i<4;++i){
+                Complex<N> pi=pw[(k*4+i)*G+g],x=mac(pi,s,v[i]);
+                if(vr_tangent){Complex<N> d=dp[(k*4+i)*T+h],e=mac(d,sb,czero());x=cadd(x,mac(pi,tq,e));}
+                v[i]=x;
+            }
+        }
+        if(vr_affine)for(uint i=0;i<4;++i)v[i]=cadd(v[i],r[(k*4+i)*L+lane]);
+        if(vr_all)for(uint j=0;j<4;++j)out[(ulong(t+1)*4+j)*L+lane]=v[j];
+    }
+    if(!vr_all)for(uint j=0;j<4;++j)out[j*L+lane]=v[j];
+}

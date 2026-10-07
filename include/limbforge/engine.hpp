@@ -15,6 +15,19 @@ inline bool operation_is_valid(Operation op){return int(op)>=0&&int(op)<=12;}
 struct Timing { double gpu_seconds, wall_seconds; };
 struct EngineOptions { unsigned threads_per_threadgroup=0; bool cooperative_reductions=true; }; // 0 selects the default policy.
 struct PipelineInfo { unsigned simd_width,max_threads,threads_per_threadgroup; };
+// Shape and options of Engine::vector_recurrence (docs/numerics.md, "Vector recurrences").
+// Complex arrays are component-major: element j of lane i is at [j*lanes + i].
+struct VectorRecurrence {
+    std::size_t lanes=0; unsigned steps=0;
+    unsigned lanes_per_weight=1;  // adjacent lanes sharing p/q (or M)
+    bool affine=false;            // add r[k] (per lane) after each step
+    bool matrix=false;            // v <- M[k] v instead of v <- v + p[k] (q[k].v)
+    bool all_steps=false;         // write the state before step 0 and after every step
+    bool reverse=false;           // apply coefficient steps k = steps-1 .. 0
+    bool tangent=false;           // v is a tangent: v <- v + p(q.v) + dp(q.b) + p(dq.b), b = base state
+    unsigned lanes_per_base=1,lanes_per_tangent=1; // lanes sharing a base trajectory / dp,dq
+    bool fused=false;             // multiply-adds: cfma (one rounding per component) or cadd(c, cmul(a,b))
+};
 namespace detail {
 struct BufferStorage;
 void* mapped(const std::shared_ptr<BufferStorage>&);
@@ -104,6 +117,14 @@ public:
     // Output: final value (fourth seed if steps=0).
     // Each GPU thread keeps its complete four-value ring through every step.
     Timing recurrence(int bits,const void* seeds,const void* weights,void* out,std::size_t count,unsigned steps,unsigned states_per_weight=1);
+    // Four-component complex vector recurrence. Layouts (G = lanes/lanes_per_weight):
+    //   start [4][lanes]; p,q [steps][4][G]; M [steps][4][4][G] (passed as p, q unused);
+    //   r [steps][4][lanes]; out [4][lanes], or [steps+1][4][lanes] with all_steps;
+    //   tangent: base [steps+1][4][lanes/lanes_per_base] (an all_steps base run, same direction),
+    //   dp,dq [steps][4][lanes/lanes_per_tangent]. Coefficient index k follows the direction;
+    //   output and base indices follow the sequence position.
+    Timing vector_recurrence(int bits,const VectorRecurrence& shape,const void* start,const void* p,const void* q,const void* r,void* out,
+                             const void* base=nullptr,const void* dp=nullptr,const void* dq=nullptr);
 private:
     friend class CommandBatch;
     std::shared_ptr<detail::BufferStorage> allocate(std::size_t bytes);

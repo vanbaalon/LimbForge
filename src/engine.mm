@@ -11,6 +11,7 @@
 #include <mutex>
 #include <vector>
 #include <algorithm>
+#include <array>
 
 namespace limbforge {
 namespace {
@@ -67,7 +68,12 @@ struct Engine::Impl {
             libraries[bits]=library;
         }
         NSError* error=nil;id<MTLFunction> function;
-        if(operation>=100){
+        if(operation>=200){
+            MTLFunctionConstantValues* constants=[MTLFunctionConstantValues new];
+            std::uint32_t flags=operation-200;[constants setConstantValue:&flags type:MTLDataTypeUInt atIndex:2];
+            function=[libraries[bits] newFunctionWithName:@"vector_recurrence" constantValues:constants error:&error];
+        }
+        else if(operation>=100){
             NSString* names[]={@"recurrence",@"tree_sum_real",@"tree_sum_complex",@"global_tree_sum_real",@"global_tree_sum_complex"};
             function=[libraries[bits] newFunctionWithName:names[operation-100]];
         }
@@ -84,7 +90,7 @@ struct Engine::Impl {
     }
     unsigned group_size(id<MTLComputePipelineState> state,int bits,int operation)const{
         NSUInteger width=state.threadExecutionWidth,maximum=state.maxTotalThreadsPerThreadgroup;
-        NSUInteger preferred=options.threads_per_threadgroup?options.threads_per_threadgroup:((operation==100||(bits>=384&&(operation==5||operation==6||operation==11||operation==12)))?width:NSUInteger(128));
+        NSUInteger preferred=options.threads_per_threadgroup?options.threads_per_threadgroup:((operation==100||operation>=200||(bits>=384&&(operation==5||operation==6||operation==11||operation==12)))?width:NSUInteger(128));
         if(preferred%width)throw std::invalid_argument("threadgroup size must be a multiple of pipeline SIMD width");
         NSUInteger result=std::min(preferred,maximum);result-=result%width;
         if(!result)throw std::runtime_error("pipeline cannot fit one SIMD group");
@@ -101,6 +107,32 @@ struct Engine::Impl {
         if(!buffers[index]||buffers[index].length<bytes) {
             buffers[index]=[device newBufferWithLength:bytes options:MTLResourceStorageModeShared];
             if(!buffers[index])throw std::runtime_error("Metal buffer allocation failed");
+        }
+    }
+    // Inputs are bound at Metal indices 0,1,4,5,6,7,8 (start, p, q, r, base, dp, dq); out at 2.
+    std::vector<id<MTLBuffer>> vector_buffers;
+    Timing vector_dispatch(int bits,int operation,const VectorRecurrence& s,std::array<const void*,7> in,std::array<std::size_t,7> in_bytes,void* out,std::size_t out_bytes){
+        @autoreleasepool {
+            auto state=pipeline(bits,operation);auto start=std::chrono::steady_clock::now();
+            if(vector_buffers.size()<8)vector_buffers.resize(8);
+            auto grow=[&](unsigned i,std::size_t bytes){bytes=std::max<std::size_t>(bytes,1);
+                if(bytes>device.maxBufferLength)throw std::invalid_argument("buffer exceeds device maximum");
+                if(!vector_buffers[i]||vector_buffers[i].length<bytes){vector_buffers[i]=[device newBufferWithLength:bytes options:MTLResourceStorageModeShared];
+                    if(!vector_buffers[i])throw std::runtime_error("Metal buffer allocation failed");}};
+            for(unsigned i=0;i<7;++i){grow(i,in_bytes[i]);if(in[i]&&in_bytes[i])std::memcpy(vector_buffers[i].contents,in[i],in_bytes[i]);}
+            grow(7,out_bytes);
+            id<MTLCommandBuffer> command=[queue commandBuffer];id<MTLComputeCommandEncoder> encoder=[command computeCommandEncoder];
+            if(!command||!encoder)throw std::runtime_error("Metal command allocation failed");
+            [encoder setComputePipelineState:state];
+            const unsigned slot[7]={0,1,4,5,6,7,8};for(unsigned i=0;i<7;++i)[encoder setBuffer:vector_buffers[i] offset:0 atIndex:slot[i]];
+            [encoder setBuffer:vector_buffers[7] offset:0 atIndex:2];
+            std::uint32_t params[5]={std::uint32_t(s.lanes),s.steps,s.lanes_per_weight,s.lanes_per_base,s.lanes_per_tangent};
+            [encoder setBytes:params length:sizeof(params) atIndex:3];
+            [encoder dispatchThreads:MTLSizeMake(s.lanes,1,1) threadsPerThreadgroup:MTLSizeMake(group_size(state,bits,operation),1,1)];
+            [encoder endEncoding];[command commit];[command waitUntilCompleted];
+            if(command.status==MTLCommandBufferStatusError)throw std::runtime_error("Metal execution: "+error_message(command.error));
+            std::memcpy(out,vector_buffers[7].contents,out_bytes);
+            return {command.GPUEndTime-command.GPUStartTime,std::chrono::duration<double>(std::chrono::steady_clock::now()-start).count()};
         }
     }
     Timing dispatch(int bits,int operation,const void* a,std::size_t a_bytes,const void* b,std::size_t b_bytes,
@@ -255,6 +287,26 @@ Timing Engine::run_ternary(int bits,Operation op,const void* a,const void* b,con
     if(!a||!b||!c||!out)throw std::invalid_argument("null arithmetic buffer");
     std::size_t stride=(bits/8+12)*(operation_is_complex(op)?2:1),bytes=checked_size(count,stride);
     return impl->dispatch(bits,int(op),a,bytes,b,bytes,out,bytes,count,0,1,c,bytes);
+}
+Timing Engine::vector_recurrence(int bits,const VectorRecurrence& s,const void* start,const void* p,const void* q,const void* r,void* out,
+                                 const void* base,const void* dp,const void* dq){
+    validate(bits,s.lanes);
+    if(!s.lanes_per_weight||!s.lanes_per_base||!s.lanes_per_tangent||s.lanes%s.lanes_per_weight||s.lanes%s.lanes_per_base||s.lanes%s.lanes_per_tangent)
+        throw std::invalid_argument("lanes must be divisible by lanes_per_weight, lanes_per_base and lanes_per_tangent");
+    if(s.matrix&&s.tangent)throw std::invalid_argument("tangent mode requires the rank-one form");
+    if(!s.lanes)return {0,0};
+    if(!start||!out||(s.steps&&!p)||(s.steps&&!s.matrix&&!q)||(s.steps&&s.affine&&!r)||(s.tangent&&s.steps&&(!base||!dp||!dq)))throw std::invalid_argument("null vector recurrence buffer");
+    std::size_t stride=2*(bits/8+12),G=s.lanes/s.lanes_per_weight,coefficients=s.matrix?16:4;
+    // Every shader index is 64-bit, but the lane count and per-step strides must fit 32 bits.
+    if(s.lanes>std::numeric_limits<std::uint32_t>::max()/16)throw std::invalid_argument("vector recurrence exceeds 32-bit indexing");
+    auto bytes=[&](std::size_t elements){return checked_size(elements,stride);};
+    std::size_t steps=s.steps;
+    std::size_t start_bytes=bytes(4*s.lanes),p_bytes=steps?bytes(checked_size(steps*coefficients,G)):0,q_bytes=steps&&!s.matrix?bytes(checked_size(steps*4,G)):0,
+        r_bytes=steps&&s.affine?bytes(checked_size(steps*4,s.lanes)):0,out_bytes=bytes(checked_size(s.all_steps?(steps+1)*4:4,s.lanes)),
+        base_bytes=s.tangent&&steps?bytes(checked_size((steps+1)*4,s.lanes/s.lanes_per_base)):0,
+        d_bytes=s.tangent&&steps?bytes(checked_size(steps*4,s.lanes/s.lanes_per_tangent)):0;
+    unsigned flags=(s.affine?1:0)|(s.matrix?2:0)|(s.all_steps?4:0)|(s.reverse?8:0)|(s.tangent?16:0)|(s.fused?32:0);
+    return impl->vector_dispatch(bits,200+int(flags),s,{start,p,q,r,base,dp,dq},{start_bytes,p_bytes,q_bytes,r_bytes,base_bytes,d_bytes,d_bytes},out,out_bytes);
 }
 Timing Engine::recurrence(int bits,const void* seeds,const void* weights,void* out,std::size_t count,unsigned steps,unsigned states_per_weight) {
     validate(bits,count);

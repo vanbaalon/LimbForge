@@ -1,0 +1,9 @@
+Round 21 (plan D4). Apple M5 Max, macOS 26.6.2, Release, 2026-10-07. ./build/vector_recurrence_limbforge --repeats 3.
+Host load average 208-220 during the run (other work): the CPU pool is slowed by contention, so the
+CPU/GPU ratios are optimistic for the GPU; rerun on an idle host before publishing.
+GPU: Engine::vector_recurrence host-array path (wall includes copies), 4 lanes share p/q; composed
+arithmetic (default) unless the mode says _fused. Tangent: lanes share a base chain and dp/dq by 4.
+CPU: the consumer's current arithmetic, MPC mpc_mul/mpc_add (8 mul + 8 add per lane-step; tangent 24+24),
+serial timed on 256 lanes and the 18-worker pool on 4096 lanes, both scaled to all lanes. The CPU and GPU
+use different rounding sequences: timing comparison only. GPU results are validated against MPFR in
+tests/test_vector_recurrence.cpp for both modes.

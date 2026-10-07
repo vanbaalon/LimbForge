@@ -210,6 +210,7 @@ Each item: written contract → MPFR/MPC reference → CPU implementation in `co
   `s₀=RN(a₀b₀)`, `s_k=fma(a_k,b_k,s_{k−1})` sequentially (bitwise reproducible regardless of thread configuration); optional
   `pairwise` mode with a fixed adjacent-pair tree (reuse round-10/11 tree code) for long segments. One thread per segment
   for K ≤ ~128; SIMD-group-per-segment variant for low segment counts. Fourier transforms = batched GEMM → D6 kernel.
+- **D4 status (round 21):** implemented as `Engine::vector_recurrence` (host-array API; composed default, fused option; tangent from a stored base chain). Next: resident-buffer version so the base chain stays on the GPU; faster fused three-term sum; ≥ 1024-bit compile.
 - **D4. Vector recurrence (tips #1, highest consumer value)** — L, needs D2 (and C1 for sharing).
   `vector_recurrence(bits, v0, p, q, r, out, lanes, steps, lanes_per_weight, flags)`; per step
   `s=q_k·v` (fixed order via D2/D3), `v_i ← cfma(p_{k,i}, s, v_i) (+ r_{k,i})`. Flags: affine source `r`; general 4×4
