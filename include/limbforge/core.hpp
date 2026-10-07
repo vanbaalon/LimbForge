@@ -131,9 +131,9 @@ template<int N> inline Number<N> mul(LIMBFORGE_THREAD const Number<N>& a,LIMBFOR
 }
 template<int N> inline Number<N> square(LIMBFORGE_THREAD const Number<N>& a){
 #ifdef __METAL_VERSION__
-    // The symmetric implementation is validated on Metal through 384 bits.
-    // Wider shaders retain the validated schoolbook product.
-    if(N>12)return mul(a,a);
+    // The symmetric implementation is selected on Metal at 384 bits.
+    // Other widths retain the validated schoolbook product.
+    if(N!=12)return mul(a,a);
 #endif
     if(a.status||!a.sign)return zero<N>(a.status);
     word product[2*N+1]={};

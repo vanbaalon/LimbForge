@@ -1,0 +1,15 @@
+{
+  "utc": "2026-10-07T19:14:12.234213+00:00",
+  "revision": "bea92b521aaecf0d6062909fea2ea9cecbc18218",
+  "working_tree": "M include/limbforge/core.hpp\n M src/engine.mm",
+  "platform": "macOS-26.6.2-arm64-arm-64bit-Mach-O",
+  "chip": "Apple M5 Max",
+  "benchmark_command": [
+    "/Users/k0959535/Dropbox/IntegrabilityProjects/2026 4d SoV/LimbForge/build/benchmark_limbforge",
+    "--repeats",
+    "9"
+  ],
+  "status": "passed",
+  "benchmark_stderr": "Device: Apple M5 Max; MPFR 4.2.2; workers=18; threads=0; repeats=9; seed=20261007\n",
+  "rows": 162
+}

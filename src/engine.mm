@@ -70,7 +70,7 @@ struct Engine::Impl {
         if(operation==100)function=[libraries[bits] newFunctionWithName:@"recurrence"];
         else {
             MTLFunctionConstantValues* constants=[MTLFunctionConstantValues new];
-            std::uint32_t op=operation;[constants setConstantValue:&op type:MTLDataTypeUInt atIndex:0];
+            std::uint32_t op=operation==7&&bits!=384?2:operation;[constants setConstantValue:&op type:MTLDataTypeUInt atIndex:0];
             function=[libraries[bits] newFunctionWithName:operation>=4&&operation<=6?@"complex_arithmetic":@"arithmetic" constantValues:constants error:&error];
         }
         if(!function)throw std::runtime_error("Metal specialization: "+error_message(error));
