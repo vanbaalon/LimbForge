@@ -85,6 +85,23 @@ template<int Bits> void test_complex_and_recurrence(Engine* engine) {
     if(engine)for(int i=0;i<batch;++i)for(int a=0;a<lanes;++a)require(reference::equal_complex<Bits>(shared_result[i*lanes+a],expected[i]),"shared-weight recurrence");
     std::cout<<Bits<<" bits: complex arithmetic and fused recurrence passed"<<std::endl;
 }
+// Dense batches stress private GPU storage and close-exponent cancellation.
+// In particular, a single-value check does not detect cross-thread corruption.
+void test_dense_complex(Engine* engine){
+    constexpr int Bits=1024;using C=Complex<32>;const int count=engine?65536:4096;
+    std::mt19937_64 rng(20261007+Bits);std::vector<C>a(count),b(count),expected(count),out(count);
+    for(int i=0;i<count;++i){a[i]={reference::random_number<Bits>(rng,5),reference::random_number<Bits>(rng,5)};
+        b[i]={reference::random_number<Bits>(rng,5),reference::random_number<Bits>(rng,5)};}
+    for(Operation op:{Operation::complex_add,Operation::complex_mul,Operation::complex_div}){
+        for(int i=0;i<count;++i){expected[i]=reference::complex<Bits>(op,a[i],b[i]);
+            auto host=op==Operation::complex_add?cadd(a[i],b[i]):op==Operation::complex_mul?cmul(a[i],b[i]):cdiv(a[i],b[i]);
+            require(reference::equal_complex<Bits>(host,expected[i]),"dense CPU complex case="+std::to_string(i));}
+        if(engine)for(int repeat=0;repeat<3;++repeat){engine->run(Bits,op,a.data(),b.data(),out.data(),count);
+            for(int i=0;i<count;++i)require(reference::equal_complex<Bits>(out[i],expected[i]),
+                "dense GPU complex op="+std::to_string(int(op))+" case="+std::to_string(i)+" repeat="+std::to_string(repeat));}
+    }
+    std::cout<<"1024 bits: dense complex batches passed ("<<count<<" values, three GPU repeats)"<<std::endl;
+}
 template<int Bits> void all_precisions(Engine* engine){test_real<Bits>(engine);if constexpr(Bits<1024)all_precisions<Bits+32>(engine);}
 int main(int argc,char** argv) {
     try {
@@ -95,6 +112,7 @@ int main(int argc,char** argv) {
         else std::cout<<"CPU/MPFR validation (no GPU device created)"<<std::endl;
         all_precisions<64>(engine.get());
         test_complex_and_recurrence<128>(engine.get());test_complex_and_recurrence<384>(engine.get());test_complex_and_recurrence<1024>(engine.get());
+        test_dense_complex(engine.get());
         if(engine){
             bool rejected=false;try{engine->run(80,Operation::add,nullptr,nullptr,nullptr,1);}catch(const std::invalid_argument&){rejected=true;}
             require(rejected,"invalid precision rejection");

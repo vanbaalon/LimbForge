@@ -1,0 +1,2 @@
+Device: Apple M5 Max; MPFR 4.2.2; workers=18; repeats=9; seed=20261007
+benchmark MPFR mismatch: complex_div

@@ -8,6 +8,7 @@
 #include <thread>
 using namespace limbforge;
 using Clock=std::chrono::steady_clock;
+std::string only_operation;
 class Workers {
     std::vector<std::thread> threads;std::mutex mutex;std::condition_variable ready,done;
     std::function<void(std::size_t,std::size_t)> task;std::size_t count=0,generation=0,pending=0;bool stopping=false;
@@ -47,7 +48,7 @@ template<int Bits,bool IsComplex> void arithmetic(Engine& engine,Workers& worker
             to_mpfr<Bits>(ar[i],a[i].re);to_mpfr<Bits>(ai[i],a[i].im);to_mpfr<Bits>(br[i],b[i].re);to_mpfr<Bits>(bi[i],b[i].im);
         }else{a[i]=reference::random_number<Bits>(rng,5);b[i]=reference::random_number<Bits>(rng,5);to_mpfr<Bits>(ar[i],a[i]);to_mpfr<Bits>(br[i],b[i]);}
     }
-    for(int which=IsComplex?4:0;which<(IsComplex?7:4);++which){auto op=Operation(which);Samples samples;
+    for(int which=IsComplex?4:0;which<(IsComplex?7:4);++which){auto op=Operation(which);if(!only_operation.empty()&&only_operation!=name(op))continue;Samples samples;
         auto cpu=[&](std::size_t lo,std::size_t hi){reference::MP t0(Bits),t1(Bits),den(Bits);
             for(std::size_t i=lo;i<hi;++i){
                 if constexpr(!IsComplex){switch(op){case Operation::add:mpfr_add(rr[i],ar[i],br[i],MPFR_RNDN);break;
@@ -74,7 +75,13 @@ template<int Bits,bool IsComplex> void arithmetic(Engine& engine,Workers& worker
         for(std::size_t i=0;i<count;++i){bool equal;
             if constexpr(IsComplex)equal=reference::equal_complex<Bits>(out[i],T{from_mpfr<Bits>(rr[i]),from_mpfr<Bits>(ri[i])});
             else equal=reference::equal<Bits>(out[i],from_mpfr<Bits>(rr[i]));
-            if(!equal)throw std::runtime_error("benchmark MPFR mismatch: "+std::string(name(op)));
+            if(!equal){
+                std::cerr<<"Mismatch bits="<<Bits<<" count="<<count<<" index="<<i<<" operation="<<name(op)<<"\n";
+                if constexpr(IsComplex){auto ref=reference::complex<Bits>(op,a[i],b[i]);auto host=op==Operation::complex_add?cadd(a[i],b[i]):op==Operation::complex_mul?cmul(a[i],b[i]):cdiv(a[i],b[i]);
+                    std::cerr<<"host_vs_ref="<<reference::equal_complex<Bits>(host,ref)<<" GPU_re_vs_ref="<<reference::equal<Bits>(out[i].re,ref.re)<<" GPU_im_vs_ref="<<reference::equal<Bits>(out[i].im,ref.im)<<"\n";
+
+                }
+                throw std::runtime_error("benchmark MPFR mismatch: "+std::string(name(op)));}
         }
         report(Bits,name(op),count,1,workers,samples);
 #ifdef LIMBFORGE_RESIDENT_API
@@ -92,6 +99,7 @@ template<int Bits,bool IsComplex> void arithmetic(Engine& engine,Workers& worker
     }
 }
 template<int Bits> void chain(Engine& engine,Workers& workers,std::size_t count,int repeats){
+    if(!only_operation.empty()&&only_operation!="mul_chain")return;
     constexpr unsigned steps=16;using F=Float<Bits>;std::mt19937_64 rng(20261007+Bits);
     std::vector<F>a(count),b(count),out(count);MPArray ar(count,Bits),br(count,Bits),rr(count,Bits);
     for(std::size_t i=0;i<count;++i){a[i]=reference::random_number<Bits>(rng,0);b[i]=reference::random_number<Bits>(rng,0);to_mpfr<Bits>(ar[i],a[i]);to_mpfr<Bits>(br[i],b[i]);}
@@ -118,13 +126,15 @@ template<int Bits> void chain(Engine& engine,Workers& workers,std::size_t count,
 }
 template<int Bits> void suite(Engine& e,Workers& w,const std::vector<std::size_t>& counts,int repeats){for(auto n:counts){arithmetic<Bits,false>(e,w,n,repeats);arithmetic<Bits,true>(e,w,n,repeats);chain<Bits>(e,w,n,repeats);}}
 int main(int argc,char** argv){try{
-    std::vector<std::size_t> counts={256,4096,65536};int repeats=9;unsigned workers=std::max(1u,std::thread::hardware_concurrency());
-    for(int i=1;i<argc;++i){std::string arg=argv[i];if(arg=="--quick")counts={4096};else if(arg=="--repeats"&&i+1<argc)repeats=std::stoi(argv[++i]);
+    std::vector<std::size_t> counts={256,4096,65536};int repeats=9,only_bits=0;unsigned workers=std::max(1u,std::thread::hardware_concurrency());
+    for(int i=1;i<argc;++i){std::string arg=argv[i];if(arg=="--operation"&&i+1<argc)only_operation=argv[++i];else if(arg=="--bits"&&i+1<argc)only_bits=std::stoi(argv[++i]);else if(arg=="--quick")counts={4096};else if(arg=="--repeats"&&i+1<argc)repeats=std::stoi(argv[++i]);
         else if(arg=="--workers"&&i+1<argc)workers=unsigned(std::stoul(argv[++i]));else if(arg=="--count"&&i+1<argc)counts={std::stoull(argv[++i])};
-        else throw std::invalid_argument("usage: benchmark_limbforge [--quick|--count N] [--repeats N] [--workers N]");}
+        else throw std::invalid_argument("usage: benchmark_limbforge [--quick|--count N] [--repeats N] [--workers N] [--bits 256|384|1024] [--operation add|sub|mul|div|complex_add|complex_mul|complex_div|mul_chain]");}
     if(repeats<3||repeats>100||!workers||workers>128)throw std::invalid_argument("invalid repeats or workers");
+    if(only_bits&&only_bits!=256&&only_bits!=384&&only_bits!=1024)throw std::invalid_argument("unsupported benchmark precision");
+    if(!only_operation.empty()){bool found=only_operation=="mul_chain";for(int op=0;op<7;++op)found|=only_operation==name(Operation(op));if(!found)throw std::invalid_argument("unknown benchmark operation");}
     for(auto n:counts)if(!n||n>1000000)throw std::invalid_argument("count must be in 1..1000000");
     Engine e;Workers w(workers);std::cerr<<"Device: "<<e.device_name()<<"; MPFR "<<mpfr_get_version()<<"; workers="<<workers<<"; repeats="<<repeats<<"; seed=20261007\n";
     std::cout<<std::setprecision(10)<<"bits,operation,count,steps,samples,cpu_workers,cpu_serial_s,cpu_parallel_s,gpu_s,wall_median_s,wall_min_s,wall_p90_s\n";
-    suite<256>(e,w,counts,repeats);suite<384>(e,w,counts,repeats);suite<1024>(e,w,counts,repeats);return 0;
+    if(!only_bits||only_bits==256)suite<256>(e,w,counts,repeats);if(!only_bits||only_bits==384)suite<384>(e,w,counts,repeats);if(!only_bits||only_bits==1024)suite<1024>(e,w,counts,repeats);return 0;
 }catch(const std::exception& e){std::cerr<<e.what()<<'\n';return 1;}}

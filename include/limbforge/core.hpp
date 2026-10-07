@@ -95,6 +95,18 @@ template<int N,int W> inline void insert(LIMBFORGE_THREAD word (&out)[W],LIMBFOR
     int w=shift/32,s=shift%32;
     for(int i=0;i<N;++i){out[i+w]|=a.limb[i]<<s;if(s)out[i+w+1]|=a.limb[i]>>(32-s);}
 }
+template<int N> inline word shifted_limb(LIMBFORGE_THREAD const Number<N>& a,int shift,int position){
+    int source=position-shift/32,s=shift%32;
+    word x=source>=0&&source<N?a.limb[source]<<s:0;
+    if(s&&source>0&&source<=N)x|=a.limb[source-1]>>(32-s);
+    return x;
+}
+template<int N,int W> inline Number<N> aligned_add(LIMBFORGE_THREAD const Number<N>& a,LIMBFORGE_THREAD const Number<N>& b,int a_shift,int b_shift,exponent_type scale){
+    word x[W]={};insert(x,a,a_shift);dword carry=0;
+    if(a.sign==b.sign)for(int i=0;i<W;++i){dword v=dword(x[i])+shifted_limb(b,b_shift,i)+carry;x[i]=word(v);carry=v>>32;}
+    else for(int i=0;i<W;++i){dword v=dword(shifted_limb(b,b_shift,i))+carry;word old=x[i];x[i]=word(dword(old)-v);carry=dword(old)<v;}
+    return pack<N>(x,scale,a.sign,ok);
+}
 template<int N> inline Number<N> add(Number<N> a,Number<N> b) {
     word status=a.status|b.status;if(status)return zero<N>(status);
     if(!a.sign)return b;if(!b.sign)return a;
@@ -102,13 +114,10 @@ template<int N> inline Number<N> add(Number<N> a,Number<N> b) {
     exponent_type gap=exponent_type(a.exponent)-b.exponent;
     // Below one quarter ulp; a is exactly representable, so it rounds to a.
     if(gap>32*N+2)return a;
-    constexpr int W=2*N+2;
-    word x[W]={},y[W]={};
-    insert(x,a,32*N+2);insert(y,b,32*N+2-int(gap));
-    dword carry=0;
-    if(a.sign==b.sign)for(int i=0;i<W;++i){dword v=dword(x[i])+y[i]+carry;x[i]=word(v);carry=v>>32;}
-    else for(int i=0;i<W;++i){dword v=dword(y[i])+carry;word old=x[i];x[i]=word(dword(old)-v);carry=dword(old)<v;}
-    return pack<N>(x,exponent_type(a.exponent)-(32*N-1)-(32*N+2),a.sign,status);
+    // Close exponents need only N+2 exact limbs, even under deep cancellation.
+    // Far exponents retain the complete exact alignment; no sticky-bit shortcut.
+    if(gap<=32)return aligned_add<N,N+2>(a,b,int(gap),0,exponent_type(b.exponent)-(32*N-1));
+    return aligned_add<N,2*N+2>(a,b,32*N+2,32*N+2-int(gap),exponent_type(a.exponent)-(32*N-1)-(32*N+2));
 }
 template<int N> inline Number<N> sub(Number<N> a,Number<N> b){return add(a,negate(b));}
 template<int N> inline Number<N> mul(LIMBFORGE_THREAD const Number<N>& a,LIMBFORGE_THREAD const Number<N>& b) {
