@@ -1,0 +1,41 @@
+Round 23-D6b (plan D6 / S5): blocked Cholesky + triangular solves for the normal equations (Linalg::cholesky, trsm,
+cholesky_solve in include/limbforge/linalg.hpp). Apple M5 Max, macOS 26.6.2, Release build, base revision 1c958dc plus this
+round's working tree, 2026-10-07 21:28-21:35 EDT. Host heavily loaded by other work: load average 115-185 during the runs
+(18 CPU cores; 145-260 during the development sweeps). Read ratios, not absolute times; differences below ~15% are noise.
+All host-side work (panels, small updates, solves, MPFR baselines) is slowed by the load; GPU command-buffer times are not.
+
+Commands (benchmarks/cholesky.mm, target cholesky_limbforge):
+  ./build/cholesky_limbforge --repeats 7 --serial-max 1000 --nrhs 4                > round23_cholesky.csv
+  ./build/cholesky_limbforge --sweep --bits 256 --repeats 5 --size 400              > round23_cholesky_tuning.csv
+  ./build/cholesky_limbforge --sweep --bits 256 --repeats 3 --size 1000            >> round23_cholesky_tuning.csv
+  ./build/cholesky_limbforge --solve-sweep --repeats 5 --size 400                  > round23_cholesky_solve.csv
+  ./build/cholesky_limbforge --solve-sweep --repeats 3 --size 1000                >> round23_cholesky_solve.csv
+  ./build/cholesky_limbforge --accuracy --nrhs 4                                     > round23_cholesky_accuracy.csv
+
+Data: J (2n x n) QSC-like Jacobian columns as round 20 (column scale 2^[-60,60], entries within 2^-25..2^5 of it, 25% exact
+zeros, a 2^-150 outlier in every 17th column). A = SYRK(J) (lower, one rounding per entry) with Marquardt damping
+a_ii = RN(a_ii + 2^(e_ii - 10)). B: n x nrhs random, exponents in [-20, 20].
+
+round23_cholesky.csv (FactorOptions defaults: block 32, host_macs 5e4, solve_host_macs 4e5):
+  syrk_wall_ms: Linalg::syrk + damping (host). chol_*: Linalg::cholesky, median (and min) of 7 calls after one warm-up call;
+  gpu = summed command buffers (updates), panel = host panel time, update = summed update wall time (overlaps the panel).
+  gpu_updates / host_updates: trailing updates on the GPU / host. solve_*: Linalg::cholesky_solve with nrhs right-hand sides.
+  e2e_wall_ms: SYRK + damping + Cholesky + solve in one sequence (median). host_only_chol_ms: the same factorization with
+  every update on the host (gpu=false), once; gpu_equals_host = 1: bit-identical L (checked every row).
+  mpfr_serial_chol_s: consumer-style right-looking MPFR Cholesky (mpfr_sqrt, mpfr_div, mpfr_mul + mpfr_sub per term) on one
+  thread, measured at every n (serial_measured = 1). mpfr_parallel_chol_s: the same with the trailing update of each column
+  split over 18 worker threads (division column also parallel). mpfr_serial_solve_s: MPFR forward/back substitution, serial,
+  nrhs columns. speedup_vs_*: MPFR Cholesky time / LimbForge median Cholesky wall. e2e_mpfr_parallel_s: LimbForge SYRK +
+  parallel MPFR Cholesky + serial MPFR solve (the consumer pipeline with only the SYRK replaced).
+round23_cholesky_tuning.csv: block size x host_macs sweep (factorization wall/gpu/panel/update, solve wall, nrhs 4).
+round23_cholesky_solve.csv: cholesky_solve with every update on the host, every update on the GPU (solve_host_macs 0) and the
+  default threshold, nrhs 1..64; identical = all three bit-identical.
+round23_cholesky_accuracy.csv: errors (log2) of X against a 2*bits MPFR Cholesky solve of the same A and B (A and B exact).
+  fwd_norm = max|x - x*| / max|x*|; fwd_comp = max_i |x_i - x*_i| / |x*_i| (exponent bound); bwd_norm = ||B - A X||_inf /
+  (||A||_inf ||X||_inf + ||B||_inf); bwd_comp = max_i |r_i| / (|A| |x| + |b|)_i (Oettli-Prager), residuals with exact products
+  and one mpfr_sum at 4*bits+64. Maximum over the nrhs columns. Methods: limbforge_blocked (block 32) and mpfr_sequential
+  (the consumer-style MPFR Cholesky and substitution at bits).
+
+Correctness gate before these runs: ctest (11/11) passed; linalg_cpu, linalg_gpu and linalg_cholesky also passed under
+MTL_SHADER_VALIDATION=1; test_limbforge_cholesky repeated 3 times, identical results (595 factorizations, 957 solves
+bit-identical to the MPFR reference sequence).

@@ -1,0 +1,17 @@
+bits,n,nrhs,block,method,log2_fwd_norm,log2_fwd_comp,log2_bwd_norm,log2_bwd_comp
+224,200,4,32,limbforge_blocked,-222.112,-211,-342,-224
+224,200,4,32,mpfr_sequential,-222.072,-212,-341,-221
+224,400,4,32,limbforge_blocked,-224.509,-212,-345,-223
+224,400,4,32,mpfr_sequential,-223.167,-210,-345,-221
+224,800,4,32,limbforge_blocked,-220.788,-210,-343,-222
+224,800,4,32,mpfr_sequential,-220.209,-209,-342,-221
+224,1000,4,32,limbforge_blocked,-221.865,-206,-344,-223
+224,1000,4,32,mpfr_sequential,-219.297,-206,-343,-221
+256,200,4,32,limbforge_blocked,-255.588,-245,-376,-256
+256,200,4,32,mpfr_sequential,-255.205,-243,-374,-254
+256,400,4,32,limbforge_blocked,-254.432,-246,-377,-255
+256,400,4,32,mpfr_sequential,-253.637,-243,-374,-253
+256,800,4,32,limbforge_blocked,-254.238,-243,-377,-255
+256,800,4,32,mpfr_sequential,-251.54,-241,-375,-253
+256,1000,4,32,limbforge_blocked,-255.395,-242,-377,-255
+256,1000,4,32,mpfr_sequential,-251.122,-240,-373,-252

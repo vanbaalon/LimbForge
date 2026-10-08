@@ -1,9 +1,10 @@
 #pragma once
 // Dense real products with one rounding per output (plan D6 via L1c): C[i][j] = RN(sum_k L[i][k]*R[k][j]),
-// computed exactly by an integer GEMM over residues (Metal TensorOps int8) and rounded once, ties to even.
-// Contract and algorithm: docs/numerics.md, "Dense products". Host arrays only; element = Number<bits/32>
-// (Float<bits>), matrices row-major. Statuses propagate: C[i][j] = zero(OR of the statuses of row i of L
-// and column j of R) when that OR is nonzero. Empty K gives canonical zero.
+// or RN(C[i][j] - sum_k ...) as an update, computed exactly by an integer GEMM over residues (Metal TensorOps
+// int8) and rounded once, ties to even. Contract and algorithm: docs/numerics.md, "Dense products". Host arrays
+// only; element = Number<bits/32> (Float<bits>), matrices row-major. Statuses propagate: C[i][j] = zero(OR of the
+// statuses of row i of L and column j of R, and of the old C[i][j] for an update) when that OR is nonzero. Empty K
+// gives canonical zero (an update leaves C unchanged). Blocked Cholesky and triangular solves build on these updates.
 #include "core.hpp"
 #include "engine.hpp"
 #include <algorithm>
@@ -31,6 +32,25 @@ struct LinalgReport {
     bool zero_copy_output=false;                    // C was page aligned and written by the GPU in place
     double analysis_seconds=0,upload_seconds=0,gpu_seconds=0,assembly_seconds=0,fallback_seconds=0;
 };
+// Blocked Cholesky and triangular solves (docs/numerics.md, "Cholesky factorization"). The result depends on
+// `block` (the documented rounding sequence) and on nothing else: which updates run on the GPU or the host
+// changes only the speed. An update with fewer multiply-adds (outputs x K) than host_macs (factorization) or
+// solve_host_macs (triangular solves) runs on the host.
+struct FactorOptions {
+    std::size_t block=32;          // column block nb; 0 selects a single block (every dot product exact over all k)
+    double host_macs=5e4;          // factorization updates below this many multiply-adds use host exact dots (same results)
+    double solve_host_macs=4e5;    // the same for triangular-solve updates (measured: the host wins for a few right-hand sides)
+    bool gpu=true;                 // false: everything on the host (same results)
+};
+// Per-call outcome of cholesky. pivot = n on success; otherwise the first column p whose pivot
+// s_pp = RN(a_pp - sum_k l_pk^2) is zero, negative or carries a status (then pivot_sign / pivot_status describe it).
+// On failure L[i][j] is final for j < p, and every lower entry with j >= p is zero with status `invalid`.
+struct CholeskyInfo {
+    std::size_t pivot=0; int pivot_sign=0; word pivot_status=0;
+    Timing timing{0,0};                       // gpu_seconds: summed command buffers; wall: whole call
+    std::size_t blocks=0,gpu_updates=0,host_updates=0;
+    double panel_seconds=0,update_seconds=0;  // host diagonal-block + panel work; trailing updates (GPU or host), wall
+};
 // One Linalg per host thread (scratch buffers and compiled libraries are reused). C must not overlap A or B;
 // page-aligned A, B and C are used by the GPU in place. Calls return after the GPU has finished.
 class Linalg {
@@ -39,10 +59,20 @@ public:
     Linalg(const Linalg&)=delete; Linalg& operator=(const Linalg&)=delete;
     std::string device_name() const;
     // C (cols x cols) = A^T A for A (rows x cols). lower_only writes C[i][j] for i >= j and leaves the
-    // rest of C untouched; otherwise the full symmetric matrix is written.
-    Timing syrk(int bits,const void* A,std::size_t rows,std::size_t cols,void* C,bool lower_only=true);
+    // rest of C untouched; otherwise the full symmetric matrix is written. With subtract, C[i][j] = RN(C[i][j] - (A^T A)[i][j])
+    // with one rounding (lower triangle only: subtract requires lower_only).
+    Timing syrk(int bits,const void* A,std::size_t rows,std::size_t cols,void* C,bool lower_only=true,bool subtract=false);
     // C (m x n) = op(A) B with B (k x n); op(A) = A (m x k) or, with transpose_a, A^T for A (k x m).
-    Timing gemm(int bits,bool transpose_a,const void* A,const void* B,std::size_t m,std::size_t n,std::size_t k,void* C);
+    // With subtract, C = RN(C - op(A) B), one rounding per entry.
+    Timing gemm(int bits,bool transpose_a,const void* A,const void* B,std::size_t m,std::size_t n,std::size_t k,void* C,bool subtract=false);
+    // Lower L (n x n, row-major) with A = L L^T from the lower triangle of symmetric positive definite A; the strict
+    // upper triangle of L is set to zero. L may equal A (in place); otherwise they must not overlap.
+    CholeskyInfo cholesky(int bits,const void* A,std::size_t n,void* L,const FactorOptions& options={});
+    // X (n x nrhs) solves L X = B, or L^T X = B with transpose, for lower L (strict upper triangle not read).
+    // X may equal B; otherwise X must not overlap B or L.
+    Timing trsm(int bits,bool transpose,const void* L,std::size_t n,const void* B,std::size_t nrhs,void* X,const FactorOptions& options={});
+    // X solves (L L^T) X = B: trsm, then trsm with transpose.
+    Timing cholesky_solve(int bits,const void* L,std::size_t n,const void* B,std::size_t nrhs,void* X,const FactorOptions& options={});
     const LinalgReport& report() const;
     const LinalgOptions& options() const;
 private:
@@ -51,19 +81,27 @@ private:
 // ---- Exact dot product on the CPU: RN(sum_k a[k*sa]*b[k*sb]) with one rounding (the GPU fallback) ----
 namespace detail {
 // Rounds sign * integer(w) * 2^scale to N words exactly as core.hpp pack() does, for any word count.
-template<int N> Number<N> pack_words(const std::vector<word>& w,exponent_type scale,int sign,word status){
-    int h=-1;for(std::size_t i=w.size();i-->0;)if(w[i]){h=int(32*i)+31-__builtin_clz(w[i]);break;}
-    if(h<0)return zero<N>(status);
+template<int N> Number<N> pack_words(const word* w,std::size_t count,exponent_type scale,int sign,word status){
+    std::size_t top=count;while(top&&!w[top-1])--top;if(!top)return zero<N>(status);
+    long h=long(32*(top-1))+31-__builtin_clz(w[top-1]);
     exponent_type e=scale+h;if(e>1000000000||e< -1000000001)return zero<N>(status|exponent_overflow);
-    auto bit=[&](long p)->word{return p<0||std::size_t(p/32)>=w.size()?0:(w[p/32]>>(p%32))&1;};
-    auto chunk=[&](long p)->word{word x=0;for(int s=0;s<32;++s)x|=bit(p+s)<<s;return x;};
-    Number<N> r=zero<N>(status);r.sign=sign;r.exponent=int(e);long shift=long(h)-(32*N-1);
-    if(shift<=0){for(int i=0;i<N;++i)r.limb[i]=chunk(32L*i+shift);return checked(r);}
+    // 32 bits of w from bit p (bits outside w are zero).
+    auto chunk=[&](long p)->word{if(p<=-32)return 0;if(p<0)return w[0]<<(-p);std::size_t i=std::size_t(p/32);int s=int(p%32);
+        word x=i<count?w[i]>>s:0;if(s&&i+1<count)x|=w[i+1]<<(32-s);return x;};
+    Number<N> r=zero<N>(status);r.sign=sign;r.exponent=int(e);long shift=h-(32*N-1);
     for(int i=0;i<N;++i)r.limb[i]=chunk(shift+32L*i);
-    bool round=bit(shift-1),below=false;
-    for(long p=0;p<shift-1&&!below;)if(p%32==0&&p+32<=shift-1){below=w[p/32]!=0;p+=32;}else{below=bit(p);++p;}
+    if(shift<=0)return checked(r);
+    long rb=shift-1;bool round=(w[rb/32]>>(rb%32))&1,below=(rb%32)&&(w[rb/32]&((word(1)<<(rb%32))-1));
+    for(long i=0;i<rb/32&&!below;++i)below=w[i]!=0;
     if(round&&(below||(r.limb[0]&1)))increment(r);
     return checked(r);
+}
+template<int N> Number<N> pack_words(const std::vector<word>& w,exponent_type scale,int sign,word status){return pack_words<N>(w.data(),w.size(),scale,sign,status);}
+// acc += x * 2^shift for a nonnegative accumulator wide enough by construction.
+inline void add_shifted(word* acc,const word* x,int words,long shift){
+    std::size_t w=std::size_t(shift/32);int s=int(shift%32);dword carry=0;
+    for(int i=0;i<=words;++i){word v=i<words?x[i]<<s:0;if(s&&i>0)v|=x[i-1]>>(32-s);dword t=dword(acc[w+i])+v+carry;acc[w+i]=word(t);carry=t>>32;}
+    for(std::size_t i=w+std::size_t(words)+1;carry;++i){dword t=dword(acc[i])+carry;acc[i]=word(t);carry=t>>32;}
 }
 // Two's complement accumulator: acc += sign * x * 2^shift (acc wide enough by construction).
 inline void accumulate(std::vector<word>& acc,const word* x,int words,long shift,int sign){
@@ -76,29 +114,47 @@ inline void accumulate(std::vector<word>& acc,const word* x,int words,long shift
     }
 }
 }
-// Products are sorted by exponent and grouped into clusters; a new cluster starts when every remaining
-// product lies more than bits+log2(K)+4 bits below the current cluster's lowest bit. Each cluster is summed
-// exactly. With S the first nonzero cluster sum and F the rest, |F| < 2^(lsb(S)-bits-2), so
-// RN(S+F) = RN(S + sign(F)*eps) and sign(F) is the sign of the next nonzero cluster sum.
-template<int N> Number<N> exact_dot(const Number<N>* a,std::ptrdiff_t sa,const Number<N>* b,std::ptrdiff_t sb,std::size_t K){
-    word status=0;for(std::size_t k=0;k<K;++k)status|=a[std::ptrdiff_t(k)*sa].status|b[std::ptrdiff_t(k)*sb].status;
+// RN(c - sum_k a[k*sa]*b[k*sb]) (subtract) or RN(c + sum ...) with one rounding; c == nullptr is a zero addend.
+// The addend is one more exact term. Terms are sorted by exponent and grouped into clusters; a new cluster starts
+// when every remaining term lies more than bits+log2(K+1)+4 bits below the current cluster's lowest bit. Each
+// cluster is summed exactly. With S the first nonzero cluster sum and F the rest, |F| < 2^(lsb(S)-bits-2), so
+// RN(S+F) = RN(S + sign(F)*eps) and sign(F) is the sign of the next nonzero cluster sum. Statuses: zero with the OR
+// of the statuses of c and of every a[k], b[k]; without nonzero products the result is c itself.
+template<int N> Number<N> exact_dot_add(const Number<N>* c,bool subtract,const Number<N>* a,std::ptrdiff_t sa,const Number<N>* b,std::ptrdiff_t sb,std::size_t K){
+    word status=c?c->status:0;for(std::size_t k=0;k<K;++k)status|=a[std::ptrdiff_t(k)*sa].status|b[std::ptrdiff_t(k)*sb].status;
     if(status)return zero<N>(status);
-    struct Term{exponent_type scale;std::size_t k;};std::vector<Term> t;
+    struct Term{exponent_type scale;std::size_t k;};Term small[65];std::vector<Term> big;Term* t=small;std::size_t count=0;
+    if(K+1>65){big.resize(K+1);t=big.data();}
     for(std::size_t k=0;k<K;++k){const auto &x=a[std::ptrdiff_t(k)*sa],&y=b[std::ptrdiff_t(k)*sb];
-        if(x.sign&&y.sign)t.push_back({exponent_type(x.exponent)+y.exponent-2*(32*N-1),k});}
-    std::sort(t.begin(),t.end(),[](const Term& u,const Term& v){return u.scale>v.scale;});
-    int logk=0;while((std::size_t(1)<<logk)<K)++logk;
-    const exponent_type gap=32*N+logk+4,width=64*N; // a product is < 2^(scale+64N)
+        if(x.sign&&y.sign)t[count++]={exponent_type(x.exponent)+y.exponent-2*(32*N-1),k};}
+    if(!count)return c?*c:zero<N>();
+    if(c&&c->sign)t[count++]={exponent_type(c->exponent)-(32*N-1),K}; // the addend, an N-word term, is k = K
+    // Exact term k (2N words, or the N-word addend) into p; returns its sign.
+    auto term=[&](std::size_t k,word* p,int& words)->int{
+        if(k==K){for(int u=0;u<N;++u)p[u]=c->limb[u];words=N;return c->sign;}
+        const auto &x=a[std::ptrdiff_t(k)*sa],&y=b[std::ptrdiff_t(k)*sb];for(int u=0;u<2*N;++u)p[u]=0;words=2*N;
+        for(int u=0;u<N;++u){dword cy=0;for(int v=0;v<N;++v){dword z=dword(x.limb[u])*y.limb[v]+p[u+v]+cy;p[u+v]=word(z);cy=z>>32;}p[u+N]=word(cy);}
+        return subtract?-x.sign*y.sign:x.sign*y.sign;};
+    // Common case: all terms fit one exact accumulator pair (positive and negative parts), one rounding of the difference.
+    {exponent_type hi=t[0].scale,lo=t[0].scale;for(std::size_t i=1;i<count;++i){hi=std::max(hi,t[i].scale);lo=std::min(lo,t[i].scale);}
+     int logc=0;while((std::size_t(1)<<logc)<count)++logc;constexpr std::size_t cap=256;const exponent_type need=hi-lo+64*N+logc+1;
+     if(need<=32*exponent_type(cap-2)){const std::size_t W=std::size_t(need/32)+2;word pos[cap],neg[cap],p[64];std::fill(pos,pos+W,0);std::fill(neg,neg+W,0);
+        for(std::size_t q=0;q<count;++q){int words;int sign=term(t[q].k,p,words);detail::add_shifted(sign>0?pos:neg,p,words,long(t[q].scale-lo));}
+        int cmp=0;for(std::size_t i=W;i-->0;)if(pos[i]!=neg[i]){cmp=pos[i]>neg[i]?1:-1;break;}
+        if(!cmp)return zero<N>();
+        word* x=cmp>0?pos:neg;const word* y=cmp>0?neg:pos;dword borrow=0;
+        for(std::size_t i=0;i<W;++i){dword v=dword(y[i])+borrow;borrow=dword(x[i])<v;x[i]=word(dword(x[i])-v);}
+        return detail::pack_words<N>(x,W,lo,cmp,ok);}}
+    std::sort(t,t+count,[](const Term& u,const Term& v){return u.scale>v.scale;});
+    int logk=0;while((std::size_t(1)<<logk)<K+1)++logk;
+    const exponent_type gap=32*N+logk+4,width=64*N; // a term is < 2^(scale+64N)
     struct Sum{int sign;exponent_type scale;std::vector<word> mag;};std::vector<Sum> sums;
-    for(std::size_t i=0;i<t.size();){
+    for(std::size_t i=0;i<count&&sums.size()<2;){
         std::size_t j=i+1;exponent_type low=t[i].scale;
-        while(j<t.size()&&t[j].scale+width-1+gap>=low){low=std::min(low,t[j].scale);++j;}
+        while(j<count&&t[j].scale+width-1+gap>=low){low=std::min(low,t[j].scale);++j;}
         std::vector<word> acc(std::size_t((t[i].scale+width-low)/32+3),0);word p[64];
-        for(std::size_t q=i;q<j;++q){const auto &x=a[std::ptrdiff_t(t[q].k)*sa],&y=b[std::ptrdiff_t(t[q].k)*sb];
-            for(int u=0;u<2*N;++u)p[u]=0;
-            for(int u=0;u<N;++u){dword c=0;for(int v=0;v<N;++v){dword z=dword(x.limb[u])*y.limb[v]+p[u+v]+c;p[u+v]=word(z);c=z>>32;}p[u+N]=word(c);}
-            detail::accumulate(acc,p,2*N,long(t[q].scale-low),x.sign*y.sign);}
-        int sign=1;if(acc.back()>>31){sign=-1;dword c=1;for(auto& v:acc){dword z=dword(word(~v))+c;v=word(z);c=z>>32;}}
+        for(std::size_t q=i;q<j;++q){int words;int sign=term(t[q].k,p,words);detail::accumulate(acc,p,words,long(t[q].scale-low),sign);}
+        int sign=1;if(acc.back()>>31){sign=-1;dword cy=1;for(auto& v:acc){dword z=dword(word(~v))+cy;v=word(z);cy=z>>32;}}
         if(std::any_of(acc.begin(),acc.end(),[](word v){return v!=0;}))sums.push_back({sign,low,std::move(acc)});
         i=j;
     }
@@ -110,4 +166,7 @@ template<int N> Number<N> exact_dot(const Number<N>* a,std::ptrdiff_t sa,const N
     if(sums[1].sign==s.sign)ext[0]=1;else for(auto& v:ext){word old=v;v=old-1;if(old)break;}
     return detail::pack_words<N>(ext,s.scale-D,s.sign,ok);
 }
+// RN(sum_k a[k*sa]*b[k*sb]) with one rounding (the GPU fallback); empty K and exact cancellation give canonical zero.
+template<int N> Number<N> exact_dot(const Number<N>* a,std::ptrdiff_t sa,const Number<N>* b,std::ptrdiff_t sb,std::size_t K){
+    return exact_dot_add<N>(nullptr,false,a,sa,b,sb,K);}
 }

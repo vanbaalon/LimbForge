@@ -23,7 +23,16 @@ template<int Bits> void dot_cases(){
     constexpr int N=Bits/32;std::mt19937_64 rng(31+Bits);
     auto check=[&](const std::vector<F<Bits>>& a,const std::vector<F<Bits>>& b,const std::string& label){
         auto want=reference::dot<Bits>(a.data(),1,b.data(),1,a.size());auto got=exact_dot<N>(a.data(),1,b.data(),1,a.size());
-        require(reference::equal<Bits>(got,want),"exact_dot bits="+std::to_string(Bits)+" "+label+"\n got  "+text<Bits>(got)+"\n want "+text<Bits>(want));};
+        require(reference::equal<Bits>(got,want),"exact_dot bits="+std::to_string(Bits)+" "+label+"\n got  "+text<Bits>(got)+"\n want "+text<Bits>(want));
+        // Updates RN(c - dot) and RN(c + dot): c = RN(dot) leaves only the rounding error; c far above/below; statuses.
+        auto sub=[&](F<Bits> c,const std::string& l){auto w=reference::dot_sub<Bits>(c,a.data(),1,b.data(),1,a.size());auto g=exact_dot_add<N>(&c,true,a.data(),1,b.data(),1,a.size());
+            require(reference::equal<Bits>(g,w),"exact_dot_add bits="+std::to_string(Bits)+" "+label+" "+l+"\n got  "+text<Bits>(g)+"\n want "+text<Bits>(w));
+            auto plus=exact_dot_add<N>(&c,false,a.data(),1,b.data(),1,a.size());c=negate(c);w=negate(reference::dot_sub<Bits>(c,a.data(),1,b.data(),1,a.size()));
+            require(reference::equal<Bits>(plus,w),"exact_dot_add (add) bits="+std::to_string(Bits)+" "+label+" "+l);};
+        sub(zero<N>(),"zero addend");sub(want,"c = RN(dot)");if(want.sign){F<Bits> next=want;next.limb[0]^=1;sub(next,"c = RN(dot) +- ulp");}
+        if(want.sign&&!want.status){sub(with_exponent<Bits>(want,want.exponent+Bits+3),"c far above");sub(with_exponent<Bits>(negate(want),want.exponent-Bits-3),"c far below");
+            sub(with_exponent<Bits>(want,want.exponent-2*Bits-70),"c very far below");}
+        sub(reference::random_number<Bits>(rng,40),"random c");F<Bits> bad=power<Bits>(3);bad.status=exponent_overflow;sub(bad,"c with status");};
     check({},{},"empty");
     for(int it=0;it<60;++it){std::size_t K=1+rng()%40;std::vector<F<Bits>> a(K),b(K);
         int span=it%4==0?5:it%4==1?300:it%4==2?3000:900000000;
@@ -45,6 +54,14 @@ template<int Bits> void dot_cases(){
     for(int s:{1,-1})for(int d:{1,20,Bits-2,Bits-1,Bits,Bits+1,Bits+6,Bits+40,3*Bits}){
         std::vector<F<Bits>> a={odd,one,power<Bits>(2-2*Bits-d)},b={odd,negate(two),power<Bits>(0,s)};check(a,b,"last-bit cancellation d="+std::to_string(d));
         a.push_back(power<Bits>(2-2*Bits-d-Bits-9));b.push_back(power<Bits>(0,-s));check(a,b,"last-bit cancellation, two far terms d="+std::to_string(d));}
+    // Ties created by the addend: c + 2^-Bits with c = 1 (even: stays) and c = 1 + ulp (odd: up), and the same far below.
+    {auto tie=[&](F<Bits> c,const std::vector<F<Bits>>& a,const std::vector<F<Bits>>& b,const std::string& l){
+        auto w=reference::dot_sub<Bits>(c,a.data(),1,b.data(),1,a.size()),g=exact_dot_add<N>(&c,true,a.data(),1,b.data(),1,a.size());
+        require(reference::equal<Bits>(g,w),"exact_dot_add tie bits="+std::to_string(Bits)+" "+l+"\n got  "+text<Bits>(g)+"\n want "+text<Bits>(w));};
+     for(int s:{1,-1})for(F<Bits> c:{one,odd}){if(s<0)c=negate(c);
+        tie(c,{power<Bits>(-Bits)},{power<Bits>(0,-s)},"half ulp");tie(c,{power<Bits>(-Bits),power<Bits>(-3*Bits)},{power<Bits>(0,-s),power<Bits>(0,s)},"half ulp and sticky");
+        tie(c,{power<Bits>(-Bits),power<Bits>(-3*Bits)},{power<Bits>(0,-s),power<Bits>(0,-s)},"half ulp and opposite sticky");
+        tie(c,{power<Bits>(500),power<Bits>(500),power<Bits>(-Bits)},{power<Bits>(2),power<Bits>(2,-1),power<Bits>(0,-s)},"half ulp after cancellation");}}
     // Near the exponent limits: products and sums whose rounded result leaves the range.
     {std::vector<F<Bits>> a={power<Bits>(600000000),power<Bits>(-600000000)},b={power<Bits>(500000000),power<Bits>(-500000000)};check(a,b,"overflow");
      a[0]=power<Bits>(-600000000);b[0]=power<Bits>(-400000000);check(a,b,"near emin");a[0].limb[0]=0xffffffffu;check(a,b,"near emin raw");}
@@ -108,6 +125,33 @@ template<int Bits> void check_gemm(Linalg& g,bool ta,const std::vector<F<Bits>>&
         if(!reference::equal<Bits>(C[i*n+j],want))f.add("("+std::to_string(i)+","+std::to_string(j)+")\n got  "+text<Bits>(C[i*n+j])+"\n want "+text<Bits>(want));}});
     f.check("gemm bits="+std::to_string(Bits)+(ta?" AT":" A")+" m="+std::to_string(m)+" n="+std::to_string(n)+" k="+std::to_string(k)+" "+label+" ["+bands(g.report())+"]");
 }
+// Old entries for an update C <- RN(C - product): random values, RN(product) (exact cancellation down to its rounding
+// error), the same far above / below, zeros and statuses.
+template<int Bits> std::vector<F<Bits>> old_entries(const std::vector<F<Bits>>& product,std::mt19937_64& rng){
+    std::vector<F<Bits>> C(product.size());
+    for(std::size_t q=0;q<C.size();++q){const F<Bits>& p=product[q];switch(rng()%8){
+        case 0:case 1:C[q]=p;break;case 2:C[q]=p.sign?with_exponent<Bits>(p,p.exponent+Bits+2):p;break;
+        case 3:C[q]=p.sign?with_exponent<Bits>(negate(p),p.exponent-Bits-5):zero<Bits/32>();break;case 4:C[q]=zero<Bits/32>();break;
+        case 5:C[q]=power<Bits>(9);C[q].status=rng()&1?invalid:division_by_zero;break;
+        default:C[q]=reference::random_number<Bits>(rng,p.sign?3:300);if(p.sign)C[q].exponent+=p.exponent;}}
+    return C;
+}
+template<int Bits> void check_syrk_update(Linalg& g,const std::vector<F<Bits>>& A,std::size_t rows,std::size_t cols,const std::string& label,std::mt19937_64& rng){
+    std::vector<F<Bits>> P(cols*cols,zero<Bits/32>());g.syrk(Bits,A.data(),rows,cols,P.data(),false);
+    auto C=old_entries<Bits>(P,rng),C0=C;g.syrk(Bits,A.data(),rows,cols,C.data(),true,true);Failures f;
+    parallel_rows(cols,[&](std::size_t i){for(std::size_t j=0;j<cols;++j){
+        auto want=j<=i?reference::dot_sub<Bits>(C0[i*cols+j],A.data()+i,std::ptrdiff_t(cols),A.data()+j,std::ptrdiff_t(cols),rows):C0[i*cols+j];
+        if(!reference::equal<Bits>(C[i*cols+j],want))f.add("("+std::to_string(i)+","+std::to_string(j)+")\n got  "+text<Bits>(C[i*cols+j])+"\n want "+text<Bits>(want));}});
+    f.check("syrk update bits="+std::to_string(Bits)+" "+std::to_string(rows)+"x"+std::to_string(cols)+" "+label+" ["+bands(g.report())+"]");
+}
+template<int Bits> void check_gemm_update(Linalg& g,const std::vector<F<Bits>>& A,const std::vector<F<Bits>>& B,std::size_t m,std::size_t n,std::size_t k,const std::string& label,std::mt19937_64& rng){
+    std::vector<F<Bits>> P(m*n);g.gemm(Bits,true,A.data(),B.data(),m,n,k,P.data());
+    auto C=old_entries<Bits>(P,rng),C0=C;g.gemm(Bits,true,A.data(),B.data(),m,n,k,C.data(),true);Failures f;
+    parallel_rows(m,[&](std::size_t i){for(std::size_t j=0;j<n;++j){
+        auto want=reference::dot_sub<Bits>(C0[i*n+j],A.data()+i,std::ptrdiff_t(m),B.data()+j,std::ptrdiff_t(n),k);
+        if(!reference::equal<Bits>(C[i*n+j],want))f.add("("+std::to_string(i)+","+std::to_string(j)+")\n got  "+text<Bits>(C[i*n+j])+"\n want "+text<Bits>(want));}});
+    f.check("gemm update bits="+std::to_string(Bits)+" m="+std::to_string(m)+" n="+std::to_string(n)+" k="+std::to_string(k)+" "+label+" ["+bands(g.report())+"]");
+}
 struct Config {const char* name;LinalgOptions options;};
 std::vector<Config> configs(){LinalgOptions narrow;narrow.band_bits=16;narrow.max_bands=8;LinalgOptions zero_width;zero_width.band_bits=0;zero_width.max_bands=3;
     LinalgOptions fallback;fallback.force_fallback=true;return {{"default",{}},{"narrow bands",narrow},{"zero-width bands",zero_width},{"forced fallback",fallback}};}
@@ -122,6 +166,7 @@ template<int Bits> void matrices(std::vector<std::unique_ptr<Linalg>>& gpus,bool
                 if(s>128&&!main)continue;
                 std::size_t m=s,n=s+(s>1?3:0),k=rows;auto L=matrix<Bits>(k,m,kind,rng),R=matrix<Bits>(k,n,kind,rng);
                 check_gemm<Bits>(g,true,L,R,m,n,k,cfg+" "+kind_name(kind));check_gemm<Bits>(g,false,transpose<Bits>(L,k,m),R,m,n,k,cfg+" "+kind_name(kind));
+                if(s<=128){check_syrk_update<Bits>(g,A,rows,s,cfg+" "+kind_name(kind),rng);check_gemm_update<Bits>(g,L,R,m,n,k,cfg+" "+kind_name(kind),rng);}
             }
         }
     }
@@ -153,7 +198,7 @@ template<int Bits> void matrices(std::vector<std::unique_ptr<Linalg>>& gpus,bool
 }
 int main(int argc,char** argv){try{
     bool cpu_only=argc==2&&std::string(argv[1])=="--cpu-only";if(argc>1&&!cpu_only)throw std::invalid_argument("usage: test_limbforge_linalg [--cpu-only]");
-    all_dots<64>();std::cout<<"exact_dot: all 31 precisions match exact MPFR products + mpfr_sum\n";
+    all_dots<64>();std::cout<<"exact_dot and exact_dot_add: all 31 precisions match exact MPFR products + mpfr_sum\n";
     if(cpu_only)return 0;
     std::vector<std::unique_ptr<Linalg>> gpus;for(auto& c:configs())gpus.push_back(std::make_unique<Linalg>(c.options));
     std::cout<<gpus[0]->device_name()<<"\n";

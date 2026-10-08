@@ -4,7 +4,17 @@ using namespace metal;
 using namespace mpp::tensor_ops;
 using namespace limbforge;
 constant int N=LF_BITS/32;
-struct Params { uint rows,cols,K,Kp,Mp,Np,j,L,Wc,tri,lower,fold,ls_line,ls_k,rs_line,rs_k,out_cols,multi_rows,multi_cols,both,j0,group,upper,row0,col0,pad; };
+// RN(x + c) for an exact x and a number c without status, with one rounding: the two-term exact sum of core.hpp (fma),
+// where a term more than one bit below the other's extended window only contributes its sign. Runtime-indexed widths
+// stay >= 33 words from 13 words (docs/gpu-codegen.md rule 1). The sum workspace is a multiple of 4 words: some odd
+// widths (53, 59, 61, 67, 71, 81 words) gave wrong GPU results for this sum while the CPU was exact (gpu-codegen.md 7).
+constant int ADDEND_WORDS=scratch(N);
+constexpr int sum_words(int w){return (scratch(w)+3)/4*4;}
+template<int W> inline Number<N> round_sum(thread const Exact<W>& x,Number<N> c){
+    Exact<ADDEND_WORDS> y=exact_number<ADDEND_WORDS>(c);
+    return round_exact<N>(exact_add<N,sum_words(exact_words(N,W,ADDEND_WORDS))>(x,y));
+}
+struct Params { uint rows,cols,K,Kp,Mp,Np,j,L,Wc,tri,lower,fold,ls_line,ls_k,rs_line,rs_k,out_cols,multi_rows,multi_cols,both,j0,group,upper,row0,col0,out_stride; };
 // Per line (row of the left / column of the right operand): bands (0 = handled on the host), lowest band
 // exponent, accumulator slot (>= 0: index among multi-band lines; < 0: -1 - index among single-band lines).
 struct Line { int bands,low,slot; };
@@ -75,6 +85,15 @@ kernel void combine(device const int* g11 [[buffer(0)]],device const int* gmid [
     uint v=reduce32(reduce(g11[idx],m)<<16,m,cm)+reduce32(reduce(gmid[idx],m)<<8,m,cm);v=(v>=m?v-m:v)+reduce(g00[idx],m);
     res[ulong(p.j)*p.Mp*p.Np+idx]=ushort(v>=m?v-m:v);
 }
+// SUB (pipeline specialisation): outputs are updates RN(c - x) of the old output c, for the exact dot product
+// x = sign * X * 2^scale, with one rounding (round_sum). A status on c gives zero with that status.
+constant bool SUB [[function_constant(0)]];
+template<int W> inline Number<N> rounded(thread const word (&X)[W],exponent_type scale,int sign,device const Number<N>& old){
+    if(!SUB)return pack<N>(X,scale,sign,ok);
+    Number<N> c=old;if(c.status)return zero<N>(c.status);
+    Exact<W> x;for(int k=0;k<W;++k)x.w[k]=X[k];x.scale=scale;x.sign=highest(X)<0?0:-sign;
+    return round_sum(x,c);
+}
 inline long slot_of(Line li,Line lj,uint j,constant Params& p){
     return li.slot>=0?long(li.slot)*p.out_cols+j:long(p.multi_rows)*p.out_cols+long(-1-li.slot)*p.multi_cols+lj.slot;
 }
@@ -101,7 +120,7 @@ kernel void reconstruct(device const ushort* res [[buffer(0)]],device const uint
     int sign=1;if(cmp>0){long borrow=0;for(uint k=0;k<Wc;++k){long d=long(full[k])-long(X[k])-borrow;X[k]=uint(d);borrow=d<0;}sign=-1;}
     int row=a.line,col=b.line,times=1;if(p.fold&&row<=col){times=row==col?2:1;row=b.line;col=a.line;}
     Line li=lline[row],lj=rline[col];
-    if(li.bands==1&&lj.bands==1){out[ulong(row)*p.out_cols+col]=pack<N>(X,exponent_type(a.lo)+b.lo-2*(32*N-1),sign,ok);return;}
+    if(li.bands==1&&lj.bands==1){device Number<N>& o=out[ulong(row)*p.out_stride+col];o=rounded(X,exponent_type(a.lo)+b.lo-2*(32*N-1),sign,o);return;}
     device uint* s=acc+slot_of(li,lj,uint(col),p)*LF_ACC_WORDS;
     uint shift=uint(a.lo-lline[a.line].low)+uint(b.lo-rline[b.line].low),w=shift/32,sh=shift%32;
     for(int t=0;t<times;++t){ulong carry=0;
@@ -112,7 +131,7 @@ kernel void reconstruct(device const ushort* res [[buffer(0)]],device const uint
             else{ulong u=ulong(x)+carry;uint old=s[k+w];s[k+w]=uint(ulong(old)-u);carry=ulong(old)<u;}
         }}
 }
-// Multi-band outputs: one rounding of the accumulated exact sum.
+// Multi-band outputs: one rounding of the accumulated exact sum (or of the update).
 kernel void finish(device const Line* lline [[buffer(7)]],device const Line* rline [[buffer(8)]],device Number<N>* out [[buffer(9)]],
                    device const uint* acc [[buffer(10)]],constant Params& p [[buffer(5)]],uint2 g [[thread_position_in_grid]]){
     uint j=g.x,i=g.y;if(i>=p.rows||j>=p.cols||(p.lower&&i<j))return;
@@ -120,5 +139,5 @@ kernel void finish(device const Line* lline [[buffer(7)]],device const Line* rli
     device const uint* s=acc+slot_of(li,lj,j,p)*LF_ACC_WORDS;word m[LF_ACC_WORDS];
     for(int k=0;k<LF_ACC_WORDS;++k)m[k]=s[k];
     int sign=1;if(m[LF_ACC_WORDS-1]>>31){sign=-1;ulong c=1;for(int k=0;k<LF_ACC_WORDS;++k){ulong t=ulong(~m[k])+c;m[k]=uint(t);c=t>>32;}}
-    out[ulong(i)*p.out_cols+j]=pack<N>(m,exponent_type(li.low)+lj.low-2*(32*N-1),sign,ok);
+    device Number<N>& o=out[ulong(i)*p.out_stride+j];o=rounded(m,exponent_type(li.low)+lj.low-2*(32*N-1),sign,o);
 }

@@ -1,0 +1,142 @@
+--- a/src/linalg.metal
++++ b/src/linalg.metal
+@@ -1,5 +1,6 @@
+ // Dense products with one rounding per output (src/linalg.mm, docs/numerics.md "Dense products").
+-// Compiled with MSL 4.0 per (LF_BITS, LF_TERM_WORDS, LF_ACC_WORDS, LF_MAX_MODULI, LF_GROUP).
++// Compiled with MSL 4.0 per (LF_BITS, LF_TERM_WORDS, LF_ACC_WORDS, LF_MAX_MODULI, LF_GROUP); with LF_PANEL, only the
++// Cholesky panel kernel (a separate library, so that a failure to build it cannot affect the products).
+ using namespace metal;
+ using namespace mpp::tensor_ops;
+ using namespace limbforge;
+@@ -14,6 +15,7 @@
+     Exact<ADDEND_WORDS> y=exact_number<ADDEND_WORDS>(c);
+     return round_exact<N>(exact_add<N,sum_words(exact_words(N,W,ADDEND_WORDS))>(x,y));
+ }
++#ifndef LF_PANEL
+ struct Params { uint rows,cols,K,Kp,Mp,Np,j,L,Wc,tri,lower,fold,ls_line,ls_k,rs_line,rs_k,out_cols,multi_rows,multi_cols,both,j0,group,upper,row0,col0,out_stride; };
+ // Per line (row of the left / column of the right operand): bands (0 = handled on the host), lowest band
+ // exponent, accumulator slot (>= 0: index among multi-band lines; < 0: -1 - index among single-band lines).
+@@ -141,3 +143,41 @@
+     int sign=1;if(m[LF_ACC_WORDS-1]>>31){sign=-1;ulong c=1;for(int k=0;k<LF_ACC_WORDS;++k){ulong t=ulong(~m[k])+c;m[k]=uint(t);c=t>>32;}}
+     device Number<N>& o=out[ulong(i)*p.out_stride+j];o=rounded(m,exponent_type(li.low)+lj.low-2*(32*N-1),sign,o);
+ }
++#else
++// Cholesky panel rows (src/linalg.mm cholesky_n; docs/numerics.md "Cholesky factorization"), one thread per row
++// i = k0 + nb + g, in place in W (row stride n), given the final diagonal block rows k0 .. k0+nb-1:
++//   l_ij = RN(D(w_ij; l_i, l_j; [k0, j)) / l_jj),   D(c; x, y; K) = RN(c - sum_k x_k y_k) with one rounding.
++// D accumulates the exact products in LF_ACC_WORDS two's complement words (product exponents within SPAN bits), then
++// adds c with round_sum. A wider exponent range stops the row: wide[g] = j + 1, columns before j are final and the
++// host continues from column j; wide[g] = 0 when the row is complete.
++struct Panel { uint n,k0,nb,rows; };
++constant int SPAN=32*LF_ACC_WORDS-64*N-16; // K < 2^12 products: |sum| < 2^(SPAN + 64N + 12), with room for the sign
++inline bool dsub(thread Number<N>& out,Number<N> c,device const Number<N>* x,device const Number<N>* y,uint K){
++    word status=c.status;exponent_type hi=0,lo=0;bool any=false;
++    for(uint k=0;k<K;++k){Number<N> a=x[k],b=y[k];status|=a.status|b.status;
++        if(a.sign&&b.sign){exponent_type e=exponent_type(a.exponent)+b.exponent;if(!any){hi=e;lo=e;any=true;}else{hi=e>hi?e:hi;lo=e<lo?e:lo;}}}
++    if(status){out=zero<N>(status);return true;}
++    if(!any){out=c;return true;}
++    if(hi-lo>SPAN)return false;
++    word acc[LF_ACC_WORDS];for(int q=0;q<LF_ACC_WORDS;++q)acc[q]=0;
++    for(uint k=0;k<K;++k){Number<N> a=x[k],b=y[k];if(!a.sign||!b.sign)continue;
++        Exact<product_words<N>()> pr=exact_product<N>(a,b);bool sub=pr.sign>0; // acc -= a*b
++        uint shift=uint(exponent_type(a.exponent)+b.exponent-lo),w=shift/32,sh=shift%32;ulong carry=0;
++        for(uint q=0;q+w<uint(LF_ACC_WORDS);++q){
++            if(q>uint(2*N)&&!carry)break;
++            uint v=q<uint(2*N)?pr.w[q]<<sh:0;if(sh&&q>0&&q-1<uint(2*N))v|=pr.w[q-1]>>(32-sh);
++            if(!sub){ulong u=ulong(acc[q+w])+v+carry;acc[q+w]=uint(u);carry=u>>32;}
++            else{ulong u=ulong(v)+carry;uint old=acc[q+w];acc[q+w]=uint(ulong(old)-u);carry=ulong(old)<u;}}
++    }
++    int sign=1;if(acc[LF_ACC_WORDS-1]>>31){sign=-1;ulong cy=1;for(int q=0;q<LF_ACC_WORDS;++q){ulong t=ulong(~acc[q])+cy;acc[q]=uint(t);cy=t>>32;}}
++    Exact<LF_ACC_WORDS> s;for(int q=0;q<LF_ACC_WORDS;++q)s.w[q]=acc[q];s.scale=lo-2*(32*N-1);s.sign=highest(acc)<0?0:sign;
++    out=round_sum(s,c);return true;
++}
++kernel void panel_rows(device Number<N>* W [[buffer(0)]],device uint* wide [[buffer(1)]],constant Panel& p [[buffer(2)]],uint g [[thread_position_in_grid]]){
++    if(g>=p.rows)return;device Number<N>* r=W+(ulong(p.k0)+p.nb+g)*p.n+p.k0;
++    for(uint j=0;j<p.nb;++j){device const Number<N>* d=W+(ulong(p.k0)+j)*p.n+p.k0;Number<N> s;
++        if(!dsub(s,r[j],r,d,j)){wide[g]=j+1;return;}
++        Number<N> pivot=d[j];r[j]=div<N>(s,pivot);}
++    wide[g]=0;
++}
++#endif
+--- a/src/linalg.mm
++++ b/src/linalg.mm
+@@ -120,6 +120,18 @@
+     // The factorization runs trailing updates on a second host thread (side_thread) while the caller's thread factors
+     // the next panel; each thread then uses its own worker pool.
+     std::unique_ptr<Pool> side_workers;
++    // Cholesky panel kernel: its own library (LF_PANEL) and queue (it overlaps the trailing update on `queue`).
++    // nil when the kernel cannot be built for a width: the host computes the panel (same results).
++    std::map<int,id<MTLComputePipelineState>> panels;id<MTLCommandQueue> panel_queue;
++    id<MTLComputePipelineState> panel_state(int bits){
++        auto found=panels.find(bits);if(found!=panels.end())return found->second;id<MTLComputePipelineState> s=nil;
++        const int N=bits/32,acc=padded(2*N+(2*512+18+31)/32+1); // the accumulator width of `finish` (validated sum widths)
++        NSString* source=[NSString stringWithFormat:@"#define LF_PANEL 1\n#define LF_BITS %d\n#define LF_ACC_WORDS %d\n%s",bits,acc,limbforge_linalg_source];
++        MTLCompileOptions* o=[MTLCompileOptions new];o.languageVersion=MTLLanguageVersion((4u<<16)|0u);o.mathMode=MTLMathModeSafe;
++        NSError* e=nil;id<MTLLibrary> lib=[device newLibraryWithSource:source options:o error:&e];
++        if(lib){try{s=state(lib,@"panel_rows");}catch(const std::exception&){s=nil;}}
++        if(!panel_queue)panel_queue=[device newCommandQueue];if(!panel_queue)s=nil;
++        return panels[bits]=s;}
+     Pool& pool_workers(){auto& w=side_thread?side_workers:workers;if(!w)w=std::make_unique<Pool>(side_thread?std::max(1u,threads()/4):threads());current_pool=w.get();return *w;}
+     template<class F> void each(std::size_t n,F f){if(!n)return;if(n==1){f(std::size_t(0));return;}
+         std::atomic<std::size_t> next{0};pool_workers().run([&](unsigned){for(std::size_t i;(i=next.fetch_add(1))<n;)f(i);});}
+@@ -307,17 +319,31 @@
+     Residency keep(*this);T* W=L;pool_workers();
+     // GPU work matrix: L itself when page aligned, otherwise a shared scratch copy.
+     const bool gpu=fo.gpu&&n>nb&&double(n-nb)*double(n-nb+1)/2*double(nb)>=fo.host_macs;
+-    if(gpu){id<MTLBuffer> b=wrap(L,n*n*sizeof(T));if(!b){b=buffer("factor",n*n*sizeof(T));W=static_cast<T*>(b.contents);}resident.push_back(b);}
++    id<MTLBuffer> wb=nil,wide=nil;id<MTLComputePipelineState> rows_gpu=nil;
++    if(gpu){wb=wrap(L,n*n*sizeof(T));if(!wb){wb=buffer("factor",n*n*sizeof(T));W=static_cast<T*>(wb.contents);}resident.push_back(wb);
++        // Buffers and pipelines are prepared here: the trailing-update thread uses the buffer pool concurrently later.
++        if(fo.gpu_panel&&nb<=4096&&(rows_gpu=panel_state(32*N)))wide=buffer("panel_wide",4*n);}
+     each(n,[&](std::size_t i){for(std::size_t j=0;j<n;++j)W[i*n+j]=j>i?zero<N>():A[i*n+j];});
+     auto D=[](const T& c,const T* x,std::ptrdiff_t sx,const T* y,std::ptrdiff_t sy,std::size_t K){return exact_dot_add<N>(&c,true,x,sx,y,sy,K);};
+-    // Columns [k0, ke) of row i: l_ij = RN(D(a_ij; l_i, l_j; [k0, j)) / l_jj), rows j < i of the block already final.
+-    auto panel=[&](std::size_t i,std::size_t k0,std::size_t ke){T* r=W+i*n;for(std::size_t j=k0;j<ke;++j)r[j]=div(D(r[j],r+k0,1,W+j*n+k0,1,j-k0),W[j*n+j]);};
+-    // Panel [k0, k1) on the host: the diagonal block row by row, then the rows below it (independent given the
+-    // diagonal block, in parallel). Returns the first failing pivot, or k1.
++    // Columns [j0, ke) of row i: l_ij = RN(D(a_ij; l_i, l_j; [k0, j)) / l_jj), rows j < i of the block already final.
++    auto panel=[&](std::size_t i,std::size_t k0,std::size_t j0,std::size_t ke){T* r=W+i*n;for(std::size_t j=j0;j<ke;++j)r[j]=div(D(r[j],r+k0,1,W+j*n+k0,1,j-k0),W[j*n+j]);};
++    // Panel [k0, k1): the diagonal block row by row (host), then the rows below it, independent given the diagonal block
++    // (GPU kernel panel_rows, rows it cannot finish continued on the host). Returns the first failing pivot, or k1.
+     auto factor_panel=[&](std::size_t k0,std::size_t k1){auto t=Clock::now();std::size_t p=k1;++info.blocks;
+-        for(std::size_t i=k0;i<k1&&p==k1;++i){panel(i,k0,i);T s=D(W[i*n+i],W+i*n+k0,1,W+i*n+k0,1,i-k0);
++        for(std::size_t i=k0;i<k1&&p==k1;++i){panel(i,k0,k0,i);T s=D(W[i*n+i],W+i*n+k0,1,W+i*n+k0,1,i-k0);
+             if(s.status||s.sign<=0){p=i;info.pivot=i;info.pivot_sign=s.status?0:s.sign;info.pivot_status=s.status;}else W[i*n+i]=sqrt(s);}
+-        const std::size_t first=p<k1?p+1:k1;each(n-first,[&](std::size_t r){panel(first+r,k0,p);});
++        const std::size_t first=p<k1?p+1:k1,rows=n-first;
++        if(p==k1&&rows_gpu&&double(rows)*double(k1-k0)*double(k1-k0)/2>=fo.host_macs){@autoreleasepool{
++            struct {std::uint32_t n,k0,nb,rows;} params{std::uint32_t(n),std::uint32_t(k0),std::uint32_t(k1-k0),std::uint32_t(rows)};
++            id<MTLCommandBuffer> cb=[panel_queue commandBuffer];id<MTLComputeCommandEncoder> enc=[cb computeCommandEncoder];
++            [enc setComputePipelineState:rows_gpu];[enc setBuffer:wb offset:0 atIndex:0];[enc setBuffer:wide offset:0 atIndex:1];[enc setBytes:&params length:sizeof(params) atIndex:2];
++            [enc dispatchThreads:MTLSizeMake(rows,1,1) threadsPerThreadgroup:MTLSizeMake(std::min<NSUInteger>(32,rows_gpu.maxTotalThreadsPerThreadgroup),1,1)];
++            [enc endEncoding];[cb commit];[cb waitUntilCompleted];
++            if(cb.status==MTLCommandBufferStatusError)throw std::runtime_error("Metal execution (cholesky panel): "+message(cb.error));
++            info.timing.gpu_seconds+=cb.GPUEndTime-cb.GPUStartTime;++info.gpu_panels;
++            const std::uint32_t* stop=static_cast<const std::uint32_t*>(wide.contents);
++            for(std::size_t r=0;r<rows;++r)info.wide_rows+=stop[r]!=0;each(rows,[&](std::size_t r){if(stop[r])panel(first+r,k0,k0+stop[r]-1,k1);});}}
++        else each(rows,[&](std::size_t r){panel(first+r,k0,k0,p);});
+         info.panel_seconds+=since(t);return p;};
+     // Update by block [k0, k1): a_ij = D(a_ij; l_i, l_j; [k0, k1)) for rows i >= r0 and columns j in [r0, c1), j <= i.
+     // r0 = c1's block start with c1 < n: the next panel (a GEMM; its strict upper part is restored to zero); otherwise
+--- a/include/limbforge/linalg.hpp
++++ b/include/limbforge/linalg.hpp
+@@ -37,8 +37,9 @@
+ // changes only the speed. host_macs: an update with fewer multiply-adds (outputs x K) runs on the host.
+ struct FactorOptions {
+     std::size_t block=32;          // column block nb; 0 selects a single block (every dot product exact over all k)
+-    double host_macs=5e4;          // updates below this many multiply-adds use host exact dots (same results)
++    double host_macs=5e4;          // updates (and panels) below this many multiply-adds use host exact dots (same results)
+     bool gpu=true;                 // false: everything on the host (same results)
++    bool gpu_panel=true;           // panel rows below the diagonal block on the GPU (same results)
+ };
+ // Per-call outcome of cholesky. pivot = n on success; otherwise the first column p whose pivot
+ // s_pp = RN(a_pp - sum_k l_pk^2) is zero, negative or carries a status (then pivot_sign / pivot_status describe it).
+@@ -46,7 +47,7 @@
+ struct CholeskyInfo {
+     std::size_t pivot=0; int pivot_sign=0; word pivot_status=0;
+     Timing timing{0,0};                       // gpu_seconds: summed command buffers; wall: whole call
+-    std::size_t blocks=0,gpu_updates=0,host_updates=0;
++    std::size_t blocks=0,gpu_updates=0,host_updates=0,gpu_panels=0,wide_rows=0; // GPU panels; rows the GPU panel left to the host
+     double panel_seconds=0,update_seconds=0;  // host diagonal-block + panel work; trailing updates (GPU or host), wall
+ };
+ // One Linalg per host thread (scratch buffers and compiled libraries are reused). C must not overlap A or B;

@@ -236,10 +236,19 @@ Each item: written contract → MPFR/MPC reference → CPU implementation in `co
   256 bits, QSC-like columns) SYRK takes 18.5 ms device and 22 ms wall, against 529 ms for a one-thread-per-output
   composed limb kernel and an estimated 17 s for 18-thread MPFR (`benchmarks/results/round20_linalg.csv`).
   The CPU MPFR Cholesky now dominates the normal equations (2.2 s serial at n = 400; n^3/6 multiply-adds).
+  **Status (round 23-D6b): blocked Cholesky and triangular solves done.** `Linalg::cholesky` / `trsm` /
+  `cholesky_solve` (multiple right-hand sides, per-call first failing pivot), on update GEMMs `RN(C - op(A) B)` with one
+  rounding per entry (`syrk`/`gemm` with `subtract`, host `exact_dot_add`). Fixed documented rounding sequence (block 32),
+  deterministic, not correctly rounded overall; `docs/numerics.md`, "Cholesky factorization and triangular solves".
+  QSC-like, 256 bits: n = 400 in 37 ms, n = 1000 in 163 ms (151× serial MPFR, 16× 18-thread MPFR); SYRK + Cholesky +
+  solve n = 1000 in 0.27 s (`benchmarks/results/round23_cholesky.csv`). The host panel (in-block exact dots) is now the
+  critical path at n = 1000 (~110 ms on a loaded host); trailing updates overlap it.
   Next steps:
-  - a parallel or GPU blocked Cholesky (trailing updates through `gemm`), or LimbForge `fma` on the CPU;
-  - resident `Buffer` operands in a `CommandBatch` (design note in `numerics.md`);
-  - QR (S5).
+  - shorten the critical path: fewer dispatches per small-K update GEMM (moduli for K <= 64, fused digit/product
+    passes), or a cooperative (SIMD-group per row) GPU panel; the one-thread-per-row panel was slower
+    (`benchmarks/experiments/cholesky_gpu_panel.patch`);
+  - resident `Buffer` operands in a `CommandBatch` (design note in `numerics.md`), so that J, A and L stay on the GPU;
+  - QR (S5) and factor handles.
 - **D7. Transcendentals at buffer level (tips #8)** — L, lowest priority: complex `exp`, `log`, integer `powi` with explicit
   accuracy contracts (faithful or correctly rounded via Ziv-style retry).
 
@@ -425,6 +434,9 @@ maximum absolute residuals and a separate scaled recurrence residual.
   decision. Damping/line-search order remains the consumer's existing order, even if trials run in parallel.
 
 ### S5. Reusable factorizations and accurate least squares — promote QR in D6
+
+*Status (round 23-D6b): factor/solve separation for D6 Cholesky done as host-array calls (`Linalg::cholesky` returns L
+and the first failing pivot; `cholesky_solve` / `trsm` take several right-hand sides). No factor handle or QR yet.*
 
 Sketch: `factor_qr(A, workspace, options) -> QRFactor`, `factor.solve(B)`,
 `factor.apply_q(B, transpose)`, plus factor/solve separation for D5 LU and D6 Cholesky.

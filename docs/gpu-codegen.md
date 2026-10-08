@@ -73,6 +73,20 @@ cancellation case first), while the same code with the addend padded to 33 words
 31 precisions. Treat runtime-indexed arrays of 13–32 words as a correctness risk, not only a speed
 issue, and keep the all-precision GPU fused tests as the gate.
 
+## 7. A third failure: some odd widths of the exact two-term sum (round 23)
+
+The dense-product updates `RN(c - x)` add a wide exact integer `x` (the Garner integer, `LF_TERM_WORDS`,
+or the multi-band accumulator, `LF_ACC_WORDS`) and the old entry `c` with `exact_add<N, W>` of `core.hpp`
+and round once. The CPU result was exact at every width (20,000 MPFR-checked sums per width), but on the
+GPU about 45% of the sums were wrong (typically the top word lost) for some workspace widths `W` and
+correct for others, with no simple pattern: with N = 7, `W` = 53, 59, 61, 67, 71, 81 words failed while
+51, 52, 54–58, 60, 62, 63, 65, 75, 91, 109 passed. Among the widths the library instantiates, 8 of 62
+failed (`acc` at 160, 224 and 352 bits; `term` at 480, 512, 608, 672 and 768 bits). Rounding `W` up to
+a multiple of 4 (`sum_words` in `linalg.metal`) gave 0 failures in 8,192 sums per width at all 31
+precisions and both instantiations; even widths passed in every probe. Reproducer:
+`benchmarks/experiments/sum_width_probe.mm` (argument: rounding multiple, 1 shows the failures).
+The fused `fma` of round 19 uses other widths and remains covered by its all-precision tests.
+
 ## Rules for kernel code
 
 1. Do not index arrays of ≤ 32 words with runtime indices in hot loops. Either make every index a
@@ -83,3 +97,5 @@ issue, and keep the all-precision GPU fused tests as the gate.
 3. Validate every arithmetic change in real, complex, and resident chain kernels on the physical
    GPU at all 31 precisions; a passing raw-product or CPU check proves nothing about fused kernels.
 4. Make performance decisions from warm `kernel_sweep` numbers.
+5. Round exact-sum workspaces (`exact_add<N, W>`) up to a multiple of 4 words, and probe every width a
+   kernel instantiates on the GPU (section 7): a correct width says nothing about its neighbours.

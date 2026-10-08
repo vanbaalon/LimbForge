@@ -56,7 +56,9 @@ measurements.
 - Batched 4×4 complex LU with deterministic pivoting: solve, inverse and determinant per matrix.
 - Segmented real/complex dot products with a fixed, reproducible fused order and optional shared table.
 - Dense real `syrk` (AᵀA) and `gemm` with one rounding of each exact dot product (`linalg.hpp`): exact
-  integer GEMMs over exponent bands on TensorOps int8 residues, with an exact host fallback.
+  integer GEMMs over exponent bands on TensorOps int8 residues, with an exact host fallback; updates
+  `C - op(A) B` rounded once, and a blocked Cholesky factorization with multiple-right-hand-side
+  triangular solves built on them (a fixed, reproducible rounding sequence).
 - Typed resident buffers, asynchronous submissions, and dependent operations in one command batch.
 - In-place pointwise arithmetic, cached pipelines, and explicit buffer ownership checks.
 - Fixed-order real and complex tree reductions with GPU-resident intermediate levels.

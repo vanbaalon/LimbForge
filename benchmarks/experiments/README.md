@@ -29,6 +29,21 @@ GPU/MPFR validation and was removed from the installed implementation.
   version branches only on SIMD-uniform conditions, but its G=4 shapes (from 512
   bits) still fail under validation; see ../../docs/experiments.md.
 
+- `cholesky_gpu_panel.patch`: based on round 23-D6b (apply on top of that commit).
+  Not a failure but a measured rejection: the Cholesky panel rows below the
+  diagonal block on the GPU (`panel_rows`, one thread per row, exact accumulator of
+  `LF_ACC_WORDS` words, rows with product exponents spread over 1,072 bits finished
+  on the host). Bit-identical to the MPFR sequence (all `linalg_cholesky` cases), but
+  slower: about 4 ms of GPU time per panel at n = 1000, 256 bits, block 32 (one exact
+  multiply-add chain per thread is latency-bound), against about 3.5 ms for the host
+  panel on a host with load average 150-260; total factorization 220-250 ms against
+  165-195 ms.
+- `sum_width_probe.mm` (diagnostic, not a patch; build as in its header): the exact
+  two-term sum of the update kernels at every precision and both instantiated widths
+  against MPFR. With argument 1 (no rounding of the workspace width) 8 of 62 widths
+  fail on the GPU; with 4 (the library) none fail. See ../../docs/gpu-codegen.md
+  section 7.
+
 The cause of these GPU mismatches is unresolved. Do not treat the rejected
 measurements as validated performance results. The accepted library uses exact
 schoolbook multiplication and a restricted, separately validated unary square. See ../../docs/optimizations.md and the `round5_*`

@@ -226,6 +226,8 @@ the final `q3`; zero steps return the fourth seed.
 Linalg la;                                     // LinalgOptions: band_bits, max_bands, max_spread, host_threads
 la.syrk(bits, A, rows, cols, C, lower_only);   // C (cols x cols) = A^T A
 la.gemm(bits, transpose_a, A, B, m, n, k, C);  // C (m x n) = op(A) B; B is k x n; op(A) = A (m x k) or A^T (A is k x m)
+la.syrk(bits, A, rows, cols, C, true, true);   // update: C = RN(C - A^T A), lower triangle
+la.gemm(bits, transpose_a, A, B, m, n, k, C, true); // update: C = RN(C - op(A) B)
 la.report();                                   // bands, fallbacks, moduli and stage times of the last call
 ```
 
@@ -245,6 +247,17 @@ zero. A rounded result outside ±1,000,000,000 gives `exponent_overflow`; interm
 may lie outside that range. SYRK results are exactly symmetric. The independent reference
 (`reference::dot` in `tests/reference.hpp`) forms every product exactly with MPFR at `2*bits` and
 sums them with one `mpfr_sum`.
+
+**Updates.** With `subtract`, each output becomes `C[i][j] = RN(C[i][j] - sum_k L[i][k] * R[k][j])`,
+again one rounding of the exact value (the old entry is one more exact term). A status on the old
+entry joins the OR above; without nonzero products (empty K or a zero line) the entry is unchanged.
+SYRK updates read and write the lower triangle only. On the GPU the reconstructed exact sum (Garner
+integer or multi-band accumulator) and the old entry are added by the two-term exact sum of `fma`
+(a term more than one bit below the other's extended window contributes only its sign) and rounded
+once; the `reconstruct` and `finish` pipelines are specialised by a function constant. The host
+fallback is `exact_dot_add<N>(c, subtract, a, stride_a, b, stride_b, K)`, which treats `c` as one
+more exact term of `exact_dot`. Reference: `reference::dot_sub` (exact products and `c`, one
+`mpfr_sum`).
 
 **Algorithm.** A *line* is a row of the left operand or a column of the right operand (for SYRK,
 a column of A on both sides). Each line is split into exponent *bands*. Starting from the largest
@@ -282,8 +295,11 @@ sums each cluster exactly. Let `S` be the first nonzero cluster sum (a multiple 
 the rest. Then `|F| < 2^(lsb - bits - 2)`, so no midpoint of the target precision lies strictly
 between `S + F` and `S + sign(F)·eps`. Each nonzero cluster dominates everything below it, so
 `sign(F)` is the sign of the next nonzero cluster. Hence `RN(S + F) = RN(S + sign(F)·eps)` exactly,
-including ties. `exact_dot<N>(a, stride_a, b, stride_b, K)` is public and host-only. The host
-resolves statuses and zero lines without arithmetic.
+including ties. `exact_dot<N>(a, stride_a, b, stride_b, K)` is public and host-only. When all
+term scales of one call span at most `8128 - 64N - ceil(log2(terms)) - 1` bits (254 words of
+accumulator), it skips the clusters and adds every term exactly into one positive and one negative accumulator,
+then rounds their difference once (the same value). The host resolves statuses and zero lines
+without arithmetic.
 
 `LinalgReport` lists:
 
@@ -298,12 +314,8 @@ per line the modulus count is at its minimum: 33 at 256 bits for K = 2000 when e
 single exponent. A spread up to `G` within a band costs about `2*spread/16` extra moduli, and the
 widest line sets this for the whole product.
 
-**Cholesky and QR (design note).** The normal-equation consumer factors `C = J^T J` next. For
-J of 2n × n, SYRK costs n^3 multiply-adds and Cholesky n^3/6, so SYRK dominates. Cholesky starts on
-the CPU (MPFR or LimbForge `fma`) from the correctly rounded C. A blocked right-looking GPU version
-would reuse `gemm` for its trailing updates. `C22 -= L21 L21^T` is then a SYRK with one rounding
-per entry, a different and more accurate contract than a sequential update. Plan item S5 prefers
-QR of `[J; sqrt(mu) D]` for difficult Levenberg–Marquardt points.
+**QR (later).** Plan item S5 prefers QR of `[J; sqrt(mu) D]` for difficult Levenberg–Marquardt
+points; the normal equations are solved by the blocked Cholesky below.
 
 **Resident buffers (later).** The host-array API owns its own device and queue. A resident version
 would take `Buffer<Float<bits>>` operands and encode the same pipeline into a `CommandBatch`. Band
@@ -312,3 +324,102 @@ followed by a readback. The natural form is therefore to run `analyze` once per 
 Digits, products, combine, reconstruct and finish are then encoded as ordinary dispatches into the
 caller's batch, with scratch planes from a workspace query. Fallback lines would then need a host
 step after the submission, or a GPU `exact_dot` kernel.
+
+## Cholesky factorization and triangular solves
+
+```cpp
+FactorOptions o;                                 // block = 32, host_macs, solve_host_macs, gpu
+CholeskyInfo info = la.cholesky(bits, A, n, L, o);   // A = L L^T; info.pivot == n on success
+la.trsm(bits, transpose, L, n, B, nrhs, X, o);   // L X = B, or L^T X = B with transpose
+la.cholesky_solve(bits, L, n, B, nrhs, X, o);    // (L L^T) X = B: trsm, then trsm with transpose
+```
+
+Host arrays as for the products: row-major `Float<bits>`, B and X are `n x nrhs`. `cholesky` reads
+the lower triangle of A and writes all of L (strict upper triangle zero); L may equal A. The solves
+read the lower triangle of L; X may equal B. The calls return after the GPU has finished.
+
+**Rounding sequence.** Write `D(c; x, y; S) = RN(c - sum_{k in S} x_k y_k)` for one rounding of the
+exact value (ties to even), computed by the update GEMM of "Dense products" or by `exact_dot_add`;
+both give the same bits. Statuses follow that contract: zero with the OR of the statuses of `c` and
+of every `x_k`, `y_k` with `k in S`; without nonzero products the result is `c`. Columns are split
+into blocks `B_b = [b nb, min(n, (b+1) nb))` with `nb = block` (0: one block); `blk(j) = floor(j/nb)`,
+`r_j = blk(j) nb`. Rows `l_i` of L are indexed by column.
+
+```
+factorization, every column j in order, rows i >= j:
+  a_ij^(0) = a_ij                                    (lower triangle of A)
+  a_ij^(b+1) = D(a_ij^(b); l_i, l_j; B_b)            b = 0 .. blk(j)-1   (trailing updates)
+  s_ij = D(a_ij^(blk(j)); l_i, l_j; [r_j, j))                            (in-block dot)
+  l_jj = sqrt(s_jj),  l_ij = div(s_ij, l_jj)  (i > j)                    (correctly rounded)
+forward,  L x = b (each right-hand side independently), i = 0 .. n-1:
+  b_i^(r+1) = D(b_i^(r); l_i, x; B_r)  for r < blk(i);    x_i = div(D(b_i^(blk(i)); l_i, x; [r_i, i)), l_ii)
+backward, L^T x = b, i = n-1 .. 0, with e_i = min(n, r_i + nb) and column i of L as the vector:
+  b_i <- D(b_i; L[., i], x; B_r)  for r = last block .. blk(i)+1;   x_i = div(D(b_i; L[., i], x; (i, e_i)), l_ii)
+```
+
+An entry `l_ij` thus takes `blk(j) + 2` roundings: one per earlier column block (each the single
+rounding of a block of `nb` exact products and the running value), one for the in-block dot and
+one for `sqrt` or the division. With a single block every entry is `RN(RN(a_ij - exact dot) / l_jj)`.
+`cholesky_solve` is the forward then the backward sequence with the same `nb`.
+
+**Pivots and statuses.** `s_jj` must be positive and without status. The first column `p` (in
+order) where it is zero, negative or carries a status stops the factorization: `info.pivot = p`,
+`info.pivot_sign` is the sign of `s_pp` (0 for zero or a status), `info.pivot_status` its status.
+Columns `j < p` of L are then final, and every lower entry with `j >= p` is zero with status
+`invalid`, so nothing downstream uses unfinished values. A status in A reaches a pivot through the
+dot products (an entry `a_ij` with a status gives `l_ij` that status and fails pivot `i`). In the
+solves, a status in B or L propagates through D, and a zero diagonal entry of a caller's L gives
+`division_by_zero` (the division contract).
+
+**Determinism and accuracy.** The result depends only on the inputs, `bits` and `block`: not on
+which updates run on the GPU or on the host (`host_macs`, `gpu`), the number of host threads,
+page alignment, or the overlap below. Each step is correctly rounded, but the factorization and the
+solves as a whole are **not** correctly rounded: it is a fixed, reproducible sequence of
+`blk(j) + 2` roundings per entry, more accurate than an `fma` chain (one rounding per product) or
+the consumer's `mpfr_mul` + `mpfr_sub` loop (two per product). Measured errors against a `2*bits`
+MPFR solve are in "Cholesky accuracy" below. `block` is part of the result: changing it changes
+the low bits.
+
+**Execution.** The work matrix is L itself when page aligned, otherwise a shared scratch copy; it
+stays on the GPU for the whole call. Blocks are processed right-looking with one block of
+look-ahead. For block `b`:
+
+1. Panel on the host: the diagonal block row by row (`sqrt` and `div` of `core.hpp`), then the rows
+   below it in parallel; every in-block dot is `exact_dot_add`.
+2. The next panel's columns `[k1, k2)` are updated by block `b` first: one update GEMM (rows `>= k1`
+   times `nb` columns; the strict upper part of that diagonal block is written and reset to zero).
+3. A second host thread updates the rest of the trailing matrix (`j >= k2`, lower triangle, one
+   update SYRK) while this thread factors the next panel. The regions are disjoint.
+
+Updates with fewer than `host_macs` multiply-adds (outputs × nb; default 5·10^4) run on the host;
+the solves use `solve_host_macs` (default 4·10^5), so a few right-hand sides stay on the host. The
+independent reference (`tests/test_cholesky.cpp`) is a left-looking, column-by-column MPFR program
+of the sequence above (`reference::dot_sub`, `mpfr_sqrt`, `mpfr_div`).
+
+A GPU panel kernel (one thread per panel row, exact accumulator, host fallback for rows with
+exponent ranges over 1,072 bits) was bit-identical but slower: about 4 ms per panel at n = 1000,
+256 bits, against about 3.5 ms for the host panel on the loaded host, because one exact multiply-add chain per thread is
+latency-bound. It is kept as `benchmarks/experiments/cholesky_gpu_panel.patch`.
+
+### Cholesky accuracy
+
+QSC-like normal equations (`A = J^T J` with Marquardt damping, J of 2n × n with column scales
+2^±60, four right-hand sides; `benchmarks/results/round23_cholesky_accuracy.csv`). Errors are log2,
+maximum over the right-hand sides, against a `2*bits` MPFR Cholesky solve of the same A and B:
+
+| bits | n | forward, normwise | forward, componentwise | backward, componentwise | MPFR sequential (fwd norm / comp / bwd comp) |
+|---:|---:|---:|---:|---:|---|
+| 224 | 200 | −222.1 | −211 | −224 | −222.1 / −212 / −221 |
+| 224 | 400 | −224.5 | −212 | −223 | −223.2 / −210 / −221 |
+| 224 | 800 | −220.8 | −210 | −222 | −220.2 / −209 / −221 |
+| 224 | 1000 | −221.9 | −206 | −223 | −219.3 / −206 / −221 |
+| 256 | 200 | −255.6 | −245 | −256 | −255.2 / −243 / −254 |
+| 256 | 400 | −254.4 | −246 | −255 | −253.6 / −243 / −253 |
+| 256 | 800 | −254.2 | −243 | −255 | −251.5 / −241 / −253 |
+| 256 | 1000 | −255.4 | −242 | −255 | −251.1 / −240 / −252 |
+
+The componentwise (Oettli–Prager) backward error stays at about one unit roundoff (`2^-bits`) for all
+sizes, 2–3 bits below the consumer-style MPFR loop at the same precision; the forward errors are
+equal or up to 4 bits smaller. The blocked order is therefore numerically sound for these problems.
+The normwise backward error (−342 at 224 bits, −377 at 256) is not informative here because the
+column scaling makes `||A|| ||x||` far larger than the residual scale.
