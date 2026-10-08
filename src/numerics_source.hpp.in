@@ -1,0 +1,6 @@
+#pragma once
+static const char* limbforge_numerics_source=R"LIMBFORGE(
+#include <metal_stdlib>
+@CORE_SOURCE@
+@NUMERICS_SOURCE@
+)LIMBFORGE";

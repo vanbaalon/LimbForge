@@ -1,0 +1,4 @@
+Apple M5 Max; CPU pool: 18 workers; CPU columns scaled from <= 4096 points (polynomials) / 65536 entries (norms)
+Host load: 23:18 load averages 120.11 131.03 127.70; 23:20 load averages 131.54 129.16 127.17
+Command: ./build/numerics_limbforge (5 repeats, medians). GPU columns: host-array call after one warm-up call (device = command buffer GPU time; wall = whole call incl. copies).
+CPU: mpfr = the same composed sequence as the GPU (bit-identical contract); mpc = mpc_mul + mpc_add per step (different rounding).

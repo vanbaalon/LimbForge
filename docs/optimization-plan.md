@@ -266,7 +266,7 @@ For BSolver (≈128 lanes × 600 steps) the GPU runs ~128 threads. Two complemen
 
 ---
 
-## Status summary (2026-10-07, after round 29)
+## Status summary (2026-10-07, after round 32)
 
 | Item | Status | Where |
 |---|---|---|
@@ -283,11 +283,13 @@ For BSolver (≈128 lanes × 600 steps) the GPU runs ~128 threads. Two complemen
 | C7 pipeline prewarm | done (33) | `Engine::prewarm_async` |
 | E1 cooperative recurrence | done for G = 16/32 (17, 22) | `cooperative.metal` |
 | L1 residue GEMM | done (16, 18, 20) | `linalg.hpp` |
+| S1 polynomial values and jets (order ≤ 2) | done (32-S1), host-array | `Numerics::poly_eval(_jet)` in `numerics.hpp` |
+| S4 norms, scaled residual, status summaries | done (32-S4), host-array | `Numerics::norm_inf/norm_max/norm2/scaled_residual/summarize_status` |
 
 Next, by consumer value: qscmx/BSolver integration and end-to-end timing on an idle host (also the
 pending GitHub speed figures); resident
-`linalg`; S1 polynomial jets, S4 norms/status summaries, S5 QR; G = 4/8 cooperative kernels under
-shader validation; fused `vector_recurrence` above 512 bits; D7 transcendentals.
+`linalg`/`numerics` (S1/S4 `CommandBatch` versions, design note in `numerics.md`); S5 QR (in progress);
+G = 4/8 cooperative kernels under shader validation; fused `vector_recurrence` above 512 bits; D7 transcendentals (in progress).
 
 ## 5. Order, tracks and dependencies
 
@@ -390,6 +392,10 @@ Paths refer to the local consumer checkouts; their equations are evidence for de
 
 ### S1. Polynomial evaluation with jets — first additional compute API
 
+*Status (round 32-S1): host-array `Numerics::poly_eval` / `poly_eval_jet` (order ≤ 2, real/complex, composed or
+fused, coefficient sets shared by adjacent points) in `numerics.hpp`; MPFR-replay bitwise at 64–1024 bits.
+Open: resident `CommandBatch` version, C1 views, comparison with D3 shared-table dots for QSC power tables.*
+
 Sketch: `poly_eval(coeffs, points, out)` and `poly_eval_jet<2>(coeffs, points, jets)`.
 Accept shared coefficient sets, batched points and C1 views. Coefficients use ascending powers.
 Jets mean Taylor coefficients `(f, f', f''/2!)`, matching BSolver, with a compile-time order cap of
@@ -442,6 +448,10 @@ exact zero-pivot status, and deterministic reductions. FFT convolution is a late
 requiring its own accuracy contract; it is not a prerequisite for this family.
 
 ### S4. Device-side convergence summaries — small API, broad usefulness
+
+*Status (round 32-S4): host-array `Numerics::norm_inf`, `norm_max`, `norm2`, `scaled_residual`, `summarize_status`
+with segments, per-segment `NormInfo` (OR, failing count, first failing, argmax); MPFR-replay bitwise at 64–1024
+bits. Open: resident buffers and the on-device threshold comparison (design note in `numerics.md`).*
 
 Sketch: `norm_inf`, `norm2`, `scaled_residual`, and `summarize_status`, with optional segmented outputs.
 Return multiprecision scalars and a status summary in resident buffers; host double conversion is an

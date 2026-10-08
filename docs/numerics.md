@@ -425,3 +425,170 @@ sizes, 2–3 bits below the consumer-style MPFR loop at the same precision; the 
 equal or up to 4 bits smaller. The blocked order is therefore numerically sound for these problems.
 The normwise backward error (−342 at 224 bits, −377 at 256) is not informative here because the
 column scaling makes `||A|| ||x||` far larger than the residual scale.
+
+## Polynomial values and jets
+
+```cpp
+#include "limbforge/numerics.hpp"
+Numerics nm;                                             // own Metal device, queue and library (as Linalg)
+Polynomial p{points, terms, points_per_set, complex, fused};
+nm.poly_eval(bits, p, coeffs, x, values);                // values[i] = p_g(x_i)
+nm.poly_eval_jet(bits, p, order, coeffs, x, jets);       // jets[i*(order+1) + j], order <= 2
+```
+
+Host arrays of `Float<bits>` or, with `complex`, `Complex<bits/32>` (coefficients, points and results
+share the type). Coefficients are in ascending powers, one contiguous set per polynomial:
+`coeffs[g*terms + k]` multiplies `x^k`. Point `i` uses set `g = floor(i / points_per_set)`, so adjacent
+points share a set; there are `ceil(points / points_per_set)` sets. `terms = degree + 1`; `terms = 0` is
+the zero polynomial. Jets are Taylor coefficients with respect to the argument: `(p, p', p''/2!)`. For
+inverse-power evaluation pass `x = 1/u`; the chain rule and any prefactor in `u` belong to the caller.
+`values` may equal the points array for `poly_eval`; otherwise outputs must not overlap inputs.
+
+**Rounding sequence.** `mac(a, x, b)` is one of
+
+```
+composed real:     add(mul(a, x), b)      = RN(RN(a x) + b)
+fused real:        fma(a, x, b)           = RN(a x + b)
+composed complex:  cadd(cmul(a, x), b)    re = RN(RN(RN(a.re x.re) - RN(a.im x.im)) + b.re)
+                                          im = RN(RN(RN(a.re x.im) + RN(a.im x.re)) + b.im)
+fused complex:     cfma(a, x, b)          re = RN(a.re x.re - a.im x.im + b.re)
+                                          im = RN(a.re x.im + a.im x.re + b.im)
+```
+
+The composed forms are the roundings of `mul`/`add` and `complex_mul`/`complex_add`, i.e. the
+consumer loop `r = r*u + c`; the fused forms are those of "Fused multiply-add". Every point runs
+
+```
+r0 = r1 = r2 = 0
+for k = terms-1 down to 0:
+    r2 = mac(r2, x, r1)        (order >= 2)
+    r1 = mac(r1, x, r0)        (order >= 1)
+    r0 = mac(r0, x, c_k)
+jets = (r0, r1, r2)
+```
+
+This is simultaneous Horner evaluation, highest order first, so that each update reads the previous
+step's lower-order value. In exact arithmetic `r0 = p(x)`, `r1 = p'(x)`, `r2 = p''(x)/2`. Lower orders
+never read higher ones, so `poly_eval` equals jet 0 of `poly_eval_jet` bit for bit, and order 1 equals
+the first two jets of order 2. The first step from zero is exact (`r0 = c_{terms-1}`, `r1 = r2 = 0`),
+but it multiplies by `x`, so a status in `x` reaches every jet. Statuses and exponent overflow follow
+the primitives, per component: a status in `x` or in a coefficient of the set gives a zero payload
+with the OR of those statuses. `terms = 0` gives canonical zero jets without inspecting statuses. The
+result is not correctly rounded: composed steps round twice per real step (complex: up to four times
+per component), fused steps once per component, with the usual Horner error growth.
+
+**Execution.** One GPU thread per point, one SIMD group per threadgroup; points sharing a set read the
+same coefficient (a broadcast within the SIMD group). The jet loop has a single `mac` call site in a
+rolled loop, so the exact `cfma` is instantiated once and the kernel compiles at 1024 bits.
+Real/complex, composed/fused and the order are function-constant specialisations of one library per
+precision. The reference (`tests/test_numerics.cpp`) replays the sequence with `mpfr_mul`/`mpfr_add`,
+`mpfr_fma`, and exact products plus `mpfr_sum` for complex fused steps. It is compared bitwise at
+64/224/256/384/1024 bits for degrees 0, 1, 23, 31, 61 and 100 and the empty polynomial, with zero and
+alternating coefficients, coefficient and point statuses, a zero point, and `(x-1)^n` near `x = 1`
+(cancellation). As a sanity check the jets of `(x-3)^k`, `k = 1, 2, 5, 12`, agree with
+`((x-3)^k, k (x-3)^(k-1), C(k,2) (x-3)^(k-2))` to `2^(24-bits)` relatively.
+
+**Performance** (`benchmarks/numerics.cpp`, `benchmarks/results/round32_numerics*.csv`; complex, one
+shared coefficient set, composed; medians of 5; GPU wall includes transfers; CPU columns run the same
+composed sequence with `mpfr_t`, measured on 4,096 points and scaled; host load average 30–40):
+
+| bits | points | degree | order | GPU wall | MPFR serial | MPFR 18 workers | workers / GPU |
+|---:|---:|---:|---:|---:|---:|---:|---:|
+| 256 | 10^3 | 4 | 0 | 0.9 ms | 1.0 ms | 0.17 ms | 0.19 |
+| 256 | 10^3 | 64 | 2 | 7.6 ms | 43 ms | 10.4 ms | 1.4 |
+| 256 | 10^5 | 16 | 0 | 5.0 ms | 0.36 s | 48 ms | 9.6 |
+| 256 | 10^5 | 64 | 2 | 64 ms | 7.0 s | 0.67 s | 10.5 |
+| 256 | 10^6 | 4 | 0 | 13 ms | 1.1 s | 0.30 s | 23 |
+| 256 | 10^6 | 64 | 0 | 0.28 s | 19 s | 2.9 s | 10.3 |
+| 224 | 10^6 | 16 | 2 | 0.17 s | 27 s | 2.6 s | 15.7 |
+| 384 | 10^6 | 64 | 2 | 0.86 s | 70 s | 6.5 s | 7.6 |
+
+The consumer-style MPC loop (`mpc_mul` + `mpc_add`, a different rounding) on 18 workers takes about
+the same time as the MPFR pool. Up to about 10^3 points the call is latency-bound and the CPU pool is
+faster. Order 2 costs about 3× order 0 (three multiply-adds per coefficient). Fused steps are
+1.8–2.2× slower than composed at 256 bits (interleaved, 10^5 points, degree 32); threadgroups of 32,
+64, 128 and 256 threads measured within noise.
+
+## Norms and status summaries
+
+```cpp
+Segments s{count, length, complex};                     // count segments of length entries, segment-major
+nm.norm_inf(bits, s, x, values, info);                  // max |x_i|            (complex: modulus)
+nm.norm_max(bits, s, x, values, info);                  // max max(|re|, |im|)  (componentwise, exact)
+nm.norm2(bits, s, x, values, info);                     // sqrt(sum |x_i|^2)
+nm.scaled_residual(bits, s, r, scale, values, info);    // max |r_i| / |scale_i|, scale real
+nm.summarize_status(bits, s, x, info);                  // statuses only
+```
+
+Entry `i` of segment `g` is `x[g*length + i]` (`Float<bits>`, or `Complex<bits/32>` with `complex`);
+`scale` is always real with the same layout. Each segment gives one real `Float<bits>` value and a
+`NormInfo {status, failing, first_failing, index}` (`info` may be null except for `summarize_status`).
+
+**Statuses.** An entry fails when a component (for `scaled_residual` also its scale) has a status, or
+when its scaled residual fails (below). `failing` counts failing entries, `first_failing` is the
+lowest failing index (`no_index` if none), and `status` is the OR of all entry statuses. A segment
+with a failing entry returns `zero(status)` and `index = first_failing`: a failed lane never
+disappears from a norm. `status` also includes the value's own status, which can be
+`exponent_overflow` when the result lies outside the exponent range although no entry failed.
+An empty segment returns canonical zero and `info = {0, 0, no_index, no_index}`; an all-zero segment
+returns zero with index 0.
+
+**Maxima and ties.** `norm_inf`, `norm_max` and `scaled_residual` compare per-entry keys exactly (no
+rounding in a comparison) and report the lowest index attaining the maximum. The choice "larger key,
+lower index on equality" is associative, so the reduction order cannot change it.
+
+- Real `norm_inf` and `norm_max`: key `|x_i|`, exact. Complex `norm_max`: key `max(|re_i|, |im_i|)`, exact.
+- Complex modulus: with `e` the larger exponent of the nonzero components (`|c| in [2^e, 2^(e+1))`),
+  `a' = |re| 2^-e` and `b' = |im| 2^-e` exactly; a component with exponent below `e - (bits+32)` is
+  replaced by zero. Then `t = RN(a'^2)`, `u = RN(b'^2)`, `s = RN(t + u)` (in `[1, 8)`), and the key is
+  `q = s 4^e`, an exact scaling held with an extended exponent. `|z| = RN(sqrt(q)) = RN(sqrt(s)) 2^e`.
+  The scaling removes the intermediate overflow/underflow of `re^2 + im^2` beyond exponents of about
+  ±5·10^8. A dropped component has a square below `2^(-2 bits - 64)`, less than half an ulp of
+  `t >= 1`, so it could not have changed `s`. Complex `norm_inf` returns `RN(sqrt(max q_i))`, which
+  equals `max_i |z_i|` because the rounded square root is monotone; its index is the lowest among the
+  maximal `q_i` (two entries with different `q` that round to the same `|z|` are told apart by `q`).
+- `scaled_residual`: real `rho_i = RN(|r_i| / |s_i|)`; complex `rho_i = RN(RN(sqrt(q_i)) / |s_i|)`,
+  where the rounded modulus is not range-limited (only `rho_i` must lie in range). `0/0 = 0`; a nonzero
+  residual over a zero scale fails with `division_by_zero`; `rho_i` outside the exponent range fails
+  with `exponent_overflow`. The value is `max rho_i`.
+
+**2-norm.** `E` is the largest exponent of the nonzero components in the segment. Every component is
+scaled by `2^-E` exactly, with the same flush below `-(bits+32)`; the terms are `t_i = RN(y_i^2)`
+(real) or `RN(RN(a'^2) + RN(b'^2))` (complex). They are summed by the adjacent-pair tree of `tree_sum`
+(level by level `(0,1), (2,3), ...`, each addition rounded, an odd tail copied), and the value is
+`RN(sqrt(s)) 2^E`. The largest term is at least 1 and every term is below 4, so no intermediate can
+overflow or underflow; only a norm outside the exponent range gives `exponent_overflow`. The flushed
+terms total less than `2^(-2 bits - 32)` of the sum (segments shorter than `2^31`). The result is not
+correctly rounded: about `ceil(log2 length) + 3` roundings separate it from the exact norm (relative
+error of that order in units of `2^-bits`). It is reproducible: it depends only on the inputs, `bits`
+and the documented tree.
+
+**Execution.** A segment is split into blocks of `T` entries, `T` a power of two in [32, 128] (one entry
+per thread). The first pass computes keys and statuses; SIMD-group reductions and one device atomic
+per SIMD group accumulate the OR, the count and the lowest failing index (and, for `norm2`, `E` in an
+extra first scan); these are integer operations independent of order. Each threadgroup reduces its
+block with the adjacent-pair tree in threadgroup memory; further passes reduce the block roots in the
+same way until one root per segment remains, and a one-thread-per-segment pass forms the value (one
+`sqrt` per segment for complex `norm_inf` and `norm2`) and `info`. Aligned power-of-two blocks of the
+adjacent-pair tree are complete subtrees, so the result does not depend on `T`. All passes share one
+command buffer. Squares use `mul(a, a)` (docs/gpu-codegen.md section 8). The reference
+(`tests/test_numerics.cpp`) replays every definition with MPFR (`mpfr_sqr`, `mpfr_add`, `mpfr_sqrt`,
+`mpfr_div`, exact `mpfr_mul_2si` scalings in an extended exponent range) and is compared bitwise at
+64/224/256/384/1024 bits, real and complex, for lengths 1–3, 31–33, 127–129, 1000 and 70,000 (three
+tree passes) and 3,000 segments of 7: random data, zeros, ties (`(a,b)`, `(b,a)`, `(-a,-b)`),
+exponents near ±10^9, statuses, zero scales and overflowing results.
+
+**Performance** (complex, 10^6 entries in one segment, 256 bits, same benchmark): GPU wall 2–5 ms for
+`summarize_status`, `norm_max`, `norm_inf` and `norm2` (device 0.2–2.3 ms; the rest is the host
+call and transfers), 10 ms for `scaled_residual` (one square root and one division per entry). The
+consumer-style CPU maximum of `mpfr_hypot` takes 1.1 s serial and 0.10 s on 18 workers. 10^4
+segments of 100 entries take the same time.
+
+**Resident versions (later).** Both families are short dispatch sequences with small scratch, so
+`CommandBatch` versions would encode the same pipelines on `Buffer<T>` operands: one dispatch for
+`poly_eval_jet`; for the norms the passes above plus a small initialisation dispatch for the summary
+words (written by the host today), with block-root scratch of `2 * count * ceil(length/32)` keys and
+indices from a workspace query, and `values`/`info` written to resident buffers. A threshold
+comparison (value against a caller's tolerance) fits in the final pass, so the host reads back only
+`info`. This needs the private `Buffer`/`CommandBatch` internals of `engine.hpp`, which this round
+did not modify.

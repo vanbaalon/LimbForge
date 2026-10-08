@@ -38,6 +38,13 @@ GPU/MPFR validation and was removed from the installed implementation.
   multiply-add chain per thread is latency-bound), against about 3.5 ms for the host
   panel on a host with load average 150-260; total factorization 220-250 ms against
   165-195 ms.
+- `numerics_core_square.patch`: based on round 32 (S1/S4; apply on top of that commit).
+  Squares in the norm kernels (`src/numerics.metal`) through core `square()`, which is
+  the symmetric product on Metal at 384 bits. GPU-only failure: `norm2` of one real
+  384-bit entry was wrong for 200 of 200 random inputs (wrong exponent and limbs),
+  while 352 and 416 bits (schoolbook square) and the engine's unary `square` kernel
+  at 384 bits were exact. The library squares with `mul(a, a)` there (same exact
+  square, same rounding). See ../../docs/gpu-codegen.md section 8.
 - `sum_width_probe.mm` (diagnostic, not a patch; build as in its header): the exact
   two-term sum of the update kernels at every precision and both instantiated widths
   against MPFR. With argument 1 (no rounding of the workspace width) 8 of 62 widths

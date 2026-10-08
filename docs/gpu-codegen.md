@@ -87,6 +87,15 @@ precisions and both instantiations; even widths passed in every probe. Reproduce
 `benchmarks/experiments/sum_width_probe.mm` (argument: rounding multiple, 1 shows the failures).
 The fused `fma` of round 19 uses other widths and remains covered by its all-precision tests.
 
+## 8. The 384-bit symmetric square inside new kernels (round 32)
+
+On Metal, core `square()` uses the symmetric product only at 384 bits (round 8). Inside the S4 norm
+kernels (`src/numerics.metal`: exponent-scaled squares followed by a threadgroup-memory tree) it
+returned a wrong result for every input at 384 bits (`norm2` of one real entry: 200 of 200 random
+inputs, wrong exponent and limbs), while 352 and 416 bits, the CPU, and the engine's unary `square`
+kernel at 384 bits were exact. Squaring with `mul(a, a)` (the same exact square and rounding) passes
+everywhere. Record: `benchmarks/experiments/numerics_core_square.patch`.
+
 ## Rules for kernel code
 
 1. Do not index arrays of ≤ 32 words with runtime indices in hot loops. Either make every index a
@@ -99,3 +108,5 @@ The fused `fma` of round 19 uses other widths and remains covered by its all-pre
 4. Make performance decisions from warm `kernel_sweep` numbers.
 5. Round exact-sum workspaces (`exact_add<N, W>`) up to a multiple of 4 words, and probe every width a
    kernel instantiates on the GPU (section 7): a correct width says nothing about its neighbours.
+6. In new kernels square with `mul(a, a)`; the 384-bit symmetric `square()` is validated only in the
+   engine's unary kernel (section 8).

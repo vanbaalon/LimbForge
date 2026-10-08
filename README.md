@@ -59,6 +59,11 @@ measurements.
   integer GEMMs over exponent bands on TensorOps int8 residues, with an exact host fallback; updates
   `C - op(A) B` rounded once, and a blocked Cholesky factorization with multiple-right-hand-side
   triangular solves built on them (a fixed, reproducible rounding sequence).
+- Batched real/complex polynomial values and Taylor jets `(p, p', p''/2)` by simultaneous Horner, with
+  coefficient sets shared by adjacent points and composed or fused steps (`numerics.hpp`).
+- Segmented norms (`norm_inf`, componentwise `norm_max`, exponent-scaled `norm2` on a fixed tree),
+  `scaled_residual` and `summarize_status`: exact tie rule (lowest index), failing entries counted and
+  never dropped from a norm.
 - Typed resident buffers, asynchronous submissions, and dependent operations in one command batch.
 - In-place pointwise arithmetic, cached pipelines, and explicit buffer ownership checks.
 - Fixed-order real and complex tree reductions with GPU-resident intermediate levels.

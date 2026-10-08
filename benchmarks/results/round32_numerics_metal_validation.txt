@@ -1,0 +1,18 @@
+2026-10-07 23:14:03.290 test_limbforge_numerics[19211:37928293] Metal GPU Validation Enabled
+224 bits: polynomial values and jets match MPFR (degrees 0, 1, 23, 31, 61, 100; empty), identities hold
+224 bits real: norms and status summaries match MPFR
+224 bits complex: norms and status summaries match MPFR
+256 bits: polynomial values and jets match MPFR (degrees 0, 1, 23, 31, 61, 100; empty), identities hold
+256 bits real: norms and status summaries match MPFR
+256 bits complex: norms and status summaries match MPFR
+384 bits: polynomial values and jets match MPFR (degrees 0, 1, 23, 31, 61, 100; empty), identities hold
+384 bits real: norms and status summaries match MPFR
+384 bits complex: norms and status summaries match MPFR
+64 bits: polynomial values and jets match MPFR (degrees 0, 1, 23, 31, 61, 100; empty), identities hold
+64 bits real: norms and status summaries match MPFR
+64 bits complex: norms and status summaries match MPFR
+1024 bits: polynomial values and jets match MPFR (degrees 0, 1, 23, 31, 61, 100; empty), identities hold
+1024 bits real: norms and status summaries match MPFR
+1024 bits complex: norms and status summaries match MPFR
+All polynomial and norm checks passed.
+exit=0

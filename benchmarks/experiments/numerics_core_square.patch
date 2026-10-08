@@ -1,0 +1,11 @@
+--- a/src/numerics.metal
++++ b/src/numerics.metal
+@@ -48,7 +48,7 @@
+ inline Number<N> absolute(Number<N> a){if(a.sign)a.sign=1;return a;}
+ // RN(a^2) through the schoolbook product: core square() (symmetric on Metal at 384 bits) returned wrong values for
+ // every input inside these kernels at 384 bits (GPU only; docs/gpu-codegen.md). Both round the same exact square.
+-inline Number<N> sq(Number<N> a){return mul(a,a);}
++inline Number<N> sq(Number<N> a){return square(a);}
+ // |a| * 2^-e (exact); flushed to zero more than LF_BITS+32 bits below 2^0.
+ inline Number<N> scaled(Number<N> a,int e){
+     if(!a.sign)return a;long d=long(a.exponent)-e;if(d< -(LF_BITS+32))return zero<N>();
