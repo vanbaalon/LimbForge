@@ -222,6 +222,7 @@ Each item: written contract → MPFR/MPC reference → CPU implementation in `co
   Kernel design: one thread per lane; `v` (and `dv`) in registers — check spills with `pipeline_info` at N=7,8 (4 complex
   ≈ 88 words each); shared `p,q` staged per step in threadgroup memory for the `lanes_per_weight` group. Test: MPFR chains
   (same contract) at 224/256 bits, 150 steps, random data with |p qᵀ|≈1 plus cancellation-heavy cases; then qscmx end-to-end.
+- **D5 status (round 29):** `Engine::lu4` (host-array) done; resident version and general small-n shapes remain.
 - **D5. Batched 4×4 complex LU / solve / inverse / det (tips #5)** — M. One thread per matrix. Specify a deterministic
   pivot rule that needs no rounding (e.g. max of `max(|re|,|im|)` by exact exponent/limb compare, lowest index on ties) so
   the MPFR reference reproduces it bitwise. Ops `lu4`, `solve4(nrhs)`, `inv4`, `det4` with per-matrix status (singular).

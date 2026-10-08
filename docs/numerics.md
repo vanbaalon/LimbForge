@@ -141,6 +141,20 @@ across `k` adjacent outputs; `period = m` cycles a table of `m` values. The oper
 `Engine::run_ternary(…, b_index, c_index)` and the matching `CommandBatch::run` overloads; rounding is
 unchanged. The `a` operand and the output keep one element per index.
 
+## Batched 4×4 systems
+
+`Engine::lu4(bits, shape, A, B, X, det, status)` factors many independent 4×4 complex matrices, one GPU
+thread each (`A` is `[count][4][4]` row-major). Column `k` pivots on the row `r ≥ k` with the largest
+`max(|re|, |im|)` (exact comparison, ties to the lowest row; no rounding involved). A zero pivot sets
+`status = k + 1`, the determinant to zero and every solution entry to zero with `division_by_zero`.
+Elimination: `l = cdiv(a_rk, a_kk)`, `a_rc ← a_rc − l·a_kc` for `c > k`. Solutions (`rhs` columns of
+`B`/`X`, `[count][4][rhs]`, or the inverse with `shape.inverse`) apply the row permutation, forward
+substitution with `y_i ← y_i − l_it·y_t` (t ascending) and back substitution
+`y_i ← cdiv(y_i − Σ_{t>i} u_it·y_t, u_ii)` (t ascending). The determinant is the ordered product of
+the pivots, negated for an odd number of row swaps. Each multiply-subtract is composed
+(`csub(c, cmul(a, b))`) or, with `shape.fused`, one rounding per component via `cfms`. The reference in
+`tests/test_batched4.cpp` replays this sequence with MPFR.
+
 ## Segmented dot products
 
 `Engine::segmented_dot(bits, complex, shape, a, b, out)` and `CommandBatch::segmented_dot` compute

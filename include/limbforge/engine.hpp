@@ -27,6 +27,10 @@ struct PipelineInfo { unsigned simd_width,max_threads,threads_per_threadgroup; }
 // Segmented dot products: out[i] = sum_{k<length} a[i*length+k] * b[i*length+k] (or b[k] when
 // shared_right), as a sequential fma/cfma chain from k = 0 (docs/numerics.md).
 struct SegmentedDot { std::size_t segments=0,length=0; bool shared_right=false; };
+// Batched 4x4 complex LU (docs/numerics.md, "Batched 4x4 systems"). A is [count][4][4] row-major;
+// B and X are [count][4][rhs] (inverse: X is [count][4][4] and B is unused); det is [count];
+// status[i] is 0, or k+1 when column k had a zero pivot (X then carries division_by_zero).
+struct Batched4 { std::size_t count=0; unsigned rhs=0; bool inverse=false,determinant=false,fused=false; };
 // Shape and options of Engine::vector_recurrence (docs/numerics.md, "Vector recurrences").
 // Complex arrays are component-major: element j of lane i is at [j*lanes + i].
 struct VectorRecurrence {
@@ -153,6 +157,7 @@ public:
     Timing run_unary(int bits,Operation op,const void* a,void* out,std::size_t count);
     Timing run_ternary(int bits,Operation op,const void* a,const void* b,const void* c,void* out,std::size_t count,Broadcast b_index={},Broadcast c_index={});
     Timing segmented_dot(int bits,bool complex,const SegmentedDot& shape,const void* a,const void* b,void* out);
+    Timing lu4(int bits,const Batched4& shape,const void* A,const void* B,void* X,void* det,std::uint32_t* status);
     // Four seeds / instance. Adjacent states_per_weight instances share weights;
     // count must be divisible by states_per_weight. Layout is seeds[j*count+i],
     // weights[(step*4+j)*(count/states_per_weight)+i/states_per_weight].

@@ -179,3 +179,44 @@ kernel void segmented_dot_complex(device const Complex<N>* a [[buffer(0)]],devic
     _Pragma("clang loop unroll(disable)") for(uint k=0;k<p.length;++k){Complex<N> x=a[base+k],y=b[sd_shared?k:base+k];s=cfma(x,y,s);}
     out[i]=s;
 }
+
+// Batched 4x4 complex LU with partial pivoting (plan D5). One thread per matrix. Pivot in column k:
+// the row r >= k with the largest max(|re|,|im|) (exact comparison, ties to the lowest row); a zero
+// pivot sets status k+1 and stops. Elimination: l = cdiv(a_rk, a_kk), a_rc -= l*a_kc; forward and
+// back substitution with the same multiply-subtract and a final cdiv. Determinant: product of the
+// pivots in order, negated for an odd number of swaps. Fused mode uses cfms for multiply-subtract.
+constant uint b4_flags [[function_constant(4)]];
+constant bool b4_fused=(b4_flags&1)!=0,b4_det=(b4_flags&2)!=0,b4_inverse=(b4_flags&4)!=0;
+struct Batch4Params { uint count,rhs; };
+inline Complex<N> b4_minus(Complex<N> c,Complex<N> a,Complex<N> b){ // c - a*b
+    if(b4_fused){Complex<N> r=cfms(a,b,c);return {negate(r.re),negate(r.im)};}
+    Complex<N> q=cmul(a,b);return {sub(c.re,q.re),sub(c.im,q.im)};
+}
+inline Number<N> b4_mag(Complex<N> z){return magnitude_compare(z.re,z.im)>=0?z.re:z.im;}
+kernel void batched4(device const Complex<N>* A [[buffer(0)]],device const Complex<N>* B [[buffer(1)]],device Complex<N>* X [[buffer(2)]],
+                     constant Batch4Params& p [[buffer(3)]],device Complex<N>* det [[buffer(4)]],device uint* status [[buffer(5)]],uint m [[thread_position_in_grid]]){
+    if(m>=p.count)return;
+    Complex<N> a[16];uint perm[4]={0,1,2,3};uint st=0,swaps=0;
+    for(uint i=0;i<16;++i)a[i]=A[ulong(m)*16+i];
+    _Pragma("clang loop unroll(disable)") for(uint k=0;k<4&&!st;++k){
+        uint piv=k;for(uint r=k+1;r<4;++r){Number<N> x=b4_mag(a[r*4+k]),y=b4_mag(a[piv*4+k]);if(magnitude_compare(x,y)>0)piv=r;}
+        if(!a[piv*4+k].re.sign&&!a[piv*4+k].im.sign){st=k+1;break;}
+        if(piv!=k){for(uint c=0;c<4;++c){Complex<N> t=a[k*4+c];a[k*4+c]=a[piv*4+c];a[piv*4+c]=t;}uint t=perm[k];perm[k]=perm[piv];perm[piv]=t;++swaps;}
+        _Pragma("clang loop unroll(disable)") for(uint r=k+1;r<4;++r){
+            Complex<N> l=cdiv(a[r*4+k],a[k*4+k]);a[r*4+k]=l;
+            _Pragma("clang loop unroll(disable)") for(uint c=k+1;c<4;++c)a[r*4+c]=b4_minus(a[r*4+c],l,a[k*4+c]);
+        }
+    }
+    status[m]=st;
+    Complex<N> z={zero<N>(),zero<N>()};
+    if(b4_det){Complex<N> d=z;if(!st){d=a[0];for(uint k=1;k<4;++k)d=cmul(d,a[k*5]);if(swaps&1)d={negate(d.re),negate(d.im)};}det[m]=d;}
+    uint R=b4_inverse?4:p.rhs;
+    _Pragma("clang loop unroll(disable)") for(uint j=0;j<R;++j){
+        Complex<N> y[4];
+        for(uint i=0;i<4;++i){if(b4_inverse){y[i]=z;if(perm[i]==j){y[i].re.limb[N-1]=0x80000000u;y[i].re.sign=1;}}else y[i]=B[(ulong(m)*4+perm[i])*R+j];}
+        if(st){Complex<N> e={zero<N>(division_by_zero),zero<N>(division_by_zero)};for(uint i=0;i<4;++i)X[(ulong(m)*4+i)*R+j]=e;continue;}
+        _Pragma("clang loop unroll(disable)") for(uint i=1;i<4;++i)for(uint t=0;t<i;++t)y[i]=b4_minus(y[i],a[i*4+t],y[t]);
+        _Pragma("clang loop unroll(disable)") for(int i=3;i>=0;--i){for(uint t=uint(i)+1;t<4;++t)y[i]=b4_minus(y[i],a[i*4+t],y[t]);y[i]=cdiv(y[i],a[i*5]);}
+        for(uint i=0;i<4;++i)X[(ulong(m)*4+i)*R+j]=y[i];
+    }
+}

@@ -91,7 +91,12 @@ struct Engine::Impl {
             libraries[bits]=library;
         }
         NSError* error=nil;id<MTLFunction> function;
-        if(operation>=300){
+        if(operation>=400){
+            MTLFunctionConstantValues* constants=[MTLFunctionConstantValues new];
+            std::uint32_t flags=operation-400;[constants setConstantValue:&flags type:MTLDataTypeUInt atIndex:4];
+            function=[libraries[bits] newFunctionWithName:@"batched4" constantValues:constants error:&error];
+        }
+        else if(operation>=300){
             MTLFunctionConstantValues* constants=[MTLFunctionConstantValues new];
             std::uint32_t flags=(operation-300)&1;[constants setConstantValue:&flags type:MTLDataTypeUInt atIndex:3];
             function=[libraries[bits] newFunctionWithName:(operation-300)&2?@"segmented_dot_complex":@"segmented_dot_real" constantValues:constants error:&error];
@@ -160,6 +165,31 @@ struct Engine::Impl {
             [encoder endEncoding];[command commit];[command waitUntilCompleted];
             if(command.status==MTLCommandBufferStatusError)throw std::runtime_error("Metal execution: "+error_message(command.error));
             std::memcpy(out,vector_buffers[7].contents,out_bytes);
+            return {command.GPUEndTime-command.GPUStartTime,std::chrono::duration<double>(std::chrono::steady_clock::now()-start).count()};
+        }
+    }
+    // A, B, X, det, status for batched 4x4 systems (Metal indices 0, 1, 2, 4, 5).
+    Timing lu4_dispatch(int bits,int operation,const Batched4& s,const void* A,std::size_t a_bytes,const void* B,std::size_t b_bytes,
+                        void* X,std::size_t x_bytes,void* det,std::size_t det_bytes,std::uint32_t* status){
+        @autoreleasepool {
+            auto state=pipeline(bits,operation);auto start=std::chrono::steady_clock::now();
+            if(vector_buffers.size()<8)vector_buffers.resize(8);
+            auto grow=[&](unsigned i,std::size_t bytes){bytes=std::max<std::size_t>(bytes,4);
+                if(bytes>device.maxBufferLength)throw std::invalid_argument("buffer exceeds device maximum");
+                if(!vector_buffers[i]||vector_buffers[i].length<bytes){vector_buffers[i]=[device newBufferWithLength:bytes options:MTLResourceStorageModeShared];
+                    if(!vector_buffers[i])throw std::runtime_error("Metal buffer allocation failed");}};
+            std::size_t status_bytes=s.count*4;grow(0,a_bytes);grow(1,b_bytes);grow(2,x_bytes);grow(3,det_bytes);grow(4,status_bytes);
+            std::memcpy(vector_buffers[0].contents,A,a_bytes);if(b_bytes)std::memcpy(vector_buffers[1].contents,B,b_bytes);
+            id<MTLCommandBuffer> command=[queue commandBuffer];id<MTLComputeCommandEncoder> encoder=[command computeCommandEncoder];
+            if(!command||!encoder)throw std::runtime_error("Metal command allocation failed");
+            [encoder setComputePipelineState:state];const unsigned slot[5]={0,1,2,4,5};
+            for(unsigned i=0;i<5;++i)[encoder setBuffer:vector_buffers[i] offset:0 atIndex:slot[i]];
+            std::uint32_t params[2]={std::uint32_t(s.count),s.rhs};[encoder setBytes:params length:sizeof(params) atIndex:3];
+            [encoder dispatchThreads:MTLSizeMake(s.count,1,1) threadsPerThreadgroup:MTLSizeMake(group_size(state,bits,operation),1,1)];
+            [encoder endEncoding];[command commit];[command waitUntilCompleted];
+            if(command.status==MTLCommandBufferStatusError)throw std::runtime_error("Metal execution: "+error_message(command.error));
+            if(x_bytes)std::memcpy(X,vector_buffers[2].contents,x_bytes);if(det_bytes)std::memcpy(det,vector_buffers[3].contents,det_bytes);
+            if(status)std::memcpy(status,vector_buffers[4].contents,status_bytes);
             return {command.GPUEndTime-command.GPUStartTime,std::chrono::duration<double>(std::chrono::steady_clock::now()-start).count()};
         }
     }
@@ -380,6 +410,16 @@ Timing Engine::segmented_dot(int bits,bool complex,const SegmentedDot& s,const v
     if((n[0]&&!a)||(n[1]&&!b)||!out)throw std::invalid_argument("null segmented dot buffer");
     std::size_t stride=(bits/8+12)*(complex?2:1);
     return impl->dot_dispatch(bits,300+(complex?2:0)+(s.shared_right?1:0),s,a,checked_size(n[0],stride),b,checked_size(n[1],stride),out,checked_size(n[2],stride));
+}
+Timing Engine::lu4(int bits,const Batched4& s,const void* A,const void* B,void* X,void* det,std::uint32_t* status){
+    validate(bits,s.count);if(s.count>std::numeric_limits<std::uint32_t>::max()/16)throw std::invalid_argument("batched 4x4 exceeds 32-bit indexing");
+    if(s.inverse&&s.rhs)throw std::invalid_argument("inverse uses no right-hand sides");
+    unsigned R=s.inverse?4:s.rhs;if(!s.count)return {0,0};
+    if(!A||(s.rhs&&!B)||(R&&!X)||(s.determinant&&!det))throw std::invalid_argument("null batched 4x4 buffer");
+    std::size_t stride=2*(bits/8+12);
+    unsigned flags=(s.fused?1:0)|(s.determinant?2:0)|(s.inverse?4:0);
+    return impl->lu4_dispatch(bits,400+int(flags),s,A,checked_size(s.count*16,stride),B,checked_size(checked_size(s.count*4,s.rhs),stride),
+                              X,checked_size(checked_size(s.count*4,R),stride),det,s.determinant?checked_size(s.count,stride):0,status);
 }
 Timing Engine::recurrence(int bits,const void* seeds,const void* weights,void* out,std::size_t count,unsigned steps,unsigned states_per_weight) {
     validate(bits,count);

@@ -1,0 +1,1 @@
+Round 29 (plan D5). Apple M5 Max, 2026-10-07, ./build/batched4_limbforge, medians of 3; inverse + determinant per matrix. Host load average 115-160 (other work): CPU pool slowed; recheck idle. CPU: MPC elimination without pivoting (consumer-style mpc_div/mul/sub), 18-worker pool on 8192 matrices, scaled; timing only. GPU correctness: tests/test_batched4.cpp.

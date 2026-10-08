@@ -53,6 +53,7 @@ measurements.
 - Complex addition, multiplication, and division composed from rounded real primitives.
 - Fused real `fma`/`fms` and complex `complex_fma`/`complex_fms`, each component rounded once.
 - Broadcast (stride/period) operands for element-wise operations, so shared coefficients need no copies.
+- Batched 4×4 complex LU with deterministic pivoting: solve, inverse and determinant per matrix.
 - Segmented real/complex dot products with a fixed, reproducible fused order and optional shared table.
 - Dense real `syrk` (AᵀA) and `gemm` with one rounding of each exact dot product (`linalg.hpp`): exact
   integer GEMMs over exponent bands on TensorOps int8 residues, with an exact host fallback.
