@@ -48,6 +48,7 @@ benchmark inputs do not exercise the baseline's known exponent-boundary bug.
 | 33 | Pipeline prewarm `Engine::prewarm` / `prewarm_async` (plan C7) | Accepted. Thread-safe pipeline/library cache (compilation outside the lock); requests name widths, element-wise operations, recurrence/reduction kernels, vector-recurrence, segmented-dot and batched-4×4 modes. Measured first-use costs at 288 bits: library ≈ 1 s, fused vector recurrence 18 s. Test: background compilation while the same Engine computes, prewarmed first call 0.07 s, invalid requests surface from the future. |
 | 34 | Resident `CommandBatch::lu4` and `Buffer<std::uint32_t>` status buffers | Accepted. Same shapes and contract with size checks; resident inverse, determinant and status equal the MPFR-validated host path at 224/256 bits, and a dependent `complex_mul` in the same batch sees the inverse. |
 | 36 | `vector_recurrence` at 1024 bits (composed) | Accepted. All composed modes equal MPFR at 1024 bits (compile ~3.6 s). Fused specialisations at 768/1024 bits compile slowly (23–34 s) and one 1024-bit fused variant crashed the Metal compiler, so fused mode is rejected above 512 bits with `invalid_argument`. |
+| 37 | GPU `square` always uses `mul(a,a)` | Accepted. The 384-bit symmetric square had become slower than `mul` after round 14 and returned wrong results inside heavier kernels (round 32). Unary square at 384 bits, warm: ~19.6 µs (one input stream) versus ~36.7 µs for the previous symmetric form; identical rounding. All 16 suites pass. |
 
 ## Exact arithmetic retained
 

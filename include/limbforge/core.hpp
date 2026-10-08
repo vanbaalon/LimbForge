@@ -144,9 +144,9 @@ template<int N,bool Padded=true> inline Number<N> mul(LIMBFORGE_THREAD const Num
 }
 template<int N> inline Number<N> square(LIMBFORGE_THREAD const Number<N>& a){
 #ifdef __METAL_VERSION__
-    // The symmetric implementation is selected on Metal at 384 bits.
-    // Other widths retain the validated schoolbook product.
-    if(N!=12)return mul(a,a);
+    // On Metal the symmetric form is never used: after round 14 it was slower than mul(a,a) at 384 bits,
+    // and inside heavier kernels it returned wrong results (docs/gpu-codegen.md section 8).
+    return mul(a,a);
 #endif
     if(a.status||!a.sign)return zero<N>(a.status);
     word product[scratch(2*N+1)]={};

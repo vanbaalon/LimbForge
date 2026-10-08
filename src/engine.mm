@@ -128,7 +128,7 @@ struct Engine::Impl {
         }
         else {
             MTLFunctionConstantValues* constants=[MTLFunctionConstantValues new];
-            std::uint32_t op=operation==7&&bits!=384?2:operation;[constants setConstantValue:&op type:MTLDataTypeUInt atIndex:0];
+            std::uint32_t op=operation==7?2:operation;[constants setConstantValue:&op type:MTLDataTypeUInt atIndex:0];
             NSString* name=operation>=4&&operation<=6?@"complex_arithmetic":operation==9||operation==10?@"fused_arithmetic":operation>=11?@"complex_fused":@"arithmetic";
             function=[lib newFunctionWithName:name constantValues:constants error:&error];
         }
