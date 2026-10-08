@@ -1,8 +1,8 @@
 #pragma once
 // Dense real products with one rounding per output (plan D6 via L1c): C[i][j] = RN(sum_k L[i][k]*R[k][j]),
 // or RN(C[i][j] - sum_k ...) as an update, computed exactly by an integer GEMM over residues (Metal TensorOps
-// int8) and rounded once, ties to even. Contract and algorithm: docs/numerics.md, "Dense products". Host arrays
-// only; element = Number<bits/32> (Float<bits>), matrices row-major. Statuses propagate: C[i][j] = zero(OR of the
+// int8) and rounded once, ties to even. Contract and algorithm: docs/numerics.md, "Dense products". Host arrays, and
+// resident Buffer operands in an Engine's CommandBatch ("Resident products"); element = Number<bits/32> (Float<bits>), matrices row-major. Statuses propagate: C[i][j] = zero(OR of the
 // statuses of row i of L and column j of R, and of the old C[i][j] for an update) when that OR is nonzero. Empty K
 // gives canonical zero (an update leaves C unchanged). Blocked Cholesky, triangular solves and Householder QR build on these updates.
 #include "core.hpp"
@@ -21,6 +21,7 @@ struct LinalgOptions {
     int max_spread=512;    // ... as do rows/columns whose nonzero exponents span more than this (accumulator bound)
     unsigned host_threads=0; // fallback/assembly threads; 0 = hardware concurrency
     bool force_fallback=false; // every output through the exact host path (testing)
+    int resident_bands=2;  // resident calls: workspace for up to resident_bands*lines band rows per side; beyond, the whole call is exact on the host at wait
 };
 struct LinalgPair { unsigned left_band,right_band,rows,cols,moduli; };
 // Diagnostics of the last call. "Lines" are rows of the left operand and columns of the right operand.
@@ -32,7 +33,24 @@ struct LinalgReport {
     std::vector<LinalgPair> pairs;                   // band pairs (sub-blocks of the extended product); SYRK lists b >= c
     std::size_t gemm_rows=0,gemm_cols=0,int8_gemms=0; // extended operand sizes (all bands); 3 int8 GEMMs per modulus
     bool zero_copy_output=false;                    // C was page aligned and written by the GPU in place
+    bool resident_overflow=false;                   // resident: band rows exceeded the workspace; every output with no zero line on the host
     double analysis_seconds=0,upload_seconds=0,gpu_seconds=0,assembly_seconds=0,fallback_seconds=0;
+};
+namespace detail {
+struct LinalgPass;
+template<class T> constexpr int real_bits(){static_assert(Format<T>::bits&&!Format<T>::complex,"dense linear algebra uses real Float<bits> buffers");return Format<T>::bits;}
+}
+// Handle of a resident product (Linalg::syrk / gemm on a CommandBatch). C is final only after Submission::wait(), which also
+// computes the outputs of host-fallback lines (docs/numerics.md, "Resident products"). Copies share state.
+class LinalgTicket {
+    std::shared_ptr<detail::LinalgPass> pass_;
+    explicit LinalgTicket(std::shared_ptr<detail::LinalgPass> p):pass_(std::move(p)){}
+    friend class Linalg;
+public:
+    LinalgTicket()=default;
+    bool resolved() const;               // the submission was waited and the host-fallback outputs were written (C final)
+    const LinalgReport& report() const;  // analysis and placement as the host call reports it (no timings); throws before resolved()
+    bool provisional_reads() const;      // a later operation of the batch read C before wait; throws before resolved()
 };
 // Blocked Cholesky and triangular solves (docs/numerics.md, "Cholesky factorization"). The result depends on
 // `block` (the documented rounding sequence) and on nothing else: which updates run on the GPU or the host
@@ -96,7 +114,12 @@ public:
     Timing solve(const void* B,std::size_t nrhs,void* X) const;
     // B (m x nrhs) <- Q^T B (transpose) or Q B, in place.
     Timing apply_q(void* B,std::size_t nrhs,bool transpose) const;
+    // The same on Buffer operands (Float<bits()>) of the Linalg's engine, synchronously outside any batch (Linalg buffer forms).
+    template<class T> Timing solve(const Buffer<T>& B,std::size_t nrhs,Buffer<T>& X) const{return solve_buffers(detail::real_bits<T>(),detail::Access::operand(B),nrhs,detail::Access::operand(X));}
+    template<class T> Timing apply_q(Buffer<T>& B,std::size_t nrhs,bool transpose) const{return apply_q_buffer(detail::real_bits<T>(),detail::Access::operand(B),nrhs,transpose);}
 private:
+    Timing solve_buffers(int bits,const detail::Operand& B,std::size_t nrhs,const detail::Operand& X) const;
+    Timing apply_q_buffer(int bits,const detail::Operand& B,std::size_t nrhs,bool transpose) const;
     friend class Linalg; std::unique_ptr<detail::QRData> d;
 };
 // One Linalg per host thread (scratch buffers and compiled libraries are reused). C must not overlap A or B;
@@ -104,6 +127,7 @@ private:
 class Linalg {
 public:
     explicit Linalg(LinalgOptions options={}); ~Linalg();
+    explicit Linalg(Engine& engine,LinalgOptions options={}); // compiles on the engine's Metal device (required for Buffer operands)
     Linalg(const Linalg&)=delete; Linalg& operator=(const Linalg&)=delete;
     std::string device_name() const;
     // C (cols x cols) = A^T A for A (rows x cols). lower_only writes C[i][j] for i >= j and leaves the
@@ -130,7 +154,33 @@ public:
     ComplexQRFactor factor_qr_complex(int bits,const void* A,std::size_t m,std::size_t n,const QROptions& options={});
     const LinalgReport& report() const;
     const LinalgOptions& options() const;
+
+    // ---- Resident products (docs/numerics.md, "Resident products"; docs/execution.md, "Resident units") ----
+    // syrk / gemm encoded into an Engine's CommandBatch on Buffer<Float<bits>> operands of that engine (row-major, sizes as the
+    // host calls; buffers may be larger). After Submission::wait() C equals the host-array call bit for bit. Band analysis,
+    // member lists and the modulus count are GPU passes of the batch; outputs of host-fallback lines are computed at wait, so C
+    // is provisional within the batch (later writes rejected, reads flagged). C must not be A or B. report() is not changed.
+    template<class T> LinalgTicket syrk(CommandBatch& batch,const Buffer<T>& A,std::size_t rows,std::size_t cols,Buffer<T>& C,bool lower_only=true,bool subtract=false){
+        return encode_product(batch,detail::real_bits<T>(),true,false,detail::Access::operand(A),detail::Access::operand(A),cols,cols,rows,detail::Access::operand(C),lower_only,subtract);}
+    template<class T> LinalgTicket gemm(CommandBatch& batch,bool transpose_a,const Buffer<T>& A,const Buffer<T>& B,std::size_t m,std::size_t n,std::size_t k,Buffer<T>& C,bool subtract=false){
+        return encode_product(batch,detail::real_bits<T>(),false,transpose_a,detail::Access::operand(A),detail::Access::operand(B),m,n,k,detail::Access::operand(C),false,subtract);}
+    // Factorizations and solves on Buffer operands: synchronous, outside any batch (the host panels run between dependent GPU
+    // updates). The buffers must be idle; the call owns them like a submission until it returns (concurrent mapping or
+    // submission throws logic_error), the GPU uses them in place (no copies) and the results equal the host-array calls bit for bit.
+    template<class T> CholeskyInfo cholesky(const Buffer<T>& A,std::size_t n,Buffer<T>& L,const FactorOptions& options={}){
+        return cholesky_buffers(detail::real_bits<T>(),detail::Access::operand(A),n,detail::Access::operand(L),options);}
+    template<class T> Timing trsm(bool transpose,const Buffer<T>& L,std::size_t n,const Buffer<T>& B,std::size_t nrhs,Buffer<T>& X,const FactorOptions& options={}){
+        return solve_buffers(detail::real_bits<T>(),transpose?2:1,detail::Access::operand(L),n,detail::Access::operand(B),nrhs,detail::Access::operand(X),options);}
+    template<class T> Timing cholesky_solve(const Buffer<T>& L,std::size_t n,const Buffer<T>& B,std::size_t nrhs,Buffer<T>& X,const FactorOptions& options={}){
+        return solve_buffers(detail::real_bits<T>(),3,detail::Access::operand(L),n,detail::Access::operand(B),nrhs,detail::Access::operand(X),options);}
+    template<class T> QRFactor factor_qr(const Buffer<T>& A,std::size_t m,std::size_t n,const QROptions& options={}){
+        return factor_qr_buffer(detail::real_bits<T>(),detail::Access::operand(A),m,n,options);}
 private:
+    LinalgTicket encode_product(CommandBatch&,int bits,bool syrk,bool transpose_a,const detail::Operand& A,const detail::Operand& B,std::size_t m,std::size_t n,
+                                std::size_t k,const detail::Operand& C,bool lower_only,bool subtract);
+    CholeskyInfo cholesky_buffers(int bits,const detail::Operand& A,std::size_t n,const detail::Operand& L,const FactorOptions&);
+    Timing solve_buffers(int bits,int passes,const detail::Operand& L,std::size_t n,const detail::Operand& B,std::size_t nrhs,const detail::Operand& X,const FactorOptions&);
+    QRFactor factor_qr_buffer(int bits,const detail::Operand& A,std::size_t m,std::size_t n,const QROptions&);
     friend class QRFactor; friend struct detail::LinalgHooks; struct Impl; std::unique_ptr<Impl> impl;
 };
 // ---- Exact dot product on the CPU: RN(sum_k a[k*sa]*b[k*sb]) with one rounding (the GPU fallback) ----

@@ -451,13 +451,103 @@ widest line sets this for the whole product.
 squares, also of the augmented Levenberg–Marquardt matrix `[J; sqrt(mu) D]`) is in "QR factorization
 and least squares".
 
-**Resident buffers (later).** The host-array API owns its own device and queue. A resident version
-would take `Buffer<Float<bits>>` operands and encode the same pipeline into a `CommandBatch`. Band
-analysis needs the exponents on the host, or a small GPU pass over exponent and status words
-followed by a readback. The natural form is therefore to run `analyze` once per matrix generation.
-Digits, products, combine, reconstruct and finish are then encoded as ordinary dispatches into the
-caller's batch, with scratch planes from a workspace query. Fallback lines would then need a host
-step after the submission, or a GPU `exact_dot` kernel.
+### Resident products
+
+`syrk` and `gemm` (with `subtract`) also encode into an Engine's `CommandBatch` on `Buffer<Float<bits>>`
+operands of that engine (round 42; `docs/execution.md`, "Resident units"):
+
+```cpp
+Engine gpu; Linalg la(gpu); Numerics nm(gpu);   // Linalg(Engine&): the engine's Metal device
+using F = Float<256>;                           // A: rows x cols, C: cols x cols, row-major as the host calls
+auto batch = gpu.batch();
+batch.run(Operation::mul, J, S, A);             // any producer of A in the same batch
+LinalgTicket t = la.syrk(batch, A, rows, cols, C);         // lower_only, subtract as the host call
+// la.gemm(batch, transpose_a, A, B, m, n, k, C, subtract);
+nm.norm2(batch, Segments{cols, cols, false}, C, norms);    // a reader of C (flagged, see below)
+batch.submit().wait();                          // also runs t's host-fallback outputs; then C is final
+t.report();                                     // the host call's analysis and placement (no timings)
+```
+
+**Contract.** After `Submission::wait()` C equals the host-array call with the same `LinalgOptions` bit
+for bit (every output is one rounding of the exact value, and the placement is the same). The
+`Linalg`'s own `report()` is not changed; `LinalgTicket::report()` (after wait) gives the band
+histograms, fallback lines and outputs, multi-band and trivial outputs, band pairs, extended sizes and
+`int8_gemms` exactly as the host call reports them for the same data (tested).
+
+**GPU analysis.** The host path reads the exponents on the host before it sizes anything. The resident
+call computes the same decisions in the batch and drives every data-dependent size by indirect
+dispatch (a dispatch with nothing to do has zero threadgroups):
+
+1. `analyze_lines`, one SIMD group per line: status OR, largest and smallest nonzero exponent, the class
+   (GPU bands, zero/status line, host fallback) and the greedy bands `[hi - G, hi]` of `analyze`
+   (one pass over the line per band);
+2. `plan_side`, one threadgroup per side: chunked SIMD prefix sums give the band member lists in line
+   order, the line table (band count, lowest band exponent, accumulator slot) and a summary (members
+   per band, multi- and single-band lines, widest band, fallback lines);
+3. `plan_final`, one thread: the extended sizes, the modulus count, `Wc` and the Garner bounds of the
+   widest band (from a table that the host precomputes for this `ceil(log2 K)` and every width
+   `0..G`: the host path's formula), and the `Params` record and threadgroup counts of every later
+   dispatch;
+4. the product pipeline of the host path (digits, `product_residue` per modulus batch, one
+   `reconstruct` per band pair, `finish`), then the zero/status outputs (`trivial_outputs`) and, for
+   a full SYRK, the upper triangle (`mirror_upper`).
+
+All dispatches of the call are in the batch's encoder with a buffer barrier before each: about
+`12 + 3·batches + R²`. `analyze_lines` reads every entry once, and again once per band of a multi-band
+line; analysis and plan take 0.02–0.16 ms of GPU time for n = 200–800 (one thread per line and serial
+scans took up to 0.9 ms). Measured against the host-array calls (256 and 224 bits, n = 200–1000,
+loaded host): 1.05–1.38× less wall time per call, with 0.1–0.6 ms more GPU time
+(`benchmarks/results/round42_resident_linalg_*.txt`).
+
+**Data-independent bounds.** A GPU line has at most `R = min(max_bands, max_spread/(band_bits+1) + 1)`
+bands (each band starts more than G below the previous one; at most 64). The workspace holds extended
+operands of `min(R, resident_bands) * lines` band rows per side (`LinalgOptions::resident_bands`,
+default 2: on average two bands per line), the modulus count of the widest possible band (`band_bits`)
+at this K, digit planes in batches of the 64 MB plane budget, and `M * N * acc_words` accumulator
+words when `R > 1`. If the band rows of a call exceed it (`resident_overflow` in the ticket report),
+the plan disables the GPU products and every output without a zero or status line is computed by the
+host fallback at wait: correct, but slow. Raise `resident_bands` (up to `max_bands`) when most lines
+have several bands. Example, QSC-like 800 × 400 SYRK at 256 bits (`resident_bands = 2`): residues
+57 MB, digit planes 66 MB, accumulators 32 MB, snapshot 14 MB.
+
+**Host fallback (at wait).** Outputs of lines that the host path sends to `exact_dot` (more than
+`max_bands` bands, spread above `max_spread`, `K > 65472`, `force_fallback`), and all non-trivial
+outputs after an overflow, are computed at `Submission::wait()` by a completion step, as the
+transcendental retries are. A GPU exact-dot kernel was not chosen: the spread of a fallback line is
+unbounded (exponents span ±10⁹), so it would need its own host fallback, and an exact chain per thread
+was latency-bound in round 23's Cholesky panel experiment. The plan copies A and B inside the batch
+when (and only when) there are fallback lines or an overflow, so later operations of the batch may
+overwrite them; the step computes `exact_dot_add` from that snapshot and the old C entry (updates) on
+`host_threads` threads, mirrors fallback outputs of a full SYRK, and writes C before the submission
+releases its buffers. GPU outputs and zero/status outputs are final when the GPU completes.
+
+**C is provisional within its batch.** Writing C again in the same batch (an engine or unit operation,
+or a second product into the same C) throws `logic_error`: split the batch. Reading C is allowed and
+sets `LinalgTicket::provisional_reads()`. When the ticket also reports `fallback_outputs > 0` (or
+`resident_overflow`), the reader saw provisional values for those outputs and must be recomputed (or
+the batch split at the product); without fallback outputs a reader sees final values. QSC-like data
+(column scales, a few far entries) has no fallback lines.
+
+**Ownership and lifetime.** As for the other resident units: foreign buffers throw `invalid_argument`,
+buffers of an unwaited submission `logic_error`; C must not be A or B; sizes are checked (buffers may be
+larger); SYRK `subtract` needs `lower_only`. Workspaces are kept by the `Linalg` and reused: per call
+(line tables, plan, snapshots: read at wait) and per batch (digit planes, residues, accumulators: the
+calls of one batch share them because their dispatches run in order). A workspace is busy from
+encoding until the batch's completion step has run (or the unsubmitted batch is destroyed). First use
+of new workspace memory costs its page wiring (about 28 ms/GB measured), later calls none. The batch,
+its submission and the ticket may outlive the `Linalg`; a discarded batch leaves its ticket
+unresolved. A `Linalg` may encode into batches of several threads (pipeline and workspace caches are
+locked); its host-array calls stay on one thread.
+
+**Factorizations on buffers.** `cholesky`, `trsm`, `cholesky_solve`, `factor_qr`, `QRFactor::solve` and
+`QRFactor::apply_q` also take `Buffer` operands (round 42). Their host panels run between dependent
+GPU updates, so they cannot be one submission: these forms are synchronous and outside any batch.
+The buffers must be idle; the call owns them as a submission does until it returns (a concurrent
+`upload`, `mapped()` or submission using them throws `logic_error`), the GPU uses them in place (the
+Cholesky work matrix L, the solution X and the operand of `apply_q` need no scratch copy, which the
+host-array forms make for arrays that are not page aligned), and the results equal the host-array
+calls bit for bit. L may be A and X may be B (in place); X must not be L, and a QR solution must not
+be B. A `QRFactor` made from a buffer owns copies as before (`factor_qr` only reads A).
 
 ## Cholesky factorization and triangular solves
 

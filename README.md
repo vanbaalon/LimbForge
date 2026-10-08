@@ -69,7 +69,7 @@ measurements.
   (`transcendental.hpp`, bit-identical to MPFR/MPC): certified GPU evaluation with rare host retries at more limbs,
   plus complex integer powers by a documented fused sequence.
 - Typed resident buffers, asynchronous submissions, and dependent operations in one command batch, including
-  polynomials, norms and transcendental functions (`docs/execution.md`, "Resident units").
+  polynomials, norms, transcendental functions and dense `syrk`/`gemm` (`docs/execution.md`, "Resident units").
 - In-place pointwise arithmetic, cached pipelines, and explicit buffer ownership checks.
 - Fixed-order real and complex tree reductions with GPU-resident intermediate levels.
 - Configurable threadgroup sizes and per-pipeline limits for measured tuning.

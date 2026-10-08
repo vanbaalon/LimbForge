@@ -450,6 +450,7 @@ id<MTLDevice> Internal::device(const Engine& e){return e.impl->device;}
 id<MTLCommandQueue> Internal::queue(const Engine& e){return e.impl->queue;}
 id<MTLDevice> Internal::device(const CommandBatch& b){LF_OPEN(b);return batch.engine->device;}
 id<MTLComputeCommandEncoder> Internal::compute(CommandBatch& b){LF_OPEN(b);return batch.compute();}
+id<MTLCommandBuffer> Internal::command(CommandBatch& b){LF_OPEN(b);return batch.command;}
 void Internal::copy(CommandBatch& b,const std::shared_ptr<BufferStorage>& from,const std::shared_ptr<BufferStorage>& to,std::size_t bytes){
     LF_OPEN(b);batch.retain(from);batch.retain(to,true);if(!bytes)return;
     if(bytes>from->bytes||bytes>to->bytes)throw std::invalid_argument("copy exceeds buffer");

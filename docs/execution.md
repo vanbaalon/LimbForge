@@ -103,8 +103,9 @@ copied; copying a handle does not duplicate its values.
 
 ## Resident units
 
-The separate units `Numerics` (polynomials, jets, norms; `numerics.hpp`) and `Transcendentals`
-(`transcendental.hpp`) also encode into an engine's batch, on buffers of that engine. Construct them
+The separate units `Numerics` (polynomials, jets, norms; `numerics.hpp`), `Transcendentals`
+(`transcendental.hpp`) and `Linalg` (dense products; `linalg.hpp`, below) also encode into an engine's
+batch, on buffers of that engine. Construct them
 from the engine so that their pipelines are compiled on its Metal device (on single-GPU Macs the
 default constructor selects the same device; a mismatch throws `invalid_argument`):
 
@@ -161,9 +162,38 @@ batch, `out` is provisional:
   discarded without submission leaves its tickets unresolved. Host retries that fail make `wait()`
   throw.
 
+**Dense products (`Linalg`, `linalg.hpp`).** `Linalg la(gpu)` encodes `syrk` and `gemm` (also the
+`subtract` updates) on `Buffer<Float<bits>>` operands; band analysis, member lists and the modulus count
+are GPU passes of the batch that size the product dispatches indirectly. They follow the transcendental
+pattern: the call returns a `LinalgTicket`, and outputs of lines that the host path computes with exact
+host dot products (rare: spreads above `max_spread`, more than `max_bands` bands) are written at
+`wait()`, so C is provisional in its batch (no second write; reads are flagged in
+`ticket.provisional_reads()` and matter only when `ticket.report().fallback_outputs > 0`).
+
+```cpp
+Linalg la(gpu);
+auto batch = gpu.batch();
+auto t1 = la.gemm(batch, true, J, R, m, n, k, C1);         // C1 = J^T R
+auto t2 = la.syrk(batch, C1, m, n, G, true);               // G = C1^T C1 (lower); reads C1 (flagged)
+auto t3 = la.syrk(batch, J, k, m, H, true, true);           // H = RN(H - J^T J), lower triangle
+batch.submit().wait();
+```
+
+The calls of one batch share the `Linalg`'s per-batch workspace (digit planes, residues, accumulators);
+batches pending at the same time use separate workspaces. Workspace sizes are bounded independently of
+the data by `LinalgOptions::resident_bands`; a call that needs more band rows computes on the host at
+`wait()` (`ticket.report().resident_overflow`). Contract, bounds and memory: `docs/numerics.md`,
+"Resident products".
+
+`cholesky`, `trsm`, `cholesky_solve`, `factor_qr`, `QRFactor::solve` and `apply_q` take `Buffer` operands
+too, but run synchronously outside any batch (host panels sit between dependent GPU updates): the call
+owns the idle buffers like a submission until it returns, uses them on the GPU in place, and returns
+the host-array results bit for bit.
+
 Library-internal hook: `src/engine_internal.hpp` (ObjC++, not installed) exposes the engine's device
-and queue, the batch's compute encoder (with the barrier), in-batch copies, ownership and scratch,
-Metal object retention, provisional outputs and completion steps to library units.
+and queue, the batch's command buffer (the batch identity for per-batch workspaces) and compute encoder
+(with the barrier), in-batch copies, ownership and scratch, Metal object retention, provisional outputs
+and completion steps to library units.
 
 ## Timing and the simpler API
 

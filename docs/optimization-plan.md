@@ -283,7 +283,7 @@ For BSolver (≈128 lanes × 600 steps) the GPU runs ~128 threads. Two complemen
 | D3 segmented dots | done (27) | `segmented_dot` |
 | D4 vector recurrence (+tangent, resident) | done (21, 24) | `vector_recurrence` |
 | D5 batched 4×4 LU/solve/inverse/det | done (29, resident 34) | `Engine::lu4`, `CommandBatch::lu4` |
-| D6 SYRK/GEMM, Cholesky, triangular solves | done (20-D6, 23-D6b), host-array | `linalg.hpp` |
+| D6 SYRK/GEMM, Cholesky, triangular solves | done (20-D6, 23-D6b); resident SYRK/GEMM, Buffer-form factorizations (42) | `linalg.hpp` |
 | S5 Householder QR factor object, least squares, apply Q (+ augmented LM) | done (31-S5), host-array, full rank | `Linalg::factor_qr`, `QRFactor` |
 | S5b faster QR panel and products; column-pivoted QR (basic solutions) | done (40-S5b), host-array | `QROptions::pivot`, `QRFactor::permutation` |
 | S5c complex Householder QR, least squares, apply Q / Q^H (zgeqrf convention, real diagonal) | done (43-complex-QR), host-array, unpivoted | `Linalg::factor_qr_complex`, `ComplexQRFactor` |
@@ -296,10 +296,10 @@ For BSolver (≈128 lanes × 600 steps) the GPU runs ~128 threads. Two complemen
 | S4 norms, scaled residual, status summaries | done (32-S4), resident (39) | `Numerics::norm_inf/norm_max/norm2/scaled_residual/summarize_status` |
 | D7 transcendentals (exp, expm1, log, log1p, sin, cos, atan2, complex exp/log, powi) | done (35-D7); L2-style certified rounding with compacted host retries; resident first pass with retries at `wait()` (39) | `transcendental.hpp` |
 | Resident unit hook | done (39) | `src/engine_internal.hpp`; `docs/execution.md`, "Resident units" |
+| Resident linalg: `syrk`/`gemm` in a `CommandBatch` (GPU band analysis and plan, indirect dispatch, host fallback at `wait()`); synchronous `Buffer` forms of Cholesky/solves/QR | done (42-resident-linalg) | `Linalg(Engine&)`, `LinalgTicket`; `docs/numerics.md`, "Resident products" |
 
 Next, by consumer value: qscmx/BSolver integration and end-to-end timing on an idle host (also the
-pending GitHub speed figures); resident `linalg` (`CommandBatch` versions through `src/engine_internal.hpp`; numerics and
-transcendentals done in round 39), GPU-side transcendental retries, the on-device norm threshold; deeper QR look-ahead
+pending GitHub speed figures); GPU-side transcendental retries, the on-device norm threshold; deeper QR look-ahead
 (and complex column pivoting, a reconstruction-bound trailing update); G = 4/8 cooperative shapes with ≥ 3 limbs per lane
 (validation-only failures, 41-L4b); fused `vector_recurrence` above 512 bits.
 

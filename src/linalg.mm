@@ -1,10 +1,12 @@
 // Dense real GEMM/SYRK with one rounding per output (plan D6 via L1c). Exact integer GEMMs of exponent bands
 // through int8 TensorOps residues (benchmarks/residue_gemm.mm), Garner reconstruction and one rounding on the
-// GPU; lines whose exponents need too many bands or span too much use the exact host path (exact_dot).
+// GPU; lines whose exponents need too many bands or span too much use the exact host path (exact_dot). Resident products
+// (encode_product) run the same pipelines in an Engine's CommandBatch after a GPU band analysis and plan (linalg.metal).
 #import <Foundation/Foundation.h>
 #import <Metal/Metal.h>
 #include "limbforge/linalg.hpp"
 #include "linalg_internal.hpp"
+#include "engine_internal.hpp"
 #include "linalg_source.hpp"
 #include <atomic>
 #include <chrono>
@@ -129,13 +131,33 @@ struct PageBlock {
 };
 struct QRData {Linalg* owner=nullptr;int bits=0;std::size_t m=0,n=0,nb=0;QRInfo info;QROptions options;PageBlock v,r,t,tau;std::vector<std::size_t> perm;};
 }
+// Resident products: per ceil(log2 K), the modulus count, Wc and bounds offset for every widest band width pmax in [0, G].
+struct ModulusTable {id<MTLBuffer> table,bounds;unsigned max_moduli=0,max_wc=0;};
 struct Kernels {
     id<MTLComputePipelineState> left,right,product_res,reconstruct,finish,reconstruct_sub,finish_sub;int max_moduli,term_words,acc_words;
     id<MTLBuffer> moduli,recips,inv;std::map<int,std::vector<std::uint32_t>> bounds; // per modulus count: [M/2 | M], Wc words each
+    id<MTLLibrary> lib;id<MTLComputePipelineState> analyze,plan_side,plan_final,trivial,mirror,copy,clear; // resident (on first use)
+    std::map<int,ModulusTable> tables;
 };
+// Named shared buffers that grow on demand (resident products). A workspace is free when only its pool refers to it: a resident
+// call holds its workspaces from encoding until its completion step has run at wait (or its unsubmitted batch is destroyed).
+struct Workspace {
+    std::map<std::string,id<MTLBuffer>> buffers;
+    id<MTLBuffer> get(id<MTLDevice> device,const std::string& role,std::size_t bytes){auto& b=buffers[role];
+        if(!b||b.length<bytes){b=nil;b=[device newBufferWithLength:std::max<std::size_t>(bytes,16) options:MTLResourceStorageModeShared];
+            if(!b)throw std::runtime_error("Metal allocation failed (linalg workspace "+role+")");}
+        return b;}
+};
+struct LineInfo {std::uint32_t status;std::int32_t cls,nb,pad;}; // linalg.metal LineInfo
+struct PlanConst {Params base;std::uint32_t M,Nc,R,syrk,me_cap,ne_cap,B,batches,acc_words,copy_a,copy_b,tg_left,tg_right,tg_rec,tg_fin;};
 struct Linalg::Impl {
     LinalgOptions options;LinalgReport report;id<MTLDevice> device;id<MTLCommandQueue> queue;
-    std::map<int,Kernels> kernels;std::map<std::string,id<MTLBuffer>> pool;std::unique_ptr<Pool> workers;
+    std::map<int,Kernels> kernels;std::recursive_mutex kernel_mutex; // kernels may be requested by resident calls of several threads
+    // Resident workspaces: per call (analysis, plan, snapshots: read at wait) and per batch (digit planes, residues, accumulators:
+    // shared by the calls of one batch, whose dispatches run in order); by_batch maps a batch's command buffer to its workspace.
+    std::mutex workspace_mutex;std::vector<std::shared_ptr<Workspace>> call_spaces,batch_spaces;std::map<void*,std::weak_ptr<Workspace>> by_batch;
+    static std::shared_ptr<Workspace> free_space(std::vector<std::shared_ptr<Workspace>>& pool){
+        for(auto& w:pool)if(w.use_count()==1)return w;pool.push_back(std::make_shared<Workspace>());return pool.back();}std::map<std::string,id<MTLBuffer>> pool;std::unique_ptr<Pool> workers;
     // Buffers that the factorization drivers keep on the GPU: views and outputs inside them are used in place.
     std::vector<id<MTLBuffer>> resident;
     unsigned threads()const{return options.host_threads?options.host_threads:std::max(1u,std::thread::hardware_concurrency());}
@@ -161,7 +183,7 @@ struct Linalg::Impl {
         if(!p)throw std::runtime_error("Metal pipeline: "+message(e));return p;}
     // Moduli: enough for two (bits+G)-bit integers summed over max_k terms.
     Kernels& get(int bits){
-        auto found=kernels.find(bits);if(found!=kernels.end())return found->second;
+        std::lock_guard<std::recursive_mutex> lock(kernel_mutex);auto found=kernels.find(bits);if(found!=kernels.end())return found->second;
         Kernels k;const int N=bits/32;double need=2.0*(bits+options.band_bits)+std::log2(double(max_k))+2,have=0;int L=0;
         while(have<=need)have+=std::log2(double(primes()[L++]));
         k.max_moduli=padded(L);for(int i=L;i<k.max_moduli;++i)have+=std::log2(double(primes()[i]));
@@ -173,7 +195,7 @@ struct Linalg::Impl {
         MTLCompileOptions* o=[MTLCompileOptions new];o.languageVersion=MTLLanguageVersion((4u<<16)|0u);o.mathMode=MTLMathModeSafe;
         NSError* e=nil;id<MTLLibrary> lib=[device newLibraryWithSource:source options:o error:&e];
         if(!lib)throw std::runtime_error("Metal compilation (linalg): "+message(e));
-        k.left=state(lib,@"digits_left");k.right=state(lib,@"digits_right");k.product_res=state(lib,@"product_residue");
+        k.lib=lib;k.left=state(lib,@"digits_left");k.right=state(lib,@"digits_right");k.product_res=state(lib,@"product_residue");
         k.reconstruct=state(lib,@"reconstruct",0);k.finish=state(lib,@"finish",0);k.reconstruct_sub=state(lib,@"reconstruct",1);k.finish_sub=state(lib,@"finish",1);
         std::vector<std::uint32_t> inv(std::size_t(k.max_moduli)*k.max_moduli,0);const auto& m=primes();
         for(int i=0;i<k.max_moduli;++i)for(int j=i+1;j<k.max_moduli;++j)inv[std::size_t(i)*k.max_moduli+j]=inverse(m[i],m[j]);
@@ -184,8 +206,8 @@ struct Linalg::Impl {
         if(!k.moduli||!k.recips||!k.inv)throw std::runtime_error("Metal allocation failed (moduli)");
         return kernels.emplace(bits,std::move(k)).first->second;
     }
-    static const std::vector<std::uint32_t>& bounds(Kernels& k,int L,int Wc){
-        auto& b=k.bounds[L];if(!b.empty())return b;std::vector<std::uint32_t> x(Wc,0);x[0]=1;
+    const std::vector<std::uint32_t>& bounds(Kernels& k,int L,int Wc){
+        std::lock_guard<std::recursive_mutex> lock(kernel_mutex);auto& b=k.bounds[L];if(!b.empty())return b;std::vector<std::uint32_t> x(Wc,0);x[0]=1;
         for(int j=0;j<L;++j){std::uint64_t c=0;for(auto& w:x){std::uint64_t t=std::uint64_t(w)*primes()[j]+c;w=std::uint32_t(t);c=t>>32;}}
         b.assign(2*Wc,0);for(int i=0;i<Wc;++i){b[i]=(x[i]>>1)|(i+1<Wc?x[i+1]<<31:0);b[Wc+i]=x[i];}return b;
     }
@@ -198,6 +220,23 @@ struct Linalg::Impl {
     template<int N> Timing qr_block(const detail::QRData& f,std::size_t b,Number<N>* X,std::size_t ld,std::size_t c0,std::size_t c1,bool qt,Number<N>* Wb,Number<N>* Yb,double threshold,bool gpu,bool& on_gpu,bool have_y=false);
     template<int N> Timing qr_apply_n(const detail::QRData& f,Number<N>* C,std::size_t nrhs,bool qt);
     template<int N> Timing qr_solve_n(const detail::QRData& f,const Number<N>* B,std::size_t nrhs,Number<N>* X);
+    // Resident products: the pipelines of the GPU analysis and plan, and per ceil(log2 K) the modulus count, Wc and bounds of
+    // every widest band width pmax in [0, G] (the host's choice in run(), made on the GPU from the band analysis).
+    void resident_pipelines(Kernels& k){std::lock_guard<std::recursive_mutex> lock(kernel_mutex);if(k.analyze)return;
+        k.plan_side=state(k.lib,@"plan_side");k.plan_final=state(k.lib,@"plan_final");k.trivial=state(k.lib,@"trivial_outputs");
+        k.mirror=state(k.lib,@"mirror_upper");k.copy=state(k.lib,@"copy_words");k.clear=state(k.lib,@"clear_words");k.analyze=state(k.lib,@"analyze_lines");}
+    const ModulusTable& modulus_table(Kernels& k,int bits,int logk){
+        std::lock_guard<std::recursive_mutex> lock(kernel_mutex);ModulusTable& t=k.tables[logk];if(t.table)return t;
+        const int G=options.band_bits;std::vector<std::uint32_t> table(3*std::size_t(G+1)),all;std::map<unsigned,std::uint32_t> offset;
+        for(int pmax=0;pmax<=G;++pmax){double need=2.0*bits+2*pmax+logk+2,have=0;unsigned L=0;while(have<=need)have+=std::log2(double(primes()[L++]));
+            const unsigned Wc=unsigned(std::ceil(have/32))+1;
+            if(!offset.count(L)){offset[L]=std::uint32_t(all.size());const auto& b=bounds(k,int(L),int(Wc));all.insert(all.end(),b.begin(),b.end());}
+            table[3*pmax]=L;table[3*pmax+1]=Wc;table[3*pmax+2]=offset[L];t.max_moduli=std::max(t.max_moduli,L);t.max_wc=std::max(t.max_wc,Wc);}
+        if(int(t.max_moduli)>k.max_moduli)throw std::logic_error("linalg: modulus count exceeds the compiled limit");
+        id<MTLBuffer> tb=[device newBufferWithBytes:table.data() length:4*table.size() options:MTLResourceStorageModeShared];
+        id<MTLBuffer> bb=[device newBufferWithBytes:all.data() length:4*all.size() options:MTLResourceStorageModeShared];
+        if(!tb||!bb)throw std::runtime_error("Metal allocation failed (modulus table)");
+        t.bounds=bb;t.table=tb;return t;}
     ~Impl(){if((workers&&current_pool==workers.get())||(side_workers&&current_pool==side_workers.get()))current_pool=nullptr;}
     // Restores the resident list on scope exit.
     struct Residency {Impl& im;std::size_t size;explicit Residency(Impl& i):im(i),size(i.resident.size()){} ~Residency(){im.resident.resize(size);}};
@@ -207,6 +246,9 @@ Linalg::Linalg(LinalgOptions options):impl(std::make_unique<Impl>()){
         throw std::invalid_argument("linalg options: band_bits in [0,1024], max_bands >= 0, max_spread in [0,8192]");
     impl->options=options;impl->device=MTLCreateSystemDefaultDevice();if(!impl->device)throw std::runtime_error("no Metal GPU available");
     impl->queue=[impl->device newCommandQueue];if(!impl->queue)throw std::runtime_error("cannot create Metal command queue");
+}
+Linalg::Linalg(Engine& engine,LinalgOptions options):Linalg(options){
+    impl->device=detail::Internal::device(engine);impl->queue=[impl->device newCommandQueue];if(!impl->queue)throw std::runtime_error("cannot create Metal command queue");
 }
 Linalg::~Linalg()=default;
 std::string Linalg::device_name()const{return [[impl->device name] UTF8String];}
@@ -334,7 +376,7 @@ template<int N> CholeskyInfo Linalg::Impl::cholesky_n(const Number<N>* A,std::si
     Residency keep(*this);T* W=L;pool_workers();
     // GPU work matrix: L itself when page aligned, otherwise a shared scratch copy.
     const bool gpu=fo.gpu&&n>nb&&double(n-nb)*double(n-nb+1)/2*double(nb)>=fo.host_macs;
-    if(gpu){id<MTLBuffer> b=wrap(L,n*n*sizeof(T));if(!b){b=buffer("factor",n*n*sizeof(T));W=static_cast<T*>(b.contents);}resident.push_back(b);}
+    std::size_t at=0;if(gpu&&!find(L,at)){id<MTLBuffer> b=wrap(L,n*n*sizeof(T));if(!b){b=buffer("factor",n*n*sizeof(T));W=static_cast<T*>(b.contents);}resident.push_back(b);}
     each(n,[&](std::size_t i){for(std::size_t j=0;j<n;++j)W[i*n+j]=j>i?zero<N>():A[i*n+j];});
     auto D=[](const T& c,const T* x,std::ptrdiff_t sx,const T* y,std::ptrdiff_t sy,std::size_t K){return exact_dot_add<N>(&c,true,x,sx,y,sy,K);};
     // Columns [k0, ke) of row i: l_ij = RN(D(a_ij; l_i, l_j; [k0, j)) / l_jj), rows j < i of the block already final.
@@ -381,8 +423,9 @@ template<int N> Timing Linalg::Impl::solve_n(const Number<N>* L,std::size_t n,co
     using T=Number<N>;auto start=Clock::now();Timing timing{0,0};if(!n||!nrhs)return timing;
     const std::size_t nb=fo.block?std::min(fo.block,n):n;Residency keep(*this);const T* F=L;T* W=X;pool_workers();
     const bool gpu=fo.gpu&&n>nb&&double(n-nb)*double(nrhs)*double(nb)>=fo.solve_host_macs;
-    if(gpu){id<MTLBuffer> b=wrap(L,n*n*sizeof(T));if(!b){b=buffer("lfactor",n*n*sizeof(T));std::memcpy(b.contents,L,n*n*sizeof(T));F=static_cast<const T*>(b.contents);}resident.push_back(b);
-        id<MTLBuffer> x=wrap(X,n*nrhs*sizeof(T));if(!x){x=buffer("rhs",n*nrhs*sizeof(T));W=static_cast<T*>(x.contents);}resident.push_back(x);}
+    std::size_t at=0; // Buffer operands (Linalg buffer forms) are already resident and used in place
+    if(gpu&&!find(L,at)){id<MTLBuffer> b=wrap(L,n*n*sizeof(T));if(!b){b=buffer("lfactor",n*n*sizeof(T));std::memcpy(b.contents,L,n*n*sizeof(T));F=static_cast<const T*>(b.contents);}resident.push_back(b);}
+    if(gpu&&!find(X,at)){id<MTLBuffer> x=wrap(X,n*nrhs*sizeof(T));if(!x){x=buffer("rhs",n*nrhs*sizeof(T));W=static_cast<T*>(x.contents);}resident.push_back(x);}
     if(W!=B)std::memcpy(static_cast<void*>(W),B,n*nrhs*sizeof(T));
     auto D=[](const T& c,const T* x,std::ptrdiff_t sx,const T* y,std::ptrdiff_t sy,std::size_t K){return exact_dot_add<N>(&c,true,x,sx,y,sy,K);};
     // Rows out[i] (M x nrhs) = D(out[i]; line i of the factor view, X rows [r0, r0+K)).
@@ -671,7 +714,8 @@ template<int N> Timing Linalg::Impl::qr_apply_n(const detail::QRData& f,Number<N
     if(!blocks||!nrhs){tm.wall_seconds=since(start);return tm;}
     Residency keep(*this);pool_workers();const bool gpu=f.options.gpu&&double(std::min(nb,f.n))*double(nrhs)*double(m)>=f.options.solve_host_macs;
     std::vector<T> host;T *W=C,*Wb,*Yb;
-    if(gpu){id<MTLBuffer> x=wrap(C,m*nrhs*sizeof(T));if(!x){x=buffer("qr_rhs",m*nrhs*sizeof(T));W=static_cast<T*>(x.contents);std::memcpy(static_cast<void*>(W),C,m*nrhs*sizeof(T));}
+    std::size_t at=0;
+    if(gpu){id<MTLBuffer> x=find(C,at);if(!x&&!(x=wrap(C,m*nrhs*sizeof(T)))){x=buffer("qr_rhs",m*nrhs*sizeof(T));W=static_cast<T*>(x.contents);std::memcpy(static_cast<void*>(W),C,m*nrhs*sizeof(T));}
         id<MTLBuffer> wb=buffer("qr_w",nb*nrhs*sizeof(T)),yb=buffer("qr_y",nb*nrhs*sizeof(T));for(id<MTLBuffer> b:{x,wb,yb})resident.push_back(b);
         for(const detail::PageBlock* p:{&f.v,&f.t}){id<MTLBuffer> b=wrap(p->p,p->bytes);if(!b)throw std::runtime_error("Metal buffer wrap failed (qr)");resident.push_back(b);}
         Wb=static_cast<T*>(wb.contents);Yb=static_cast<T*>(yb.contents);}
@@ -764,5 +808,207 @@ Timing LinalgHooks::qr_block(Linalg& la,int bits,std::size_t m,std::size_t n,std
 Timing LinalgHooks::solve_upper(Linalg& la,int bits,const void* R,std::size_t n,const void* B,std::size_t nrhs,void* X,const FactorOptions& fo){
     return by_words(bits/32,[&](auto w){constexpr int N=decltype(w)::value;
         return la.impl->solve_n<N>(static_cast<const Number<N>*>(R),n,static_cast<const Number<N>*>(B),nrhs,static_cast<Number<N>*>(X),fo,2,true);});}
+} // namespace detail (complex QR hooks)
+// ---- Resident products (docs/numerics.md, "Resident products") ----
+namespace detail { struct LinalgPass { std::atomic<bool> done{false}; LinalgReport report; bool provisional_reads=false; }; }
+bool LinalgTicket::resolved()const{return pass_&&pass_->done.load(std::memory_order_acquire);}
+const LinalgReport& LinalgTicket::report()const{if(!resolved())throw std::logic_error("linalg ticket not resolved (wait for its submission)");return pass_->report;}
+bool LinalgTicket::provisional_reads()const{if(!resolved())throw std::logic_error("linalg ticket not resolved (wait for its submission)");return pass_->provisional_reads;}
+namespace {
+// Line histogram as analyze() reports it; count[b] = GPU lines with more than b bands (band b's member count).
+void histogram(const LineInfo* li,std::size_t lines,int max_bands,std::vector<std::size_t>& h,std::size_t& fallback,std::vector<std::size_t>& count){
+    h.assign(std::size_t(std::max(max_bands,0))+1,0);
+    for(std::size_t i=0;i<lines;++i){const LineInfo& x=li[i];if(x.cls==1)++h[0];else if(x.cls==2)++fallback;
+        else{++h[std::size_t(x.nb)];if(count.size()<std::size_t(x.nb))count.resize(std::size_t(x.nb),0);for(int b=0;b<x.nb;++b)++count[std::size_t(b)];}}
+}
+// Output counts by line class, as the host assembly (SYRK: j <= i). With overflow every GPU output is computed on the host.
+void count_outputs(LinalgReport& r,const LineInfo* li,const LineInfo* ri,std::size_t M,std::size_t Nc,bool syrk,bool overflow){
+    std::size_t t=0,f=0,g=0,gm=0; // lines of the right operand (SYRK: j <= i): trivial, fallback, GPU, multi-band GPU
+    auto add=[&](const LineInfo& x){if(x.cls==1)++t;else if(x.cls==2)++f;else{++g;gm+=x.nb>1;}};
+    if(!syrk)for(std::size_t j=0;j<Nc;++j)add(ri[j]);
+    for(std::size_t i=0;i<M;++i){if(syrk)add(li[i]);const LineInfo& x=li[i];
+        if(x.cls==1)r.trivial_outputs+=t+f+g;else if(x.cls==2){r.trivial_outputs+=t;r.fallback_outputs+=f+g;}
+        else{r.trivial_outputs+=t;r.fallback_outputs+=f;if(overflow)r.fallback_outputs+=g;else{r.gpu_outputs+=g;r.multi_band_outputs+=x.nb>1?g:gm;}}}
+}
+// f(i) for i < n over plain threads: a completion step may run after its Linalg (and its worker pool) is gone.
+template<class F> void host_items(unsigned threads,std::size_t n,F f){
+    unsigned t=unsigned(std::min<std::size_t>(threads?threads:std::max(1u,std::thread::hardware_concurrency()),n));
+    std::atomic<std::size_t> next{0};auto work=[&]{for(std::size_t i;(i=next.fetch_add(1))<n;)f(i);};
+    if(t<=1){work();return;}std::vector<std::thread> w;for(unsigned i=1;i<t;++i)w.emplace_back(work);work();for(auto& x:w)x.join();}
+// Buffer operands of a synchronous call (the Linalg buffer forms): idle buffers of the Linalg's device, owned by the call as by a
+// submission (busy) and registered as resident memory, so the GPU uses them in place; released on return.
+template<class I> struct Claim {
+    I& im;std::vector<std::shared_ptr<detail::BufferStorage>> held;std::size_t size;
+    explicit Claim(I& i):im(i),size(i.resident.size()){}
+    ~Claim(){for(auto& h:held)h->busy.store(false,std::memory_order_release);im.resident.resize(size);}
+    Claim(const Claim&)=delete;Claim& operator=(const Claim&)=delete;
+    void* add(const detail::Operand& b,std::size_t elements,const char* what){
+        if(!elements&&!b.storage)return nullptr;
+        if(!b.storage)throw std::invalid_argument(std::string(what)+": missing buffer");
+        if(b.size<elements)throw std::invalid_argument(std::string(what)+": buffer too small");
+        if(b.storage->buffer.device!=im.device)throw std::invalid_argument(std::string(what)+": buffer of another Metal device (construct the Linalg from the buffer's Engine)");
+        if(std::find(held.begin(),held.end(),b.storage)==held.end()){bool idle=false;
+            if(!b.storage->busy.compare_exchange_strong(idle,true))throw std::logic_error(std::string(what)+": buffer belongs to an unwaited submission");
+            held.push_back(b.storage);im.resident.push_back(b.storage->buffer);}
+        return b.storage->buffer.contents;}
+};
+}
+LinalgTicket Linalg::encode_product(CommandBatch& batch,int bits,bool syrk,bool ta,const detail::Operand& A,const detail::Operand& B,std::size_t M,std::size_t Nc,
+                                    std::size_t K,const detail::Operand& C,bool lower_only,bool sub){@autoreleasepool{
+    using detail::Internal;check_bits(bits);
+    if(Internal::device(batch)!=impl->device)throw std::invalid_argument("Linalg and batch use different Metal devices (construct the Linalg from the batch's Engine)");
+    if(syrk&&sub&&!lower_only)throw std::invalid_argument("syrk: subtract updates the lower triangle only (lower_only)");
+    const std::size_t limit=std::size_t(1)<<31;
+    if(M>=limit||Nc>=limit||K>=limit||M*Nc>=limit||M*K>=limit||K*Nc>=limit)throw std::invalid_argument("matrix dimensions exceed 32-bit indexing");
+    auto need=[](const detail::Operand& b,std::size_t n,const char* what){if(!n)return;if(!b.storage)throw std::invalid_argument(std::string(what)+": missing buffer");
+        if(b.size<n)throw std::invalid_argument(std::string(what)+": buffer too small");};
+    need(A,M*K,syrk?"syrk A":"gemm A");if(!syrk)need(B,K*Nc,"gemm B");need(C,M*Nc,syrk?"syrk C":"gemm C");
+    if(C.storage&&(C.storage==A.storage||C.storage==B.storage))throw std::invalid_argument("resident product: C must not be A or B");
+    const LinalgOptions& o=impl->options;
+    if(o.resident_bands<1)throw std::invalid_argument("resident products: resident_bands >= 1");
+    // R bounds the bands of a GPU line: max_bands, and (max_spread)/(G+1)+1 (each band starts more than G below the last one).
+    const int R=std::max(1,std::min(o.max_bands,o.max_spread/(o.band_bits+1)+1));
+    if(R>64)throw std::invalid_argument("resident products: at most 64 bands per line (min(max_bands, max_spread/(band_bits+1)+1))");
+    if(A.storage)Internal::retain(batch,A.storage);if(!syrk&&B.storage)Internal::retain(batch,B.storage);
+    auto pass=std::make_shared<detail::LinalgPass>();pass->report.m=M;pass->report.n=Nc;pass->report.k=K;
+    if(!M||!Nc){if(C.storage)Internal::retain(batch,C.storage,true);Internal::on_completion(batch,[pass]{pass->done.store(true,std::memory_order_release);});return LinalgTicket(pass);}
+    // Workspace bound (data independent): extended operands of at most rb*lines band rows per side; more makes the whole call exact on the host.
+    const int N=bits/32;const std::size_t eb=std::size_t(bits/8+12);const bool force=o.force_fallback||K>max_k;
+    const std::size_t rb=std::size_t(std::min(R,o.resident_bands)),me_cap=force?0:rb*M,ne_cap=force?0:syrk?me_cap:rb*Nc;
+    Kernels& kern=impl->get(bits);impl->resident_pipelines(kern);
+    int logk=0;while((std::size_t(1)<<logk)<K)++logk;const ModulusTable& mt=impl->modulus_table(kern,bits,logk);
+    const std::size_t Kp=up(std::max<std::size_t>(K,1),64),Mpc=up(me_cap,64),Npc=syrk?Mpc:up(ne_cap,64),hp=Mpc*Kp,rp=2*Kp*Npc;
+    const unsigned Lmax=force?0:mt.max_moduli;unsigned Bm=0,batches=0;
+    if(Lmax){Bm=std::min<unsigned>(Lmax,std::max<unsigned>(group,unsigned(std::min<std::size_t>(plane_budget()/(4*hp+rp),1u<<20))/group*group));batches=(Lmax+Bm-1)/Bm;}
+    const std::size_t acc_bytes=Lmax&&R>1?M*Nc*std::size_t(kern.acc_words)*4:0,res_bytes=std::size_t(Lmax)*Mpc*Npc*2,copy_a=M*K*eb/4,copy_b=syrk?0:K*Nc*eb/4;
+    if(acc_bytes/4>=(std::size_t(1)<<32)||copy_a>=(std::size_t(1)<<32)||copy_b>=(std::size_t(1)<<32))throw std::invalid_argument("resident product: workspace exceeds 32-bit indexing");
+    for(std::size_t bytes:{acc_bytes,res_bytes,std::size_t(Bm)*2*hp,std::size_t(Bm)*rp,copy_a*4})
+        if(bytes>impl->device.maxBufferLength)throw std::invalid_argument("resident product: workspace exceeds the device buffer limit (lower resident_bands)");
+    // Workspaces: per call, and per batch (shared by the calls of this batch; their dispatches run in order).
+    std::shared_ptr<Workspace> call,shared;
+    {std::lock_guard<std::mutex> lock(impl->workspace_mutex);
+        for(auto it=impl->by_batch.begin();it!=impl->by_batch.end();)it=it->second.expired()?impl->by_batch.erase(it):std::next(it);
+        call=Impl::free_space(impl->call_spaces);void* key=(__bridge void*)Internal::command(batch);
+        auto found=impl->by_batch.find(key);if(found!=impl->by_batch.end())shared=found->second.lock();
+        if(!shared){shared=Impl::free_space(impl->batch_spaces);impl->by_batch[key]=shared;}}
+    id<MTLDevice> dev=impl->device;
+    // Views: SYRK lines are columns of A (K x M); GEMM rows of A (M x K) or columns of A (K x M, transposed), and columns of B (K x Nc).
+    const std::size_t ls_line=syrk||ta?1:K,ls_k=syrk||ta?M:1,rs_line=1,rs_k=syrk?M:Nc;
+    id<MTLBuffer> linfo=call->get(dev,"linfo",M*16),lbands=call->get(dev,"lbands",M*std::size_t(R)*8),lmem=call->get(dev,"lmem",me_cap*12),lline=call->get(dev,"lline",M*12),lsum=call->get(dev,"lsum",std::size_t(R+4)*4);
+    id<MTLBuffer> rinfo=linfo,rbands=lbands,rmem=lmem,rline=lline,rsum=lsum;
+    if(!syrk){rinfo=call->get(dev,"rinfo",Nc*16);rbands=call->get(dev,"rbands",Nc*std::size_t(R)*8);rmem=call->get(dev,"rmem",ne_cap*12);rline=call->get(dev,"rline",Nc*12);rsum=call->get(dev,"rsum",std::size_t(R+4)*4);}
+    const unsigned pairs=unsigned(R*R);const std::size_t plan_words=64*std::size_t(3+batches+pairs)+16+12*std::size_t(batches)+4*pairs;
+    id<MTLBuffer> plan=call->get(dev,"plan",plan_words*4),bnd=call->get(dev,"bnd",std::max(2*std::size_t(mt.max_wc),std::size_t(1))*4);
+    id<MTLBuffer> snap_a=call->get(dev,"snap_a",copy_a*4),snap_b=syrk?snap_a:call->get(dev,"snap_b",copy_b*4);
+    id<MTLBuffer> lcat=nil,a1=nil,a0=nil,rcat=nil,res=nil,acc=nil;
+    if(Lmax){lcat=shared->get(dev,"lcat",std::size_t(Bm)*2*hp);a1=shared->get(dev,"a1",std::size_t(Bm)*hp);a0=shared->get(dev,"a0",std::size_t(Bm)*hp);
+        rcat=shared->get(dev,"rcat",std::size_t(Bm)*rp);res=shared->get(dev,"res",res_bytes);if(acc_bytes)acc=shared->get(dev,"acc",acc_bytes);}
+    // With K = 0 the operands are never read; a buffer of one element stands in (binding sizes are validated by the debug layer).
+    id<MTLBuffer> out=C.storage->buffer,abuf=K?A.storage->buffer:call->get(dev,"none",eb),bbuf=syrk?abuf:K?B.storage->buffer:abuf;
+    auto rec_p=sub?kern.reconstruct_sub:kern.reconstruct,fin_p=sub?kern.finish_sub:kern.finish;
+    auto height=[](id<MTLComputePipelineState> p){return std::min<NSUInteger>(8,p.maxTotalThreadsPerThreadgroup/32);};
+    Params base{};base.K=std::uint32_t(K);base.Kp=std::uint32_t(Kp);base.tri=syrk;base.lower=syrk;base.both=syrk;
+    base.ls_line=std::uint32_t(ls_line);base.ls_k=std::uint32_t(ls_k);base.rs_line=std::uint32_t(rs_line);base.rs_k=std::uint32_t(rs_k);base.out_cols=std::uint32_t(Nc);base.out_stride=std::uint32_t(Nc);
+    PlanConst pc{base,std::uint32_t(M),std::uint32_t(Nc),std::uint32_t(R),syrk,std::uint32_t(me_cap),std::uint32_t(ne_cap),Bm,batches,std::uint32_t(kern.acc_words),
+                 std::uint32_t(copy_a),std::uint32_t(copy_b),std::uint32_t(height(kern.left)),std::uint32_t(height(kern.right)),std::uint32_t(height(rec_p)),std::uint32_t(height(fin_p))};
+    // C is final at wait: outputs of host-fallback lines are computed then (from the snapshots of A and B taken in the batch).
+    auto flag=Internal::provisional(batch,C.storage);
+    for(id x:@[linfo,lbands,lmem,lline,lsum,rinfo,rbands,rmem,rline,rsum,plan,bnd,snap_a,snap_b,mt.table,mt.bounds,kern.moduli,kern.recips,kern.inv,
+               kern.left,kern.right,kern.product_res,rec_p,fin_p,kern.analyze,kern.plan_side,kern.plan_final,kern.trivial,kern.mirror,kern.copy,kern.clear])Internal::keep(batch,x);
+    for(id x:{lcat,a1,a0,rcat,res,acc})if(x)Internal::keep(batch,x);
+    const unsigned threads=o.host_threads;const int max_bands=o.max_bands;auto O=C.storage;
+    // The step holds both workspaces (busy until it has run or the unsubmitted batch is destroyed).
+    Internal::on_completion(batch,[=,held=std::make_pair(call,shared)]{
+        LinalgReport& r=pass->report;const auto* h=static_cast<const std::uint32_t*>(plan.contents);
+        const LineInfo* li=static_cast<const LineInfo*>(linfo.contents);const LineInfo* ri=static_cast<const LineInfo*>(rinfo.contents);
+        const bool overflow=h[4],gpu=h[5],any=h[6];std::vector<std::size_t> lc,rc;
+        histogram(li,M,max_bands,r.left_bands,r.left_fallback,lc);
+        if(syrk){r.right_bands=r.left_bands;r.right_fallback=r.left_fallback;rc=lc;}else histogram(ri,Nc,max_bands,r.right_bands,r.right_fallback,rc);
+        count_outputs(r,li,ri,M,Nc,syrk,overflow);r.resident_overflow=overflow;
+        if(gpu){r.gemm_rows=h[0];r.gemm_cols=h[1];r.int8_gemms=3*std::size_t(h[2]);r.zero_copy_output=true;
+            for(unsigned b=0;b<lc.size();++b)for(unsigned c=0;c<(syrk?b+1:rc.size());++c)r.pairs.push_back({b,c,unsigned(lc[b]),unsigned(rc[c]),h[2]});}
+        if(any){auto t=Clock::now();DotFn dot=dot_function(N);auto* c=static_cast<unsigned char*>(O->buffer.contents);
+            const View lv{static_cast<const unsigned char*>(snap_a.contents),eb,ls_line,ls_k,N},rv{static_cast<const unsigned char*>(snap_b.contents),eb,rs_line,rs_k,N};
+            host_items(threads,M,[&](std::size_t i){for(std::size_t j=0;j<(syrk?i+1:Nc);++j){const LineInfo &x=li[i],&y=ri[j];
+                if(x.cls==1||y.cls==1||!(overflow||x.cls==2||y.cls==2))continue;unsigned char* dst=c+(i*Nc+j)*eb;
+                dot(lv.at(i,0),std::ptrdiff_t(lv.k_stride),rv.at(j,0),std::ptrdiff_t(rv.k_stride),K,dst,sub);
+                if(syrk&&!lower_only&&j<i)std::memcpy(c+(j*Nc+i)*eb,dst,eb);}});
+            r.fallback_seconds=since(t);}
+        pass->provisional_reads=flag->load();pass->done.store(true,std::memory_order_release);});
+    // Dispatches; each Internal::compute is preceded by a buffer barrier, so every pass sees the earlier ones (encoding all passes of
+    // a call without the barriers measured no difference).
+    auto start=[&](id<MTLComputePipelineState> p){auto e=Internal::compute(batch);[e setComputePipelineState:p];return e;};
+    const NSUInteger arg0=4*64*NSUInteger(3+batches+pairs);auto arg=[&](unsigned i){return arg0+16*NSUInteger(i);};auto rec=[](unsigned i){return NSUInteger(4*64*i);};
+    auto indirect=[&](id<MTLComputeCommandEncoder> e,unsigned a,MTLSize tg){[e dispatchThreadgroupsWithIndirectBuffer:plan indirectBufferOffset:arg(a) threadsPerThreadgroup:tg];};
+    auto tile=[&](id<MTLComputePipelineState> p){return MTLSizeMake(32,height(p),1);};
+    auto analyze=[&](id<MTLBuffer> src,std::size_t lines,std::size_t line_stride,std::size_t k_stride,id<MTLBuffer> info,id<MTLBuffer> bands){
+        struct {std::uint32_t lines,K,line_stride,k_stride,R,force;std::int32_t G,max_bands,max_spread;} sp{std::uint32_t(lines),std::uint32_t(K),std::uint32_t(line_stride),
+            std::uint32_t(k_stride),std::uint32_t(R),force,o.band_bits,o.max_bands,o.max_spread};
+        auto e=start(kern.analyze);[e setBuffer:src offset:0 atIndex:0];[e setBuffer:info offset:0 atIndex:1];[e setBuffer:bands offset:0 atIndex:2];[e setBytes:&sp length:sizeof sp atIndex:3];
+        if(kern.analyze.threadExecutionWidth!=32||kern.analyze.maxTotalThreadsPerThreadgroup<64)throw std::runtime_error("linalg: analysis needs 32-lane SIMD groups");
+        [e dispatchThreadgroups:MTLSizeMake((lines+1)/2,1,1) threadsPerThreadgroup:MTLSizeMake(64,1,1)];}; // one SIMD group per line, whole groups
+    auto side=[&](std::size_t lines,std::size_t cap,id<MTLBuffer> info,id<MTLBuffer> bands,id<MTLBuffer> mem,id<MTLBuffer> line,id<MTLBuffer> sum){
+        const std::uint32_t sp[3]={std::uint32_t(lines),std::uint32_t(R),std::uint32_t(cap)};const NSUInteger T=std::min<NSUInteger>(std::min<NSUInteger>(1024,up(lines,32)),kern.plan_side.maxTotalThreadsPerThreadgroup/32*32);
+        auto e=start(kern.plan_side);[e setBuffer:info offset:0 atIndex:0];[e setBuffer:bands offset:0 atIndex:1];[e setBuffer:mem offset:0 atIndex:2];
+        [e setBuffer:line offset:0 atIndex:3];[e setBuffer:sum offset:0 atIndex:4];[e setBytes:sp length:sizeof sp atIndex:5];
+        [e dispatchThreadgroups:MTLSizeMake(1,1,1) threadsPerThreadgroup:MTLSizeMake(T,1,1)];};
+    analyze(abuf,M,ls_line,ls_k,linfo,lbands);if(!syrk)analyze(bbuf,Nc,rs_line,rs_k,rinfo,rbands);
+    side(M,me_cap,linfo,lbands,lmem,lline,lsum);if(!syrk)side(Nc,ne_cap,rinfo,rbands,rmem,rline,rsum);
+    {auto e=start(kern.plan_final);[e setBuffer:lsum offset:0 atIndex:0];[e setBuffer:rsum offset:0 atIndex:1];[e setBuffer:plan offset:0 atIndex:2];
+        [e setBuffer:mt.table offset:0 atIndex:3];[e setBuffer:mt.bounds offset:0 atIndex:4];[e setBuffer:bnd offset:0 atIndex:5];[e setBytes:&pc length:sizeof pc atIndex:6];
+        [e dispatchThreads:MTLSizeMake(1,1,1) threadsPerThreadgroup:MTLSizeMake(1,1,1)];}
+    // Snapshots of the operands for the host fallback (no work unless the plan found fallback lines or an overflow).
+    auto snapshot=[&](id<MTLBuffer> src,id<MTLBuffer> dst,std::size_t words,unsigned a){if(!words)return;const std::uint32_t w=std::uint32_t(words);
+        auto e=start(kern.copy);[e setBuffer:src offset:0 atIndex:0];[e setBuffer:dst offset:0 atIndex:1];[e setBytes:&w length:4 atIndex:2];indirect(e,a,MTLSizeMake(256,1,1));};
+    snapshot(abuf,snap_a,copy_a,1);if(!syrk)snapshot(bbuf,snap_b,copy_b,2);
+    if(Lmax){
+        if(acc){const std::uint32_t aw=std::uint32_t(kern.acc_words);auto e=start(kern.clear);[e setBuffer:acc offset:0 atIndex:0];[e setBuffer:plan offset:0 atIndex:1];
+            [e setBytes:&aw length:4 atIndex:2];indirect(e,0,MTLSizeMake(256,1,1));}
+        auto common=[&](id<MTLComputeCommandEncoder> e){[e setBuffer:kern.moduli offset:0 atIndex:11];[e setBuffer:kern.recips offset:0 atIndex:12];};
+        for(unsigned t=0;t<batches;++t){
+            {auto e=start(kern.left);common(e);[e setBuffer:abuf offset:0 atIndex:0];[e setBuffer:lmem offset:0 atIndex:1];[e setBuffer:lcat offset:0 atIndex:2];
+                [e setBuffer:a1 offset:0 atIndex:3];[e setBuffer:a0 offset:0 atIndex:4];[e setBuffer:plan offset:rec(2+t) atIndex:5];[e setBuffer:rcat offset:0 atIndex:6];
+                indirect(e,4+3*t,tile(kern.left));}
+            if(!syrk){auto e=start(kern.right);common(e);[e setBuffer:bbuf offset:0 atIndex:0];[e setBuffer:rmem offset:0 atIndex:1];[e setBuffer:rcat offset:0 atIndex:2];
+                [e setBuffer:plan offset:rec(2+t) atIndex:5];indirect(e,5+3*t,tile(kern.right));}
+            {auto e=start(kern.product_res);common(e);[e setBuffer:lcat offset:0 atIndex:0];[e setBuffer:a1 offset:0 atIndex:1];[e setBuffer:a0 offset:0 atIndex:2];
+                [e setBuffer:rcat offset:0 atIndex:3];[e setBuffer:res offset:0 atIndex:4];[e setBuffer:plan offset:rec(2+t) atIndex:5];[e setBuffer:plan offset:rec(2+batches+pairs) atIndex:6];
+                indirect(e,6+3*t,MTLSizeMake(kern.product_res.threadExecutionWidth*4,1,1));}
+        }
+        for(unsigned q=0;q<pairs;++q){auto e=start(rec_p);common(e);
+            [e setBuffer:res offset:0 atIndex:0];[e setBuffer:kern.inv offset:0 atIndex:2];[e setBuffer:bnd offset:0 atIndex:3];[e setBuffer:lmem offset:0 atIndex:4];
+            [e setBuffer:plan offset:rec(2+batches+q) atIndex:5];[e setBuffer:rmem offset:0 atIndex:6];[e setBuffer:lline offset:0 atIndex:7];[e setBuffer:rline offset:0 atIndex:8];
+            [e setBuffer:out offset:0 atIndex:9];[e setBuffer:acc?acc:lline offset:0 atIndex:10];indirect(e,4+3*batches+q,tile(rec_p));}
+        if(acc){auto e=start(fin_p);[e setBuffer:plan offset:rec(1) atIndex:5];[e setBuffer:lline offset:0 atIndex:7];[e setBuffer:rline offset:0 atIndex:8];
+            [e setBuffer:out offset:0 atIndex:9];[e setBuffer:acc offset:0 atIndex:10];indirect(e,3,tile(fin_p));}
+    }
+    {const std::uint32_t tp[4]={std::uint32_t(M),std::uint32_t(Nc),syrk,sub};auto e=start(kern.trivial);[e setBuffer:linfo offset:0 atIndex:0];[e setBuffer:rinfo offset:0 atIndex:1];
+        [e setBuffer:out offset:0 atIndex:2];[e setBytes:tp length:sizeof tp atIndex:3];[e dispatchThreads:MTLSizeMake(Nc,M,1) threadsPerThreadgroup:tile(kern.trivial)];}
+    if(syrk&&!lower_only){const std::uint32_t n32=std::uint32_t(Nc);auto e=start(kern.mirror);[e setBuffer:out offset:0 atIndex:0];[e setBytes:&n32 length:4 atIndex:1];
+        [e dispatchThreads:MTLSizeMake(Nc,M,1) threadsPerThreadgroup:tile(kern.mirror)];}
+    return LinalgTicket(pass);
+}}
+// ---- Buffer forms of the factorizations and solves: synchronous, the host-array code on the buffers' shared storage ----
+CholeskyInfo Linalg::cholesky_buffers(int bits,const detail::Operand& A,std::size_t n,const detail::Operand& L,const FactorOptions& o){
+    check_bits(bits);check_size(n,1);Claim<Impl> claim(*impl);
+    void* a=claim.add(A,n*n,"cholesky A");void* l=claim.add(L,n*n,"cholesky L");return cholesky(bits,a,n,l,o);
+}
+Timing Linalg::solve_buffers(int bits,int passes,const detail::Operand& L,std::size_t n,const detail::Operand& B,std::size_t nrhs,const detail::Operand& X,const FactorOptions& o){
+    check_bits(bits);check_size(n,nrhs);if(L.storage&&(L.storage==B.storage||L.storage==X.storage))throw std::invalid_argument("triangular solve: X and B must not be L");
+    Claim<Impl> claim(*impl);void* l=claim.add(L,n*n,"solve L");void* b=claim.add(B,n*nrhs,"solve B");void* x=claim.add(X,n*nrhs,"solve X");
+    return passes==3?cholesky_solve(bits,l,n,b,nrhs,x,o):trsm(bits,passes==2,l,n,b,nrhs,x,o);
+}
+QRFactor Linalg::factor_qr_buffer(int bits,const detail::Operand& A,std::size_t m,std::size_t n,const QROptions& o){
+    check_bits(bits);check_size(n,m);Claim<Impl> claim(*impl);void* a=claim.add(A,m*n,"factor_qr A");return factor_qr(bits,a,m,n,o);
+}
+Timing QRFactor::solve_buffers(int bits,const detail::Operand& B,std::size_t nrhs,const detail::Operand& X)const{const auto& f=qr_data(d);
+    if(bits!=f.bits)throw std::invalid_argument("QR solve: buffer precision differs from the factor");
+    if(B.storage&&B.storage==X.storage)throw std::invalid_argument("QR solve: X must not be B");
+    check_size(f.n,nrhs);check_size(1,f.m*nrhs);Claim<Linalg::Impl> claim(*f.owner->impl);
+    const void* b=claim.add(B,f.m*nrhs,"QR solve B");void* x=claim.add(X,f.n*nrhs,"QR solve X");return solve(b,nrhs,x);
+}
+Timing QRFactor::apply_q_buffer(int bits,const detail::Operand& B,std::size_t nrhs,bool transpose)const{const auto& f=qr_data(d);
+    if(bits!=f.bits)throw std::invalid_argument("QR apply_q: buffer precision differs from the factor");
+    check_size(f.n,nrhs);check_size(1,f.m*nrhs);Claim<Linalg::Impl> claim(*f.owner->impl);void* b=claim.add(B,f.m*nrhs,"QR apply_q B");return apply_q(b,nrhs,transpose);
 }
 }

@@ -19,6 +19,9 @@ struct Internal {
     static id<MTLDevice> device(const Engine&);
     static id<MTLCommandQueue> queue(const Engine&);
     static id<MTLDevice> device(const CommandBatch&);        // throws logic_error once submitted or moved
+    // The batch's command buffer: identifies the batch while it, its submission or a completion step of it lives (units share
+    // per-batch workspace between their calls in one batch, whose dispatches run in order).
+    static id<MTLCommandBuffer> command(CommandBatch&);
     // The batch's compute encoder: created on first use (or after a copy), otherwise preceded by a buffer barrier, so each
     // dispatch sees every earlier write of the batch. Call once per dispatch.
     static id<MTLComputeCommandEncoder> compute(CommandBatch&);
