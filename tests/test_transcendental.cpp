@@ -2,8 +2,13 @@
 // (mpfr_*) and complex exp/log (mpc_exp/mpc_log, or an MPFR evaluation of each exact component), bit for bit, on the
 // GPU and the CPU path; powi against an MPFR replay of its documented fused sequence (bit for bit) and mpc_pow_si (ulp
 // statistics). White-box check of the error bounds of the W-word approximations against MPFR at 32W+256 bits.
+// GPU retry rungs (round 44): --force-level k makes GPU levels below k (0 = first pass, 1-3 = rungs) treat every element as
+// undecided, so rung k evaluates every element (k beyond the last GPU rung: the host final step); the report must account
+// for every element. Run with k = 1, 2, 3 over all widths to validate the rung kernels at their working widths.
 // Usage: test_limbforge_transcendental [--cpu-only|--gpu-only] [--points n] [--cpu-points n] [--bound-points n] [--bits b ...]
-//        [--all-widths n] [--no-hard] [--no-bounds] [--verbose-bounds] [--seed s]
+//        [--all-widths n] [--no-hard] [--no-bounds] [--verbose-bounds] [--seed s] [--force-level k] [--retry-threshold t]
+// The GPU object uses gpu_retry_threshold = 0 (GPU rungs for every retry) unless --retry-threshold is given; the default
+// threshold (host ladder for few retries, GPU rungs above it) is checked separately at 256 bits (check_threshold).
 #include "reference.hpp"
 #include "limbforge/transcendental.hpp"
 #include "transcendental_core.hpp"
@@ -11,6 +16,7 @@
 #include <mpc.h>
 #endif
 #include <algorithm>
+#include <array>
 #include <atomic>
 #include <chrono>
 #include <cmath>
@@ -179,13 +185,28 @@ template<int Bits> std::vector<std::pair<Float<Bits>,Float<Bits>>> hard_pairs(){
 }
 // ---- comparisons ----
 struct Tally { std::size_t points=0,mismatches=0,retried=0,unresolved=0;std::size_t resolved[4]={};double gpu=0,wall=0; };
+int forced=0;std::map<int,std::string> rung_info; // bits -> GPU rung words per function
+std::map<int,std::array<std::size_t,5>> width_tally; // bits -> retried, GPU rungs 1-3, host final step (all functions)
+// Report consistency: every retried element is resolved at exactly one rung (or unresolved); under --force-level k every
+// element is retried and none is resolved below rung k.
+void check_report(const TranscendentalReport& r,std::size_t n,int bits,Function f,bool gpu);
 template<int Bits> bool same(const Float<Bits>& a,const Float<Bits>& b){return reference::equal<Bits>(a,b);}
 template<int Bits> std::string show(const Float<Bits>& x){
     if(x.status)return "status "+std::to_string(x.status);if(!x.sign)return "0";
+    if((x.sign!=1&&x.sign!=-1)||!(x.limb[Bits/32-1]>>31)||x.exponent>(1<<30)||x.exponent< -(1<<30)) // not a valid value (e.g. a miscompiled kernel)
+        return "invalid number (sign "+std::to_string(x.sign)+", exponent "+std::to_string(x.exponent)+", top limb "+std::to_string(x.limb[Bits/32-1])+")";
     reference::MP m(Bits);to_mpfr<Bits>(m.x,x);char buf[400];mpfr_snprintf(buf,sizeof buf,"%.40Re (e=%d)",m.x,x.exponent);return buf;
 }
 int failures=0;bool verbose_bounds=false;
 void fail_header(const char* what,int bits,Function f){std::printf("FAIL %s %d-bit %s\n",what,bits,name(f));++failures;}
+void check_report(const TranscendentalReport& r,std::size_t n,int bits,Function f,bool gpu){
+    std::size_t sum=r.unresolved;for(int k=0;k<4;++k)sum+=r.resolved[k];bool good=sum==r.retried&&r.count==n&&(gpu||!r.resolved[3]);
+    if(gpu&&forced>0){good=good&&r.retried==n;for(int k=0;k<forced-1&&k<3;++k)good=good&&!r.resolved[k];}
+    if(!good){fail_header("report",bits,f);std::printf("  count %zu retried %zu resolved %zu/%zu/%zu/%zu unresolved %zu (n %zu, forced %d)\n",r.count,r.retried,
+        r.resolved[0],r.resolved[1],r.resolved[2],r.resolved[3],r.unresolved,n,forced);}
+    if(gpu){auto& w=width_tally[bits];w[0]+=r.retried;for(int k=0;k<3;++k)w[k+1]+=r.resolved[k];w[4]+=r.host_retried();}
+    if(gpu){std::string& s=rung_info[bits];char b[96];std::snprintf(b,sizeof b," %s %d/%d/%d",name(f),r.rung_words[0],r.rung_words[1],r.rung_words[2]);if(s.find(b)==std::string::npos)s+=b;}
+}
 // Runs function f on GPU (or CPU) and compares with the reference.
 template<int Bits> void check_real(Transcendentals* gpu,Function f,const std::vector<Float<Bits>>& a,const std::vector<Float<Bits>>& b,Tally& t,const char* tag){
     std::size_t n=a.size();std::vector<Float<Bits>> out(n),ref(n);
@@ -196,6 +217,7 @@ template<int Bits> void check_real(Transcendentals* gpu,Function f,const std::ve
     std::size_t bad=0;
     for(std::size_t i=0;i<n;++i)if(!same<Bits>(out[i],ref[i])){if(bad<5){if(!bad)fail_header(tag,Bits,f);
         std::printf("  i=%zu a=%s%s%s\n   got %s\n   ref %s\n",i,show<Bits>(a[i]).c_str(),f==Function::atan2?" b=":"",f==Function::atan2?show<Bits>(b[i]).c_str():"",show<Bits>(out[i]).c_str(),show<Bits>(ref[i]).c_str());}++bad;}
+    check_report(rep,n,Bits,f,gpu!=nullptr);
     t.points+=n;t.mismatches+=bad;t.retried+=rep.retried;t.unresolved+=rep.unresolved;for(int r=0;r<4;++r)t.resolved[r]+=rep.resolved[r];t.gpu+=rep.gpu_seconds;t.wall+=rep.wall_seconds;
 }
 template<int Bits> void check_complex(Transcendentals* gpu,Function f,const std::vector<Complex<Bits/32>>& z,Tally& t,const char* tag){
@@ -206,6 +228,7 @@ template<int Bits> void check_complex(Transcendentals* gpu,Function f,const std:
     for(std::size_t i=0;i<n;++i)if(!reference::equal_complex<Bits>(out[i],ref[i])){if(bad<5){if(!bad)fail_header(tag,Bits,f);
         std::printf("  i=%zu z=(%s, %s)\n   got (%s, %s)\n   ref (%s, %s)\n",i,show<Bits>(z[i].re).c_str(),show<Bits>(z[i].im).c_str(),show<Bits>(out[i].re).c_str(),show<Bits>(out[i].im).c_str(),
             show<Bits>(ref[i].re).c_str(),show<Bits>(ref[i].im).c_str());}++bad;}
+    check_report(rep,n,Bits,f,gpu!=nullptr);
     t.points+=n;t.mismatches+=bad;t.retried+=rep.retried;t.unresolved+=rep.unresolved;for(int r=0;r<4;++r)t.resolved[r]+=rep.resolved[r];t.gpu+=rep.gpu_seconds;t.wall+=rep.wall_seconds;
 }
 // Random inputs per function.
@@ -326,33 +349,96 @@ template<int W> void bounds_for(std::size_t points,std::mt19937_64& g){
     }
 }
 }
+// ---- per-rung GPU counts: a host replica of the GPU decisions (same approximations and certify<N,W> at the reported
+// first-pass and rung widths) predicts how many elements each level decides; the report must match exactly. ----
+template<int N,int W> bool decided(Function f,const Number<N>& a,const Number<N>& b){
+    const auto& t=*static_cast<const tr::Tables<W>*>(detail::transcendental_tables(W));const word* bits=detail::two_over_pi_bits();
+    Number<W> X=tr::widen<W>(a),Y=tr::widen<W>(b);tr::Approx<W> r[2];int parts=1;
+    switch(f){case Function::exp:r[0]=tr::exp_approx(X,t,false);break;case Function::expm1:r[0]=tr::exp_approx(X,t,true);break;
+        case Function::log:r[0]=tr::log_approx(X,t);break;case Function::log1p:r[0]=tr::log1p_approx(X,t);break;
+        case Function::sin:r[0]=tr::sin_approx(X,bits,t,false);break;case Function::cos:r[0]=tr::sin_approx(X,bits,t,true);break;
+        case Function::atan2:r[0]=tr::atan2_approx(X,Y,t);break;case Function::complex_exp:tr::cexp_approx(X,Y,bits,t,r[0],r[1]);parts=2;break;
+        default:tr::clog_approx(X,Y,t,r[0],r[1]);parts=2;break;}
+    Number<N> o;bool ok=true;for(int c=0;c<parts;++c)ok=tr::certify<N,W>(r[c].y,r[c].shift,r[c].err,o)&&ok;return ok;
+}
+template<int N,int... Ws> bool decided_at(int W,Function f,const Number<N>& a,const Number<N>& b){
+    bool r=false,found=false;((W==Ws?(found=true,r=decided<N,Ws>(f,a,b)):false),...);
+    if(!found)throw std::runtime_error("rung-count check: width "+std::to_string(W)+" not instantiated (update check_rung_counts)");return r;
+}
+template<int Bits,int... Ws> void check_rung_counts(Transcendentals& gpu,std::size_t points,std::mt19937_64& g){
+    constexpr int N=Bits/32;std::size_t total[4]={};
+    for(Function f:{Function::exp,Function::expm1,Function::log,Function::log1p,Function::sin,Function::cos,Function::atan2,Function::complex_exp,Function::complex_log}){
+        std::vector<Float<Bits>> a,b;
+        if(f==Function::atan2||function_is_complex(f)){for(std::size_t i=0;i<points;++i){a.push_back(random_value<Bits>(g,-3,3));b.push_back(random_value<Bits>(g,-3,3));}
+            for(auto& p:hard_pairs<Bits>()){a.push_back(p.first);b.push_back(p.second);}}
+        else{a=random_real<Bits>(f,points,g);auto h=hard_real<Bits>(f);a.insert(a.end(),h.begin(),h.end());b=a;}
+        const std::size_t n=a.size();TranscendentalReport rep;
+        if(function_is_complex(f)){std::vector<Complex<N>> z(n),o(n);for(std::size_t i=0;i<n;++i)z[i]={a[i],b[i]};gpu.run(Bits,f,z.data(),o.data(),n);}
+        else{std::vector<Float<Bits>> o(n);gpu.run(Bits,f,a.data(),o.data(),n,b.data());}
+        rep=gpu.report();int words[4]={rep.first_words,rep.rung_words[0],rep.rung_words[1],rep.rung_words[2]};
+        std::vector<int> level(n,4);
+        parallel(n,[&](std::size_t lo,std::size_t hi){for(std::size_t i=lo;i<hi;++i)for(int l=0;l<4&&words[l];++l)if(decided_at<N,Ws...>(words[l],f,a[i],b[i])){level[i]=l;break;}});
+        std::size_t want[5]={};for(int l:level)++want[l];int last=1;while(last<4&&words[last])++last;
+        std::size_t host=0;for(int l=last;l<5;++l)host+=want[l];
+        bool ok=rep.retried==n-want[0]&&rep.host_retried()==host;for(int l=1;l<last;++l)ok=ok&&rep.resolved[l-1]==want[l];
+        for(int l=1;l<last;++l)total[l-1]+=want[l];total[3]+=host;
+        if(!ok){fail_header("rung counts",Bits,f);std::printf("  predicted retried %zu rungs %zu/%zu/%zu host %zu; reported %zu, %zu/%zu/%zu, host %zu\n",n-want[0],want[1],want[2],want[3],host,
+            rep.retried,rep.resolved[0],rep.resolved[1],rep.resolved[2],rep.host_retried());}
+    }
+    std::printf("per-rung GPU counts at %d bits equal the host replica (all functions; rung 1/2/3/host: %zu/%zu/%zu/%zu)\n",Bits,total[0],total[1],total[2],total[3]);
+}
+// Host-array retry threshold: few retries go to the host ladder (no GPU rung, report.resolved[3]), many to the GPU rungs
+// (second command buffer); both give the results of the threshold-0 object bit for bit.
+void check_threshold(Transcendentals& gpu0,std::mt19937_64& g){
+    constexpr int Bits=256;Transcendentals def;std::size_t fails=0;
+    for(Function f:{Function::exp,Function::cos,Function::log1p}){
+        auto hard=hard_real<Bits>(f);auto few=random_real<Bits>(f,2000,g);few.insert(few.end(),hard.begin(),hard.end());
+        std::vector<Float<Bits>> many;for(int r=0;r<40;++r)many.insert(many.end(),hard.begin(),hard.end());
+        for(auto* in:{&few,&many}){std::size_t n=in->size();std::vector<Float<Bits>> o0(n),o1(n);
+            gpu0.run(Bits,f,in->data(),o0.data(),n);auto r0=gpu0.report();def.run(Bits,f,in->data(),o1.data(),n);auto r1=def.report();
+            bool host=r1.retried<=TranscendentalOptions{}.gpu_retry_threshold,ok=r0.retried==r1.retried&&r1.retried>0;
+            for(std::size_t i=0;i<n;++i)ok=ok&&reference::equal<Bits>(o0[i],o1[i]);
+            if(host)ok=ok&&r1.resolved[3]+r1.unresolved==r1.retried&&!r1.rung_words[0];
+            else{ok=ok&&r1.rung_words[0]==r0.rung_words[0];for(int k=0;k<4;++k)ok=ok&&r1.resolved[k]==r0.resolved[k];}
+            if(!ok){++fails;fail_header("retry threshold",Bits,f);std::printf("  retried %zu/%zu host route %d\n",r0.retried,r1.retried,int(host));}
+            else std::printf("retry threshold %s: %zu retries -> %s, results equal the GPU-rung object\n",name(f),r1.retried,host?"host ladder":"GPU rungs");}
+    }
+    (void)fails;
+}
 template<int B=64,class F> void by_bits(int bits,F&& f){
     if constexpr(B<=1024){if(bits==B){f(std::integral_constant<int,B>{});return;}by_bits<B+32>(bits,f);}else throw std::invalid_argument("bits must be a multiple of 32 in [64,1024]");
 }
 int main(int argc,char** argv){
     std::setvbuf(stdout,nullptr,_IOLBF,0);
-    bool cpu_only=false;std::size_t points=20000,cpu_points=3000,bound_points=3000,all_points=0;std::vector<int> widths={64,224,256,384,1024};unsigned seed=35;bool bounds=true,gpu_only=false,hard=true;
+    bool cpu_only=false;std::size_t threshold=0;std::size_t points=20000,cpu_points=3000,bound_points=3000,all_points=0;std::vector<int> widths={64,224,256,384,1024};unsigned seed=35;bool bounds=true,gpu_only=false,hard=true;
     for(int i=1;i<argc;++i){std::string s=argv[i];
         if(s=="--cpu-only")cpu_only=true;else if(s=="--points"&&i+1<argc)points=std::stoul(argv[++i]);else if(s=="--cpu-points"&&i+1<argc)cpu_points=std::stoul(argv[++i]);
         else if(s=="--bound-points"&&i+1<argc)bound_points=std::stoul(argv[++i]);else if(s=="--all-widths"&&i+1<argc)all_points=std::stoul(argv[++i]);
+        else if(s=="--force-level"&&i+1<argc)forced=std::stoi(argv[++i]);
+        else if(s=="--retry-threshold"&&i+1<argc)threshold=std::stoul(argv[++i]);
         else if(s=="--seed"&&i+1<argc)seed=unsigned(std::stoul(argv[++i]));else if(s=="--no-bounds")bounds=false;else if(s=="--verbose-bounds")verbose_bounds=true;else if(s=="--gpu-only")gpu_only=true;else if(s=="--no-hard")hard=false;
         else if(s=="--bits"){widths.clear();while(i+1<argc&&argv[i+1][0]!='-')widths.push_back(std::stoi(argv[++i]));}
         else{std::fprintf(stderr,"unknown argument %s\n",argv[i]);return 2;}}
     std::mt19937_64 g(seed);
     if(bounds){std::printf("== error-bound check (W-word approximations vs MPFR at 32W+256 bits)\n");
         bounds_for<4>(bound_points,g);bounds_for<9>(bound_points,g);bounds_for<10>(bound_points,g);bounds_for<14>(bound_points,g);bounds_for<34>(bound_points/3,g);}
-    std::unique_ptr<Transcendentals> gpu;if(!cpu_only){gpu=std::make_unique<Transcendentals>();std::printf("device: %s\n",gpu->device_name().c_str());}
+    std::unique_ptr<Transcendentals> gpu;if(!cpu_only){TranscendentalOptions o;o.gpu_retry_threshold=threshold;gpu=std::make_unique<Transcendentals>(o);std::printf("device: %s\n",gpu->device_name().c_str());}
+    if(forced){detail::transcendental_force_level(forced);std::printf("GPU levels below %d treat every element as undecided\n",forced);}
     auto run=[&](Transcendentals* dev,std::size_t n,bool hard,const std::vector<int>& ws,const char* label){
-        std::map<std::string,Tally> tallies;double powi_ulps=0;
+        std::map<std::string,Tally> tallies;double powi_ulps=0;width_tally.clear();
         for(int b:ws){auto t0=std::chrono::steady_clock::now();
             by_bits(b,[&](auto tag){constexpr int Bits=decltype(tag)::value;run_width<Bits>(dev,n,g,tallies,hard);check_powi<Bits>(dev,n,g,tallies,powi_ulps);});
-            std::printf("  %s %4d bits done in %.1f s\n",label,b,std::chrono::duration<double>(std::chrono::steady_clock::now()-t0).count());std::fflush(stdout);}
+            auto& w=width_tally[b];
+            std::printf("  %s %4d bits done in %.1f s%s%s",label,b,std::chrono::duration<double>(std::chrono::steady_clock::now()-t0).count(),dev?"; GPU rung words:":"",dev?rung_info[b].c_str():"");
+            if(dev)std::printf("; retried %zu (rungs %zu/%zu/%zu, host %zu)",w[0],w[1],w[2],w[3],w[4]);std::printf("\n");w={};std::fflush(stdout);}
         std::printf("== %s summary (%zu random points per function per width%s)\n",label,n,hard?" + hard cases":"");
-        for(auto& [k,t]:tallies)std::printf("  %-12s points %9zu mismatches %zu retried %zu (rung1 %zu, rung2 %zu, rung3 %zu) unresolved %zu retry rate %.2e\n",k.c_str(),t.points,t.mismatches,t.retried,
-            t.resolved[0],t.resolved[1],t.resolved[2],t.unresolved,t.points?double(t.retried)/double(t.points):0.0);
+        for(auto& [k,t]:tallies)std::printf("  %-12s points %9zu mismatches %zu retried %zu (rung1 %zu, rung2 %zu, rung3 %zu, host %zu) unresolved %zu retry rate %.2e\n",k.c_str(),t.points,t.mismatches,t.retried,
+            t.resolved[0],t.resolved[1],t.resolved[2],t.resolved[3],t.unresolved,t.points?double(t.retried)/double(t.points):0.0);
         std::printf("  complex_powi max error vs mpc_pow_si (|k| <= 64, normwise): %.3g ulp\n",powi_ulps);
     };
     if(!gpu_only)run(nullptr,cpu_points,hard,widths,"cpu");
+    if(gpu&&!forced&&!std::getenv("LIMBFORGE_TRANSCENDENTAL_RUNG_WORDS")&&!std::getenv("LIMBFORGE_TRANSCENDENTAL_GUARD_WORDS"))
+        for(int b:widths){if(b==256){check_rung_counts<256,10,14,22,35>(*gpu,2000,g);check_threshold(*gpu,g);}if(b==384)check_rung_counts<384,14,18,29,35>(*gpu,2000,g);if(b==1024)check_rung_counts<1024,34,35>(*gpu,500,g);}
     if(gpu){if(points)run(gpu.get(),points,hard,widths,"gpu");
         if(all_points){std::vector<int> all;for(int b=64;b<=1024;b+=32)all.push_back(b);run(gpu.get(),all_points,hard,all,"gpu all widths");}}
     std::printf(failures?"FAILED (%d)\n":"PASSED\n",failures);return failures?1:0;

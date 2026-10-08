@@ -1,0 +1,195 @@
+# Round 44: every element forced through GPU rung k (--force-level k; k = 4: the host final step), all 31 widths, shipped
+# rung table. ./build/test_limbforge_transcendental --gpu-only --no-bounds --points 0 --all-widths n --force-level k.
+# Apple M5 Max, macOS 26.6.2, 2026-10-08, host load 15-30 (other agents); shipped build (indirect rung dispatch).
+
+== --force-level 1 --all-widths 500
+device: Apple M5 Max
+GPU levels below 1 treat every element as undecided
+  gpu all widths   64 bits done in 6.5 s; GPU rung words: exp 6/8/18 expm1 6/8/18 log 6/8/18 log1p 6/8/18 sin 6/8/18 cos 6/8/18 atan2 6/8/18 complex_exp 6/8/18 complex_log 6/8/18
+  gpu all widths   96 bits done in 12.1 s; GPU rung words: exp 7/10/22 expm1 7/10/22 log 7/10/22 log1p 7/10/22 sin 7/10/22 cos 7/10/22 atan2 7/10/22 complex_exp 7/10/22 complex_log 7/10/22
+  gpu all widths  128 bits done in 8.9 s; GPU rung words: exp 8/14/26 expm1 8/14/26 log 8/14/26 log1p 8/14/26 sin 8/14/26 cos 8/14/26 atan2 8/14/26 complex_exp 8/14/26 complex_log 8/14/26
+  gpu all widths  160 bits done in 9.3 s; GPU rung words: exp 9/14/29 expm1 9/14/29 log 9/14/29 log1p 9/14/29 sin 9/14/29 cos 9/14/29 atan2 9/14/29 complex_exp 9/14/29 complex_log 9/14/29
+  gpu all widths  192 bits done in 10.4 s; GPU rung words: exp 10/18/32 expm1 10/18/32 log 10/18/32 log1p 10/18/32 sin 10/18/32 cos 10/18/32 atan2 10/18/32 complex_exp 10/18/32 complex_log 10/18/32
+  gpu all widths  224 bits done in 10.7 s; GPU rung words: exp 14/18/35 expm1 14/18/35 log 14/18/35 log1p 14/18/35 sin 14/18/35 cos 14/18/35 atan2 14/18/35 complex_exp 14/18/35 complex_log 14/18/35
+  gpu all widths  256 bits done in 9.1 s; GPU rung words: exp 14/22/35 expm1 14/22/35 log 14/22/35 log1p 14/22/35 sin 14/22/35 cos 14/22/35 atan2 14/22/35 complex_exp 14/22/35 complex_log 14/22/35
+  gpu all widths  288 bits done in 16.7 s; GPU rung words: exp 18/22/35 expm1 18/22/35 log 18/22/35 log1p 18/22/35 sin 18/22/35 cos 18/22/35 atan2 18/22/35 complex_exp 18/22/35 complex_log 18/22/35
+  gpu all widths  320 bits done in 13.4 s; GPU rung words: exp 18/26/35 expm1 18/26/35 log 18/26/35 log1p 18/26/35 sin 18/26/35 cos 18/26/35 atan2 18/26/35 complex_exp 18/26/35 complex_log 18/26/35
+  gpu all widths  352 bits done in 12.1 s; GPU rung words: exp 18/26/35 expm1 18/26/35 log 18/26/35 log1p 18/26/35 sin 18/26/35 cos 18/26/35 atan2 18/26/35 complex_exp 18/26/35 complex_log 18/26/35
+  gpu all widths  384 bits done in 8.7 s; GPU rung words: exp 18/29/35 expm1 18/29/35 log 18/29/35 log1p 18/29/35 sin 18/29/35 cos 18/29/35 atan2 18/29/35 complex_exp 18/29/35 complex_log 18/29/35
+  gpu all widths  416 bits done in 14.5 s; GPU rung words: exp 22/30/35 expm1 22/30/35 log 22/30/35 log1p 22/30/35 sin 22/30/35 cos 22/30/35 atan2 22/30/35 complex_exp 22/30/35 complex_log 22/30/35
+  gpu all widths  448 bits done in 14.0 s; GPU rung words: exp 22/32/35 expm1 22/32/35 log 22/32/35 log1p 22/32/35 sin 22/32/35 cos 22/32/35 atan2 22/32/35 complex_exp 22/32/35 complex_log 22/32/35
+  gpu all widths  480 bits done in 10.8 s; GPU rung words: exp 22/34/35 expm1 22/34/35 log 22/34/35 log1p 22/34/35 sin 22/34/35 cos 22/34/35 atan2 22/34/35 complex_exp 22/34/35 complex_log 22/34/35
+  gpu all widths  512 bits done in 11.0 s; GPU rung words: exp 22/35/0 expm1 22/35/0 log 22/35/0 log1p 22/35/0 sin 22/35/0 cos 22/35/0 atan2 22/35/0 complex_exp 22/35/0 complex_log 22/35/0
+  gpu all widths  544 bits done in 13.0 s; GPU rung words: exp 26/35/0 expm1 26/35/0 log 26/35/0 log1p 26/35/0 sin 26/35/0 cos 26/35/0 atan2 26/35/0 complex_exp 26/35/0 complex_log 26/35/0
+  gpu all widths  576 bits done in 21.8 s; GPU rung words: exp 26/35/0 expm1 26/35/0 log 26/35/0 log1p 26/35/0 sin 26/35/0 cos 26/35/0 atan2 26/35/0 complex_exp 26/35/0 complex_log 26/35/0
+  gpu all widths  608 bits done in 10.1 s; GPU rung words: exp 26/35/0 expm1 26/35/0 log 26/35/0 log1p 26/35/0 sin 26/35/0 cos 26/35/0 atan2 26/35/0 complex_exp 26/35/0 complex_log 26/35/0
+  gpu all widths  640 bits done in 10.8 s; GPU rung words: exp 26/35/0 expm1 26/35/0 log 26/35/0 log1p 26/35/0 sin 26/35/0 cos 26/35/0 atan2 26/35/0 complex_exp 26/35/0 complex_log 26/35/0
+  gpu all widths  672 bits done in 11.7 s; GPU rung words: exp 29/35/0 expm1 29/35/0 log 29/35/0 log1p 29/35/0 sin 29/35/0 cos 29/35/0 atan2 29/35/0 complex_exp 29/35/0 complex_log 29/35/0
+  gpu all widths  704 bits done in 17.2 s; GPU rung words: exp 29/35/0 expm1 29/35/0 log 29/35/0 log1p 29/35/0 sin 29/35/0 cos 29/35/0 atan2 29/35/0 complex_exp 29/35/0 complex_log 29/35/0
+  gpu all widths  736 bits done in 16.8 s; GPU rung words: exp 29/35/0 expm1 29/35/0 log 29/35/0 log1p 29/35/0 sin 29/35/0 cos 29/35/0 atan2 29/35/0 complex_exp 29/35/0 complex_log 29/35/0
+  gpu all widths  768 bits done in 14.2 s; GPU rung words: exp 29/35/0 expm1 29/35/0 log 29/35/0 log1p 29/35/0 sin 29/35/0 cos 29/35/0 atan2 29/35/0 complex_exp 29/35/0 complex_log 29/35/0
+  gpu all widths  800 bits done in 15.8 s; GPU rung words: exp 30/35/0 expm1 30/35/0 log 30/35/0 log1p 30/35/0 sin 30/35/0 cos 30/35/0 atan2 30/35/0 complex_exp 30/35/0 complex_log 30/35/0
+  gpu all widths  832 bits done in 23.0 s; GPU rung words: exp 30/35/0 expm1 30/35/0 log 30/35/0 log1p 30/35/0 sin 30/35/0 cos 30/35/0 atan2 30/35/0 complex_exp 30/35/0 complex_log 30/35/0
+  gpu all widths  864 bits done in 16.9 s; GPU rung words: exp 31/35/0 expm1 31/35/0 log 31/35/0 log1p 31/35/0 sin 31/35/0 cos 31/35/0 atan2 31/35/0 complex_exp 31/35/0 complex_log 31/35/0
+  gpu all widths  896 bits done in 12.3 s; GPU rung words: exp 32/35/0 expm1 32/35/0 log 32/35/0 log1p 32/35/0 sin 32/35/0 cos 32/35/0 atan2 32/35/0 complex_exp 32/35/0 complex_log 32/35/0
+  gpu all widths  928 bits done in 15.3 s; GPU rung words: exp 33/35/0 expm1 33/35/0 log 33/35/0 log1p 33/35/0 sin 33/35/0 cos 33/35/0 atan2 33/35/0 complex_exp 33/35/0 complex_log 33/35/0
+  gpu all widths  960 bits done in 19.9 s; GPU rung words: exp 34/35/0 expm1 34/35/0 log 34/35/0 log1p 34/35/0 sin 34/35/0 cos 34/35/0 atan2 34/35/0 complex_exp 34/35/0 complex_log 34/35/0
+  gpu all widths  992 bits done in 53.1 s; GPU rung words: exp 35/0/0 expm1 35/0/0 log 35/0/0 log1p 35/0/0 sin 35/0/0 cos 35/0/0 atan2 35/0/0 complex_exp 35/0/0 complex_log 35/0/0
+  gpu all widths 1024 bits done in 49.2 s; GPU rung words: exp 35/0/0 expm1 35/0/0 log 35/0/0 log1p 35/0/0 sin 35/0/0 cos 35/0/0 atan2 35/0/0 complex_exp 35/0/0 complex_log 35/0/0
+== gpu all widths summary (500 random points per function per width + hard cases)
+  atan2        points     33356 mismatches 0 retried 33356 (rung1 33240, rung2 56, rung3 0, host 60) unresolved 0 retry rate 1.00e+00
+  complex_exp  points     33356 mismatches 0 retried 33356 (rung1 32895, rung2 236, rung3 7, host 218) unresolved 0 retry rate 1.00e+00
+  complex_log  points     33356 mismatches 0 retried 33356 (rung1 32889, rung2 224, rung3 0, host 243) unresolved 0 retry rate 1.00e+00
+  complex_powi points     15500 mismatches 0 retried 0 (rung1 0, rung2 0, rung3 0, host 0) unresolved 0 retry rate 0.00e+00
+  cos          points     23808 mismatches 0 retried 23808 (rung1 23356, rung2 212, rung3 0, host 240) unresolved 0 retry rate 1.00e+00
+  exp          points     23684 mismatches 0 retried 23684 (rung1 23281, rung2 196, rung3 0, host 207) unresolved 0 retry rate 1.00e+00
+  expm1        points     23684 mismatches 0 retried 23684 (rung1 23197, rung2 232, rung3 0, host 255) unresolved 0 retry rate 1.00e+00
+  log          points     20274 mismatches 0 retried 20274 (rung1 20216, rung2 28, rung3 0, host 30) unresolved 0 retry rate 1.00e+00
+  log1p        points     20274 mismatches 0 retried 20274 (rung1 19780, rung2 239, rung3 0, host 255) unresolved 0 retry rate 1.00e+00
+  sin          points     23808 mismatches 0 retried 23808 (rung1 23808, rung2 0, rung3 0, host 0) unresolved 0 retry rate 1.00e+00
+  complex_powi max error vs mpc_pow_si (|k| <= 64, normwise): 22.3 ulp
+PASSED
+
+== --force-level 2 --all-widths 500
+device: Apple M5 Max
+GPU levels below 2 treat every element as undecided
+  gpu all widths   64 bits done in 30.0 s; GPU rung words: exp 6/8/18 expm1 6/8/18 log 6/8/18 log1p 6/8/18 sin 6/8/18 cos 6/8/18 atan2 6/8/18 complex_exp 6/8/18 complex_log 6/8/18
+  gpu all widths   96 bits done in 52.2 s; GPU rung words: exp 7/10/22 expm1 7/10/22 log 7/10/22 log1p 7/10/22 sin 7/10/22 cos 7/10/22 atan2 7/10/22 complex_exp 7/10/22 complex_log 7/10/22
+  gpu all widths  128 bits done in 57.6 s; GPU rung words: exp 8/14/26 expm1 8/14/26 log 8/14/26 log1p 8/14/26 sin 8/14/26 cos 8/14/26 atan2 8/14/26 complex_exp 8/14/26 complex_log 8/14/26
+  gpu all widths  160 bits done in 54.2 s; GPU rung words: exp 9/14/29 expm1 9/14/29 log 9/14/29 log1p 9/14/29 sin 9/14/29 cos 9/14/29 atan2 9/14/29 complex_exp 9/14/29 complex_log 9/14/29
+  gpu all widths  192 bits done in 37.7 s; GPU rung words: exp 10/18/32 expm1 10/18/32 log 10/18/32 log1p 10/18/32 sin 10/18/32 cos 10/18/32 atan2 10/18/32 complex_exp 10/18/32 complex_log 10/18/32
+  gpu all widths  224 bits done in 16.8 s; GPU rung words: exp 14/18/35 expm1 14/18/35 log 14/18/35 log1p 14/18/35 sin 14/18/35 cos 14/18/35 atan2 14/18/35 complex_exp 14/18/35 complex_log 14/18/35
+  gpu all widths  256 bits done in 12.2 s; GPU rung words: exp 14/22/35 expm1 14/22/35 log 14/22/35 log1p 14/22/35 sin 14/22/35 cos 14/22/35 atan2 14/22/35 complex_exp 14/22/35 complex_log 14/22/35
+  gpu all widths  288 bits done in 54.7 s; GPU rung words: exp 18/22/35 expm1 18/22/35 log 18/22/35 log1p 18/22/35 sin 18/22/35 cos 18/22/35 atan2 18/22/35 complex_exp 18/22/35 complex_log 18/22/35
+  gpu all widths  320 bits done in 64.8 s; GPU rung words: exp 18/26/35 expm1 18/26/35 log 18/26/35 log1p 18/26/35 sin 18/26/35 cos 18/26/35 atan2 18/26/35 complex_exp 18/26/35 complex_log 18/26/35
+  gpu all widths  352 bits done in 61.7 s; GPU rung words: exp 18/26/35 expm1 18/26/35 log 18/26/35 log1p 18/26/35 sin 18/26/35 cos 18/26/35 atan2 18/26/35 complex_exp 18/26/35 complex_log 18/26/35
+  gpu all widths  384 bits done in 9.7 s; GPU rung words: exp 18/29/35 expm1 18/29/35 log 18/29/35 log1p 18/29/35 sin 18/29/35 cos 18/29/35 atan2 18/29/35 complex_exp 18/29/35 complex_log 18/29/35
+  gpu all widths  416 bits done in 63.7 s; GPU rung words: exp 22/30/35 expm1 22/30/35 log 22/30/35 log1p 22/30/35 sin 22/30/35 cos 22/30/35 atan2 22/30/35 complex_exp 22/30/35 complex_log 22/30/35
+  gpu all widths  448 bits done in 61.0 s; GPU rung words: exp 22/32/35 expm1 22/32/35 log 22/32/35 log1p 22/32/35 sin 22/32/35 cos 22/32/35 atan2 22/32/35 complex_exp 22/32/35 complex_log 22/32/35
+  gpu all widths  480 bits done in 57.8 s; GPU rung words: exp 22/34/35 expm1 22/34/35 log 22/34/35 log1p 22/34/35 sin 22/34/35 cos 22/34/35 atan2 22/34/35 complex_exp 22/34/35 complex_log 22/34/35
+  gpu all widths  512 bits done in 65.9 s; GPU rung words: exp 22/35/0 expm1 22/35/0 log 22/35/0 log1p 22/35/0 sin 22/35/0 cos 22/35/0 atan2 22/35/0 complex_exp 22/35/0 complex_log 22/35/0
+  gpu all widths  544 bits done in 69.2 s; GPU rung words: exp 26/35/0 expm1 26/35/0 log 26/35/0 log1p 26/35/0 sin 26/35/0 cos 26/35/0 atan2 26/35/0 complex_exp 26/35/0 complex_log 26/35/0
+  gpu all widths  576 bits done in 67.0 s; GPU rung words: exp 26/35/0 expm1 26/35/0 log 26/35/0 log1p 26/35/0 sin 26/35/0 cos 26/35/0 atan2 26/35/0 complex_exp 26/35/0 complex_log 26/35/0
+  gpu all widths  608 bits done in 60.4 s; GPU rung words: exp 26/35/0 expm1 26/35/0 log 26/35/0 log1p 26/35/0 sin 26/35/0 cos 26/35/0 atan2 26/35/0 complex_exp 26/35/0 complex_log 26/35/0
+  gpu all widths  640 bits done in 57.3 s; GPU rung words: exp 26/35/0 expm1 26/35/0 log 26/35/0 log1p 26/35/0 sin 26/35/0 cos 26/35/0 atan2 26/35/0 complex_exp 26/35/0 complex_log 26/35/0
+  gpu all widths  672 bits done in 59.8 s; GPU rung words: exp 29/35/0 expm1 29/35/0 log 29/35/0 log1p 29/35/0 sin 29/35/0 cos 29/35/0 atan2 29/35/0 complex_exp 29/35/0 complex_log 29/35/0
+  gpu all widths  704 bits done in 62.2 s; GPU rung words: exp 29/35/0 expm1 29/35/0 log 29/35/0 log1p 29/35/0 sin 29/35/0 cos 29/35/0 atan2 29/35/0 complex_exp 29/35/0 complex_log 29/35/0
+  gpu all widths  736 bits done in 59.9 s; GPU rung words: exp 29/35/0 expm1 29/35/0 log 29/35/0 log1p 29/35/0 sin 29/35/0 cos 29/35/0 atan2 29/35/0 complex_exp 29/35/0 complex_log 29/35/0
+  gpu all widths  768 bits done in 53.3 s; GPU rung words: exp 29/35/0 expm1 29/35/0 log 29/35/0 log1p 29/35/0 sin 29/35/0 cos 29/35/0 atan2 29/35/0 complex_exp 29/35/0 complex_log 29/35/0
+  gpu all widths  800 bits done in 62.7 s; GPU rung words: exp 30/35/0 expm1 30/35/0 log 30/35/0 log1p 30/35/0 sin 30/35/0 cos 30/35/0 atan2 30/35/0 complex_exp 30/35/0 complex_log 30/35/0
+  gpu all widths  832 bits done in 59.7 s; GPU rung words: exp 30/35/0 expm1 30/35/0 log 30/35/0 log1p 30/35/0 sin 30/35/0 cos 30/35/0 atan2 30/35/0 complex_exp 30/35/0 complex_log 30/35/0
+  gpu all widths  864 bits done in 59.0 s; GPU rung words: exp 31/35/0 expm1 31/35/0 log 31/35/0 log1p 31/35/0 sin 31/35/0 cos 31/35/0 atan2 31/35/0 complex_exp 31/35/0 complex_log 31/35/0
+  gpu all widths  896 bits done in 54.2 s; GPU rung words: exp 32/35/0 expm1 32/35/0 log 32/35/0 log1p 32/35/0 sin 32/35/0 cos 32/35/0 atan2 32/35/0 complex_exp 32/35/0 complex_log 32/35/0
+  gpu all widths  928 bits done in 57.0 s; GPU rung words: exp 33/35/0 expm1 33/35/0 log 33/35/0 log1p 33/35/0 sin 33/35/0 cos 33/35/0 atan2 33/35/0 complex_exp 33/35/0 complex_log 33/35/0
+  gpu all widths  960 bits done in 54.4 s; GPU rung words: exp 34/35/0 expm1 34/35/0 log 34/35/0 log1p 34/35/0 sin 34/35/0 cos 34/35/0 atan2 34/35/0 complex_exp 34/35/0 complex_log 34/35/0
+  gpu all widths  992 bits done in 14.7 s; GPU rung words: exp 35/0/0 expm1 35/0/0 log 35/0/0 log1p 35/0/0 sin 35/0/0 cos 35/0/0 atan2 35/0/0 complex_exp 35/0/0 complex_log 35/0/0
+  gpu all widths 1024 bits done in 14.2 s; GPU rung words: exp 35/0/0 expm1 35/0/0 log 35/0/0 log1p 35/0/0 sin 35/0/0 cos 35/0/0 atan2 35/0/0 complex_exp 35/0/0 complex_log 35/0/0
+== gpu all widths summary (500 random points per function per width + hard cases)
+  atan2        points     33356 mismatches 0 retried 33356 (rung1 0, rung2 31152, rung3 0, host 2204) unresolved 0 retry rate 1.00e+00
+  complex_exp  points     33356 mismatches 0 retried 33356 (rung1 0, rung2 31013, rung3 7, host 2336) unresolved 0 retry rate 1.00e+00
+  complex_log  points     33356 mismatches 0 retried 33356 (rung1 0, rung2 30996, rung3 0, host 2360) unresolved 0 retry rate 1.00e+00
+  complex_powi points     15500 mismatches 0 retried 0 (rung1 0, rung2 0, rung3 0, host 0) unresolved 0 retry rate 0.00e+00
+  cos          points     23808 mismatches 0 retried 23808 (rung1 0, rung2 22064, rung3 0, host 1744) unresolved 0 retry rate 1.00e+00
+  exp          points     23684 mismatches 0 retried 23684 (rung1 0, rung2 21983, rung3 0, host 1701) unresolved 0 retry rate 1.00e+00
+  expm1        points     23684 mismatches 0 retried 23684 (rung1 0, rung2 21935, rung3 0, host 1749) unresolved 0 retry rate 1.00e+00
+  log          points     20274 mismatches 0 retried 20274 (rung1 0, rung2 18940, rung3 0, host 1334) unresolved 0 retry rate 1.00e+00
+  log1p        points     20274 mismatches 0 retried 20274 (rung1 0, rung2 18745, rung3 0, host 1529) unresolved 0 retry rate 1.00e+00
+  sin          points     23808 mismatches 0 retried 23808 (rung1 0, rung2 22272, rung3 0, host 1536) unresolved 0 retry rate 1.00e+00
+  complex_powi max error vs mpc_pow_si (|k| <= 64, normwise): 22.3 ulp
+PASSED
+
+== --force-level 3 --all-widths 500
+device: Apple M5 Max
+GPU levels below 3 treat every element as undecided
+  gpu all widths   64 bits done in 30.6 s; GPU rung words: exp 6/8/18 expm1 6/8/18 log 6/8/18 log1p 6/8/18 sin 6/8/18 cos 6/8/18 atan2 6/8/18 complex_exp 6/8/18 complex_log 6/8/18
+  gpu all widths   96 bits done in 59.5 s; GPU rung words: exp 7/10/22 expm1 7/10/22 log 7/10/22 log1p 7/10/22 sin 7/10/22 cos 7/10/22 atan2 7/10/22 complex_exp 7/10/22 complex_log 7/10/22
+  gpu all widths  128 bits done in 63.9 s; GPU rung words: exp 8/14/26 expm1 8/14/26 log 8/14/26 log1p 8/14/26 sin 8/14/26 cos 8/14/26 atan2 8/14/26 complex_exp 8/14/26 complex_log 8/14/26
+  gpu all widths  160 bits done in 67.4 s; GPU rung words: exp 9/14/29 expm1 9/14/29 log 9/14/29 log1p 9/14/29 sin 9/14/29 cos 9/14/29 atan2 9/14/29 complex_exp 9/14/29 complex_log 9/14/29
+  gpu all widths  192 bits done in 74.6 s; GPU rung words: exp 10/18/32 expm1 10/18/32 log 10/18/32 log1p 10/18/32 sin 10/18/32 cos 10/18/32 atan2 10/18/32 complex_exp 10/18/32 complex_log 10/18/32
+  gpu all widths  224 bits done in 77.5 s; GPU rung words: exp 14/18/35 expm1 14/18/35 log 14/18/35 log1p 14/18/35 sin 14/18/35 cos 14/18/35 atan2 14/18/35 complex_exp 14/18/35 complex_log 14/18/35
+  gpu all widths  256 bits done in 62.1 s; GPU rung words: exp 14/22/35 expm1 14/22/35 log 14/22/35 log1p 14/22/35 sin 14/22/35 cos 14/22/35 atan2 14/22/35 complex_exp 14/22/35 complex_log 14/22/35
+  gpu all widths  288 bits done in 76.7 s; GPU rung words: exp 18/22/35 expm1 18/22/35 log 18/22/35 log1p 18/22/35 sin 18/22/35 cos 18/22/35 atan2 18/22/35 complex_exp 18/22/35 complex_log 18/22/35
+  gpu all widths  320 bits done in 72.0 s; GPU rung words: exp 18/26/35 expm1 18/26/35 log 18/26/35 log1p 18/26/35 sin 18/26/35 cos 18/26/35 atan2 18/26/35 complex_exp 18/26/35 complex_log 18/26/35
+  gpu all widths  352 bits done in 74.1 s; GPU rung words: exp 18/26/35 expm1 18/26/35 log 18/26/35 log1p 18/26/35 sin 18/26/35 cos 18/26/35 atan2 18/26/35 complex_exp 18/26/35 complex_log 18/26/35
+  gpu all widths  384 bits done in 83.0 s; GPU rung words: exp 18/29/35 expm1 18/29/35 log 18/29/35 log1p 18/29/35 sin 18/29/35 cos 18/29/35 atan2 18/29/35 complex_exp 18/29/35 complex_log 18/29/35
+  gpu all widths  416 bits done in 56.8 s; GPU rung words: exp 22/30/35 expm1 22/30/35 log 22/30/35 log1p 22/30/35 sin 22/30/35 cos 22/30/35 atan2 22/30/35 complex_exp 22/30/35 complex_log 22/30/35
+  gpu all widths  448 bits done in 63.9 s; GPU rung words: exp 22/32/35 expm1 22/32/35 log 22/32/35 log1p 22/32/35 sin 22/32/35 cos 22/32/35 atan2 22/32/35 complex_exp 22/32/35 complex_log 22/32/35
+  gpu all widths  480 bits done in 63.1 s; GPU rung words: exp 22/34/35 expm1 22/34/35 log 22/34/35 log1p 22/34/35 sin 22/34/35 cos 22/34/35 atan2 22/34/35 complex_exp 22/34/35 complex_log 22/34/35
+  gpu all widths  512 bits done in 12.4 s; GPU rung words: exp 22/35/0 expm1 22/35/0 log 22/35/0 log1p 22/35/0 sin 22/35/0 cos 22/35/0 atan2 22/35/0 complex_exp 22/35/0 complex_log 22/35/0
+  gpu all widths  544 bits done in 10.9 s; GPU rung words: exp 26/35/0 expm1 26/35/0 log 26/35/0 log1p 26/35/0 sin 26/35/0 cos 26/35/0 atan2 26/35/0 complex_exp 26/35/0 complex_log 26/35/0
+  gpu all widths  576 bits done in 11.8 s; GPU rung words: exp 26/35/0 expm1 26/35/0 log 26/35/0 log1p 26/35/0 sin 26/35/0 cos 26/35/0 atan2 26/35/0 complex_exp 26/35/0 complex_log 26/35/0
+  gpu all widths  608 bits done in 8.7 s; GPU rung words: exp 26/35/0 expm1 26/35/0 log 26/35/0 log1p 26/35/0 sin 26/35/0 cos 26/35/0 atan2 26/35/0 complex_exp 26/35/0 complex_log 26/35/0
+  gpu all widths  640 bits done in 12.9 s; GPU rung words: exp 26/35/0 expm1 26/35/0 log 26/35/0 log1p 26/35/0 sin 26/35/0 cos 26/35/0 atan2 26/35/0 complex_exp 26/35/0 complex_log 26/35/0
+  gpu all widths  672 bits done in 11.3 s; GPU rung words: exp 29/35/0 expm1 29/35/0 log 29/35/0 log1p 29/35/0 sin 29/35/0 cos 29/35/0 atan2 29/35/0 complex_exp 29/35/0 complex_log 29/35/0
+  gpu all widths  704 bits done in 9.6 s; GPU rung words: exp 29/35/0 expm1 29/35/0 log 29/35/0 log1p 29/35/0 sin 29/35/0 cos 29/35/0 atan2 29/35/0 complex_exp 29/35/0 complex_log 29/35/0
+  gpu all widths  736 bits done in 12.0 s; GPU rung words: exp 29/35/0 expm1 29/35/0 log 29/35/0 log1p 29/35/0 sin 29/35/0 cos 29/35/0 atan2 29/35/0 complex_exp 29/35/0 complex_log 29/35/0
+  gpu all widths  768 bits done in 11.0 s; GPU rung words: exp 29/35/0 expm1 29/35/0 log 29/35/0 log1p 29/35/0 sin 29/35/0 cos 29/35/0 atan2 29/35/0 complex_exp 29/35/0 complex_log 29/35/0
+  gpu all widths  800 bits done in 17.2 s; GPU rung words: exp 30/35/0 expm1 30/35/0 log 30/35/0 log1p 30/35/0 sin 30/35/0 cos 30/35/0 atan2 30/35/0 complex_exp 30/35/0 complex_log 30/35/0
+  gpu all widths  832 bits done in 11.7 s; GPU rung words: exp 30/35/0 expm1 30/35/0 log 30/35/0 log1p 30/35/0 sin 30/35/0 cos 30/35/0 atan2 30/35/0 complex_exp 30/35/0 complex_log 30/35/0
+  gpu all widths  864 bits done in 12.9 s; GPU rung words: exp 31/35/0 expm1 31/35/0 log 31/35/0 log1p 31/35/0 sin 31/35/0 cos 31/35/0 atan2 31/35/0 complex_exp 31/35/0 complex_log 31/35/0
+  gpu all widths  896 bits done in 10.1 s; GPU rung words: exp 32/35/0 expm1 32/35/0 log 32/35/0 log1p 32/35/0 sin 32/35/0 cos 32/35/0 atan2 32/35/0 complex_exp 32/35/0 complex_log 32/35/0
+  gpu all widths  928 bits done in 12.6 s; GPU rung words: exp 33/35/0 expm1 33/35/0 log 33/35/0 log1p 33/35/0 sin 33/35/0 cos 33/35/0 atan2 33/35/0 complex_exp 33/35/0 complex_log 33/35/0
+  gpu all widths  960 bits done in 12.5 s; GPU rung words: exp 34/35/0 expm1 34/35/0 log 34/35/0 log1p 34/35/0 sin 34/35/0 cos 34/35/0 atan2 34/35/0 complex_exp 34/35/0 complex_log 34/35/0
+  gpu all widths  992 bits done in 9.8 s; GPU rung words: exp 35/0/0 expm1 35/0/0 log 35/0/0 log1p 35/0/0 sin 35/0/0 cos 35/0/0 atan2 35/0/0 complex_exp 35/0/0 complex_log 35/0/0
+  gpu all widths 1024 bits done in 10.2 s; GPU rung words: exp 35/0/0 expm1 35/0/0 log 35/0/0 log1p 35/0/0 sin 35/0/0 cos 35/0/0 atan2 35/0/0 complex_exp 35/0/0 complex_log 35/0/0
+== gpu all widths summary (500 random points per function per width + hard cases)
+  atan2        points     33356 mismatches 0 retried 33356 (rung1 0, rung2 0, rung3 15064, host 18292) unresolved 0 retry rate 1.00e+00
+  complex_exp  points     33356 mismatches 0 retried 33356 (rung1 0, rung2 0, rung3 15060, host 18296) unresolved 0 retry rate 1.00e+00
+  complex_log  points     33356 mismatches 0 retried 33356 (rung1 0, rung2 0, rung3 15064, host 18292) unresolved 0 retry rate 1.00e+00
+  complex_powi points     15500 mismatches 0 retried 0 (rung1 0, rung2 0, rung3 0, host 0) unresolved 0 retry rate 0.00e+00
+  cos          points     23808 mismatches 0 retried 23808 (rung1 0, rung2 0, rung3 10752, host 13056) unresolved 0 retry rate 1.00e+00
+  exp          points     23684 mismatches 0 retried 23684 (rung1 0, rung2 0, rung3 10696, host 12988) unresolved 0 retry rate 1.00e+00
+  expm1        points     23684 mismatches 0 retried 23684 (rung1 0, rung2 0, rung3 10696, host 12988) unresolved 0 retry rate 1.00e+00
+  log          points     20274 mismatches 0 retried 20274 (rung1 0, rung2 0, rung3 9156, host 11118) unresolved 0 retry rate 1.00e+00
+  log1p        points     20274 mismatches 0 retried 20274 (rung1 0, rung2 0, rung3 9156, host 11118) unresolved 0 retry rate 1.00e+00
+  sin          points     23808 mismatches 0 retried 23808 (rung1 0, rung2 0, rung3 10752, host 13056) unresolved 0 retry rate 1.00e+00
+  complex_powi max error vs mpc_pow_si (|k| <= 64, normwise): 22.3 ulp
+PASSED
+
+== --force-level 4 --all-widths 300
+device: Apple M5 Max
+GPU levels below 4 treat every element as undecided
+  gpu all widths   64 bits done in 2.8 s; GPU rung words: exp 6/8/18 expm1 6/8/18 log 6/8/18 log1p 6/8/18 sin 6/8/18 cos 6/8/18 atan2 6/8/18 complex_exp 6/8/18 complex_log 6/8/18
+  gpu all widths   96 bits done in 5.2 s; GPU rung words: exp 7/10/22 expm1 7/10/22 log 7/10/22 log1p 7/10/22 sin 7/10/22 cos 7/10/22 atan2 7/10/22 complex_exp 7/10/22 complex_log 7/10/22
+  gpu all widths  128 bits done in 4.9 s; GPU rung words: exp 8/14/26 expm1 8/14/26 log 8/14/26 log1p 8/14/26 sin 8/14/26 cos 8/14/26 atan2 8/14/26 complex_exp 8/14/26 complex_log 8/14/26
+  gpu all widths  160 bits done in 5.4 s; GPU rung words: exp 9/14/29 expm1 9/14/29 log 9/14/29 log1p 9/14/29 sin 9/14/29 cos 9/14/29 atan2 9/14/29 complex_exp 9/14/29 complex_log 9/14/29
+  gpu all widths  192 bits done in 5.7 s; GPU rung words: exp 10/18/32 expm1 10/18/32 log 10/18/32 log1p 10/18/32 sin 10/18/32 cos 10/18/32 atan2 10/18/32 complex_exp 10/18/32 complex_log 10/18/32
+  gpu all widths  224 bits done in 6.2 s; GPU rung words: exp 14/18/35 expm1 14/18/35 log 14/18/35 log1p 14/18/35 sin 14/18/35 cos 14/18/35 atan2 14/18/35 complex_exp 14/18/35 complex_log 14/18/35
+  gpu all widths  256 bits done in 4.9 s; GPU rung words: exp 14/22/35 expm1 14/22/35 log 14/22/35 log1p 14/22/35 sin 14/22/35 cos 14/22/35 atan2 14/22/35 complex_exp 14/22/35 complex_log 14/22/35
+  gpu all widths  288 bits done in 5.4 s; GPU rung words: exp 18/22/35 expm1 18/22/35 log 18/22/35 log1p 18/22/35 sin 18/22/35 cos 18/22/35 atan2 18/22/35 complex_exp 18/22/35 complex_log 18/22/35
+  gpu all widths  320 bits done in 8.6 s; GPU rung words: exp 18/26/35 expm1 18/26/35 log 18/26/35 log1p 18/26/35 sin 18/26/35 cos 18/26/35 atan2 18/26/35 complex_exp 18/26/35 complex_log 18/26/35
+  gpu all widths  352 bits done in 8.6 s; GPU rung words: exp 18/26/35 expm1 18/26/35 log 18/26/35 log1p 18/26/35 sin 18/26/35 cos 18/26/35 atan2 18/26/35 complex_exp 18/26/35 complex_log 18/26/35
+  gpu all widths  384 bits done in 4.9 s; GPU rung words: exp 18/29/35 expm1 18/29/35 log 18/29/35 log1p 18/29/35 sin 18/29/35 cos 18/29/35 atan2 18/29/35 complex_exp 18/29/35 complex_log 18/29/35
+  gpu all widths  416 bits done in 5.3 s; GPU rung words: exp 22/30/35 expm1 22/30/35 log 22/30/35 log1p 22/30/35 sin 22/30/35 cos 22/30/35 atan2 22/30/35 complex_exp 22/30/35 complex_log 22/30/35
+  gpu all widths  448 bits done in 5.7 s; GPU rung words: exp 22/32/35 expm1 22/32/35 log 22/32/35 log1p 22/32/35 sin 22/32/35 cos 22/32/35 atan2 22/32/35 complex_exp 22/32/35 complex_log 22/32/35
+  gpu all widths  480 bits done in 6.1 s; GPU rung words: exp 22/34/35 expm1 22/34/35 log 22/34/35 log1p 22/34/35 sin 22/34/35 cos 22/34/35 atan2 22/34/35 complex_exp 22/34/35 complex_log 22/34/35
+  gpu all widths  512 bits done in 6.4 s; GPU rung words: exp 22/35/0 expm1 22/35/0 log 22/35/0 log1p 22/35/0 sin 22/35/0 cos 22/35/0 atan2 22/35/0 complex_exp 22/35/0 complex_log 22/35/0
+  gpu all widths  544 bits done in 8.1 s; GPU rung words: exp 26/35/0 expm1 26/35/0 log 26/35/0 log1p 26/35/0 sin 26/35/0 cos 26/35/0 atan2 26/35/0 complex_exp 26/35/0 complex_log 26/35/0
+  gpu all widths  576 bits done in 10.5 s; GPU rung words: exp 26/35/0 expm1 26/35/0 log 26/35/0 log1p 26/35/0 sin 26/35/0 cos 26/35/0 atan2 26/35/0 complex_exp 26/35/0 complex_log 26/35/0
+  gpu all widths  608 bits done in 5.7 s; GPU rung words: exp 26/35/0 expm1 26/35/0 log 26/35/0 log1p 26/35/0 sin 26/35/0 cos 26/35/0 atan2 26/35/0 complex_exp 26/35/0 complex_log 26/35/0
+  gpu all widths  640 bits done in 5.8 s; GPU rung words: exp 26/35/0 expm1 26/35/0 log 26/35/0 log1p 26/35/0 sin 26/35/0 cos 26/35/0 atan2 26/35/0 complex_exp 26/35/0 complex_log 26/35/0
+  gpu all widths  672 bits done in 6.2 s; GPU rung words: exp 29/35/0 expm1 29/35/0 log 29/35/0 log1p 29/35/0 sin 29/35/0 cos 29/35/0 atan2 29/35/0 complex_exp 29/35/0 complex_log 29/35/0
+  gpu all widths  704 bits done in 6.3 s; GPU rung words: exp 29/35/0 expm1 29/35/0 log 29/35/0 log1p 29/35/0 sin 29/35/0 cos 29/35/0 atan2 29/35/0 complex_exp 29/35/0 complex_log 29/35/0
+  gpu all widths  736 bits done in 6.7 s; GPU rung words: exp 29/35/0 expm1 29/35/0 log 29/35/0 log1p 29/35/0 sin 29/35/0 cos 29/35/0 atan2 29/35/0 complex_exp 29/35/0 complex_log 29/35/0
+  gpu all widths  768 bits done in 8.0 s; GPU rung words: exp 29/35/0 expm1 29/35/0 log 29/35/0 log1p 29/35/0 sin 29/35/0 cos 29/35/0 atan2 29/35/0 complex_exp 29/35/0 complex_log 29/35/0
+  gpu all widths  800 bits done in 10.7 s; GPU rung words: exp 30/35/0 expm1 30/35/0 log 30/35/0 log1p 30/35/0 sin 30/35/0 cos 30/35/0 atan2 30/35/0 complex_exp 30/35/0 complex_log 30/35/0
+  gpu all widths  832 bits done in 7.5 s; GPU rung words: exp 30/35/0 expm1 30/35/0 log 30/35/0 log1p 30/35/0 sin 30/35/0 cos 30/35/0 atan2 30/35/0 complex_exp 30/35/0 complex_log 30/35/0
+  gpu all widths  864 bits done in 7.9 s; GPU rung words: exp 31/35/0 expm1 31/35/0 log 31/35/0 log1p 31/35/0 sin 31/35/0 cos 31/35/0 atan2 31/35/0 complex_exp 31/35/0 complex_log 31/35/0
+  gpu all widths  896 bits done in 5.7 s; GPU rung words: exp 32/35/0 expm1 32/35/0 log 32/35/0 log1p 32/35/0 sin 32/35/0 cos 32/35/0 atan2 32/35/0 complex_exp 32/35/0 complex_log 32/35/0
+  gpu all widths  928 bits done in 5.9 s; GPU rung words: exp 33/35/0 expm1 33/35/0 log 33/35/0 log1p 33/35/0 sin 33/35/0 cos 33/35/0 atan2 33/35/0 complex_exp 33/35/0 complex_log 33/35/0
+  gpu all widths  960 bits done in 6.1 s; GPU rung words: exp 34/35/0 expm1 34/35/0 log 34/35/0 log1p 34/35/0 sin 34/35/0 cos 34/35/0 atan2 34/35/0 complex_exp 34/35/0 complex_log 34/35/0
+  gpu all widths  992 bits done in 8.5 s; GPU rung words: exp 35/0/0 expm1 35/0/0 log 35/0/0 log1p 35/0/0 sin 35/0/0 cos 35/0/0 atan2 35/0/0 complex_exp 35/0/0 complex_log 35/0/0
+  gpu all widths 1024 bits done in 8.4 s; GPU rung words: exp 35/0/0 expm1 35/0/0 log 35/0/0 log1p 35/0/0 sin 35/0/0 cos 35/0/0 atan2 35/0/0 complex_exp 35/0/0 complex_log 35/0/0
+== gpu all widths summary (300 random points per function per width + hard cases)
+  atan2        points     27156 mismatches 0 retried 27156 (rung1 0, rung2 0, rung3 0, host 27156) unresolved 0 retry rate 1.00e+00
+  complex_exp  points     27156 mismatches 0 retried 27156 (rung1 0, rung2 0, rung3 0, host 27156) unresolved 0 retry rate 1.00e+00
+  complex_log  points     27156 mismatches 0 retried 27156 (rung1 0, rung2 0, rung3 0, host 27156) unresolved 0 retry rate 1.00e+00
+  complex_powi points      9300 mismatches 0 retried 0 (rung1 0, rung2 0, rung3 0, host 0) unresolved 0 retry rate 0.00e+00
+  cos          points     17608 mismatches 0 retried 17608 (rung1 0, rung2 0, rung3 0, host 17608) unresolved 0 retry rate 1.00e+00
+  exp          points     17484 mismatches 0 retried 17484 (rung1 0, rung2 0, rung3 0, host 17484) unresolved 0 retry rate 1.00e+00
+  expm1        points     17484 mismatches 0 retried 17484 (rung1 0, rung2 0, rung3 0, host 17484) unresolved 0 retry rate 1.00e+00
+  log          points     14074 mismatches 0 retried 14074 (rung1 0, rung2 0, rung3 0, host 14074) unresolved 0 retry rate 1.00e+00
+  log1p        points     14074 mismatches 0 retried 14074 (rung1 0, rung2 0, rung3 0, host 14074) unresolved 0 retry rate 1.00e+00
+  sin          points     17608 mismatches 0 retried 17608 (rung1 0, rung2 0, rung3 0, host 17608) unresolved 0 retry rate 1.00e+00
+  complex_powi max error vs mpc_pow_si (|k| <= 64, normwise): 20.4 ulp
+PASSED

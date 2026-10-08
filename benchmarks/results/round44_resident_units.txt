@@ -1,0 +1,24 @@
+# Round 44: ./build/test_limbforge_resident_units (full). Apple M5 Max, macOS 26.6.2, 2026-10-08, host load 15-30 (other agents); shipped build (indirect rung dispatch).
+64 bits real: resident poly_eval(_jet) and norms equal the host-array calls
+64 bits complex: resident poly_eval(_jet) and norms equal the host-array calls
+224 bits real: resident poly_eval(_jet) and norms equal the host-array calls
+224 bits complex: resident poly_eval(_jet) and norms equal the host-array calls
+256 bits real: resident poly_eval(_jet) and norms equal the host-array calls
+256 bits complex: resident poly_eval(_jet) and norms equal the host-array calls
+384 bits real: resident poly_eval(_jet) and norms equal the host-array calls
+384 bits complex: resident poly_eval(_jet) and norms equal the host-array calls
+1024 bits real: resident poly_eval(_jet) and norms equal the host-array calls
+1024 bits complex: resident poly_eval(_jet) and norms equal the host-array calls
+64 bits: resident transcendentals (5 functions, in place and separate) equal the host-array calls
+224 bits: resident transcendentals (5 functions, in place and separate) equal the host-array calls
+256 bits: resident transcendentals (10 functions, in place and separate) equal the host-array calls
+384 bits: resident transcendentals (10 functions, in place and separate) equal the host-array calls
+1024 bits: resident transcendentals (5 functions, in place and separate) equal the host-array calls
+resident retries exercised: 119
+chains: vector recurrence -> norms, complex_mul -> complex exp -> poly_eval (224/384), in-place exp with retries, engine op -> tree passes
+final reads: later operations in the batch read GPU-resolved outputs (rung 1/2/3/host: 9/89/2/55)
+forced levels: rung 1/2/3 evaluate every element; host final step marks in-batch reads provisional
+ownership: foreign/busy/submitted/provisional buffers and shape errors rejected; discarded and dropped submissions handled
+lifetime: batch, submission and ticket outlive units and engine
+concurrent: two threads share the units' pipeline caches (288 bits compiled concurrently)
+All resident unit checks passed.

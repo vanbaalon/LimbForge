@@ -3,6 +3,15 @@
 // first call per width and function compiles its pipeline: reported separately). GPU results are checked bit for bit
 // against the MPFR/MPC results of the same run.
 // Usage: transcendental_limbforge [--repeats r] [--sizes n ...] [--bits b ...] [--functions f ...] [--serial-cap n]
+//
+// Round 44 (--retries): GPU-side retries. Host-array and resident (one pass per CommandBatch, Submission timing) wall and
+// device times without MPFR, for random inputs and inputs with a fraction --hard p of hard cases (short dyadics such as
+// exp(2^-32N), cos(2^-16N), log1p(2^-32N), complex exp/log near 1, resolved at the second or third retry rung). The resident
+// result is checked bitwise against the host-array call. Compiles against the round-35/39 API as well (host_retried falls
+// back to `retried`), so the same source measures the previous library (host retries) for before/after comparisons.
+// Each row first keeps the GPU busy with its own work for --gpu-warm seconds (default 0.3) so that it sees warm clocks.
+// Usage: transcendental_limbforge --retries [--repeats r] [--sizes n ...] [--bits b ...] [--functions f ...] [--hard p ...]
+//        [--gpu-warm s] [--retry-threshold t] (TranscendentalOptions::gpu_retry_threshold of the host-array calls)
 #include "benchmark_support.hpp"
 #include "limbforge/transcendental.hpp"
 #include <mpc.h>
@@ -55,17 +64,70 @@ template<int Bits> Row measure(Transcendentals& tr,Workers& w,Function f,std::si
     for(std::size_t i=0;i<nc;++i){mpc_clear(mz[i]);mpc_clear(mo[i]);}
     return {Bits,fname(f),n,compile,quantile(dev,.5),quantile(wall,.5),quantile(wall,0),quantile(serial,.5),quantile(pool,.5),retried,bad,repeats};
 }
+// ---- --retries: host-array and resident timings, random and hard-case-heavy inputs ----
+template<class R> auto host_count(const R& r,int)->decltype(r.host_retried()){return r.host_retried();}
+template<class O> auto set_threshold(O& o,std::size_t t,int)->decltype(void(o.gpu_retry_threshold=t)){o.gpu_retry_threshold=t;}
+template<class O> void set_threshold(O&,std::size_t,long){} // before round 44: no threshold
+template<class R> std::size_t host_count(const R& r,long){return r.retried;} // before round 44: every retry ran on the host
+// Hard inputs (deterministic cycle): short dyadics whose results lie within ~|x|^3 of a rounding midpoint.
+template<int Bits> Float<Bits> hard_real(Function f,std::size_t j){
+    constexpr int N=Bits/32;static const int e_exp[]={-32*N,1-32*N,-32*N-1},e_cos[]={-16*N,-16*N-1,-16*N+1};
+    Float<Bits> x=zero<N>();x.limb[N-1]=0x80000000u;x.limb[0]=word(j/6%3);x.sign=j%2?-1:1;
+    x.exponent=(f==Function::cos||f==Function::sin)?e_cos[j/2%3]:e_exp[j/2%3];
+    if(f==Function::log){x.exponent=0;x.sign=1;x.limb[0]=word(1+j%3);} // 1 + small: log close to x - 1
+    if(f==Function::log1p)x.sign=1;
+    return x;
+}
+template<int Bits> Complex<Bits/32> hard_complex(Function f,std::size_t j){
+    constexpr int N=Bits/32;Float<Bits> one=zero<N>(),tiny=zero<N>();one.limb[N-1]=tiny.limb[N-1]=0x80000000u;one.sign=tiny.sign=1;
+    tiny.exponent=f==Function::complex_exp?-32*N:-16*N;tiny.limb[0]=word(j%3);if(j%2)tiny.sign=-1;
+    if(f==Function::complex_exp){Float<Bits> t2=tiny;t2.exponent=-16*N;return j%4<2?Complex<N>{tiny,zero<N>()}:Complex<N>{tiny,t2};}
+    return {one,tiny}; // log|z| of (1, 2^-16N): log1p of 2^-32N
+}
+struct RetryRow { double host_dev=0,host_wall=0,res_dev=0,res_wall=0;std::size_t retried=0,host=0,rung[3]={};std::size_t mismatches=0; };
+template<int Bits> RetryRow measure_retries(Engine& e,Transcendentals& tr,Function f,std::size_t n,double hard,int repeats){
+    constexpr int N=Bits/32;std::mt19937_64 g(n*17+Bits+int(f));const bool cx=function_is_complex(f);
+    std::vector<Float<Bits>> a(cx?0:n),b(cx?0:n),out(cx?0:n),res(cx?0:n);std::vector<Complex<N>> z(cx?n:0),zout(cx?n:0),zres(cx?n:0);
+    const std::size_t stride=hard>0?std::max<std::size_t>(1,std::size_t(1/hard)):0;std::size_t h=0;
+    for(std::size_t i=0;i<n;++i){bool hc=stride&&i%stride==0;
+        if(cx){z[i]=f==Function::complex_exp?Complex<N>{value<Bits>(g,-10,4),value<Bits>(g,-10,7)}:Complex<N>{value<Bits>(g,-60,60),value<Bits>(g,-60,60)};if(hc)z[i]=hard_complex<Bits>(f,h++);}
+        else{a[i]=f==Function::exp?value<Bits>(g,-10,5):(f==Function::log||f==Function::log1p)?value<Bits>(g,-60,60,1):value<Bits>(g,-10,7);b[i]=value<Bits>(g,-10,7);if(hc)a[i]=hard_real<Bits>(f,h++);}}
+    auto host=[&]{return cx?tr.run(Bits,f,z.data(),zout.data(),n):tr.run(Bits,f,a.data(),out.data(),n,b.data());};
+    auto A=cx?Buffer<Float<Bits>>():e.make_buffer<Float<Bits>>(n),B=cx?Buffer<Float<Bits>>():e.make_buffer<Float<Bits>>(n),O=cx?Buffer<Float<Bits>>():e.make_buffer<Float<Bits>>(n);
+    auto Z=cx?e.make_buffer<Complex<N>>(n):Buffer<Complex<N>>(),ZO=cx?e.make_buffer<Complex<N>>(n):Buffer<Complex<N>>();
+    if(cx)Z.upload(z.data(),n);else{A.upload(a.data(),n);B.upload(b.data(),n);}
+    auto resident=[&]{auto batch=e.batch();auto t=cx?tr.run(batch,f,Z,ZO):f==Function::atan2?tr.run(batch,f,A,B,O):tr.run(batch,f,A,O);auto s=batch.submit();return s.wait();};
+    tr.prewarm(Bits,f);host();resident();keep_gpu_busy([&]{host();resident();}); // warm clocks (docs/gpu-codegen.md section 1)
+    RetryRow r;std::vector<double> hd,hw,rd,rw;
+    for(int k=0;k<repeats;++k){auto t=host();hd.push_back(t.gpu_seconds);hw.push_back(t.wall_seconds);auto u=resident();rd.push_back(u.gpu_seconds);rw.push_back(u.wall_seconds);}
+    const auto& rep=tr.report();r.retried=rep.retried;r.host=host_count(rep,0);for(int k=0;k<3;++k)r.rung[k]=rep.resolved[k];
+    if(cx){ZO.download(zres.data(),n);for(std::size_t i=0;i<n;++i)if(!reference::equal_complex<Bits>(zres[i],zout[i]))++r.mismatches;}
+    else{O.download(res.data(),n);for(std::size_t i=0;i<n;++i)if(!reference::equal<Bits>(res[i],out[i]))++r.mismatches;}
+    r.host_dev=quantile(hd,.5);r.host_wall=quantile(hw,.5);r.res_dev=quantile(rd,.5);r.res_wall=quantile(rw,.5);return r;
+}
 template<int Bits=64,class F> void by_bits(int bits,F&& f){if constexpr(Bits<=1024){if(bits==Bits){f(std::integral_constant<int,Bits>{});return;}by_bits<Bits+32>(bits,f);}}
 }
 int main(int argc,char** argv){try{
     int repeats=5;std::size_t serial_cap=100000;std::vector<std::size_t> sizes={10000,100000,1000000};std::vector<int> widths={224,256,384};
     std::vector<Function> fs={Function::exp,Function::log,Function::sin,Function::complex_exp,Function::complex_log,Function::complex_powi};
+    bool retries=false;std::vector<double> hard={0,0.01};long threshold=-1;
     for(int i=1;i<argc;++i){std::string s=argv[i];
-        if(s=="--repeats"&&i+1<argc)repeats=std::stoi(argv[++i]);else if(s=="--serial-cap"&&i+1<argc)serial_cap=std::stoul(argv[++i]);
+        if(s=="--retries")retries=true;else if(s=="--retry-threshold"&&i+1<argc)threshold=std::stol(argv[++i]);else if(s=="--gpu-warm"&&i+1<argc)gpu_warm_seconds=std::stod(argv[++i]);else if(s=="--hard"){hard.clear();while(i+1<argc&&argv[i+1][0]!='-')hard.push_back(std::stod(argv[++i]));}
+        else if(s=="--repeats"&&i+1<argc)repeats=std::stoi(argv[++i]);else if(s=="--serial-cap"&&i+1<argc)serial_cap=std::stoul(argv[++i]);
         else if(s=="--sizes"){sizes.clear();while(i+1<argc&&argv[i+1][0]!='-')sizes.push_back(std::stoul(argv[++i]));}
         else if(s=="--bits"){widths.clear();while(i+1<argc&&argv[i+1][0]!='-')widths.push_back(std::stoi(argv[++i]));}
         else if(s=="--functions"){fs.clear();while(i+1<argc&&argv[i+1][0]!='-'){std::string n=argv[++i];for(int q=0;q<10;++q)if(n==fname(Function(q)))fs.push_back(Function(q));}}
         else{std::cerr<<"unknown argument "<<s<<'\n';return 2;}}
+    if(retries){if(gpu_warm_seconds<=0)gpu_warm_seconds=0.3;
+        Engine e;TranscendentalOptions o;if(threshold>=0)set_threshold(o,std::size_t(threshold),0);Transcendentals tr(e,o);
+        std::cerr<<tr.device_name()<<"; host-array and resident passes, medians of "<<repeats<<"\n";
+        std::cout<<std::setprecision(5)<<"bits,function,n,hard_fraction,repeats,host_device_ms,host_wall_ms,resident_device_ms,resident_wall_ms,retried,rung1,rung2,rung3,host_retried,resident_mismatches\n";
+        for(int b:widths)for(Function f:fs)for(double hf:hard)for(std::size_t n:sizes)by_bits(b,[&](auto tag){constexpr int B=decltype(tag)::value;if(f==Function::complex_powi)return;
+            RetryRow r=measure_retries<B>(e,tr,f,n,hf,repeats);
+            std::cout<<B<<','<<fname(f)<<','<<n<<','<<hf<<','<<repeats<<','<<1e3*r.host_dev<<','<<1e3*r.host_wall<<','<<1e3*r.res_dev<<','<<1e3*r.res_wall<<','
+                <<r.retried<<','<<r.rung[0]<<','<<r.rung[1]<<','<<r.rung[2]<<','<<r.host<<','<<r.mismatches<<std::endl;});
+        return 0;
+    }
     Transcendentals tr;Workers w(18);
     std::cerr<<tr.device_name()<<"; MPFR "<<mpfr_get_version()<<", MPC "<<mpc_get_version()<<"; pool 18 workers; serial scaled from <= "<<serial_cap<<" values\n";
     std::cout<<std::setprecision(5)<<"bits,function,n,repeats,compile_s,gpu_device_ms,gpu_wall_ms,gpu_wall_min_ms,mpfr_serial_ms,mpfr_pool18_ms,serial_over_gpu_wall,pool_over_gpu_wall,retried_total,mismatches\n";

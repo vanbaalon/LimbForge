@@ -1,0 +1,134 @@
+# Round 44: MTL_SHADER_VALIDATION=1 runs (commands in the == lines). Forced levels 1-3 send every element through GPU
+# rung 1/2/3, level 4 to the host final step. Mismatch detail lines (none occurred) are filtered. Apple M5 Max, macOS 26.6.2, 2026-10-08, host load 15-30 (other agents); shipped build (indirect rung dispatch).
+== test_limbforge_transcendental --gpu-only --no-bounds --points 1000 --bits 64 224 256 384 1024 (MTL_SHADER_VALIDATION=1)
+2026-10-08 12:49:00.308 test_limbforge_transcendental[71706:141228911] Metal GPU Validation Enabled
+device: Apple M5 Max
+per-rung GPU counts at 256 bits equal the host replica (all functions; rung 1/2/3/host: 13/93/1/0)
+per-rung GPU counts at 384 bits equal the host replica (all functions; rung 1/2/3/host: 2/104/0/1)
+per-rung GPU counts at 1024 bits equal the host replica (all functions; rung 1/2/3/host: 0/0/0/110)
+  gpu   64 bits done in 33.9 s; GPU rung words: exp 6/8/18 expm1 6/8/18 log 6/8/18 log1p 6/8/18 sin 6/8/18 cos 6/8/18 atan2 6/8/18 complex_exp 6/8/18 complex_log 6/8/18
+  gpu  224 bits done in 69.8 s; GPU rung words: exp 14/18/35 expm1 14/18/35 log 14/18/35 log1p 14/18/35 sin 14/18/35 cos 14/18/35 atan2 14/18/35 complex_exp 14/18/35 complex_log 14/18/35
+  gpu  256 bits done in 16.2 s; GPU rung words: exp 14/22/35 expm1 14/22/35 log 14/22/35 log1p 14/22/35 sin 14/22/35 cos 14/22/35 atan2 14/22/35 complex_exp 14/22/35 complex_log 14/22/35
+  gpu  384 bits done in 15.2 s; GPU rung words: exp 18/29/35 expm1 18/29/35 log 18/29/35 log1p 18/29/35 sin 18/29/35 cos 18/29/35 atan2 18/29/35 complex_exp 18/29/35 complex_log 18/29/35
+  gpu 1024 bits done in 27.6 s; GPU rung words: exp 35/0/0 expm1 35/0/0 log 35/0/0 log1p 35/0/0 sin 35/0/0 cos 35/0/0 atan2 35/0/0 complex_exp 35/0/0 complex_log 35/0/0
+== gpu summary (1000 random points per function per width + hard cases)
+  atan2        points      7880 mismatches 0 retried 20 (rung1 4, rung2 12, rung3 0, host 4) unresolved 0 retry rate 2.54e-03
+  complex_exp  points      7880 mismatches 0 retried 85 (rung1 22, rung2 42, rung3 2, host 19) unresolved 0 retry rate 1.08e-02
+  complex_log  points      7880 mismatches 0 retried 83 (rung1 16, rung2 48, rung3 0, host 19) unresolved 0 retry rate 1.05e-02
+  complex_powi points      5000 mismatches 0 retried 0 (rung1 0, rung2 0, rung3 0, host 0) unresolved 0 retry rate 0.00e+00
+  cos          points      6340 mismatches 0 retried 76 (rung1 16, rung2 44, rung3 0, host 16) unresolved 0 retry rate 1.20e-02
+  exp          points      6320 mismatches 0 retried 77 (rung1 27, rung2 33, rung3 0, host 17) unresolved 0 retry rate 1.22e-02
+  expm1        points      6320 mismatches 0 retried 83 (rung1 17, rung2 49, rung3 0, host 17) unresolved 0 retry rate 1.31e-02
+  log          points      5770 mismatches 0 retried 10 (rung1 2, rung2 6, rung3 0, host 2) unresolved 0 retry rate 1.73e-03
+  log1p        points      5770 mismatches 0 retried 85 (rung1 17, rung2 51, rung3 0, host 17) unresolved 0 retry rate 1.47e-02
+  sin          points      6340 mismatches 0 retried 0 (rung1 0, rung2 0, rung3 0, host 0) unresolved 0 retry rate 0.00e+00
+  complex_powi max error vs mpc_pow_si (|k| <= 64, normwise): 22.8 ulp
+PASSED
+== --force-level 1 --points 500 --bits 224 256 384 1024 (MTL_SHADER_VALIDATION=1)
+2026-10-08 12:55:21.682 test_limbforge_transcendental[74506:141358341] Metal GPU Validation Enabled
+device: Apple M5 Max
+GPU levels below 1 treat every element as undecided
+  gpu  224 bits done in 8.9 s; GPU rung words: exp 14/18/35 expm1 14/18/35 log 14/18/35 log1p 14/18/35 sin 14/18/35 cos 14/18/35 atan2 14/18/35 complex_exp 14/18/35 complex_log 14/18/35
+  gpu  256 bits done in 6.9 s; GPU rung words: exp 14/22/35 expm1 14/22/35 log 14/22/35 log1p 14/22/35 sin 14/22/35 cos 14/22/35 atan2 14/22/35 complex_exp 14/22/35 complex_log 14/22/35
+  gpu  384 bits done in 6.3 s; GPU rung words: exp 18/29/35 expm1 18/29/35 log 18/29/35 log1p 18/29/35 sin 18/29/35 cos 18/29/35 atan2 18/29/35 complex_exp 18/29/35 complex_log 18/29/35
+  gpu 1024 bits done in 9.0 s; GPU rung words: exp 35/0/0 expm1 35/0/0 log 35/0/0 log1p 35/0/0 sin 35/0/0 cos 35/0/0 atan2 35/0/0 complex_exp 35/0/0 complex_log 35/0/0
+== gpu summary (500 random points per function per width + hard cases)
+  atan2        points      4304 mismatches 0 retried 4304 (rung1 4288, rung2 12, rung3 0, host 4) unresolved 0 retry rate 1.00e+00
+  complex_exp  points      4304 mismatches 0 retried 4304 (rung1 4242, rung2 41, rung3 2, host 19) unresolved 0 retry rate 1.00e+00
+  complex_log  points      4304 mismatches 0 retried 4304 (rung1 4237, rung2 48, rung3 0, host 19) unresolved 0 retry rate 1.00e+00
+  complex_powi points      2000 mismatches 0 retried 0 (rung1 0, rung2 0, rung3 0, host 0) unresolved 0 retry rate 0.00e+00
+  cos          points      3072 mismatches 0 retried 3072 (rung1 3012, rung2 44, rung3 0, host 16) unresolved 0 retry rate 1.00e+00
+  exp          points      3056 mismatches 0 retried 3056 (rung1 3006, rung2 33, rung3 0, host 17) unresolved 0 retry rate 1.00e+00
+  expm1        points      3056 mismatches 0 retried 3056 (rung1 2990, rung2 49, rung3 0, host 17) unresolved 0 retry rate 1.00e+00
+  log          points      2616 mismatches 0 retried 2616 (rung1 2608, rung2 6, rung3 0, host 2) unresolved 0 retry rate 1.00e+00
+  log1p        points      2616 mismatches 0 retried 2616 (rung1 2548, rung2 51, rung3 0, host 17) unresolved 0 retry rate 1.00e+00
+  sin          points      3072 mismatches 0 retried 3072 (rung1 3072, rung2 0, rung3 0, host 0) unresolved 0 retry rate 1.00e+00
+  complex_powi max error vs mpc_pow_si (|k| <= 64, normwise): 19.6 ulp
+PASSED
+== --force-level 2 --points 500 --bits 224 256 384 1024 (MTL_SHADER_VALIDATION=1)
+2026-10-08 12:55:53.015 test_limbforge_transcendental[74743:141375049] Metal GPU Validation Enabled
+device: Apple M5 Max
+GPU levels below 2 treat every element as undecided
+  gpu  224 bits done in 8.0 s; GPU rung words: exp 14/18/35 expm1 14/18/35 log 14/18/35 log1p 14/18/35 sin 14/18/35 cos 14/18/35 atan2 14/18/35 complex_exp 14/18/35 complex_log 14/18/35
+  gpu  256 bits done in 6.3 s; GPU rung words: exp 14/22/35 expm1 14/22/35 log 14/22/35 log1p 14/22/35 sin 14/22/35 cos 14/22/35 atan2 14/22/35 complex_exp 14/22/35 complex_log 14/22/35
+  gpu  384 bits done in 6.1 s; GPU rung words: exp 18/29/35 expm1 18/29/35 log 18/29/35 log1p 18/29/35 sin 18/29/35 cos 18/29/35 atan2 18/29/35 complex_exp 18/29/35 complex_log 18/29/35
+  gpu 1024 bits done in 8.7 s; GPU rung words: exp 35/0/0 expm1 35/0/0 log 35/0/0 log1p 35/0/0 sin 35/0/0 cos 35/0/0 atan2 35/0/0 complex_exp 35/0/0 complex_log 35/0/0
+== gpu summary (500 random points per function per width + hard cases)
+  atan2        points      4304 mismatches 0 retried 4304 (rung1 0, rung2 3228, rung3 0, host 1076) unresolved 0 retry rate 1.00e+00
+  complex_exp  points      4304 mismatches 0 retried 4304 (rung1 0, rung2 3225, rung3 2, host 1077) unresolved 0 retry rate 1.00e+00
+  complex_log  points      4304 mismatches 0 retried 4304 (rung1 0, rung2 3228, rung3 0, host 1076) unresolved 0 retry rate 1.00e+00
+  complex_powi points      2000 mismatches 0 retried 0 (rung1 0, rung2 0, rung3 0, host 0) unresolved 0 retry rate 0.00e+00
+  cos          points      3072 mismatches 0 retried 3072 (rung1 0, rung2 2304, rung3 0, host 768) unresolved 0 retry rate 1.00e+00
+  exp          points      3056 mismatches 0 retried 3056 (rung1 0, rung2 2292, rung3 0, host 764) unresolved 0 retry rate 1.00e+00
+  expm1        points      3056 mismatches 0 retried 3056 (rung1 0, rung2 2292, rung3 0, host 764) unresolved 0 retry rate 1.00e+00
+  log          points      2616 mismatches 0 retried 2616 (rung1 0, rung2 1962, rung3 0, host 654) unresolved 0 retry rate 1.00e+00
+  log1p        points      2616 mismatches 0 retried 2616 (rung1 0, rung2 1962, rung3 0, host 654) unresolved 0 retry rate 1.00e+00
+  sin          points      3072 mismatches 0 retried 3072 (rung1 0, rung2 2304, rung3 0, host 768) unresolved 0 retry rate 1.00e+00
+  complex_powi max error vs mpc_pow_si (|k| <= 64, normwise): 19.6 ulp
+PASSED
+== --force-level 3 --points 500 --bits 224 256 384 1024 (MTL_SHADER_VALIDATION=1)
+2026-10-08 12:56:22.356 test_limbforge_transcendental[74963:141376783] Metal GPU Validation Enabled
+device: Apple M5 Max
+GPU levels below 3 treat every element as undecided
+  gpu  224 bits done in 8.6 s; GPU rung words: exp 14/18/35 expm1 14/18/35 log 14/18/35 log1p 14/18/35 sin 14/18/35 cos 14/18/35 atan2 14/18/35 complex_exp 14/18/35 complex_log 14/18/35
+  gpu  256 bits done in 7.2 s; GPU rung words: exp 14/22/35 expm1 14/22/35 log 14/22/35 log1p 14/22/35 sin 14/22/35 cos 14/22/35 atan2 14/22/35 complex_exp 14/22/35 complex_log 14/22/35
+  gpu  384 bits done in 6.3 s; GPU rung words: exp 18/29/35 expm1 18/29/35 log 18/29/35 log1p 18/29/35 sin 18/29/35 cos 18/29/35 atan2 18/29/35 complex_exp 18/29/35 complex_log 18/29/35
+  gpu 1024 bits done in 8.3 s; GPU rung words: exp 35/0/0 expm1 35/0/0 log 35/0/0 log1p 35/0/0 sin 35/0/0 cos 35/0/0 atan2 35/0/0 complex_exp 35/0/0 complex_log 35/0/0
+== gpu summary (500 random points per function per width + hard cases)
+  atan2        points      4304 mismatches 0 retried 4304 (rung1 0, rung2 0, rung3 3228, host 1076) unresolved 0 retry rate 1.00e+00
+  complex_exp  points      4304 mismatches 0 retried 4304 (rung1 0, rung2 0, rung3 3227, host 1077) unresolved 0 retry rate 1.00e+00
+  complex_log  points      4304 mismatches 0 retried 4304 (rung1 0, rung2 0, rung3 3228, host 1076) unresolved 0 retry rate 1.00e+00
+  complex_powi points      2000 mismatches 0 retried 0 (rung1 0, rung2 0, rung3 0, host 0) unresolved 0 retry rate 0.00e+00
+  cos          points      3072 mismatches 0 retried 3072 (rung1 0, rung2 0, rung3 2304, host 768) unresolved 0 retry rate 1.00e+00
+  exp          points      3056 mismatches 0 retried 3056 (rung1 0, rung2 0, rung3 2292, host 764) unresolved 0 retry rate 1.00e+00
+  expm1        points      3056 mismatches 0 retried 3056 (rung1 0, rung2 0, rung3 2292, host 764) unresolved 0 retry rate 1.00e+00
+  log          points      2616 mismatches 0 retried 2616 (rung1 0, rung2 0, rung3 1962, host 654) unresolved 0 retry rate 1.00e+00
+  log1p        points      2616 mismatches 0 retried 2616 (rung1 0, rung2 0, rung3 1962, host 654) unresolved 0 retry rate 1.00e+00
+  sin          points      3072 mismatches 0 retried 3072 (rung1 0, rung2 0, rung3 2304, host 768) unresolved 0 retry rate 1.00e+00
+  complex_powi max error vs mpc_pow_si (|k| <= 64, normwise): 19.6 ulp
+PASSED
+== --force-level 4 --points 500 --bits 224 256 384 1024 (MTL_SHADER_VALIDATION=1)
+2026-10-08 12:56:52.878 test_limbforge_transcendental[75238:141393902] Metal GPU Validation Enabled
+device: Apple M5 Max
+GPU levels below 4 treat every element as undecided
+  gpu  224 bits done in 8.0 s; GPU rung words: exp 14/18/35 expm1 14/18/35 log 14/18/35 log1p 14/18/35 sin 14/18/35 cos 14/18/35 atan2 14/18/35 complex_exp 14/18/35 complex_log 14/18/35
+  gpu  256 bits done in 7.4 s; GPU rung words: exp 14/22/35 expm1 14/22/35 log 14/22/35 log1p 14/22/35 sin 14/22/35 cos 14/22/35 atan2 14/22/35 complex_exp 14/22/35 complex_log 14/22/35
+  gpu  384 bits done in 6.2 s; GPU rung words: exp 18/29/35 expm1 18/29/35 log 18/29/35 log1p 18/29/35 sin 18/29/35 cos 18/29/35 atan2 18/29/35 complex_exp 18/29/35 complex_log 18/29/35
+  gpu 1024 bits done in 8.5 s; GPU rung words: exp 35/0/0 expm1 35/0/0 log 35/0/0 log1p 35/0/0 sin 35/0/0 cos 35/0/0 atan2 35/0/0 complex_exp 35/0/0 complex_log 35/0/0
+== gpu summary (500 random points per function per width + hard cases)
+  atan2        points      4304 mismatches 0 retried 4304 (rung1 0, rung2 0, rung3 0, host 4304) unresolved 0 retry rate 1.00e+00
+  complex_exp  points      4304 mismatches 0 retried 4304 (rung1 0, rung2 0, rung3 0, host 4304) unresolved 0 retry rate 1.00e+00
+  complex_log  points      4304 mismatches 0 retried 4304 (rung1 0, rung2 0, rung3 0, host 4304) unresolved 0 retry rate 1.00e+00
+  complex_powi points      2000 mismatches 0 retried 0 (rung1 0, rung2 0, rung3 0, host 0) unresolved 0 retry rate 0.00e+00
+  cos          points      3072 mismatches 0 retried 3072 (rung1 0, rung2 0, rung3 0, host 3072) unresolved 0 retry rate 1.00e+00
+  exp          points      3056 mismatches 0 retried 3056 (rung1 0, rung2 0, rung3 0, host 3056) unresolved 0 retry rate 1.00e+00
+  expm1        points      3056 mismatches 0 retried 3056 (rung1 0, rung2 0, rung3 0, host 3056) unresolved 0 retry rate 1.00e+00
+  log          points      2616 mismatches 0 retried 2616 (rung1 0, rung2 0, rung3 0, host 2616) unresolved 0 retry rate 1.00e+00
+  log1p        points      2616 mismatches 0 retried 2616 (rung1 0, rung2 0, rung3 0, host 2616) unresolved 0 retry rate 1.00e+00
+  sin          points      3072 mismatches 0 retried 3072 (rung1 0, rung2 0, rung3 0, host 3072) unresolved 0 retry rate 1.00e+00
+  complex_powi max error vs mpc_pow_si (|k| <= 64, normwise): 19.6 ulp
+PASSED
+== test_limbforge_resident_units --quick (MTL_SHADER_VALIDATION=1)
+2026-10-08 12:57:23.164 test_limbforge_resident_units[75402:141411202] Metal GPU Validation Enabled
+64 bits real: resident poly_eval(_jet) and norms equal the host-array calls
+64 bits complex: resident poly_eval(_jet) and norms equal the host-array calls
+224 bits real: resident poly_eval(_jet) and norms equal the host-array calls
+224 bits complex: resident poly_eval(_jet) and norms equal the host-array calls
+256 bits real: resident poly_eval(_jet) and norms equal the host-array calls
+256 bits complex: resident poly_eval(_jet) and norms equal the host-array calls
+384 bits real: resident poly_eval(_jet) and norms equal the host-array calls
+384 bits complex: resident poly_eval(_jet) and norms equal the host-array calls
+1024 bits real: resident poly_eval(_jet) and norms equal the host-array calls
+1024 bits complex: resident poly_eval(_jet) and norms equal the host-array calls
+64 bits: resident transcendentals (5 functions, in place and separate) equal the host-array calls
+224 bits: resident transcendentals (5 functions, in place and separate) equal the host-array calls
+256 bits: resident transcendentals (10 functions, in place and separate) equal the host-array calls
+384 bits: resident transcendentals (10 functions, in place and separate) equal the host-array calls
+resident retries exercised: 97
+chains: vector recurrence -> norms, complex_mul -> complex exp -> poly_eval (224/384), in-place exp with retries, engine op -> tree passes
+final reads: later operations in the batch read GPU-resolved outputs (rung 1/2/3/host: 9/89/2/2)
+forced levels: rung 1/2/3 evaluate every element; host final step marks in-batch reads provisional
+ownership: foreign/busy/submitted/provisional buffers and shape errors rejected; discarded and dropped submissions handled
+lifetime: batch, submission and ticket outlive units and engine
+concurrent: two threads share the units' pipeline caches (288 bits compiled concurrently)
+All resident unit checks passed.

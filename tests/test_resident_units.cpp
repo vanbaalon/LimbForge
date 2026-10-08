@@ -1,6 +1,8 @@
 // Resident Numerics (S1/S4) and Transcendentals (D7) passes in an Engine's CommandBatch (docs/execution.md, "Resident
 // units"): bitwise equal to the host-array APIs (themselves MPFR/MPC-validated by test_numerics / test_transcendental) at
 // 64/224/256/384/1024 bits, chains with engine operations in one batch, ownership errors, provisional outputs and lifetimes.
+// Round 44: transcendental retries run on the GPU inside the batch, so a later operation of the batch reads final values for
+// elements resolved at GPU rungs 1-3; only elements left to the host final step are provisional (forced here by a test hook).
 // Usage: test_limbforge_resident_units [--quick]
 #include "reference.hpp"
 #include "limbforge/numerics.hpp"
@@ -70,6 +72,12 @@ template<class T> void numerics_width(Engine& e,Numerics& nm,bool quick){
 }
 
 // ---------------- Transcendentals ----------------
+// The resident report equals the host-array report (per-rung GPU counts, rung widths, host final step).
+void same_report(const TranscendentalReport& r,const TranscendentalReport& h,const std::string& what){
+    bool ok=r.count==h.count&&r.retried==h.retried&&r.unresolved==h.unresolved;for(int k=0;k<4;++k)ok=ok&&r.resolved[k]==h.resolved[k];
+    for(int k=0;k<3;++k)ok=ok&&r.rung_words[k]==h.rung_words[k];
+    std::size_t sum=r.unresolved;for(int k=0;k<4;++k)sum+=r.resolved[k];
+    require(ok&&sum==r.retried,what+": resident report differs from the host-array report (retried "+std::to_string(r.retried)+" vs "+std::to_string(h.retried)+")");}
 template<int B> std::vector<Float<B>> real_inputs(Function f,std::mt19937_64& g,std::size_t n){
     constexpr int N=B/32;std::vector<Float<B>> v(n);int lo=-40,hi=4;
     if(f==Function::log)lo=-100,hi=100;if(f==Function::sin||f==Function::cos)lo=-30,hi=20;if(f==Function::log1p)lo=-60,hi=-1;
@@ -91,7 +99,7 @@ template<int B> void transcendental_width(Engine& e,Transcendentals& tr,bool all
         auto A=put(e,a),Bb=put(e,b);auto O=in_place?A:e.make_buffer<F>(a.size());
         tickets.push_back(f==Function::atan2?tr.run(batch,f,A,Bb,O):tr.run(batch,f,A,O));
         checks.push_back([&tr,f,a,b,O,B_=B,&retried,t=tickets.back()]{std::vector<F> host(a.size());tr.run(B_,f,a.data(),host.data(),a.size(),b.data());
-            const TranscendentalReport& r=t.report();require(r.retried==tr.report().retried&&r.unresolved==tr.report().unresolved&&r.count==a.size(),"retry report differs");
+            const TranscendentalReport& r=t.report();same_report(r,tr.report(),"function "+std::to_string(int(f)));require(r.count==a.size(),"count");
             retried+=r.retried;same_all(get(O),host,"resident transcendental "+std::to_string(int(f))+" bits="+std::to_string(B_));});
     }
     for(auto f:cx){
@@ -101,12 +109,12 @@ template<int B> void transcendental_width(Engine& e,Transcendentals& tr,bool all
         tickets.push_back(f==Function::complex_powi?tr.powi(batch,Z,K,O):tr.run(batch,f,Z,O));
         checks.push_back([&tr,f,z,k,O,B_=B,&retried,t=tickets.back()]{std::vector<C> host(z.size());
             if(f==Function::complex_powi)tr.powi(B_,z.data(),k.data(),k.size(),host.data(),z.size());else tr.run(B_,f,z.data(),host.data(),z.size());
-            require(t.report().retried==tr.report().retried,"retry report differs (complex)");retried+=t.report().retried;
+            same_report(t.report(),tr.report(),"complex function "+std::to_string(int(f)));retried+=t.report().retried;
             same_all(get(O),host,"resident transcendental "+std::to_string(int(f))+" bits="+std::to_string(B_));});
     }
     for(auto& t:tickets)require(!t.resolved(),"ticket resolved before submission");
     auto submission=batch.submit();for(auto& t:tickets)rejects<std::logic_error>([&]{t.report();},"report before wait");
-    submission.wait();for(auto& t:tickets)require(t.resolved()&&!t.report().provisional_reads,"ticket state after wait");
+    submission.wait();for(auto& t:tickets)require(t.resolved()&&!t.report().provisional_reads&&!t.report().in_batch_reads,"ticket state after wait");
     for(auto& c:checks)c();
     std::cout<<B<<" bits: resident transcendentals ("<<real.size()+cx.size()<<" functions, in place and separate) equal the host-array calls"<<std::endl;
 }
@@ -128,20 +136,23 @@ void chains(Engine& e,Numerics& nm,Transcendentals& tr){
         auto A=put(e,a),Bb=put(e,b),Co=put(e,coef);auto P=e.make_buffer<C>(n),E=e.make_buffer<C>(n),V=e.make_buffer<C>(n);
         auto batch=e.batch();batch.run(Operation::complex_mul,A,Bb,P);auto t=tr.run(batch,Function::complex_exp,P,E);nm.poly_eval(batch,shape,Co,E,V);
         auto sub=batch.submit();rejects<std::logic_error>([&]{E.mapped();},"mapping a pass output before wait");sub.wait();
-        require(t.report().provisional_reads&&t.report().retried==0,"chain ticket (random inputs are decided on the GPU)");
+        require(t.report().in_batch_reads&&!t.report().provisional_reads&&t.report().retried==0,"chain ticket (random inputs are decided on the GPU)");
         same_all(get(P),prod,"chain complex_mul");same_all(get(E),ex,"chain complex exp");same_all(get(V),vals,"chain poly_eval after complex exp");};
         if(width==224)chain(Complex<7>{});else chain(Complex<12>{});}
-    // In place with retries: exp(x) -> x, then an engine product reads the provisional x; x is final (and equal to the host
-    // call) after wait, the ticket reports the retries and the provisional read. Writing x again in the batch is rejected.
-    {using F=Float<256>;std::mt19937_64 g(5);auto x=real_inputs<256>(Function::exp,g,64);std::vector<F> host(x.size()),y(x.size());for(auto& v:y)v=value<F>(g,2,false);
+    // In place with retries: exp(x) -> x, then an engine product reads x. The GPU rungs resolve the retries inside the batch,
+    // so the product sees the final x (equal to the host call); the ticket reports the retries and a non-provisional read.
+    // Writing x again in the batch is rejected (the host final step could still patch it).
+    {using F=Float<256>;std::mt19937_64 g(5);auto x=real_inputs<256>(Function::exp,g,64);std::vector<F> host(x.size()),y(x.size()),prod(x.size());for(auto& v:y)v=value<F>(g,2,false);
         tr.run(256,Function::exp,x.data(),host.data(),x.size());auto host_retried=tr.report().retried;require(host_retried>0,"hard exp inputs did not retry");
+        auto host_report=tr.report();e.run(256,Operation::mul,host.data(),y.data(),prod.data(),x.size());
         auto X=put(e,x),Y=put(e,y);auto Z=e.make_buffer<F>(x.size());auto batch=e.batch();auto t=tr.run(batch,Function::exp,X,X);
         rejects<std::logic_error>([&]{batch.run(Operation::add,Y,Y,X);},"engine write to a provisional output");
         rejects<std::logic_error>([&]{tr.run(batch,Function::cos,Y,X);},"second pass into a provisional output");
         rejects<std::logic_error>([&]{nm.poly_eval(batch,Polynomial{x.size(),1,1,false,false},Y,Y,X);},"unit write to a provisional output");
         batch.run(Operation::mul,X,Y,Z);auto sub=batch.submit();require(!t.resolved(),"resolved before wait");
         rejects<std::logic_error>([&]{X.download(host.data(),1);},"download before wait");sub.wait();
-        require(t.resolved()&&t.report().retried==host_retried&&t.report().provisional_reads,"in-place ticket report");same_all(get(X),host,"in-place exp with retries");}
+        require(t.resolved()&&t.report().retried==host_retried&&t.report().in_batch_reads&&!t.report().provisional_reads&&t.report().host_retried()==0,"in-place ticket report");
+        same_report(t.report(),host_report,"in-place exp");same_all(get(X),host,"in-place exp with retries");same_all(get(Z),prod,"product reading the in-place exp output in the batch");}
     // Tree passes inside one batch after an engine op that writes their input; numerics outputs feeding numerics and engine inputs.
     {using F=Float<384>;std::mt19937_64 g(9);const std::size_t L=20000;std::vector<F> x(L),y(L),xy(L),c={value<F>(g,2,false),value<F>(g,2,false)},pv(L),h(1),hm(1),hw(1);
         for(auto& v:x)v=value<F>(g,30,false);for(auto& v:y)v=value<F>(g,30,false);Polynomial shape{L,2,L,false,false};
@@ -153,6 +164,51 @@ void chains(Engine& e,Numerics& nm,Transcendentals& tr){
         same_all(get(X),xy,"engine mul before norm2");same_all(get(V),h,"norm2 after engine mul (three tree passes)");same_all(get(P),pv,"poly after engine mul");
         same_all(get(M),hm,"norm_max of a poly_eval output");same_all(get(W),hw,"engine mul of two norms");}
     std::cout<<"chains: vector recurrence -> norms, complex_mul -> complex exp -> poly_eval (224/384), in-place exp with retries, engine op -> tree passes"<<std::endl;
+}
+// Later operations of the same batch read final values of elements resolved at GPU rungs 2 and 3 (hard cases): an engine
+// product of each real output and a complex poly_eval of each complex output, both equal to the same operations on the
+// host-array results; tickets report the host-array per-rung counts and a non-provisional read.
+template<int B> std::vector<Complex<B/32>> hard_complex(){
+    constexpr int N=B/32;using F=Float<B>;F one_up=pow2<B>(0);one_up.limb[0]=1;F half=pow2<B>(-1);half.limb[0]=1;
+    std::vector<F> s={zero<N>(),pow2<B>(0),pow2<B>(0,-1),one_up,pow2<B>(-16*N),pow2<B>(-16*N,-1),pow2<B>(-16*N-1),pow2<B>(-32*N),pow2<B>(-32*N,-1),pow2<B>(1-32*N),
+        pow2<B>(-1),half,pow2<B>(-2,-1),pow2<B>(3),pow2<B>(-1000,-1),pow2<B>(30)};
+    std::vector<Complex<N>> v;for(auto& a:s)for(auto& b:s)v.push_back({a,b});return v;
+}
+template<int B> void final_reads(Engine& e,Numerics& nm,Transcendentals& tr,std::size_t rungs[4]){
+    using F=Float<B>;using C=Complex<B/32>;std::mt19937_64 g(B*7);auto batch=e.batch();std::vector<std::function<void()>> checks;
+    // Returns whether the outputs were final in the batch (no element left to the host final step, e.g. a complex log rung
+    // at 136 words, which does not compile for the GPU); otherwise the read must be reported as provisional.
+    auto ticket_ok=[rungs](const TranscendentalTicket& t,const TranscendentalReport& h,const std::string& what){const auto& r=t.report();same_report(r,h,what);
+        require(r.in_batch_reads&&r.provisional_reads==(r.host_retried()>0),what+": read in the batch should be final");for(int k=0;k<4;++k)rungs[k]+=r.resolved[k];
+        return r.host_retried()==0;};
+    for(Function f:{Function::exp,Function::expm1,Function::log1p,Function::cos,Function::log}){
+        auto a=real_inputs<B>(f,g,200);const std::size_t n=a.size();std::vector<F> y(n),h(n),p(n);for(auto& v:y)v=value<F>(g,2,false);
+        tr.run(B,f,a.data(),h.data(),n);auto hr=tr.report();e.run(B,Operation::mul,h.data(),y.data(),p.data(),n);
+        auto A=put(e,a),Y=put(e,y);auto O=e.make_buffer<F>(n),Z=e.make_buffer<F>(n);auto t=tr.run(batch,f,A,O);batch.run(Operation::mul,O,Y,Z);
+        checks.push_back([=,&ticket_ok]{bool fin=ticket_ok(t,hr,"real "+std::to_string(int(f))+" bits="+std::to_string(B));same_all(get(O),h,"rung outputs");if(fin)same_all(get(Z),p,"product of rung outputs in the batch");});
+    }
+    for(Function f:{Function::complex_exp,Function::complex_log}){
+        auto z=hard_complex<B>();const std::size_t n=z.size();std::vector<C> h(n),coef(3),v(n);for(auto& c:coef)c=value<C>(g,1,false);Polynomial shape{n,3,n,true,false};
+        tr.run(B,f,z.data(),h.data(),n);auto hr=tr.report();nm.poly_eval(B,shape,coef.data(),h.data(),v.data());
+        auto Zb=put(e,z),Co=put(e,coef);auto O=e.make_buffer<C>(n),V=e.make_buffer<C>(n);auto t=tr.run(batch,f,Zb,O);nm.poly_eval(batch,shape,Co,O,V);
+        checks.push_back([=,&ticket_ok]{bool fin=ticket_ok(t,hr,"complex "+std::to_string(int(f))+" bits="+std::to_string(B));same_all(get(O),h,"complex rung outputs");if(fin)same_all(get(V),v,"poly_eval of rung outputs in the batch");});
+    }
+    batch.submit().wait();for(auto& c:checks)c();
+}
+struct ForceLevel { explicit ForceLevel(int l){detail::transcendental_force_level(l);} ~ForceLevel(){detail::transcendental_force_level(0);} };
+// Test hook: forced levels. Level 4 sends every element to the host final step, so a reader in the batch sees provisional
+// values (reported); level 2 makes rung 2 evaluate every element (per-rung counts).
+void forced_levels(Engine& e,Transcendentals& tr){
+    using F=Float<256>;std::mt19937_64 g(77);auto x=real_inputs<256>(Function::log1p,g,100);const std::size_t n=x.size();std::vector<F> y(n),h(n);for(auto& v:y)v=value<F>(g,2,false);
+    tr.run(256,Function::log1p,x.data(),h.data(),n);
+    auto X=put(e,x),Y=put(e,y);
+    for(int level:{4,2,1,3}){auto O=e.make_buffer<F>(n),Z=e.make_buffer<F>(n);TranscendentalTicket t;
+        {ForceLevel force(level);auto batch=e.batch();t=tr.run(batch,Function::log1p,X,O);batch.run(Operation::mul,O,Y,Z);batch.submit().wait();}
+        const auto& r=t.report();same_all(get(O),h,"forced level "+std::to_string(level));std::size_t sum=r.unresolved;for(int k=0;k<4;++k)sum+=r.resolved[k];
+        require(r.retried==n&&sum==n&&r.in_batch_reads,"forced level report");for(int k=0;k+1<level&&k<3;++k)require(!r.resolved[k],"forced level: rung below the level resolved elements");
+        if(level==4)require(r.host_retried()==n&&r.provisional_reads,"host final step: provisional reads reported");
+        else require(r.host_retried()==0&&!r.provisional_reads&&r.resolved[level-1]>0,"forced rung resolved on the GPU");}
+    std::cout<<"forced levels: rung 1/2/3 evaluate every element; host final step marks in-batch reads provisional"<<std::endl;
 }
 void ownership(Engine& e,Numerics& nm,Transcendentals& tr){
     using F=Float<256>;using C=Complex<8>;std::mt19937_64 g(3);std::vector<F> x(64);for(auto& v:x)v=value<F>(g,3,false);
@@ -217,13 +273,18 @@ void concurrent(){
     std::cout<<"concurrent: two threads share the units' pipeline caches (288 bits compiled concurrently)"<<std::endl;
 }
 int main(int argc,char** argv){try{
-    bool quick=argc>1&&std::string(argv[1])=="--quick";Engine e;Numerics nm(e);Transcendentals tr(e);
+    // Retry threshold 0: host-array calls use the GPU rungs as resident passes do, so their reports match per rung.
+    bool quick=argc>1&&std::string(argv[1])=="--quick";Engine e;Numerics nm(e);TranscendentalOptions to;to.gpu_retry_threshold=0;Transcendentals tr(e,to);
     numerics_width<Float<64>>(e,nm,quick);numerics_width<Complex<2>>(e,nm,quick);numerics_width<Float<224>>(e,nm,quick);numerics_width<Complex<7>>(e,nm,quick);
     numerics_width<Float<256>>(e,nm,quick);numerics_width<Complex<8>>(e,nm,quick);numerics_width<Float<384>>(e,nm,quick);numerics_width<Complex<12>>(e,nm,quick);
     numerics_width<Float<1024>>(e,nm,quick);numerics_width<Complex<32>>(e,nm,quick);
     std::size_t retried=0;transcendental_width<64>(e,tr,false,retried);transcendental_width<224>(e,tr,false,retried);transcendental_width<256>(e,tr,true,retried);
     transcendental_width<384>(e,tr,true,retried);if(!quick)transcendental_width<1024>(e,tr,false,retried);
     require(retried>0,"no resident retries exercised");std::cout<<"resident retries exercised: "<<retried<<std::endl;
-    chains(e,nm,tr);ownership(e,nm,tr);lifetime();concurrent();
+    chains(e,nm,tr);
+    {std::size_t rungs[4]={};final_reads<256>(e,nm,tr,rungs);final_reads<384>(e,nm,tr,rungs);if(!quick)final_reads<1024>(e,nm,tr,rungs);
+     require(rungs[1]>0&&rungs[2]>0,"hard cases did not reach GPU rungs 2 and 3");
+     std::cout<<"final reads: later operations in the batch read GPU-resolved outputs (rung 1/2/3/host: "<<rungs[0]<<"/"<<rungs[1]<<"/"<<rungs[2]<<"/"<<rungs[3]<<")"<<std::endl;}
+    forced_levels(e,tr);ownership(e,nm,tr);lifetime();concurrent();
     std::cout<<"All resident unit checks passed."<<std::endl;return 0;}
 catch(const std::exception& ex){std::cerr<<ex.what()<<'\n';return 1;}}

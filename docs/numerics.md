@@ -181,14 +181,15 @@ or residuals computed in the same batch.
 real `exp`, `expm1`, `log`, `log1p`, `sin`, `cos`, `atan2(a = y, b = x)` on `Float<bits>` arrays and
 complex `exp`, `log` on `Complex<bits/32>` arrays; `Transcendentals::powi(bits, z, k, k_count, out, count)`
 computes `z^k`. `transcendental_cpu` gives the same results on the host. `out` may alias an input.
-Resident passes (round 39): `Transcendentals tr(engine); auto t = tr.run(batch, f, a, out)` (`atan2`:
-`tr.run(batch, f, y, x, out)`; `tr.powi(batch, z, k, out)` with `Buffer<std::int32_t> k`) encode the same
-GPU pass on an in-batch snapshot of the inputs and keep the undecided indices on a resident compacted
-list; `Submission::wait()` runs the host retry ladder below and patches `out` before releasing the
-buffers, so `out` equals the host call bit for bit once waited. Until then `out` is provisional: it
-cannot be written again in the batch, and operations of the same batch that read it see the GPU
-value of undecided elements (`t.report().retried`, `provisional_reads`; `docs/execution.md`,
-"Resident units").
+Resident passes (round 39, GPU retries round 44): `Transcendentals tr(engine); auto t = tr.run(batch, f, a,
+out)` (`atan2`: `tr.run(batch, f, y, x, out)`; `tr.powi(batch, z, k, out)` with `Buffer<std::int32_t> k`)
+encode the same first pass and GPU retry rungs into the batch, so operations encoded later in the batch
+read final values whenever the GPU rungs decide every element (`t.report().host_retried() == 0`; random
+inputs essentially always, the hard-case sets of the tests up to 352 bits). Inputs whose decision needs more
+than the 35-word cap of the GPU rungs (short dyadics near a rounding midpoint need about `2N` words) are left
+to the host: one hard case per width at 384–544 bits, most of them from 576 bits. Elements left for the host final step are patched by `Submission::wait()` and are
+provisional until then (`provisional_reads`); `out` cannot be written again in the batch, and equals the
+host-array call bit for bit once waited (`docs/execution.md`, "Resident units").
 
 **Contract.** Every real function and every component of complex `exp` and `log` is **correctly
 rounded**: the result is `RN(f(x))`, round to nearest, ties to even, of the exact mathematical value,
@@ -217,16 +218,34 @@ component becomes zero with the OR of the input statuses (both input components 
 functions, both arguments for `atan2`).
 
 **Algorithm (Ziv).** Each element is evaluated on the GPU at `W ≥ N+2` words (at least 64 guard bits; the
-smallest GPU-validated width, `docs/gpu-codegen.md` section 8: `W = N+2` up to 256 bits, 14 words at
+smallest GPU-validated width, `docs/gpu-codegen.md` section 9: `W = N+2` up to 256 bits, 14 words at
 288–384 bits, 18 at 416–512, 22 at 544–640, 26 at 672–768, 29 at 800–832, `N+2` from 864 bits) with the correctly
 rounded `core.hpp` primitives, and the code carries a rigorous bound `|y − f(x)| ≤ err · ulp_W(y)`
 (`src/transcendental_core.hpp`). `certify` accepts `y` only if the low `W−N` words differ from the
 rounding midpoint by more than `err + 1` units (and `err < 2^62`), so every value inside the bound has
 the same RN result, including at binade boundaries. Undecided elements are appended to a compacted list
-(device atomic counter) and re-evaluated on the host by the same code at the smallest ladder widths
-≥ `N+4`, `2N+4` and `4N+8` words (ladder 4…136 words); results outside a rung stay unwritten until a
-rung certifies. No input has ever needed more than the third rung; if none decides, the RN value of the
+(device atomic counter). Since round 44 three **GPU retry rungs** follow in the same command buffer (or
+batch): rung `r` evaluates the elements listed by the previous level with the same code at a validated
+width ≥ `N+4`, `2N+4`, `4N+8` words capped at 35 words (`rung_table` in `src/transcendental.mm`; rung kernels
+at ≥ 36 words miscompile, `docs/gpu-codegen.md` section 11): 14/18/35 words at 224 bits, 14/22/35 at 256, 18/29/35
+at 384, 22/35/host at 512, 35/host/host at 992–1024 bits. It writes the elements it decides and compacts
+the rest into the next list (two ping-pong lists of `count` entries; a one-thread kernel turns the device
+counter into the threadgroup count of an indirect dispatch, so a rung without work launches nothing and the
+host never waits between levels). Results stay
+unwritten until a level certifies them. Elements still undecided after the last GPU rung keep the RN value
+of that rung's approximation and their saved operands, and the **host final step** re-evaluates them with
+the host ladder (the smallest ladder widths ≥ `N+4`, `2N+4`, `4N+8` words, ladder 4…136, the same code as
+`transcendental_cpu`), which makes the results bit-identical to the round-35 host retries in every case. No
+input has ever needed more than the third rung; if no host rung decides either, the RN value of the
 136-word approximation is written (error < ulp/2 + 2^−3000 relative) and `report().unresolved` counts it.
+The report gives the GPU per-rung counts `resolved[0..2]`, the host final step `resolved[3]` and the widths
+`first_words`, `rung_words[3]` (0: the rung runs in the host final step). A GPU rung is latency-bound: each undecided
+element is one GPU thread at 14–35 words, which costs 1–5 ms whatever the number of elements, while the host
+ladder needs ~10–200 µs per element and thread. Host-array calls therefore run the first pass alone and send
+up to `TranscendentalOptions::gpu_retry_threshold` (default 512) undecided elements straight to the host
+ladder (`resolved[3]`, `rung_words` 0), and more than that to the GPU rungs in a second command buffer;
+threshold 0 encodes all levels in one command buffer. Resident passes always encode the GPU rungs. Results
+are identical on every route.
 Algorithms, with constants from exact integer series built on the host (Machin π, power-of-two
 series for `ln 2`, `log(1 ± 2^−i)`, `atan(2^−i)`, each within 1 ulp_W, `ln 2` also at `W+2` words, and
 `2/π` to 12,864 bits by long division):
@@ -284,11 +303,33 @@ reaching the third rung, never unresolved. All 31 widths pass on the GPU, also u
 `MTL_SHADER_VALIDATION=1`; 0.49 M white-box bound checks gave a largest actual error of 9.8 ulp_W and a
 largest actual/bound ratio of 0.98 (the half-ulp final rounding).
 
+**GPU retry rungs (round 44).** Every rung width of `rung_table` was validated with every element forced
+through that rung (`test_limbforge_transcendental --force-level r`, later rungs on the host) at all 31
+widths, also under `MTL_SHADER_VALIDATION=1` at 224/256/384/1024 bits (`docs/gpu-codegen.md` section 11,
+`benchmarks/results/round44_*`). The all-width gate (3,000 random points plus the hard cases per function
+and width) gave 0 mismatches; its 3,279 retries were resolved by GPU rungs 1/2/3 (340/1,423/7) and by the host
+final step (1,509, all hard cases above 352 bits whose decision needs more than 35 words), none unresolved.
+The per-rung counts equal a host replica of the GPU decisions (same code and widths) at 256, 384 and 1024
+bits, and resident reports equal the host-array reports rung by rung.
+
 **Performance** (`benchmarks/results/round35_transcendental*.csv`, 10⁶ elements, loaded host): GPU wall
 17–86 ms at 224–384 bits, 36–91× serial MPFR/MPC and 3–12× an 18-worker pool; at 10⁴ elements the call
 is latency-bound (1.3–3.7 ms). First use of a width compiles about 0.4 s of library plus 0.4–2 s per real
 function, 1.3–4 s for complex `exp` and 5–14 s for complex `log` and `powi` (OS-cached afterwards; use
-`Transcendentals::prewarm`).
+`Transcendentals::prewarm`). Since round 44 a function's first use also compiles its GPU rungs (up to three
+more libraries and pipelines, compiled concurrently): measured cold under load 25–50, exp 3.2–4.9 s, sin
+3.8–6.0 s, complex `exp` 7.3–9.2 s and complex `log` 24–28 s at 224–1024 bits, against 1.4–2.8, 1.2–3.7, 2.4–7.2
+and 6.9–20 s for the first pass alone (`benchmarks/results/round44_transcendental_compile.txt`).
+Retries on the GPU (`benchmarks/results/round44_transcendental_retries_*.csv`, interleaved medians against
+round 39): without retries the cost is unchanged (host-array and resident wall ratios 0.81–1.28, median
+1.00, at 10⁴–10⁶ elements and 224–384 bits). A GPU rung adds 1.2–5 ms of device time whenever it has work
+(one GPU thread per element at up to 35 words), whereas the host ladder costs ~10–200 µs per element and
+thread; with the default threshold host-array calls keep the host ladder for ≤ 512 retries (unchanged within
+noise) and gain 0.98–1.32× wall (median 1.24) at 10⁶ elements with 1% hard inputs (3,333–5,000 retries,
+GPU route).
+Resident passes always use the GPU rungs: 0.99–1.38× faster at 10⁶ elements with 1% hard inputs, but up to
+3× slower at 10⁴–10⁵ elements with 3–500 retries (the rung latency), in exchange for final values inside the
+batch.
 
 ## Segmented dot products
 

@@ -161,6 +161,38 @@ cannot be inspected below AIR, and a synthetic shuffle kernel with up to 512 liv
 the mechanism is not explained. The library therefore uses only cooperative shapes with L ≤ 2. This is the class
 of the G=16/32 kernels shipped in round 22, which never failed in any validated run.
 
+## 11. Retry-rung kernels: width validity and a ceiling at 35 words (round 44)
+
+The GPU retry rungs (`src/transcendental.metal` with `LF_RUNG`) are a second variant of the transcendental kernels:
+the element comes from a compacted list and only decided elements are written. Each rung width was probed by forcing
+every element through the rung (`test_limbforge_transcendental --force-level r`, 1,000 random points plus the hard
+cases per function, all 31 precisions) with the later rungs sent to the host
+(`LIMBFORGE_TRANSCENDENTAL_RUNG_WORDS="N:w1/0/0"`), so that a failure is attributed to one (N, W) pair. Without that
+isolation, hard cases that the forced rung leaves undecided are evaluated by the next rung, and a bad next width shows
+up as a failure of the rung under test (round-1 probes blamed rung 1 at W = 8, 10 for errors of rung 2 at W = 12, 16).
+Logs: `benchmarks/results/round44_rung_probes.txt`.
+
+- **W ≤ 35: the section-9 widths fail here too; all others passed.** Rung 3 at W = 16 (N = 2: exp, expm1, complex
+  exp/log) and at W = 20, 24, 28 (N = 3–5: every function) was wrong, as in the first pass; the other section-9 widths
+  were not instantiated again. Every other width tried passed at every N where it was used: 6–10, 14, 18, 22, 26 and
+  29–35 (rung 1 for N = 2–32, rung 2 for N = 2–30, rung 3 for N = 2–15).
+- **W ≥ 36: every function is wrong.** W = 36, 37, 38, 40, 44, 48, 52, 56, 60, 64, 68, 100, 136 (rung 2 at N = 16–18,
+  rung 3 at N = 7–13, and W = 36–136 at N = 8) failed for every function, with grossly wrong values (`exp(0.0279)` returned
+  `1.00000000016`, garbage statuses), while the same code on the CPU is exact (the host ladder uses 48, 68 and 136 words)
+  and the constant tables are read correctly. `benchmarks/experiments/transcendental_wide_probe.mm` reduces it to core
+  `add`/`sub` with an operand computed by `mul` or `div_word` in the same kernel: `add(1, mul(s, s))`,
+  `sub(mul(x, x), s)`, `add(1, div_word(x, 7))` are wrong for every input from W = 36, exact at W = 34 and 35, while
+  `mul`, `div_word`, `add` of loaded operands and `div_word(mul(x, x), 7)` are exact. (A plain `mul` at W = 68 is wrong
+  in that probe as well.) The engine's arithmetic stops at N = 32 and the first pass at 34 words, so no shipped kernel
+  reaches these widths; the cause is not isolated further.
+- **Stack limit.** The complex log kernel at 136 words does not compile ("Compute function exceeds available stack
+  space"); the other functions compile at 136 words in 1.5–5 s.
+
+The rung widths are therefore the smallest validated width ≥ N+4, 2N+4, 4N+8 (and above the previous level), capped at
+35 words; a rung whose capped width is not above the previous level runs on the host (`rung_table` in
+`src/transcendental.mm`). A capped rung still decides most retries (35 words exceed the cubic-term need of 3N words up
+to 320 bits); correctness never depends on the width, only on `certify`.
+
 ## Rules for kernel code
 
 1. Do not index arrays of ≤ 32 words with runtime indices in hot loops. Either make every index a
@@ -176,10 +208,13 @@ of the G=16/32 kernels shipped in round 22, which never failed in any validated 
 6. In new kernels square with `mul(a, a)`; the 384-bit symmetric `square()` is validated only in the
    engine's unary kernel (section 8).
 7. A rigorous error bound computed by the same kernel does not detect a miscompilation (section 9);
-   only the comparison with an independent reference at every instantiated width does.
+   only the comparison with an independent reference at every instantiated width does. Validate each kernel variant
+   separately, and isolate the variant under test from later stages that see its leftovers (section 11).
 8. Never put a SIMD-group function (shuffle, ballot, `simd_any`/`simd_all`) or a barrier in an operand of `&&`,
    `||` or `?:` that some lanes skip. Evaluate it unconditionally into a variable first (section 10). Check
    cooperative kernels with an active-lane counter (`PROBE_CHECK_ACTIVE` in `coop_validation_probe`).
 9. Validate cooperative kernels under `MTL_SHADER_VALIDATION=1` while another process keeps the GPU busy; on an idle
    GPU the section-10 failures are rare. Keep cooperative shapes at ≤ 2 limbs per lane until wider lane state
    passes that test.
+10. Do not instantiate the core arithmetic at more than 35 words in a Metal kernel (section 11); probe any wider use with
+    `benchmarks/experiments/transcendental_wide_probe.mm` first.

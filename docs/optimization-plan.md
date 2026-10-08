@@ -256,6 +256,9 @@ Each item: written contract → MPFR/MPC reference → CPU implementation in `co
   `sin`, `cos`, `atan2` and complex `exp`/`log` correctly rounded (W = N+2 words on the GPU with a rigorous error bound,
   compacted retry list resolved on the host at N+4, 2N+4, 4N+8 words), `powi` as a documented fused sequence. Open: a
   GPU-side retries, faster large-batch evaluation. The resident `CommandBatch` pass is done (round 39; retries run at `wait()`).
+  **Round 44:** GPU-side retries done: up to three GPU rungs (≤ 35 words, validated per width) in the same batch, so resident
+  outputs are final in the batch unless an element needs more than 35 words (hard cases from 384 bits; host final step at
+  `wait()`, reported). Open: wider GPU rungs (blocked by the W ≥ 36 miscompile, gpu-codegen.md §11), lower rung latency.
 
 ### Phase E — Latency-bound workloads: cooperative intra-number arithmetic — Track T1, after B
 
@@ -294,12 +297,12 @@ For BSolver (≈128 lanes × 600 steps) the GPU runs ~128 threads. Two complemen
 | L1 residue GEMM | done (16, 18, 20) | `linalg.hpp` |
 | S1 polynomial values and jets (order ≤ 2) | done (32-S1), resident (39) | `Numerics::poly_eval(_jet)` in `numerics.hpp` |
 | S4 norms, scaled residual, status summaries | done (32-S4), resident (39) | `Numerics::norm_inf/norm_max/norm2/scaled_residual/summarize_status` |
-| D7 transcendentals (exp, expm1, log, log1p, sin, cos, atan2, complex exp/log, powi) | done (35-D7); L2-style certified rounding with compacted host retries; resident first pass with retries at `wait()` (39) | `transcendental.hpp` |
+| D7 transcendentals (exp, expm1, log, log1p, sin, cos, atan2, complex exp/log, powi) | done (35-D7); L2-style certified rounding with compacted retries; resident passes (39); GPU retry rungs ≤ 35 words, resident outputs final in the batch (44) | `transcendental.hpp` |
 | Resident unit hook | done (39) | `src/engine_internal.hpp`; `docs/execution.md`, "Resident units" |
 | Resident linalg: `syrk`/`gemm` in a `CommandBatch` (GPU band analysis and plan, indirect dispatch, host fallback at `wait()`); synchronous `Buffer` forms of Cholesky/solves/QR | done (42-resident-linalg) | `Linalg(Engine&)`, `LinalgTicket`; `docs/numerics.md`, "Resident products" |
 
 Next, by consumer value: qscmx/BSolver integration and end-to-end timing on an idle host (also the
-pending GitHub speed figures); GPU-side transcendental retries; deeper QR look-ahead
+pending GitHub speed figures); transcendental retry rungs above 35 words (W ≥ 36 miscompile, round 44); deeper QR look-ahead
 (and complex column pivoting, a reconstruction-bound trailing update); G = 4/8 cooperative shapes with ≥ 3 limbs per lane
 (validation-only failures, 41-L4b); fused `vector_recurrence` above 512 bits.
 

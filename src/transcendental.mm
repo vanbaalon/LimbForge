@@ -1,6 +1,7 @@
 // Element-wise transcendental functions (plan D7; docs/numerics.md, "Transcendental functions"). The GPU evaluates
-// at N+2 words and certifies the rounding (src/transcendental_core.hpp); the compacted list of undecided elements is
-// resolved here on the host by the same code at more words. Constants come from exact integer series computed here.
+// at W >= N+2 words and certifies the rounding (src/transcendental_core.hpp); the compacted list of undecided elements is
+// re-evaluated on the GPU by up to three retry rungs at more words in the same command buffer (round 44), and the few
+// elements left after them by the host ladder here. Constants come from exact integer series computed here.
 #import <Foundation/Foundation.h>
 #import <Metal/Metal.h>
 #include "limbforge/transcendental.hpp"
@@ -94,16 +95,10 @@ std::vector<word> make_two_over_pi(){
 }
 struct TableCache { std::mutex m;std::map<int,std::shared_ptr<void>> tables;std::vector<word> bits;bool have_bits=false; };
 TableCache& cache(){static TableCache c;return c;}
-#define LF_TABLE_CASE(X) case X:p=make_tables<X>();break;
-std::shared_ptr<void> build(int W){std::shared_ptr<void> p;
-    switch(W){LF_TABLE_CASE(4)LF_TABLE_CASE(5)LF_TABLE_CASE(6)LF_TABLE_CASE(7)LF_TABLE_CASE(8)LF_TABLE_CASE(9)LF_TABLE_CASE(10)LF_TABLE_CASE(11)
-        LF_TABLE_CASE(12)LF_TABLE_CASE(13)LF_TABLE_CASE(14)LF_TABLE_CASE(15)LF_TABLE_CASE(16)LF_TABLE_CASE(17)LF_TABLE_CASE(18)LF_TABLE_CASE(19)
-        LF_TABLE_CASE(20)LF_TABLE_CASE(21)LF_TABLE_CASE(22)LF_TABLE_CASE(23)LF_TABLE_CASE(24)LF_TABLE_CASE(25)LF_TABLE_CASE(26)LF_TABLE_CASE(27)
-        LF_TABLE_CASE(28)LF_TABLE_CASE(29)LF_TABLE_CASE(30)LF_TABLE_CASE(31)LF_TABLE_CASE(32)LF_TABLE_CASE(33)LF_TABLE_CASE(34)LF_TABLE_CASE(48)
-        LF_TABLE_CASE(68)LF_TABLE_CASE(136)
-        default:throw std::invalid_argument("transcendental tables: unsupported working width");}
-    return p;}
-#undef LF_TABLE_CASE
+template<int W=4> std::shared_ptr<void> build(int w){
+    if constexpr(W<=136){if(w==W)return make_tables<W>();return build<W+1>(w);}
+    else throw std::invalid_argument("transcendental tables: unsupported working width");
+}
 // sizeof(Tables<W>) = 4*(8 + (W+5) + 3(W+3) + 3(TMAX+1)(W+3)); Number<M> is M+3 words.
 std::size_t table_bytes(int W){return 4*std::size_t(8+(W+5)+3*(W+3)+3*(tr::TMAX+1)*(W+3));}
 // Working words of the GPU kernels: the smallest validated width >= N+2. All-width GPU runs (round 35) gave wrong
@@ -114,6 +109,38 @@ std::size_t table_bytes(int W){return 4*std::size_t(8+(W+5)+3*(W+3)+3*(tr::TMAX+
 int gpu_words(int N){
     if(const char* g=std::getenv("LIMBFORGE_TRANSCENDENTAL_GUARD_WORDS")){int v=std::atoi(g);if(v>=2&&v<=8&&N+v<=34)return N+v;}
     static const int ok[]={4,5,6,7,8,9,10,14,18,22,26,29,30,31,32,33,34};for(int w:ok)if(w>=N+2)return w;return 34;}
+// ---- GPU retry rungs (round 44) ----
+// Rung r = 1, 2, 3 evaluates the elements left by the previous level at rung_table[N-2][r-1] working words (0: the rung
+// and the later ones run on the host, in the final step). Each entry is the smallest width >= N+4, 2N+4, 4N+8 (and above
+// the previous level) whose rung kernel (LF_RUNG) matched MPFR/MPC for every element forced through it (all functions,
+// random and hard inputs, test_transcendental --force-level r at all 31 precisions), capped at the widest validated
+// width, 35 words: every rung kernel at W >= 36 words gave wrong results for every function (core add after a product
+// or a division miscompiles in these kernels; docs/gpu-codegen.md section 11). A capped rung is still useful: a width
+// is only a heuristic for how many elements a rung decides; certify keeps every decided result correctly rounded.
+// The section-9 widths (11-13, 15-17, 19-21, 23-25, 27, 28) are avoided; every other width used passed at every N.
+// A rung that does not compile (e.g. complex log at 136 words via the override: "exceeds available stack space") ends
+// the GPU levels: it and the later rungs run on the host.
+// Diagnostic override (probing): LIMBFORGE_TRANSCENDENTAL_RUNG_WORDS="N:w1/w2/w3,..." replaces the entries of those N
+// (increasing widths above the first pass, <= 136; a 0 sends that rung and the later ones to the host, which isolates
+// the rung under test with --force-level in tests/test_transcendental.cpp; invalid entries are ignored).
+const unsigned char rung_table[31][3]={ // N = 2..32: rungs 1, 2, 3
+    {6,8,18},{7,10,22},{8,14,26},{9,14,29},{10,18,32},{14,18,35},{14,22,35},{18,22,35},{18,26,35},{18,26,35},
+    {18,29,35},{22,30,35},{22,32,35},{22,34,35},{22,35,0},{26,35,0},{26,35,0},{26,35,0},{26,35,0},{29,35,0},{29,35,0},
+    {29,35,0},{29,35,0},{30,35,0},{30,35,0},{31,35,0},{32,35,0},{33,35,0},{34,35,0},{35,0,0},{35,0,0}};
+// Words of GPU rungs 1-3 at N words (0: the rung runs on the host).
+void rung_words(int N,Function f,int words[3]){
+    int w[3]={rung_table[N-2][0],rung_table[N-2][1],rung_table[N-2][2]};
+    if(const char* s=std::getenv("LIMBFORGE_TRANSCENDENTAL_RUNG_WORDS"))
+        for(const char* p=s;*p;){char* e;long n=std::strtol(p,&e,10);if(e==p||*e!=':')break;long v[3];p=e+1;
+            for(int r=0;r<3;++r){v[r]=std::strtol(p,&e,10);p=e;if(r<2&&*p=='/')++p;}
+            bool ok=v[0]>gpu_words(N)&&v[0]<=136;long prev=v[0];
+            for(int r=1;r<3;++r){if(!v[r])prev=999;else if(prev==999||v[r]<=prev||v[r]>136)ok=false;else prev=v[r];}
+            if(n==N&&ok)for(int r=0;r<3;++r)w[r]=int(v[r]);
+            if(*p==',')++p;}
+    bool gpu=f!=Function::complex_powi;
+    for(int r=0;r<3;++r){if(!w[r])gpu=false;words[r]=gpu?w[r]:0;}
+}
+std::atomic<int> forced_level{0};
 // ---- host evaluation ladder ----
 constexpr int ladder[]={4,6,8,10,12,16,20,24,34,48,68,136};
 constexpr int ladder_size=int(sizeof(ladder)/sizeof(ladder[0]));
@@ -154,14 +181,16 @@ template<class F> void parallel_for(std::size_t n,unsigned threads,std::size_t g
     std::vector<std::thread> w;for(unsigned i=1;i<t;++i)w.emplace_back(f,n*i/t,n*(i+1)/t);f(std::size_t(0),n/t);for(auto& x:w)x.join();
 }
 struct Counters { std::atomic<std::size_t> resolved[4]{},unresolved{}; };
+void host_rungs(int N,int words[3]){words[0]=ladder_at_least(N+4);words[1]=ladder_at_least(2*N+4);words[2]=ladder_at_least(4*N+8);}
 // Element i of a real (one Number) or complex (two Numbers) array.
 template<int N> void operands(Function f,const Number<N>* A,const Number<N>* Bv,std::size_t i,Number<N>& a,Number<N>& b){
     if(function_is_complex(f)){a=A[2*i];b=A[2*i+1];}else{a=A[i];b=f==Function::atan2?Bv[i]:zero<N>();}
 }
-// Retry ladder for the listed elements: widths >= N+4, 2N+4, 4N+8 words.
-template<int N> void resolve(Function f,const Number<N>* A,const Number<N>* Bv,Number<N>* out,const std::uint32_t* list,std::size_t n,unsigned threads,Counters& c){
-    const int rungs[3]={ladder_at_least(N+4),ladder_at_least(2*N+4),ladder_at_least(4*N+8)};const std::size_t stride=function_is_complex(f)?2:1;
-    parallel_for(n,threads,16,[&](std::size_t lo,std::size_t hi){for(std::size_t q=lo;q<hi;++q){std::size_t i=list[q];Number<N> a,b,o[2];operands(f,A,Bv,i,a,b);
+// Host retry ladder for the listed elements (widths >= N+4, 2N+4, 4N+8 words); get(q, a, b) gives the operands of the
+// q-th listed element. Writes every listed element (the RN fallback when no rung decides).
+template<int N,class Get> void resolve(Function f,Get get,Number<N>* out,const std::uint32_t* list,std::size_t n,unsigned threads,Counters& c){
+    int rungs[3];host_rungs(N,rungs);const std::size_t stride=function_is_complex(f)?2:1;
+    parallel_for(n,threads,16,[&](std::size_t lo,std::size_t hi){for(std::size_t q=lo;q<hi;++q){std::size_t i=list[q];Number<N> a,b,o[2];get(q,a,b);
         int r=0,last=0;bool done=false;for(;r<3&&!done;++r){if(r&&rungs[r]==last)continue;last=rungs[r];done=attempt_at<N>(rungs[r],f,a,b,o);if(done)++c.resolved[r];}
         if(!done)++c.unresolved;
         out[stride*i]=o[0];if(stride==2)out[stride*i+1]=o[1];}});
@@ -179,6 +208,7 @@ const std::uint32_t* two_over_pi_bits(){
     auto& c=cache();{std::lock_guard<std::mutex> l(c.m);if(c.have_bits)return c.bits.data();}
     auto q=make_two_over_pi();std::lock_guard<std::mutex> l(c.m);if(!c.have_bits){c.bits=std::move(q);c.have_bits=true;}return c.bits.data();
 }
+void transcendental_force_level(int level){forced_level.store(std::max(0,level));}
 }
 void transcendental_cpu(int bits,Function f,const void* a,void* out,std::size_t count,const void* b,unsigned threads,TranscendentalReport* report){
     check_bits(bits);if(int(f)<0||int(f)>int(Function::complex_powi))throw std::invalid_argument("transcendental: invalid function");
@@ -187,6 +217,7 @@ void transcendental_cpu(int bits,Function f,const void* a,void* out,std::size_t 
     auto start=Clock::now();TranscendentalReport rep;rep.count=count;
     by_words(bits/32,[&](auto tag){constexpr int N=decltype(tag)::value;
         if(f==Function::complex_powi){powi_cpu<N>(static_cast<const Complex<N>*>(a),static_cast<const std::int32_t*>(b),count,static_cast<Complex<N>*>(out),count,threads);return;}
+        host_rungs(N,rep.rung_words);rep.first_words=ladder_at_least(N+2);
         const auto* A=static_cast<const Number<N>*>(a);const auto* Bv=static_cast<const Number<N>*>(b);auto* O=static_cast<Number<N>*>(out);
         const std::size_t stride=function_is_complex(f)?2:1;const int first=ladder_at_least(N+2);
         detail::transcendental_tables(first);detail::two_over_pi_bits();
@@ -199,23 +230,55 @@ void transcendental_cpu(int bits,Function f,const void* a,void* out,std::size_t 
             if(!mine.empty()){std::lock_guard<std::mutex> l(m);failed.insert(failed.end(),mine.begin(),mine.end());}});
         if(failed.empty())return;
         rep.retried=failed.size();std::sort(failed.begin(),failed.end());
-        auto rt=Clock::now();Counters c;resolve<N>(f,A,Bv,O,failed.data(),failed.size(),threads,c);
+        auto rt=Clock::now();Counters c;
+        resolve<N>(f,[&](std::size_t q,Number<N>& x,Number<N>& y){operands(f,A,Bv,failed[q],x,y);},O,failed.data(),failed.size(),threads,c);
         for(int r=0;r<3;++r)rep.resolved[r]=c.resolved[r];rep.unresolved=c.unresolved;rep.retry_seconds=since(rt);
     });
     rep.wall_seconds=since(start);if(report)*report=rep;
 }
+// ---- GPU passes ----
+// Retry-list buffer: counters[4] (undecided after levels 0-3), indirect dispatch arguments of rungs 1-3 (3 words each, at
+// byte 16+12(r-1)), then from byte 64 lists A and B of count entries; level l appends to list l % 2 and reads (l-1) % 2.
+constexpr std::size_t list_header=64;
+std::size_t list_offset(int level,std::size_t count){return list_header+std::size_t(level%2)*4*count;}
+std::size_t list_bytes(std::size_t count){return list_header+8*count;}
+struct Level { std::uint32_t count,level,force,last; }; // = Level of src/transcendental.metal
+// Levels of one function at one precision: 0 = first pass, 1.. = GPU rungs (words[l] working words).
+struct Plan { int levels=0;int words[4]={};id<MTLComputePipelineState> pipe[4],prepare;id<MTLBuffer> tables[4]; };
+struct PassBuffers { id<MTLBuffer> x,y,out,lists,saved; };
+// Report of the GPU levels from the counters; returns the number of elements left for the host final step.
+std::size_t gpu_report(TranscendentalReport& rep,const Plan& P,const std::uint32_t* c){
+    rep.retried=c[0];rep.first_words=P.words[0];for(int r=0;r<3;++r)rep.rung_words[r]=r+1<P.levels?P.words[r+1]:0;
+    for(int l=1;l<P.levels;++l)rep.resolved[l-1]=c[l-1]-c[l];
+    return c[P.levels-1];
+}
+// Host final step: the host ladder for the listed elements, operands from `saved` (by list slot; elements left after the
+// last GPU level) or, with saved = nullptr, from the operand arrays A, B (by element index; host-array calls).
+void host_final(int bits,Function f,const void* saved,const void* A,const void* B,const std::uint32_t* list,std::size_t n,void* out,unsigned threads,TranscendentalReport& rep){
+    if(!n)return;auto rt=Clock::now();std::vector<std::uint32_t> sorted(list,list+n);std::vector<std::uint32_t> order(n);
+    for(std::size_t q=0;q<n;++q)order[q]=std::uint32_t(q);std::sort(order.begin(),order.end(),[&](std::uint32_t x,std::uint32_t y){return list[x]<list[y];});
+    for(std::size_t q=0;q<n;++q)sorted[q]=list[order[q]];
+    const bool two=function_is_complex(f)||f==Function::atan2;Counters c;
+    by_words(bits/32,[&](auto tag){constexpr int N=decltype(tag)::value;const auto* S=static_cast<const Number<N>*>(saved);
+        const auto* X=static_cast<const Number<N>*>(A);const auto* Y=static_cast<const Number<N>*>(B);
+        resolve<N>(f,[&](std::size_t q,Number<N>& a,Number<N>& b){std::size_t s=order[q];
+                if(!S)operands(f,X,Y,sorted[q],a,b);else if(two){a=S[2*s];b=S[2*s+1];}else{a=S[s];b=zero<N>();}},
+                   static_cast<Number<N>*>(out),sorted.data(),n,threads,c);});
+    for(int r=0;r<3;++r)rep.resolved[3]+=c.resolved[r];rep.unresolved=c.unresolved;rep.retry_seconds=since(rt);
+}
 struct Library { id<MTLLibrary> lib;std::map<int,id<MTLComputePipelineState>> pipes;id<MTLBuffer> tables; };
 struct Transcendentals::Impl {
     TranscendentalOptions options;TranscendentalReport report;id<MTLDevice> device;id<MTLCommandQueue> queue;
-    std::map<int,Library> libs;id<MTLBuffer> bits_buffer;std::map<std::string,id<MTLBuffer>> pool;
+    std::map<std::pair<int,int>,Library> libs;std::map<std::pair<int,int>,Plan> plans;id<MTLBuffer> bits_buffer;std::map<std::string,id<MTLBuffer>> pool;
     // As Engine::Impl: lookups hold the lock, compilation does not; the first stored object is kept (map nodes are stable).
     std::mutex cache_mutex;
     id<MTLBuffer> buffer(const std::string& role,std::size_t bytes){
         auto& b=pool[role];if(!b||b.length<bytes){b=nil;b=[device newBufferWithLength:std::max<std::size_t>(bytes,16) options:MTLResourceStorageModeShared];}
         if(!b)throw std::runtime_error("Metal allocation failed ("+role+")");return b;}
-    Library& library(int bits){
-        {std::lock_guard<std::mutex> lock(cache_mutex);auto found=libs.find(bits);if(found!=libs.end())return found->second;}
-        const int W=gpu_words(bits/32);Library L;
+    // One library per (bits, working words) with its constant tables.
+    Library& library(int bits,int W){
+        {std::lock_guard<std::mutex> lock(cache_mutex);auto found=libs.find({bits,W});if(found!=libs.end())return found->second;}
+        Library L;
         NSString* source=[NSString stringWithFormat:@"#define LF_BITS %d\n#define LF_W %d\n%s",bits,W,limbforge_transcendental_source];
         MTLCompileOptions* o=[MTLCompileOptions new];o.languageVersion=MTLLanguageVersion((4u<<16)|0u);o.mathMode=MTLMathModeSafe;
         NSError* e=nil;L.lib=[device newLibraryWithSource:source options:o error:&e];
@@ -226,23 +289,73 @@ struct Transcendentals::Impl {
         id<MTLBuffer> bits_copy=[device newBufferWithBytes:q length:4*n options:MTLResourceStorageModeShared];
         if(!L.tables||!bits_copy)throw std::runtime_error("Metal allocation failed (transcendental tables)");
         std::lock_guard<std::mutex> lock(cache_mutex);if(!bits_buffer)bits_buffer=bits_copy;
-        return libs.emplace(bits,L).first->second;
+        return libs.emplace(std::make_pair(bits,W),L).first->second;
     }
-    id<MTLComputePipelineState> pipeline(int bits,Function f){
-        Library& L=library(bits);
-        {std::lock_guard<std::mutex> lock(cache_mutex);auto it=L.pipes.find(int(f));if(it!=L.pipes.end())return it->second;}
+    // The kernel of f in the (bits, W) library: first pass, or retry rung (LF_RUNG). Throws if it does not compile.
+    id<MTLComputePipelineState> pipeline(int bits,int W,Function f,bool rung){
+        Library& L=library(bits,W);const int key=2*int(f)+(rung?1:0);
+        {std::lock_guard<std::mutex> lock(cache_mutex);auto it=L.pipes.find(key);if(it!=L.pipes.end())return it->second;}
         NSString* name=f==Function::atan2?@"lf_atan2":f==Function::complex_powi?@"lf_powi":function_is_complex(f)?@"lf_complex":@"lf_unary";
-        MTLFunctionConstantValues* v=[MTLFunctionConstantValues new];int op=int(f);[v setConstantValue:&op type:MTLDataTypeInt atIndex:0];
+        MTLFunctionConstantValues* v=[MTLFunctionConstantValues new];int op=int(f);bool list=rung;
+        [v setConstantValue:&op type:MTLDataTypeInt atIndex:0];[v setConstantValue:&list type:MTLDataTypeBool atIndex:1];
         NSError* e=nil;id<MTLFunction> fn=[L.lib newFunctionWithName:name constantValues:v error:&e];
         if(!fn)throw std::runtime_error("missing Metal function: "+message(e));
         id<MTLComputePipelineState> p=[device newComputePipelineStateWithFunction:fn error:&e];
-        if(!p)throw std::runtime_error("Metal pipeline: "+message(e));
-        std::lock_guard<std::mutex> lock(cache_mutex);return L.pipes.emplace(int(f),p).first->second;
+        if(!p)throw std::runtime_error("Metal pipeline (transcendental, "+std::to_string(W)+" words): "+message(e));
+        std::lock_guard<std::mutex> lock(cache_mutex);return L.pipes.emplace(key,p).first->second;
+    }
+    // lf_prepare of the (bits, W) library (indirect dispatch arguments of a rung).
+    id<MTLComputePipelineState> prepare_pipeline(int bits,int W){
+        Library& L=library(bits,W);const int key=-1;
+        {std::lock_guard<std::mutex> lock(cache_mutex);auto it=L.pipes.find(key);if(it!=L.pipes.end())return it->second;}
+        NSError* e=nil;id<MTLFunction> fn=[L.lib newFunctionWithName:@"lf_prepare"];
+        id<MTLComputePipelineState> p=fn?[device newComputePipelineStateWithFunction:fn error:&e]:nil;
+        if(!p)throw std::runtime_error("Metal pipeline (transcendental prepare): "+message(e));
+        std::lock_guard<std::mutex> lock(cache_mutex);return L.pipes.emplace(key,p).first->second;
+    }
+    // First pass and GPU rungs of f at bits, compiled concurrently on first use. A rung whose pipeline does not compile
+    // ends the GPU levels (it and later rungs run on the host).
+    Plan plan(int bits,Function f){
+        {std::lock_guard<std::mutex> lock(cache_mutex);auto it=plans.find({bits,int(f)});if(it!=plans.end())return it->second;}
+        Plan P;const int N=bits/32;int rw[3];rung_words(N,f,rw);P.words[0]=gpu_words(N);int want=1;
+        for(int r=0;r<3&&rw[r];++r)P.words[want++]=rw[r];
+        std::string errors[4];std::vector<std::thread> compile;
+        auto job=[&](int l){@autoreleasepool{try{P.pipe[l]=pipeline(bits,P.words[l],f,l>0);P.tables[l]=library(bits,P.words[l]).tables;}
+            catch(const std::exception& ex){errors[l]=ex.what();}}};
+        for(int l=1;l<want;++l)compile.emplace_back(job,l);
+        job(0);for(auto& t:compile)t.join();
+        if(!errors[0].empty())throw std::runtime_error(errors[0]);
+        if(want>1)P.prepare=prepare_pipeline(bits,P.words[0]);
+        P.levels=1;while(P.levels<want&&errors[P.levels].empty())++P.levels;
+        for(int l=P.levels;l<4;++l){P.pipe[l]=nil;P.tables[l]=nil;P.words[l]=0;}
+        std::lock_guard<std::mutex> lock(cache_mutex);return plans.emplace(std::make_pair(bits,int(f)),P).first->second;
     }
     NSUInteger group(id<MTLComputePipelineState> p)const{return std::min<NSUInteger>(std::max(1u,options.threads_per_threadgroup),p.maxTotalThreadsPerThreadgroup);}
+    // Encodes the levels of P; next() returns the encoder for one dispatch (ordered after the previous one, with a barrier).
+    // Levels [lo, hi) of P (default: all).
+    template<class Next> void encode_levels(const Plan& P,Next next,const PassBuffers& b,std::size_t count,int lo=0,int hi=-1){
+        id<MTLBuffer> bits;{std::lock_guard<std::mutex> lock(cache_mutex);bits=bits_buffer;}
+        const std::uint32_t force=std::uint32_t(std::min(forced_level.load(),4));if(hi<0)hi=P.levels;
+        for(int l=lo;l<hi;++l){
+            const NSUInteger tg=group(P.pipe[l]);const std::size_t args=16+12*std::size_t(l>0?l-1:0);
+            if(l){id<MTLComputeCommandEncoder> enc=next();std::uint32_t pp[2]={std::uint32_t(l-1),std::uint32_t(tg)};
+                [enc setComputePipelineState:P.prepare];[enc setBuffer:b.lists offset:0 atIndex:0];[enc setBuffer:b.lists offset:args atIndex:1];
+                [enc setBytes:pp length:sizeof pp atIndex:2];[enc dispatchThreads:MTLSizeMake(1,1,1) threadsPerThreadgroup:MTLSizeMake(1,1,1)];}
+            id<MTLComputeCommandEncoder> enc=next();Level lv{std::uint32_t(count),std::uint32_t(l),force,l==P.levels-1?1u:0u};
+            [enc setComputePipelineState:P.pipe[l]];
+            [enc setBuffer:b.x offset:0 atIndex:0];[enc setBuffer:(b.y?b.y:b.x) offset:0 atIndex:1];[enc setBuffer:b.out offset:0 atIndex:2];
+            [enc setBuffer:P.tables[l] offset:0 atIndex:3];[enc setBuffer:bits offset:0 atIndex:4];
+            [enc setBuffer:b.lists offset:0 atIndex:5];[enc setBuffer:b.lists offset:list_offset(l,count) atIndex:6];
+            [enc setBytes:&lv length:sizeof lv atIndex:7];[enc setBuffer:b.saved offset:0 atIndex:8];
+            [enc setBuffer:b.lists offset:list_offset(l?l-1:0,count) atIndex:9];
+            if(l)[enc dispatchThreadgroupsWithIndirectBuffer:b.lists indirectBufferOffset:args threadsPerThreadgroup:MTLSizeMake(tg,1,1)];
+            else [enc dispatchThreads:MTLSizeMake(count,1,1) threadsPerThreadgroup:MTLSizeMake(tg,1,1)];
+        }
+    }
     Timing dispatch(int bits,Function f,const void* a,const void* b,const std::int32_t* k,std::size_t k_count,void* out,std::size_t count);
 };
 static_assert(sizeof(tr::Tables<10>)==4*(8+15+3*13+3*65*13),"table layout");
+static_assert(sizeof(Level)==16,"Level layout");
 Transcendentals::Transcendentals(TranscendentalOptions options):impl(std::make_unique<Impl>()){
     impl->options=options;impl->device=MTLCreateSystemDefaultDevice();if(!impl->device)throw std::runtime_error("no Metal GPU available");
     impl->queue=[impl->device newCommandQueue];if(!impl->queue)throw std::runtime_error("cannot create Metal command queue");
@@ -254,7 +367,8 @@ Transcendentals::Transcendentals(Engine& engine,TranscendentalOptions options):i
 Transcendentals::~Transcendentals()=default;
 std::string Transcendentals::device_name()const{return [[impl->device name] UTF8String];}
 const TranscendentalReport& Transcendentals::report()const{return impl->report;}
-double Transcendentals::prewarm(int bits,Function f){@autoreleasepool{check_bits(bits);auto s=Clock::now();impl->pipeline(bits,f);return since(s);}}
+double Transcendentals::prewarm(int bits,Function f){@autoreleasepool{check_bits(bits);if(int(f)<0||int(f)>int(Function::complex_powi))throw std::invalid_argument("transcendental: invalid function");
+    auto s=Clock::now();impl->plan(bits,f);return since(s);}}
 Timing Transcendentals::run(int bits,Function f,const void* a,void* out,std::size_t count,const void* b){
     if(f==Function::complex_powi)throw std::invalid_argument("use Transcendentals::powi");
     if(f==Function::atan2&&!b&&count)throw std::invalid_argument("atan2 needs the x operand");
@@ -268,32 +382,42 @@ Timing Transcendentals::Impl::dispatch(int bits,Function f,const void* a,const v
     check_bits(bits);if(int(f)<0||int(f)>int(Function::complex_powi))throw std::invalid_argument("transcendental: invalid function");
     if(count>=(std::size_t(1)<<31))throw std::invalid_argument("transcendental: count exceeds 32-bit indexing");
     auto start=Clock::now();report=TranscendentalReport{};report.count=count;if(!count)return {0,0};
-    auto cs=Clock::now();id<MTLComputePipelineState> p=pipeline(bits,f);report.compile_seconds=since(cs);
-    const std::size_t elem=std::size_t(bits/8+12)*(function_is_complex(f)?2:1),bytes=elem*count;
-    id<MTLBuffer> A=buffer("a",bytes),O=buffer("out",bytes),R=buffer("retry",4*(count+1)),Bb=nil,K=nil;
-    std::memcpy(A.contents,a,bytes);std::memset(R.contents,0,4);
+    auto cs=Clock::now();Plan P=plan(bits,f);report.compile_seconds=since(cs);
+    const bool powi=f==Function::complex_powi,two=function_is_complex(f)||f==Function::atan2;
+    const std::size_t number=std::size_t(bits/8+12),bytes=number*(function_is_complex(f)?2:1)*count;
+    id<MTLBuffer> A=buffer("a",bytes),O=buffer("out",bytes),Bb=nil,K=nil,R=nil,S=nil;
+    std::memcpy(A.contents,a,bytes);
     if(f==Function::atan2){Bb=buffer("b",bytes);std::memcpy(Bb.contents,b,bytes);}
-    if(f==Function::complex_powi){K=buffer("k",4*k_count);std::memcpy(K.contents,k,4*k_count);}
-    Library& L=library(bits);
     id<MTLCommandBuffer> cb=[queue commandBuffer];id<MTLComputeCommandEncoder> enc=[cb computeCommandEncoder];
-    [enc setComputePipelineState:p];std::uint32_t n32=std::uint32_t(count),ks=k_count==1?0u:1u;
-    [enc setBuffer:A offset:0 atIndex:0];[enc setBuffer:(Bb?Bb:A) offset:0 atIndex:1];[enc setBuffer:O offset:0 atIndex:2];
-    [enc setBuffer:L.tables offset:0 atIndex:3];[enc setBuffer:bits_buffer offset:0 atIndex:4];
-    [enc setBuffer:R offset:0 atIndex:5];[enc setBuffer:R offset:4 atIndex:6];[enc setBytes:&n32 length:4 atIndex:7];
-    [enc setBuffer:(K?K:A) offset:0 atIndex:8];[enc setBytes:&ks length:4 atIndex:9];
-    [enc dispatchThreads:MTLSizeMake(count,1,1) threadsPerThreadgroup:MTLSizeMake(group(p),1,1)];[enc endEncoding];
-    [cb commit];[cb waitUntilCompleted];
-    if(cb.status!=MTLCommandBufferStatusCompleted)throw std::runtime_error("transcendental: Metal command failed: "+message(cb.error));
-    report.gpu_seconds=cb.GPUEndTime-cb.GPUStartTime;
-    std::memcpy(out,O.contents,bytes);
-    std::uint32_t failed;std::memcpy(&failed,R.contents,4);
-    if(failed){
-        auto rt=Clock::now();report.retried=failed;std::vector<std::uint32_t> list(failed);std::memcpy(list.data(),static_cast<const char*>(R.contents)+4,4*std::size_t(failed));
-        std::sort(list.begin(),list.end());Counters c;
-        by_words(bits/32,[&](auto tag){constexpr int N=decltype(tag)::value;
-            resolve<N>(f,static_cast<const Number<N>*>(A.contents),Bb?static_cast<const Number<N>*>(Bb.contents):nullptr,static_cast<Number<N>*>(out),list.data(),list.size(),options.host_threads,c);});
-        for(int r=0;r<3;++r)report.resolved[r]=c.resolved[r];report.unresolved=c.unresolved;report.retry_seconds=since(rt);
+    if(powi){
+        K=buffer("k",4*k_count);std::memcpy(K.contents,k,4*k_count);std::uint32_t n32=std::uint32_t(count),ks=k_count==1?0u:1u;
+        [enc setComputePipelineState:P.pipe[0]];[enc setBuffer:A offset:0 atIndex:0];[enc setBuffer:O offset:0 atIndex:2];
+        [enc setBytes:&n32 length:4 atIndex:7];[enc setBuffer:K offset:0 atIndex:8];[enc setBytes:&ks length:4 atIndex:9];
+        [enc dispatchThreads:MTLSizeMake(count,1,1) threadsPerThreadgroup:MTLSizeMake(group(P.pipe[0]),1,1)];
     }
+    // With a retry threshold the first pass runs alone: up to `gpu_retry_threshold` undecided elements are resolved by the
+    // host ladder (lower latency than a GPU rung), more by the GPU rungs in a second command buffer.
+    const bool split=!powi&&P.levels>1&&options.gpu_retry_threshold>0;
+    auto run=[&](id<MTLCommandBuffer> c,id<MTLComputeCommandEncoder> e){[e endEncoding];[c commit];[c waitUntilCompleted];
+        if(c.status!=MTLCommandBufferStatusCompleted)throw std::runtime_error("transcendental: Metal command failed: "+message(c.error));
+        report.gpu_seconds+=c.GPUEndTime-c.GPUStartTime;};
+    if(!powi){
+        R=buffer("lists",list_bytes(count));S=buffer("saved",number*(two?2:1)*count);std::memset(R.contents,0,16);
+        bool first=true;encode_levels(P,[&]{if(!first)[enc memoryBarrierWithScope:MTLBarrierScopeBuffers];first=false;return enc;},PassBuffers{A,Bb,O,R,S},count,0,split?1:-1);
+    }
+    run(cb,enc);
+    const auto* lists=static_cast<const char*>(R?R.contents:nullptr);std::uint32_t c[4]={};if(R)std::memcpy(c,lists,16);
+    bool host_only=split&&c[0]<=options.gpu_retry_threshold;
+    if(split&&!host_only){
+        id<MTLCommandBuffer> cb2=[queue commandBuffer];id<MTLComputeCommandEncoder> enc2=[cb2 computeCommandEncoder];bool first=true;
+        encode_levels(P,[&]{if(!first)[enc2 memoryBarrierWithScope:MTLBarrierScopeBuffers];first=false;return enc2;},PassBuffers{A,Bb,O,R,S},count,1,-1);
+        run(cb2,enc2);std::memcpy(c,lists,16);
+    }
+    std::memcpy(out,O.contents,bytes);
+    if(host_only){report.retried=c[0];report.first_words=P.words[0];
+        host_final(bits,f,nullptr,A.contents,Bb?Bb.contents:nullptr,reinterpret_cast<const std::uint32_t*>(lists+list_offset(0,count)),c[0],out,options.host_threads,report);}
+    else if(!powi){std::size_t left=gpu_report(report,P,c);
+        host_final(bits,f,S.contents,nullptr,nullptr,reinterpret_cast<const std::uint32_t*>(lists+list_offset(P.levels-1,count)),left,out,options.host_threads,report);}
     report.wall_seconds=since(start);return {report.gpu_seconds,report.wall_seconds};
 }}
 // ---- Resident passes ----
@@ -316,41 +440,30 @@ TranscendentalTicket Transcendentals::encode(CommandBatch& batch,int bits,bool c
     if(count>=(std::size_t(1)<<31))throw std::invalid_argument("transcendental: count exceeds 32-bit indexing");
     Internal::retain(batch,a.storage);if(two)Internal::retain(batch,b.storage);if(powi&&k.storage)Internal::retain(batch,k.storage);Internal::retain(batch,out.storage,true);
     auto pass=std::make_shared<detail::TranscendentalPass>();pass->report.count=count;
-    auto cs=Clock::now();id<MTLComputePipelineState> p=count?impl->pipeline(bits,f):nil;pass->report.compile_seconds=count?since(cs):0;
+    auto cs=Clock::now();Plan P;if(count)P=impl->plan(bits,f);pass->report.compile_seconds=count?since(cs):0;
     if(!count||powi){ // no retries: final when the GPU completes
-        if(count){Internal::keep(batch,p);auto enc=Internal::compute(batch);std::uint32_t n32=std::uint32_t(count),ks=k.size==1?0u:1u;
-            [enc setComputePipelineState:p];[enc setBuffer:a.storage->buffer offset:0 atIndex:0];[enc setBuffer:out.storage->buffer offset:0 atIndex:2];
+        if(count){Internal::keep(batch,P.pipe[0]);auto enc=Internal::compute(batch);std::uint32_t n32=std::uint32_t(count),ks=k.size==1?0u:1u;
+            [enc setComputePipelineState:P.pipe[0]];[enc setBuffer:a.storage->buffer offset:0 atIndex:0];[enc setBuffer:out.storage->buffer offset:0 atIndex:2];
             [enc setBytes:&n32 length:4 atIndex:7];[enc setBuffer:k.storage->buffer offset:0 atIndex:8];[enc setBytes:&ks length:4 atIndex:9];
-            [enc dispatchThreads:MTLSizeMake(count,1,1) threadsPerThreadgroup:MTLSizeMake(impl->group(p),1,1)];}
+            [enc dispatchThreads:MTLSizeMake(count,1,1) threadsPerThreadgroup:MTLSizeMake(impl->group(P.pipe[0]),1,1)];}
         Internal::on_completion(batch,[pass]{pass->done.store(true,std::memory_order_release);});return TranscendentalTicket(pass);
     }
-    Library& L=impl->library(bits);id<MTLBuffer> tables=L.tables,bits_buffer;{std::lock_guard<std::mutex> lock(impl->cache_mutex);bits_buffer=impl->bits_buffer;}
-    // The kernel reads a snapshot (taken in the batch, after earlier writes), so the retry sees the same operands even when
-    // out aliases an input or a later operation overwrites one.
-    const std::size_t bytes=std::size_t(bits/8+12)*(complex?2:1)*count;
-    auto A=Internal::scratch(batch,bytes);Internal::copy(batch,a.storage,A,bytes);
-    std::shared_ptr<detail::BufferStorage> B;if(two){B=Internal::scratch(batch,bytes);Internal::copy(batch,b.storage,B,bytes);}
-    auto R=Internal::scratch(batch,4*(count+1));std::memset(R->buffer.contents,0,4);
-    Internal::keep(batch,p);Internal::keep(batch,tables);Internal::keep(batch,bits_buffer);
-    auto enc=Internal::compute(batch);std::uint32_t n32=std::uint32_t(count),ks=0;
-    [enc setComputePipelineState:p];[enc setBuffer:A->buffer offset:0 atIndex:0];[enc setBuffer:(B?B:A)->buffer offset:0 atIndex:1];[enc setBuffer:out.storage->buffer offset:0 atIndex:2];
-    [enc setBuffer:tables offset:0 atIndex:3];[enc setBuffer:bits_buffer offset:0 atIndex:4];
-    [enc setBuffer:R->buffer offset:0 atIndex:5];[enc setBuffer:R->buffer offset:4 atIndex:6];[enc setBytes:&n32 length:4 atIndex:7];
-    [enc setBuffer:A->buffer offset:0 atIndex:8];[enc setBytes:&ks length:4 atIndex:9];
-    [enc dispatchThreads:MTLSizeMake(count,1,1) threadsPerThreadgroup:MTLSizeMake(impl->group(p),1,1)];
+    // The levels read the operands directly: they run before any later operation of the batch, a level writes only decided
+    // elements (an aliased input of an undecided element stays intact), and the last level saves the operands of the
+    // elements it leaves for the host.
+    const std::size_t number=std::size_t(bits/8+12);
+    auto R=Internal::scratch(batch,list_bytes(count));std::memset(R->buffer.contents,0,16);
+    auto S=Internal::scratch(batch,number*(complex||two?2:1)*count);
+    for(int l=0;l<P.levels;++l){Internal::keep(batch,P.pipe[l]);Internal::keep(batch,P.tables[l]);}Internal::keep(batch,P.prepare);
+    {std::lock_guard<std::mutex> lock(impl->cache_mutex);Internal::keep(batch,impl->bits_buffer);}
+    impl->encode_levels(P,[&]{return Internal::compute(batch);},PassBuffers{a.storage->buffer,two?b.storage->buffer:nil,out.storage->buffer,R->buffer,S->buffer},count);
+    // `out` stays write-protected in the batch: the host final step may still patch it at wait().
     auto flag=Internal::provisional(batch,out.storage);auto O=out.storage;const unsigned threads=impl->options.host_threads;
-    // Host retries after the GPU pass (run by Submission::wait before the buffers are released): as the host-array call.
-    Internal::on_completion(batch,[pass,flag,A,B,R,O,f,bits,threads]{
-        auto rt=Clock::now();TranscendentalReport& rep=pass->report;std::uint32_t failed;std::memcpy(&failed,R->buffer.contents,4);
-        if(failed){
-            rep.retried=failed;std::vector<std::uint32_t> list(failed);std::memcpy(list.data(),static_cast<const char*>(R->buffer.contents)+4,4*std::size_t(failed));
-            std::sort(list.begin(),list.end());Counters c;
-            by_words(bits/32,[&](auto tag){constexpr int N=decltype(tag)::value;
-                resolve<N>(f,static_cast<const Number<N>*>(A->buffer.contents),B?static_cast<const Number<N>*>(B->buffer.contents):nullptr,
-                           static_cast<Number<N>*>(O->buffer.contents),list.data(),list.size(),threads,c);});
-            for(int r=0;r<3;++r)rep.resolved[r]=c.resolved[r];rep.unresolved=c.unresolved;rep.retry_seconds=since(rt);
-        }
-        rep.provisional_reads=flag->load();pass->done.store(true,std::memory_order_release);});
+    Internal::on_completion(batch,[pass,flag,R,S,O,P,f,bits,count,threads]{
+        TranscendentalReport& rep=pass->report;std::uint32_t c[4];std::memcpy(c,R->buffer.contents,16);std::size_t left=gpu_report(rep,P,c);
+        host_final(bits,f,S->buffer.contents,nullptr,nullptr,reinterpret_cast<const std::uint32_t*>(static_cast<const char*>(R->buffer.contents)+list_offset(P.levels-1,count)),left,
+                   O->buffer.contents,threads,rep);
+        rep.in_batch_reads=flag->load();rep.provisional_reads=rep.in_batch_reads&&rep.host_retried()>0;pass->done.store(true,std::memory_order_release);});
     return TranscendentalTicket(pass);
 }}
 }

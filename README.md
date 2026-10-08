@@ -66,7 +66,7 @@ measurements.
   `scaled_residual` and `summarize_status`: exact tie rule (lowest index), failing entries counted and
   never dropped from a norm.
 - Correctly rounded element-wise `exp`, `expm1`, `log`, `log1p`, `sin`, `cos`, `atan2` and complex `exp`/`log`
-  (`transcendental.hpp`, bit-identical to MPFR/MPC): certified GPU evaluation with rare host retries at more limbs,
+  (`transcendental.hpp`, bit-identical to MPFR/MPC): certified GPU evaluation with GPU retry rungs at more limbs (host only for the rare cases beyond 35 words),
   plus complex integer powers by a documented fused sequence.
 - Typed resident buffers, asynchronous submissions, and dependent operations in one command batch, including
   polynomials, norms, transcendental functions and dense `syrk`/`gemm` (`docs/execution.md`, "Resident units").

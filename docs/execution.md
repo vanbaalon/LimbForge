@@ -121,12 +121,12 @@ auto info = gpu.make_buffer<NormInfo>(1);
 // ... upload a, b, coeffs ...
 auto batch = gpu.batch();
 batch.run(Operation::complex_mul, a, b, z);
-auto exp_pass = tr.run(batch, Function::complex_exp, z, e);    // GPU pass + resident retry list
+auto exp_pass = tr.run(batch, Function::complex_exp, z, e);    // GPU pass + GPU retry rungs
 nm.poly_eval(batch, Polynomial{n, terms, n, true}, coeffs, e, v);
 nm.norm_inf(batch, Segments{1, n, true}, v, norm, info);
 auto done = batch.submit();
-done.wait();                                            // also runs the host retries of exp_pass
-// exp_pass.report(): retried, resolved per rung, provisional_reads
+done.wait();                                            // also runs the (rare) host final step of exp_pass
+// exp_pass.report(): retried, resolved per GPU rung and by the host, in_batch_reads, provisional_reads
 ```
 
 - Every resident unit call is bit-identical to the corresponding host-array call: the same pipelines
@@ -142,25 +142,44 @@ done.wait();                                            // also runs the host re
   engine's: a unit may encode into batches of several threads' engines (host-array calls of one unit
   still belong to one thread).
 
-**Transcendental passes are final only at `wait()`.** The GPU certifies each element and appends the
-undecided ones to a resident compacted list. `Submission::wait()` (or the submission's destructor)
-then runs the host retry ladder for those elements and patches `out` *before* it releases the
-buffers, so after `wait()` the output equals the host-array call bit for bit, and before it the
-output cannot be mapped, downloaded or used by another batch (it is busy). Within the encoding
-batch, `out` is provisional:
+**Transcendental passes are final inside the batch when the GPU decides every element** (round 44). The
+first pass certifies each element and appends the undecided ones to a resident compacted list; up to three
+retry rungs, encoded right after it in the same batch, re-evaluate the listed elements at more words
+(`docs/numerics.md`, "Transcendental functions") and compact the still undecided ones for the next rung.
+Every dispatch is separated from the next by the batch's buffer barrier, so operations encoded later in
+the batch read the final values of all elements that a GPU rung resolved. Elements still undecided after
+the last GPU rung are finished by the host ladder in `Submission::wait()` (or the submission's destructor), which patches `out` before it releases the buffers.
+Random inputs essentially never reach that step. Hard inputs whose decision needs more than the 35-word
+cap of the GPU rungs (short dyadics near a rounding midpoint need about `2N` words) do: in the test sets none
+up to 352 bits, one per width at 384–544 bits, most of the ~100 hard retries per width from 576 bits (the
+third rung runs on the host from 512 bits, the second and third at 992–1024;
+`benchmarks/results/round44_transcendental_tests_per_width.txt`).
+After `wait()` the output equals the host-array call bit for bit, and before it the output cannot be
+mapped, downloaded or used by another batch (it is busy). Within the encoding batch:
 
-- writing it again (any engine or unit operation, or a second pass) throws `logic_error`;
-- reading it (as `poly_eval` above) is allowed, but such an operation sees the GPU's provisional
-  values for undecided elements. After `wait()` the ticket's `report()` gives `retried` and
-  `provisional_reads`; when both are nonzero, recompute the dependent results (or split the batch at
-  the pass). Random full-precision arguments are essentially never undecided; short dyadic arguments
-  near the documented hard cases are (`docs/numerics.md`, "Transcendental functions").
-- The pass snapshots its inputs inside the batch before evaluating (a blit copy), so `out` may alias
-  the input and later operations may overwrite the input; the snapshot and the retry list
-  (`4(count+1)` bytes) are released at `wait()`. `powi` has no retries and needs no snapshot.
+- reading `out` (as `poly_eval` above) gives final values unless the pass left elements for the host;
+  then those elements hold the RN value of the last GPU rung's approximation (provisional). After
+  `wait()` the ticket's `report()` gives `retried`, the per-rung counts `resolved[0..2]` (GPU rungs of
+  `rung_words[0..2]` words) and `resolved[3]` (host), `host_retried()`, `in_batch_reads` (a later
+  operation read `out`) and `provisional_reads` (it did so while `host_retried() > 0`: recompute the
+  dependent results, or split the batch at the pass);
+- writing `out` again (any engine or unit operation, or a second pass) throws `logic_error`, because the
+  host final step may still patch it;
+- the levels read the inputs directly, without a snapshot: they run before any later operation of the
+  batch, a level writes only elements it decided (an input aliased by `out` stays intact for undecided
+  elements), and the last GPU level saves the operands of the elements it leaves for the host. Each rung
+  is an indirect dispatch sized on the GPU from the previous level's counter (a one-thread kernel writes
+  the arguments), so a pass without retries costs two tiny dispatches per rung; a rung with work adds 1.2–5 ms
+  of GPU time (one GPU thread per element at up to 35 words), more than the host ladder needs for a few
+  elements, which is the price of final values inside the batch. Scratch per pass:
+  two `4·count`-byte lists with a 64-byte header (counters, dispatch arguments), and a `count`-element
+  operand buffer whose pages are touched only by elements left for the host; all released at `wait()`.
+  `powi` has no retries.
 - `ticket.resolved()` is false and `ticket.report()` throws until the submission is waited; a batch
-  discarded without submission leaves its tickets unresolved. Host retries that fail make `wait()`
+  discarded without submission leaves its tickets unresolved. A failing host final step makes `wait()`
   throw.
+- `transcendental_force_level(level)` (namespace `detail`, a test hook) makes the levels below `level`
+  treat every element as undecided, to exercise a rung or the host final step.
 
 **Dense products (`Linalg`, `linalg.hpp`).** `Linalg la(gpu)` encodes `syrk` and `gemm` (also the
 `subtract` updates) on `Buffer<Float<bits>>` operands; band analysis, member lists and the modulus count

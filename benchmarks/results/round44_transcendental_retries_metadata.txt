@@ -1,0 +1,26 @@
+Round 44 (GPU-side transcendental retries): before/after timings of host-array and resident passes.
+Apple M5 Max, macOS 26.6.2, 2026-10-08, 13:17-13:40 EDT. Host load averages 10-38 (other agents active); GPU shared.
+Before: benchmarks/transcendental.cpp built against the library at 6da4ea9 (round 35/39: GPU first pass, every retry
+on the host; resident passes snapshot the inputs and retry at wait()). After: this round, default options
+(gpu_retry_threshold 512) for round44_transcendental_retries_{random,hard}.csv, gpu_retry_threshold 0 (GPU rungs for every
+retry, all levels in one command buffer) for round44_transcendental_retries_hard_threshold0.csv. Resident passes always use
+the GPU rungs.
+Driver: python3 benchmarks/experiments/transcendental_retry_compare.py BEFORE AFTER 4 OUT.csv -- --repeats 7 --sizes 10000
+100000 1000000 --bits 224 256 384 --functions ... --hard ... [--retry-threshold 0]
+(transcendental_limbforge --retries: per row one warm-up call per path, then 0.3 s of the row's own work for warm GPU
+clocks, then 7 repeats of the host-array call and of a one-pass resident batch; medians. The driver alternates the two
+binaries over 4 rounds (order swapped every round) and reports the median of the per-round medians.)
+Columns: *_host_* = Transcendentals::run on host arrays (wall = whole call incl. copies and host retries); *_resident_* =
+CommandBatch with one pass, Submission::wait() timing (wall incl. the host final step); ratio = before / after (> 1: after
+faster); retried / rung1-3 / host_retried = the after binary's report of its last host-array call (before: every retry on
+the host); resident_mismatches = resident result vs host-array result, bit for bit (0 everywhere).
+Inputs: random as round 35 (exp |x| < 2^6, log x in 2^[-60,60], sin |x| < 2^8, complex exp re in 2^[-10,4] / im in
+2^[-10,7], complex log parts in 2^[-60,60]); hard_fraction p replaces every (1/p)-th element by a short dyadic near a
+rounding midpoint (exp/log1p: +-2^(-32N), 2^(1-32N), 2^(-32N-1) with low words 0-2; cos: 2^(-16N) neighbours; complex
+exp: (2^-32N, 0) and (2^-32N, 2^-16N); complex log: (1, 2^-16N)); a third to a half of them need a retry (rung 1 or 2).
+Noise: differences under 15% are noise on this host (repeat spread at 10^4 elements up to 30%).
+Summary: no retries: wall ratio median 1.00 (0.81-1.28), device 1.01 (0.96-1.10). Default threshold: <= 512 retries go to
+the host ladder as before (median 1.01); 10^6 elements with 1% hard inputs (3,333-5,000 retries, GPU rungs) 0.98-1.32x
+(median 1.24) host-array and 0.99-1.38x resident. Resident passes with 3-500 retries at 10^4-10^5 elements: 0.34-1.0x
+(each GPU rung with work costs 1.2-5 ms of device time). Threshold 0: same pattern for host-array calls (0.33-0.97x
+with few retries at 10^4, 1.08-1.42x at 10^6 with 1%).

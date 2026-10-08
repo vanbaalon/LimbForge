@@ -1,0 +1,155 @@
+Round 44: GPU retry-rung width probes (Apple M5 Max, macOS 26.6.2, 2026-10-08; host load 15-55).
+Tool: build/test_limbforge_transcendental --gpu-only --no-bounds --force-level r (every element forced through rung r),
+1000 random points per function and width plus the hard-case sets, vs MPFR/MPC. Per (N, W): 'ok' = 0 mismatches for all
+9 functions; FAIL lists the functions with mismatches. The table override LIMBFORGE_TRANSCENDENTAL_RUNG_WORDS=N:w1/w2/w3
+selects the widths; probes 2 and 3 set the rungs after the forced one to 0 (host), so a failure belongs to the forced rung.
+
+== Probe 1 (rung widths = targets N+4, 2N+4, 4N+8; later rungs on the GPU, so rung-1/2 FAILs are confounded with the
+   next rung, e.g. N=4 rung 1 W=8 failed only through rung 2 at W=12; stopped early: the test's printer crashed on a
+   garbage value, fixed since)
+-- rung 1
+  N= 2 bits=  64 W=[6] ok
+  N= 3 bits=  96 W=[7] ok
+  N= 4 bits= 128 W=[8] FAIL complex_log,expm1
+  N= 5 bits= 160 W=[9] ok
+  N= 6 bits= 192 W=[10] FAIL complex_log,expm1
+  N= 7 bits= 224 W=[11] FAIL complex_exp,complex_log,exp,expm1
+  N= 8 bits= 256 W=[12] FAIL complex_exp,complex_log,cos,exp,expm1
+  N= 9 bits= 288 W=[15] FAIL complex_exp,complex_log,exp,expm1
+  N=10 bits= 320 W=[15] FAIL complex_exp,complex_log,cos,exp,expm1
+  N=11 bits= 352 W=[15] FAIL complex_exp,complex_log,exp,expm1
+-- rung 2
+  N= 2 bits=  64 W=[8] ok
+  N= 3 bits=  96 W=[10] ok
+  N= 4 bits= 128 W=[12] FAIL complex_exp,complex_log,exp,expm1
+  N= 5 bits= 160 W=[14] ok
+  N= 6 bits= 192 W=[16] FAIL complex_exp,complex_log,exp,expm1
+  N= 7 bits= 224 W=[18] FAIL complex_exp
+  N= 8 bits= 256 W=[20] FAIL atan2,complex_exp,complex_log,cos,exp,expm1,log,log1p,sin
+  N= 9 bits= 288 W=[22] FAIL complex_exp
+  N=10 bits= 320 W=[24] FAIL atan2,complex_exp,complex_log,cos,exp,expm1,log,log1p,sin
+  N=11 bits= 352 W=[26] FAIL complex_exp
+-- rung 3 (last rung: not confounded)
+  N= 2 bits=  64 W=[16] FAIL complex_exp,complex_log,exp,expm1
+  N= 3 bits=  96 W=[20] FAIL atan2,complex_exp,complex_log,cos,exp,expm1,log,log1p,sin
+  N= 4 bits= 128 W=[24] FAIL atan2,complex_exp,complex_log,cos,exp,expm1,log,log1p,sin
+  N= 5 bits= 160 W=[28] FAIL atan2,complex_exp,complex_log,cos,exp,expm1,log,log1p,sin
+  N= 6 bits= 192 W=[32] ok
+
+== Probe 2 (isolated; avoids the section-9 widths; not capped)
+-- rung 1
+  N= 2 bits=  64 W=[6] ok
+  N= 3 bits=  96 W=[7] ok
+  N= 4 bits= 128 W=[8] ok
+  N= 5 bits= 160 W=[9] ok
+  N= 6 bits= 192 W=[10] ok
+  N= 7 bits= 224 W=[14] ok
+  N= 8 bits= 256 W=[14] ok
+  N= 9 bits= 288 W=[18] ok
+  N=10 bits= 320 W=[18] ok
+  N=11 bits= 352 W=[18] ok
+  N=12 bits= 384 W=[18] ok
+  N=13 bits= 416 W=[22] ok
+  N=14 bits= 448 W=[22] ok
+  N=15 bits= 480 W=[22] ok
+  N=16 bits= 512 W=[22] ok
+  N=17 bits= 544 W=[26] ok
+  N=18 bits= 576 W=[26] ok
+  N=19 bits= 608 W=[26] ok
+  N=20 bits= 640 W=[26] ok
+  N=21 bits= 672 W=[29] ok
+  N=22 bits= 704 W=[29] ok
+  N=23 bits= 736 W=[29] ok
+  N=24 bits= 768 W=[29] ok
+  N=25 bits= 800 W=[30] ok
+  N=26 bits= 832 W=[30] ok
+  N=27 bits= 864 W=[31] ok
+  N=28 bits= 896 W=[32] ok
+  N=29 bits= 928 W=[33] ok
+  N=30 bits= 960 W=[34] ok
+  N=31 bits= 992 W=[35] ok
+  N=32 bits=1024 W=[37] FAIL atan2,complex_exp,complex_log,cos,exp,expm1,log,log1p,sin
+-- rung 2 (stopped after N=19: W >= 36 fails)
+  N= 2 bits=  64 W=[8] ok
+  N= 3 bits=  96 W=[10] ok
+  N= 4 bits= 128 W=[14] ok
+  N= 5 bits= 160 W=[14] ok
+  N= 6 bits= 192 W=[18] ok
+  N= 7 bits= 224 W=[18] ok
+  N= 8 bits= 256 W=[22] ok
+  N= 9 bits= 288 W=[22] ok
+  N=10 bits= 320 W=[26] ok
+  N=11 bits= 352 W=[26] ok
+  N=12 bits= 384 W=[29] ok
+  N=13 bits= 416 W=[30] ok
+  N=14 bits= 448 W=[32] ok
+  N=15 bits= 480 W=[34] ok
+  N=16 bits= 512 W=[37] FAIL atan2,complex_exp,complex_log,cos,exp,expm1,log,log1p,sin
+  N=17 bits= 544 W=[38] FAIL atan2,complex_exp,complex_log,cos,exp,expm1,log,log1p,sin
+  N=18 bits= 576 W=[40] FAIL atan2,complex_exp,complex_log,cos,exp,expm1,log,log1p,sin
+  N=19 bits= 608 W=[42] FAIL atan2,complex_exp,complex_log,cos,exp,expm1,log,log1p,sin
+  N=20 bits= 640 W=[44] FAIL atan2,complex_exp,complex_log,cos,exp,expm1,log1p,sin
+  N=21 bits= 672 W=[46] FAIL atan2,complex_exp,complex_log,cos,exp,expm1,log,log1p,sin
+-- rung 3 (stopped after N=13)
+  N= 2 bits=  64 W=[18] ok
+  N= 3 bits=  96 W=[22] ok
+  N= 4 bits= 128 W=[26] ok
+  N= 5 bits= 160 W=[29] ok
+  N= 6 bits= 192 W=[32] ok
+  N= 7 bits= 224 W=[37] FAIL atan2,complex_exp,complex_log,cos,exp,expm1,log,log1p,sin
+  N= 8 bits= 256 W=[40] FAIL atan2,complex_exp,complex_log,cos,exp,expm1,log,log1p,sin
+  N= 9 bits= 288 W=[44] FAIL atan2,complex_exp,complex_log,cos,exp,expm1,log,log1p,sin
+  N=10 bits= 320 W=[48] FAIL atan2,complex_exp,complex_log,cos,exp,expm1,log,log1p,sin
+  N=11 bits= 352 W=[52] FAIL atan2,complex_exp,complex_log,cos,exp,expm1,log,log1p,sin
+  N=12 bits= 384 W=[56] FAIL atan2,complex_exp,complex_log,cos,exp,expm1,log1p,sin
+  N=13 bits= 416 W=[60] FAIL atan2,complex_exp,complex_log,cos,exp,expm1,log,log1p,sin
+  N=14 bits= 448 W=[64] FAIL atan2,complex_exp,complex_log,cos,exp,expm1,log,log1p,sin
+  N=15 bits= 480 W=[68] FAIL atan2,complex_exp,complex_log,cos,exp,expm1,log,log1p,sin
+  N=16 bits= 512 W=[72] FAIL atan2,complex_exp,complex_log,cos,exp,expm1,log,log1p,sin
+
+== Rung 3 at N = 8 (256 bits), forced, 300 points, W = 36..136 (count of FAIL lines incl. one summary line;
+   at W=136 complex log does not compile and ran on the host)
+W=36: 10 failing functions; FAILED (9)
+W=38: 10 failing functions; FAILED (9)
+W=48: 10 failing functions; FAILED (9)
+W=64: 10 failing functions; FAILED (9)
+W=68: 10 failing functions; FAILED (9)
+W=100: 10 failing functions; FAILED (9)
+W=136: 9 failing functions; FAILED (8)
+
+== Probe 3 (isolated, widths capped at 35 words = the shipped rung_table)
+-- rung 1, N=32
+  N=32 bits=1024 W=[35] ok
+-- rung 2, N=13..32 (W=0: host)
+  N=13 bits= 416 W=[30] ok
+  N=14 bits= 448 W=[32] ok
+  N=15 bits= 480 W=[34] ok
+  N=16 bits= 512 W=[35] ok
+  N=17 bits= 544 W=[35] ok
+  N=18 bits= 576 W=[35] ok
+  N=19 bits= 608 W=[35] ok
+  N=20 bits= 640 W=[35] ok
+  N=21 bits= 672 W=[35] ok
+  N=22 bits= 704 W=[35] ok
+  N=23 bits= 736 W=[35] ok
+  N=24 bits= 768 W=[35] ok
+  N=25 bits= 800 W=[35] ok
+  N=26 bits= 832 W=[35] ok
+  N=27 bits= 864 W=[35] ok
+  N=28 bits= 896 W=[35] ok
+  N=29 bits= 928 W=[35] ok
+  N=30 bits= 960 W=[35] ok
+  N=31 bits= 992 W=[0] ok
+  N=32 bits=1024 W=[0] ok
+-- rung 3, N=7..15
+  N= 7 bits= 224 W=[35] ok
+  N= 8 bits= 256 W=[35] ok
+  N= 9 bits= 288 W=[35] ok
+  N=10 bits= 320 W=[35] ok
+  N=11 bits= 352 W=[35] ok
+  N=12 bits= 384 W=[35] ok
+  N=13 bits= 416 W=[35] ok
+  N=14 bits= 448 W=[35] ok
+  N=15 bits= 480 W=[35] ok
+
+Every (N, W) pair of the shipped rung_table (src/transcendental.mm) is marked ok in probe 2 or probe 3.
