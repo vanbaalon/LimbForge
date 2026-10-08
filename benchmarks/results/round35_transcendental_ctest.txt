@@ -1,0 +1,37 @@
+Test project /Users/k0959535/Dropbox/IntegrabilityProjects/2026 4d SoV/LimbForge/.claude/worktrees/agent-a4c73b86e8b26d5be/build
+      Start  1: arithmetic_cpu
+ 1/16 Test  #1: arithmetic_cpu ...................   Passed    1.62 sec
+      Start  2: bridge_cpu
+ 2/16 Test  #2: bridge_cpu .......................   Passed    3.41 sec
+      Start  3: fused_cpu
+ 3/16 Test  #3: fused_cpu ........................   Passed    0.40 sec
+      Start  4: fused_gpu
+ 4/16 Test  #4: fused_gpu ........................   Passed  248.68 sec
+      Start  5: transcendental_cpu
+ 5/16 Test  #5: transcendental_cpu ...............   Passed   44.90 sec
+      Start  6: linalg_cpu
+ 6/16 Test  #6: linalg_cpu .......................   Passed    0.68 sec
+      Start  7: linalg_gpu
+ 7/16 Test  #7: linalg_gpu .......................   Passed   28.48 sec
+      Start  8: linalg_cholesky
+ 8/16 Test  #8: linalg_cholesky ..................   Passed   20.40 sec
+      Start  9: arithmetic_gpu
+ 9/16 Test  #9: arithmetic_gpu ...................   Passed    4.58 sec
+      Start 10: broadcast_gpu
+10/16 Test #10: broadcast_gpu ....................   Passed   13.12 sec
+      Start 11: batched4_gpu
+11/16 Test #11: batched4_gpu .....................   Passed  334.42 sec
+      Start 12: segmented_dot_gpu
+12/16 Test #12: segmented_dot_gpu ................   Passed   49.81 sec
+      Start 13: vector_recurrence_gpu
+13/16 Test #13: vector_recurrence_gpu ............   Passed  755.60 sec
+      Start 14: resident_buffers
+14/16 Test #14: resident_buffers .................   Passed    4.26 sec
+      Start 15: transcendental_gpu
+15/16 Test #15: transcendental_gpu ...............   Passed  110.18 sec
+      Start 16: tree_reduction
+16/16 Test #16: tree_reduction ...................   Passed   22.50 sec
+
+100% tests passed out of 16
+
+Total Test time (real) = 1643.05 sec

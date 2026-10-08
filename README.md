@@ -65,6 +65,9 @@ measurements.
 - Segmented norms (`norm_inf`, componentwise `norm_max`, exponent-scaled `norm2` on a fixed tree),
   `scaled_residual` and `summarize_status`: exact tie rule (lowest index), failing entries counted and
   never dropped from a norm.
+- Correctly rounded element-wise `exp`, `expm1`, `log`, `log1p`, `sin`, `cos`, `atan2` and complex `exp`/`log`
+  (`transcendental.hpp`, bit-identical to MPFR/MPC): certified GPU evaluation with rare host retries at more limbs,
+  plus complex integer powers by a documented fused sequence.
 - Typed resident buffers, asynchronous submissions, and dependent operations in one command batch.
 - In-place pointwise arithmetic, cached pipelines, and explicit buffer ownership checks.
 - Fixed-order real and complex tree reductions with GPU-resident intermediate levels.

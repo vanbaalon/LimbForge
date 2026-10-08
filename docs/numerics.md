@@ -165,6 +165,114 @@ the pivots, negated for an odd number of row swaps. Each multiply-subtract is co
 the same operation on resident buffers (`Buffer<std::uint32_t>` holds statuses; unused buffers may be
 empty), so inverses can feed later operations in the same batch.
 
+## Transcendental functions
+
+`Transcendentals::run(bits, f, a, out, count, b)` (`transcendental.hpp`, plan D7) evaluates element-wise
+real `exp`, `expm1`, `log`, `log1p`, `sin`, `cos`, `atan2(a = y, b = x)` on `Float<bits>` arrays and
+complex `exp`, `log` on `Complex<bits/32>` arrays; `Transcendentals::powi(bits, z, k, k_count, out, count)`
+computes `z^k`. `transcendental_cpu` gives the same results on the host. Host arrays only; `out` may
+alias an input.
+
+**Contract.** Every real function and every component of complex `exp` and `log` is **correctly
+rounded**: the result is `RN(f(x))`, round to nearest, ties to even, of the exact mathematical value,
+bit-identical to `mpfr_exp`, `mpfr_expm1`, `mpfr_log`, `mpfr_log1p`, `mpfr_sin`, `mpfr_cos`, `mpfr_atan2` and to
+`mpc_exp` / `mpc_log` with `MPC_RNDNN` (each component rounded once from its exact value). Exactly
+representable results occur only at the trivial points and are returned exactly: `exp(0) = 1`,
+`expm1(0) = log(1) = log1p(0) = sin(0) = 0`, `cos(0) = 1`, `atan2(0, x > 0) = 0`, `exp(a + 0i) = (exp a, 0)`,
+`log|z| = 0` for `|z| = 1` (dyadic `z` on the unit circle are `±1, ±i`). `powi` is a documented sequence of
+fused products and is **not** correctly rounded (below).
+
+**Conventions** (no signed zeros, no infinities):
+
+| Function | Domain / special values | Status |
+|---|---|---|
+| `exp`, `expm1` | `\|x\| ≥ 2^31`: result beyond `2^±3·10^9` | `exponent_overflow`; `expm1` of large negative `x` rounds to `−1` (ok) |
+| `log` | `x ≤ 0` | `invalid` |
+| `log1p` | `x ≤ −1` | `invalid` |
+| `sin`, `cos` | `\|x\| ≥ 2^8192` (implementation limit of the 2/π table) | `invalid` |
+| `atan2(y, x)` | `(0, 0)`; result in `(−π, π]`, `atan2(0, x < 0) = RN(π)` | `invalid` for `(0, 0)` |
+| complex `exp` | `\|Im z\| ≥ 2^8192`: both parts `invalid`; `\|Re z\| ≥ 2^31` and `Im z ≠ 0`: both `exponent_overflow`; `Im z = 0`: `(exp(Re z), 0)` | as listed |
+| complex `log` | principal branch, `Im ∈ (−π, π]`; negative real axis gives `Im = RN(π)` (the upper side, as MPC with `+0i`); `log 0` | both parts `invalid` for `z = 0` |
+
+Results outside the exponent range (including underflow below `2^−10^9`) give `exponent_overflow`
+with a zero payload, decided after rounding (as `pack`). An input status propagates: every output
+component becomes zero with the OR of the input statuses (both input components for complex
+functions, both arguments for `atan2`).
+
+**Algorithm (Ziv).** Each element is evaluated on the GPU at `W ≥ N+2` words (at least 64 guard bits; the
+smallest GPU-validated width, `docs/gpu-codegen.md` section 8: `W = N+2` up to 256 bits, 14 words at
+288–384 bits, 18 at 416–512, 22 at 544–640, 26 at 672–768, 29 at 800–832, `N+2` from 864 bits) with the correctly
+rounded `core.hpp` primitives, and the code carries a rigorous bound `|y − f(x)| ≤ err · ulp_W(y)`
+(`src/transcendental_core.hpp`). `certify` accepts `y` only if the low `W−N` words differ from the
+rounding midpoint by more than `err + 1` units (and `err < 2^62`), so every value inside the bound has
+the same RN result, including at binade boundaries. Undecided elements are appended to a compacted list
+(device atomic counter) and re-evaluated on the host by the same code at the smallest ladder widths
+≥ `N+4`, `2N+4` and `4N+8` words (ladder 4…136 words); results outside a rung stay unwritten until a
+rung certifies. No input has ever needed more than the third rung; if none decides, the RN value of the
+136-word approximation is written (error < ulp/2 + 2^−3000 relative) and `report().unresolved` counts it.
+Algorithms, with constants from exact integer series built on the host (Machin π, power-of-two
+series for `ln 2`, `log(1 ± 2^−i)`, `atan(2^−i)`, each within 1 ulp_W, `ln 2` also at `W+2` words, and
+`2/π` to 12,864 bits by long division):
+
+- `exp`: `k = nearest(x/ln 2)` from 64-bit truncations, `r = RN(x − k·ln 2)` with a `W+2`-word fused
+  product (|k| < 2^32 keeps the constant's error below `2^(−32W−32)`; the relative error of a small `r`
+  is accounted as `2^(−31−e_r)` units), `expm1(r/2^s)` by a Horner Taylor polynomial (truncation < u/16),
+  then `s` doublings `E ← E(E+2)` — each adds two roundings and scales the relative error by
+  `1 + |E|/(2+E)`, so the doublings lose no bits (unlike squaring `exp`). `exp = 2^k (1+E)`, `expm1 =
+  2^k(1+E) − 1` without cancellation for `k ≠ 0`. `(s, K)` minimise `s+K` per width.
+- `log x = e·ln 2 + log1p(m−1)`, `m ∈ [0.7071, 1.4142]` (`m−1` exact, and `|result| ≥ 0.346|e|` for
+  `e ≠ 0`). `log1p(f)` uses restoring steps `1+f ← (1+f)(1 ∓ 2^−i)` with table sums, then
+  `2 atanh(f/(2+f))`. The steps run on `f` itself, so errors stay relative to `f` and `x → 1` loses
+  nothing. The factors `1+2^−i` converge in one pass; the factors `1−2^−i` do not (a test found `f ∈
+  [0.30, 1/3)` ending near `2^−6`), so for `f > 0` an applied factor is tried once more. `log1p(x)` for
+  `|x| ≥ 1/4` is `log(RN(1+x))` (bound `+2^−32W`).
+- `sin`, `cos`: Payne–Hanek reduction `x = qπ/2 + r` (exact product of the significand with a
+  `2W+3`-word window of `2/π`, ≥ `64W+62` fraction bits), `r/2^h`, Horner series of `sin` and of
+  `vers = 1 − cos`, then `h` doublings `s ← 2s(1−v)`, `v ← 2s²`. Arguments near multiples of π/2 get a
+  large, honest bound (`2^(64W−F−e_f)`) and are retried at more words.
+- `atan2`: octant reduction, restoring rotations `(A, B) ← (A + B2^−i, B − A2^−i)` with `atan(2^−i)` table
+  sums (each rotation moves the argument by exactly `atan(2^−i)`, and the convergence condition
+  `atan 2^−i ≤ Σ_{j>i} atan 2^−j` holds), a Horner `atan` tail, then `π/2 − θ`, `π − φ`. Exponent spreads
+  over `32W+8` bits use `b/a` directly (or `π/2`, `π`).
+- complex `exp`: `e^a cos b`, `e^a sin b` with `2^k` kept apart (no spurious overflow).
+- complex `log`: `log|z| = ½ log1p(RN(a²+b²−1))` with exact squares (`dot2_add`) when the larger
+  exponent is −1 or 0 (|z| near 1), otherwise `e ln 2 + ½ log(RN((a²+b²)4^−e))`; `Im = atan2(b, a)`.
+
+The bounds are verified white-box: `tests/test_transcendental.cpp` evaluates the `W`-word approximations
+for W = 4, 9, 10, 14, 34 and measures `|y − f|` with MPFR at `32W+256` bits.
+
+**Integer powers.** `powi(z, k)`: `k = 0` gives `(1, 0)` (also for `z = 0`). Otherwise binary powering of
+`n = |k|` from the least significant bit: `acc ← acc·p` for each set bit (the first set bit copies
+`p`), `p ← p·p` while higher bits remain, where every product is fused per component
+(`re = RN(a.re b.re − a.im b.im)`, `im = RN(a.re b.im + a.im b.re)`, `core.hpp` `cfma` with zero addend).
+For `k < 0` the result is `1/acc = (RN(acc.re/d), RN(−acc.im/d))`, `d = RN(acc.re² + acc.im²)`, evaluated
+as with an unbounded exponent range (power-of-two prescaling) and range-checked at the end. Each
+product is range-checked (`exponent_overflow` propagates, so an intermediate overflow fails the
+result); `z = 0, k < 0` gives `division_by_zero`. The reference is an MPFR replay of this sequence
+(`mpfr_fmma` / `mpfr_fmms`, `mpfr_div`), bit for bit; against `mpc_pow_si` the normwise error grows
+roughly linearly with `|k|` (measured: at most 39 ulp of the larger component for `|k| ≤ 64`).
+
+**Hard cases and retries.** Random full-precision arguments essentially never need a retry (an element is
+undecided only within about `2^−64·err` ulp of a midpoint, `err` the 10–200 ulp_W bound). Retries come from exact dyadic structure:
+short-significand arguments where the leading Taylor terms are exactly representable and land on a
+rounding midpoint, so that a cubic term decides — `exp(±2^−32N)`, `expm1(2^(1−32N))`, `log1p(2^−32N)`,
+`cos(2^−16N)`, `log|z|` of `(1, 2^−16N)`, and nearby short significands. Their distance to the midpoint is
+about `|x|³`, which the `2N+4` (cubic terms of `exp`, `log1p`, quartic of `cos`) or `4N+8`-word rungs
+resolve; arguments near multiples of `ln 2` or `π/2` raise the bound of the reduced argument and are
+resolved at the first or second rung. Measured (`benchmarks/results/round35_transcendental_tests_*.txt`):
+18 M random GPU points at 64/224/256/384/1024 bits (1/8 with short significands) gave 0 mismatches and a
+retry rate of 0 (`exp`, `expm1`, `log`, `atan2`, complex `log`) to 9·10⁻⁵ (`log1p`), all resolved by the
+second rung; with the hard-case sets (~600 per function and width) up to 0.5% retry, at most 27 of them
+reaching the third rung, never unresolved. All 31 widths pass on the GPU, also under
+`MTL_SHADER_VALIDATION=1`; 0.49 M white-box bound checks gave a largest actual error of 9.8 ulp_W and a
+largest actual/bound ratio of 0.98 (the half-ulp final rounding).
+
+**Performance** (`benchmarks/results/round35_transcendental*.csv`, 10⁶ elements, loaded host): GPU wall
+17–86 ms at 224–384 bits, 36–91× serial MPFR/MPC and 3–12× an 18-worker pool; at 10⁴ elements the call
+is latency-bound (1.3–3.7 ms). First use of a width compiles about 0.4 s of library plus 0.4–2 s per real
+function, 1.3–4 s for complex `exp` and 5–14 s for complex `log` and `powi` (OS-cached afterwards; use
+`Transcendentals::prewarm`).
+
 ## Segmented dot products
 
 `Engine::segmented_dot(bits, complex, shape, a, b, out)` and `CommandBatch::segmented_dot` compute

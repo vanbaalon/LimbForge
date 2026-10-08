@@ -1,0 +1,82 @@
+== error-bound check (W-word approximations vs MPFR at 32W+256 bits)
+bounds W= 4 exp          checked    2897 exact     2 rejected   0 max actual 1.52 ulp_W, max bound 15.1, max actual/bound 0.485
+bounds W= 4 expm1        checked    3078 exact     5 rejected   0 max actual 3.19 ulp_W, max bound 60.8, max actual/bound 0.930
+bounds W= 4 log          checked    2706 exact     2 rejected   0 max actual 1.11 ulp_W, max bound 8.79, max actual/bound 0.545
+bounds W= 4 log1p        checked    2894 exact     6 rejected   0 max actual 2.03 ulp_W, max bound 13.6, max actual/bound 0.527
+bounds W= 4 sin          checked    3168 exact     2 rejected   0 max actual 2.51 ulp_W, max bound 16.9, max actual/bound 0.479
+bounds W= 4 cos          checked    3185 exact     2 rejected   0 max actual 2.29 ulp_W, max bound 16.9, max actual/bound 0.485
+bounds W= 4 atan2        checked    2999 exact     1 rejected   0 max actual 1.73 ulp_W, max bound 7.71, max actual/bound 0.713
+bounds W= 4 complex_exp  checked    5797 exact     1 rejected   0 max actual 3.58 ulp_W, max bound 33, max actual/bound 0.617
+bounds W= 4 complex_log  checked    6000 exact     0 rejected   0 max actual 1.73 ulp_W, max bound 11.8, max actual/bound 0.712
+bounds W= 9 exp          checked    2871 exact     2 rejected   0 max actual 1.65 ulp_W, max bound 22.8, max actual/bound 0.485
+bounds W= 9 expm1        checked    3089 exact     3 rejected   0 max actual 4.53 ulp_W, max bound 91.9, max actual/bound 0.980
+bounds W= 9 log          checked    2712 exact     2 rejected   0 max actual 2.64 ulp_W, max bound 10.3, max actual/bound 0.640
+bounds W= 9 log1p        checked    2909 exact     3 rejected   0 max actual 3.11 ulp_W, max bound 15.8, max actual/bound 0.642
+bounds W= 9 sin          checked    3160 exact     7 rejected   0 max actual 3.89 ulp_W, max bound 26.8, max actual/bound 0.475
+bounds W= 9 cos          checked    3163 exact     1 rejected   0 max actual 3.36 ulp_W, max bound 26.8, max actual/bound 0.485
+bounds W= 9 atan2        checked    2999 exact     1 rejected   0 max actual 1.58 ulp_W, max bound 10, max actual/bound 0.714
+bounds W= 9 complex_exp  checked    5849 exact     1 rejected   0 max actual 3.88 ulp_W, max bound 50.6, max actual/bound 0.555
+bounds W= 9 complex_log  checked    6000 exact     0 rejected   0 max actual 2.08 ulp_W, max bound 14.5, max actual/bound 0.714
+bounds W=10 exp          checked    2856 exact     1 rejected   0 max actual 1.91 ulp_W, max bound 24.8, max actual/bound 0.485
+bounds W=10 expm1        checked    3058 exact     1 rejected   0 max actual 5.37 ulp_W, max bound 99.6, max actual/bound 0.979
+bounds W=10 log          checked    2711 exact     2 rejected   0 max actual 1.41 ulp_W, max bound 10.3, max actual/bound 0.589
+bounds W=10 log1p        checked    2906 exact     3 rejected   0 max actual 3.23 ulp_W, max bound 15.4, max actual/bound 0.562
+bounds W=10 sin          checked    3157 exact     5 rejected   0 max actual 3.32 ulp_W, max bound 30.1, max actual/bound 0.468
+bounds W=10 cos          checked    3171 exact     4 rejected   0 max actual 4.35 ulp_W, max bound 30.1, max actual/bound 0.485
+bounds W=10 atan2        checked    3000 exact     0 rejected   0 max actual 1.44 ulp_W, max bound 9.39, max actual/bound 0.713
+bounds W=10 complex_exp  checked    5842 exact     2 rejected   0 max actual 4.63 ulp_W, max bound 55.9, max actual/bound 0.476
+bounds W=10 complex_log  checked    6000 exact     0 rejected   0 max actual 2.02 ulp_W, max bound 13.3, max actual/bound 0.707
+bounds W=14 exp          checked    2844 exact     2 rejected   0 max actual 1.76 ulp_W, max bound 30.6, max actual/bound 0.485
+bounds W=14 expm1        checked    3067 exact     3 rejected   0 max actual 5.49 ulp_W, max bound 123, max actual/bound 0.975
+bounds W=14 log          checked    2684 exact     2 rejected   0 max actual 1.17 ulp_W, max bound 10.9, max actual/bound 0.479
+bounds W=14 log1p        checked    2890 exact     7 rejected   0 max actual 2.45 ulp_W, max bound 16.8, max actual/bound 0.429
+bounds W=14 sin          checked    3166 exact     0 rejected   0 max actual 3.85 ulp_W, max bound 36.7, max actual/bound 0.483
+bounds W=14 cos          checked    3169 exact     1 rejected   0 max actual 5.24 ulp_W, max bound 36.7, max actual/bound 0.485
+bounds W=14 atan2        checked    3000 exact     0 rejected   0 max actual 2.2 ulp_W, max bound 11.3, max actual/bound 0.713
+bounds W=14 complex_exp  checked    5782 exact     4 rejected   0 max actual 5.47 ulp_W, max bound 68.3, max actual/bound 0.496
+bounds W=14 complex_log  checked    6000 exact     0 rejected   0 max actual 2.11 ulp_W, max bound 14.8, max actual/bound 0.714
+bounds W=34 exp          checked    1127 exact     1 rejected   0 max actual 1.98 ulp_W, max bound 52, max actual/bound 0.485
+bounds W=34 expm1        checked    1187 exact     0 rejected   0 max actual 6.38 ulp_W, max bound 208, max actual/bound 0.888
+bounds W=34 log          checked     948 exact     2 rejected   0 max actual 2.58 ulp_W, max bound 12.4, max actual/bound 0.610
+bounds W=34 log1p        checked    1044 exact     2 rejected   0 max actual 2.82 ulp_W, max bound 19.8, max actual/bound 0.578
+bounds W=34 sin          checked    1233 exact     0 rejected   0 max actual 4.79 ulp_W, max bound 63.1, max actual/bound 0.460
+bounds W=34 cos          checked    1228 exact     2 rejected   0 max actual 4.7 ulp_W, max bound 63.1, max actual/bound 0.485
+bounds W=34 atan2        checked     999 exact     1 rejected   0 max actual 2.04 ulp_W, max bound 12.6, max actual/bound 0.712
+bounds W=34 complex_exp  checked    1929 exact     1 rejected   0 max actual 7.04 ulp_W, max bound 116, max actual/bound 0.540
+bounds W=34 complex_log  checked    2000 exact     0 rejected   0 max actual 2.34 ulp_W, max bound 15.2, max actual/bound 0.713
+device: Apple M5 Max
+  cpu   64 bits done in 5.7 s
+  cpu  224 bits done in 11.7 s
+  cpu  256 bits done in 8.9 s
+  cpu  384 bits done in 8.9 s
+  cpu 1024 bits done in 13.2 s
+== cpu summary (3000 random points per function per width + hard cases)
+  atan2        points     17880 mismatches 0 retried 20 (rung1 4, rung2 16, rung3 0) unresolved 0 retry rate 1.12e-03
+  complex_exp  points     17880 mismatches 0 retried 85 (rung1 17, rung2 64, rung3 4) unresolved 0 retry rate 4.75e-03
+  complex_log  points     17880 mismatches 0 retried 83 (rung1 16, rung2 67, rung3 0) unresolved 0 retry rate 4.64e-03
+  complex_powi points     15000 mismatches 0 retried 0 (rung1 0, rung2 0, rung3 0) unresolved 0 retry rate 0.00e+00
+  cos          points     16340 mismatches 0 retried 76 (rung1 12, rung2 64, rung3 0) unresolved 0 retry rate 4.65e-03
+  exp          points     16320 mismatches 0 retried 77 (rung1 21, rung2 56, rung3 0) unresolved 0 retry rate 4.72e-03
+  expm1        points     16320 mismatches 0 retried 83 (rung1 15, rung2 68, rung3 0) unresolved 0 retry rate 5.09e-03
+  log          points     15770 mismatches 0 retried 10 (rung1 2, rung2 8, rung3 0) unresolved 0 retry rate 6.34e-04
+  log1p        points     15770 mismatches 0 retried 85 (rung1 17, rung2 68, rung3 0) unresolved 0 retry rate 5.39e-03
+  sin          points     16340 mismatches 0 retried 0 (rung1 0, rung2 0, rung3 0) unresolved 0 retry rate 0.00e+00
+  complex_powi max error vs mpc_pow_si (|k| <= 64, normwise): 30.9 ulp
+  gpu   64 bits done in 21.8 s
+  gpu  224 bits done in 44.3 s
+  gpu  256 bits done in 36.8 s
+  gpu  384 bits done in 41.2 s
+  gpu 1024 bits done in 72.9 s
+== gpu summary (20000 random points per function per width + hard cases)
+  atan2        points    102880 mismatches 0 retried 20 (rung1 4, rung2 16, rung3 0) unresolved 0 retry rate 1.94e-04
+  complex_exp  points    102880 mismatches 0 retried 86 (rung1 18, rung2 64, rung3 4) unresolved 0 retry rate 8.36e-04
+  complex_log  points    102880 mismatches 0 retried 83 (rung1 16, rung2 67, rung3 0) unresolved 0 retry rate 8.07e-04
+  complex_powi points    100000 mismatches 0 retried 0 (rung1 0, rung2 0, rung3 0) unresolved 0 retry rate 0.00e+00
+  cos          points    101340 mismatches 0 retried 78 (rung1 14, rung2 64, rung3 0) unresolved 0 retry rate 7.70e-04
+  exp          points    101320 mismatches 0 retried 77 (rung1 21, rung2 56, rung3 0) unresolved 0 retry rate 7.60e-04
+  expm1        points    101320 mismatches 0 retried 83 (rung1 15, rung2 68, rung3 0) unresolved 0 retry rate 8.19e-04
+  log          points    100770 mismatches 0 retried 10 (rung1 2, rung2 8, rung3 0) unresolved 0 retry rate 9.92e-05
+  log1p        points    100770 mismatches 0 retried 95 (rung1 23, rung2 72, rung3 0) unresolved 0 retry rate 9.43e-04
+  sin          points    101340 mismatches 0 retried 0 (rung1 0, rung2 0, rung3 0) unresolved 0 retry rate 0.00e+00
+  complex_powi max error vs mpc_pow_si (|k| <= 64, normwise): 31.5 ulp
+PASSED

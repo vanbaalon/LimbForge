@@ -95,6 +95,20 @@ returned a wrong result for every input at 384 bits (`norm2` of one real entry: 
 inputs, wrong exponent and limbs), while 352 and 416 bits, the CPU, and the engine's unary `square`
 kernel at 384 bits were exact. Squaring with `mul(a, a)` (the same exact square and rounding) passes
 everywhere. Record: `benchmarks/experiments/numerics_core_square.patch`.
+## 9. Width-dependent failures of the transcendental kernels (round 35)
+
+The transcendental kernels (`src/transcendental.metal`) evaluate at a working width of `W` words. With
+`W = N+2` at every precision, the all-width GPU test (3,000 random points plus hard cases per function and
+width, against MPFR/MPC) found wrong GPU results while the same code on the CPU was exact (MPFR-validated,
+and its error bounds checked white-box): for `W` = 11, 12, 13, 15, 16 the functions using a `W+2`-word
+`fma` (exp, expm1, complex exp and log) were wrong; for `W` = 17, 19–21, 23–25, 27, 28 every function was
+wrong, typically from the second limb on (e.g. `sin(0.1)` at 480 bits, `W` = 17; the bound check passed on
+the wrong value, so certification cannot catch a miscompiled kernel). `W` = 4–10, 14, 18, 22, 26 and 29–34
+passed. The cause was not isolated (making the long-division quotient store read-modify-write changed
+nothing). The kernels therefore use the smallest validated width `≥ N+2` (`gpu_words` in
+`src/transcendental.mm`; e.g. 288–384 bits use `W` = 14), and the all-width run is the gate
+(`benchmarks/results/round35_transcendental_tests_all_widths.txt`). `LIMBFORGE_TRANSCENDENTAL_GUARD_WORDS=g`
+forces `W = N+g` for probing; `benchmarks/results/round35_transcendental_bad_widths.txt` is the failing run.
 
 ## Rules for kernel code
 
@@ -110,3 +124,5 @@ everywhere. Record: `benchmarks/experiments/numerics_core_square.patch`.
    kernel instantiates on the GPU (section 7): a correct width says nothing about its neighbours.
 6. In new kernels square with `mul(a, a)`; the 384-bit symmetric `square()` is validated only in the
    engine's unary kernel (section 8).
+7. A rigorous error bound computed by the same kernel does not detect a miscompilation (section 9);
+   only the comparison with an independent reference at every instantiated width does.

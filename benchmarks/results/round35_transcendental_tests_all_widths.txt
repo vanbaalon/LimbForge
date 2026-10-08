@@ -1,0 +1,45 @@
+device: Apple M5 Max
+  gpu all widths   64 bits done in 13.2 s
+  gpu all widths   96 bits done in 19.6 s
+  gpu all widths  128 bits done in 22.0 s
+  gpu all widths  160 bits done in 23.8 s
+  gpu all widths  192 bits done in 27.1 s
+  gpu all widths  224 bits done in 29.4 s
+  gpu all widths  256 bits done in 27.0 s
+  gpu all widths  288 bits done in 29.7 s
+  gpu all widths  320 bits done in 31.5 s
+  gpu all widths  352 bits done in 32.1 s
+  gpu all widths  384 bits done in 28.8 s
+  gpu all widths  416 bits done in 31.4 s
+  gpu all widths  448 bits done in 30.9 s
+  gpu all widths  480 bits done in 32.1 s
+  gpu all widths  512 bits done in 35.1 s
+  gpu all widths  544 bits done in 41.0 s
+  gpu all widths  576 bits done in 40.7 s
+  gpu all widths  608 bits done in 40.7 s
+  gpu all widths  640 bits done in 38.8 s
+  gpu all widths  672 bits done in 45.1 s
+  gpu all widths  704 bits done in 44.5 s
+  gpu all widths  736 bits done in 57.3 s
+  gpu all widths  768 bits done in 54.3 s
+  gpu all widths  800 bits done in 62.1 s
+  gpu all widths  832 bits done in 63.2 s
+  gpu all widths  864 bits done in 72.6 s
+  gpu all widths  896 bits done in 60.8 s
+  gpu all widths  928 bits done in 70.2 s
+  gpu all widths  960 bits done in 63.0 s
+  gpu all widths  992 bits done in 72.1 s
+  gpu all widths 1024 bits done in 71.5 s
+== gpu all widths summary (3000 random points per function per width + hard cases)
+  atan2        points    110856 mismatches 0 retried 124 (rung1 8, rung2 116, rung3 0) unresolved 0 retry rate 1.12e-03
+  complex_exp  points    110856 mismatches 0 retried 539 (rung1 87, rung2 425, rung3 27) unresolved 0 retry rate 4.86e-03
+  complex_log  points    110856 mismatches 0 retried 499 (rung1 32, rung2 467, rung3 0) unresolved 0 retry rate 4.50e-03
+  complex_powi points     93000 mismatches 0 retried 0 (rung1 0, rung2 0, rung3 0) unresolved 0 retry rate 0.00e+00
+  cos          points    101308 mismatches 0 retried 496 (rung1 40, rung2 456, rung3 0) unresolved 0 retry rate 4.90e-03
+  exp          points    101184 mismatches 0 retried 501 (rung1 92, rung2 409, rung3 0) unresolved 0 retry rate 4.95e-03
+  expm1        points    101184 mismatches 0 retried 525 (rung1 36, rung2 489, rung3 0) unresolved 0 retry rate 5.19e-03
+  log          points     97774 mismatches 0 retried 62 (rung1 4, rung2 58, rung3 0) unresolved 0 retry rate 6.34e-04
+  log1p        points     97774 mismatches 0 retried 534 (rung1 39, rung2 495, rung3 0) unresolved 0 retry rate 5.46e-03
+  sin          points    101308 mismatches 0 retried 0 (rung1 0, rung2 0, rung3 0) unresolved 0 retry rate 0.00e+00
+  complex_powi max error vs mpc_pow_si (|k| <= 64, normwise): 31.3 ulp
+PASSED

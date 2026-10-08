@@ -1,0 +1,7 @@
+#pragma once
+static const char* limbforge_transcendental_source=R"LIMBFORGE(
+#include <metal_stdlib>
+@CORE_SOURCE@
+@TRANSCENDENTAL_CORE_SOURCE@
+@TRANSCENDENTAL_SOURCE@
+)LIMBFORGE";

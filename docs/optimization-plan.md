@@ -251,6 +251,10 @@ Each item: written contract → MPFR/MPC reference → CPU implementation in `co
   - QR (S5) and factor handles: done in round 31-S5 (`Linalg::factor_qr` / `QRFactor`, see S5).
 - **D7. Transcendentals at buffer level (tips #8)** — L, lowest priority: complex `exp`, `log`, integer `powi` with explicit
   accuracy contracts (faithful or correctly rounded via Ziv-style retry).
+  **Status (round 35-D7):** done as host-array `Transcendentals` (`transcendental.hpp`): real `exp`, `expm1`, `log`, `log1p`,
+  `sin`, `cos`, `atan2` and complex `exp`/`log` correctly rounded (W = N+2 words on the GPU with a rigorous error bound,
+  compacted retry list resolved on the host at N+4, 2N+4, 4N+8 words), `powi` as a documented fused sequence. Open: a
+  resident `CommandBatch` version (design note in the header), GPU-side retries, faster large-batch evaluation.
 
 ### Phase E — Latency-bound workloads: cooperative intra-number arithmetic — Track T1, after B
 
@@ -266,7 +270,7 @@ For BSolver (≈128 lanes × 600 steps) the GPU runs ~128 threads. Two complemen
 
 ---
 
-## Status summary (2026-10-08, after round 38)
+## Status summary (2026-10-08, after round 38 and 35-D7)
 
 | Item | Status | Where |
 |---|---|---|
@@ -287,11 +291,12 @@ For BSolver (≈128 lanes × 600 steps) the GPU runs ~128 threads. Two complemen
 | L1 residue GEMM | done (16, 18, 20) | `linalg.hpp` |
 | S1 polynomial values and jets (order ≤ 2) | done (32-S1), host-array | `Numerics::poly_eval(_jet)` in `numerics.hpp` |
 | S4 norms, scaled residual, status summaries | done (32-S4), host-array | `Numerics::norm_inf/norm_max/norm2/scaled_residual/summarize_status` |
+| D7 transcendentals (exp, expm1, log, log1p, sin, cos, atan2, complex exp/log, powi) | done (35-D7), host-array; L2-style certified rounding with compacted host retries | `transcendental.hpp` |
 
 Next, by consumer value: qscmx/BSolver integration and end-to-end timing on an idle host (also the
-pending GitHub speed figures); resident `linalg`/`numerics` (design note in `numerics.md`); S5 pivoted/complex QR
-and a faster QR panel; G = 4/8 cooperative kernels under shader validation; fused `vector_recurrence` above
-512 bits; D7 transcendentals (in progress).
+pending GitHub speed figures); resident `linalg`/`numerics`/transcendentals (`CommandBatch` versions); S5 pivoted/complex
+QR and a faster QR panel; G = 4/8 cooperative kernels under shader validation; fused `vector_recurrence` above
+512 bits.
 
 ## 5. Order, tracks and dependencies
 

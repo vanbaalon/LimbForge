@@ -1,0 +1,19 @@
+device: Apple M5 Max
+  gpu   64 bits done in 1.6 s
+  gpu  224 bits done in 3.1 s
+  gpu  256 bits done in 2.7 s
+  gpu  384 bits done in 5.3 s
+  gpu 1024 bits done in 18.1 s
+== gpu summary (400000 random points per function per width)
+  atan2        points   2000000 mismatches 0 retried 0 (rung1 0, rung2 0, rung3 0) unresolved 0 retry rate 0.00e+00
+  complex_exp  points   2000000 mismatches 0 retried 25 (rung1 8, rung2 17, rung3 0) unresolved 0 retry rate 1.25e-05
+  complex_log  points   2000000 mismatches 0 retried 0 (rung1 0, rung2 0, rung3 0) unresolved 0 retry rate 0.00e+00
+  complex_powi points   2000000 mismatches 0 retried 0 (rung1 0, rung2 0, rung3 0) unresolved 0 retry rate 0.00e+00
+  cos          points   2000000 mismatches 0 retried 54 (rung1 54, rung2 0, rung3 0) unresolved 0 retry rate 2.70e-05
+  exp          points   2000000 mismatches 0 retried 0 (rung1 0, rung2 0, rung3 0) unresolved 0 retry rate 0.00e+00
+  expm1        points   2000000 mismatches 0 retried 0 (rung1 0, rung2 0, rung3 0) unresolved 0 retry rate 0.00e+00
+  log          points   2000000 mismatches 0 retried 0 (rung1 0, rung2 0, rung3 0) unresolved 0 retry rate 0.00e+00
+  log1p        points   2000000 mismatches 0 retried 184 (rung1 74, rung2 110, rung3 0) unresolved 0 retry rate 9.20e-05
+  sin          points   2000000 mismatches 0 retried 14 (rung1 14, rung2 0, rung3 0) unresolved 0 retry rate 7.00e-06
+  complex_powi max error vs mpc_pow_si (|k| <= 64, normwise): 39.4 ulp
+PASSED

@@ -1,0 +1,17 @@
+Round 35-D7 (plan D7): element-wise transcendental functions (include/limbforge/transcendental.hpp).
+Apple M5 Max, macOS 26.6.2, 2026-10-08. MPFR 4.2.2, MPC 1.4.1. Base revision 4957a9c plus this round.
+Command: ./build/transcendental_limbforge --repeats 5 (round35_transcendental.csv), repeated as round35_transcendental_recheck.csv.
+Host load averages: 9.4-28 (first run), 10-25 (recheck); other agents were active (no idle host).
+GPU: Transcendentals::run / powi on host arrays, one warm-up call, medians of 5 (device = command buffer GPU time;
+wall = whole call incl. copies, encode, wait and host retries; retried_total = elements resolved on the host, 0 here).
+Pipelines were already in the OS shader cache (compile_s ~ 0). Cold first-use compile (IR-changing nonce, library + one
+pipeline per function): 224/256 bits ~0.4 s library + 0.4-0.8 s per real function, complex exp 1.3-1.5 s, complex log
+5.1-5.2 s; 384 bits 0.4 + 0.5-1.1 s, complex exp 1.9 s, complex log 6.3 s; 1024 bits 0.7 + 1.1-2.1 s, complex exp 4.0 s,
+complex log 14.4 s, powi 12.6 s (powi at 288 bits 7.6 s).
+CPU: MPFR/MPC on preallocated variables (mpfr_exp, mpfr_log, mpfr_sin, mpc_exp, mpc_log, mpc_pow_si(z, 10)); serial timed
+on min(n, 100000) values and scaled (medians of 2); pool = 18 std::thread workers over all n (medians of 5).
+Inputs: exp |x| < 2^6, log x in 2^[-60,60], sin |x| < 2^8, complex exp re in 2^[-10,4] / im in 2^[-10,7], complex log
+parts in 2^[-60,60], powi |z| ~ 1, k = 10 (powi's contract is a fused sequence, not mpc_pow_si's correct rounding:
+timing only). mismatches = GPU results differing from MPFR/MPC (0 everywhere).
+Noise: GPU wall at 10^6 reproduced within 2%; MPFR pool times varied up to 2.4x between runs and serial up to 34% (load);
+differences under 15% are noise. At 10^4 elements the GPU call is latency bound (1.3-3.7 ms) and comparable to the pool.
