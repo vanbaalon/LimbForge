@@ -1,0 +1,17 @@
+Section 9 P0 verification preparation — 2026-10-08 (client date)
+Source base: cb4fd65, API baseline v1.0.0 (ed41426)
+Machine: Apple M5 Max; macOS 26.6.2
+Build: Release, AppleClang 21.0.0.21000101, C++17; MPFR/MPC enabled
+Changes: test infrastructure and documentation only; no public header/kernel changes
+Commands run:
+  cmake --build build --target test_limbforge_section9 test_limbforge_section9_audit -j4
+  ctest --test-dir build -R '^section9_smoke$' --output-on-failure
+  ./build/test_limbforge_section9_audit --bits 352
+  ./build/test_limbforge_section9_audit --bits 1024
+Results: smoke passed (23.68 s, includes cold compilation); both expanded selected-width runs passed
+Dense mode: not run
+All 31 widths: compiled into runner, not executed
+MTL_SHADER_VALIDATION: not enabled
+Full suite / large-factor / consumer audit: not run
+Benchmarks: not run; no performance conclusion
+The 352 log is selected session output; the 1024 log is captured process stdout/stderr.

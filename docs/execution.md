@@ -251,3 +251,56 @@ ready.get();                              // rethrows compilation or request err
 
 `Engine::prewarm` does the same in the calling thread. The pipeline cache is thread-safe; compilation
 runs outside its lock, so concurrent work on the same Engine is not blocked.
+
+## Batched numerical operations
+
+Include `limbforge/batched_linalg.hpp`; construct `BatchedLinalg numerical(engine)` on one
+host encoding thread. Libraries and pipelines are cached per instance. First use may compile
+shaders; warm them before timing. All operations below accept resident buffers and preserve
+normal batch ownership and barriers. Numerical sequences/statuses are specified in
+[Numerics](numerics.md#batched-products-and-polynomial-source-recurrences).
+
+`StridedGemm` uses row-major A `[m][k]`, B `[k][n]`, C `[m][n]`, repeated `count` times.
+Strides count elements; zero input stride broadcasts a matrix. Output matrices must not overlap,
+output storage must differ from inputs, and padding is preserved. `product3` requires compatible
+shapes with accumulation disabled and retains a resident intermediate through the batch.
+`PowerMoments` uses E/y `[count][steps]`, W `[count][steps][ncols]` and out
+`[count][nmax+1][ncols]` (inclusive nmax). It currently generates a full device left matrix before
+GEMM. Synchronous runtime-width host-array GEMM/power forms include staging and readback.
+
+`normal_equations` has immediately final outputs for in-batch consumers. The exact variant
+packs `[J g]` on device and submits one augmented SYRK. Its ticket resolves at `wait()`:
+GPU extraction runs in the batch, and host completion overwrites the outputs from the repaired
+Gram matrix only if a host fallback occurred. Do not consume these potentially provisional
+outputs in a dependent device pass before waiting. New batched APIs reject such inputs.
+
+`cholesky_trials` reads the lower triangle of shared A `[n][n]`, D `[n]` and mu `[count]`,
+and writes L `[count][n][n]` and uint32 status `[count]`. Its passes and the batched solve are
+fully resident, with no host panels or intermediate readbacks. `cholesky_solve` reads a shared
+B `[n][nrhs]` and writes X `[count][n][nrhs]`; X must differ from all inputs. Keep L/status
+resident for subsequent solves, respecting the usual batch/submission lifetime rules.
+
+`polynomial_recurrence` uses the coefficient/source layouts in Numerics; its output storage
+must differ from every input. Sources are evaluated on device rather than uploaded as host
+p/q tables. Sharing allows a final incomplete group. The existing Engine recurrence retains
+its separate matrix, affine and tangent modes; those are not options of this entry point.
+
+With `mpc_staging.hpp`, call `describe_inline_mpc(bits,allocation,bytes,pointers,count)`
+then `import_inline_complex(batch,allocation,bytes,records,count,out)`. The GPU reads
+the original significands and writes ordinary resident Complex values. **No host limb
+repacking occurs**, but this is not an alias between the incompatible MPC/LimbForge layouts.
+Small exponent/sign/status metadata is copied. Precisions must already equal bits;
+otherwise use the ordinary bridge. This includes both odd 32-bit limb counts (e.g. 352-bit
+values in six 64-bit limbs) and even counts (e.g. 640 bits in ten limbs).
+
+The allocation must own complete, page-aligned pages, be shared with Metal, and remain
+alive and immutable until completion. Each significand must be aligned and within that
+allocation. Little-endian 64-bit GMP limbs are required. NaN/Inf and out-of-range exponents
+become the usual arithmetic status. MPC structures and the descriptor array need not
+remain alive after encoding, because their metadata is copied.
+
+`wait_all_async(std::vector<Submission>)` moves already-submitted work to a waiter thread
+and returns `std::future<std::vector<Timing>>`. The CPU can do independent work, poll the
+future, or wait on it. The helper drains every submission even if one fails, then rethrows
+the first error. It preserves the usual rule: buffers become available after submission
+completion and host repair. It is not a GPU event that bypasses those completion steps.

@@ -1,0 +1,16 @@
+Selected output from the tool session, 2026-10-08.
+Base: cb4fd65; branch: codex/section9-audit (uncommitted test/documentation changes).
+Build: Release, AppleClang 21.0.0.21000101, Metal GPU, MPFR + MPC enabled.
+Command: ctest --test-dir build -R '^section9_smoke$' --output-on-failure
+1/1 Test #16: section9_smoke ... Passed 23.68 sec
+100% tests passed, 0 tests failed out of 1
+Command: ./build/test_limbforge_section9_audit --bits 352
+Auditing 352 bits
+352 bits: complex GEMM tile tails/broadcast/strides, triple product, negative power moments
+352 bits: resident normal equations, three damping trials, solves, async wait, exact fallback repair
+352 bits: real 4x4 GEMM odd batch/broadcast and empty dots
+352 bits: runtime bridge and inline MPC staging
+352 bits: on-device Horner recurrence, reverse/all_steps, sharing tails, composed/fused
+352 bits: expanded reference cases passed
+Section 9 reference run passed; selected width; dense stress not run.
+No full-width, dense stress, shader-validation, consumer or performance runs.

@@ -41,33 +41,21 @@ but currently still allocates that table in device memory. Negative n0 uses a re
 a zero denominator propagates arithmetic status. Runtime-width synchronous host forms
 of both `gemm(bits,complex,shape,A,B,C)` and `power_moments(...)` return `Timing`.
 
-Products visit k in ascending order. By default, complex multiplication uses the existing
-four separately rounded real products, followed by rounded real add/subtract, and each
-dot update uses a separate rounded addition. `fused=true` uses fma/cfma for each update.
-Accumulation starts from the supplied output; `negative=true` negates the completed
-GEMM result, including its initial accumulator. Power generation uses composed integer
-exponentiation by squaring at n0, then repeated composed multiplication by y; E is
-multiplied afterwards. Thus the result has a deterministic **sequence of roundings**,
-not the single-round exact-dot contract of `Linalg::gemm`.
+The authoritative rounding sequences, including power generation and composed/fused updates,
+are in [Numerics: batched products](numerics.md#batched-products-and-polynomial-source-recurrences).
+These differ from the single-round exact-dot contract of `Linalg::gemm`.
 
 The initial optimization is an 8×4 output tile with cooperative shared-memory loads and
 rolled k loops. A specialized 4×4 path packs two matrices per SIMD group so that every
 lane produces an output. It does not implement a three-product complex algorithm or TensorOps
-complex GEMM. Large-shape throughput is still to be measured.
+complex GEMM. Provisional large-shape measurements are in [the follow-up](section9-next.md);
+idle-host confirmation and the full numerical audit remain pending.
 
 ## Normal equations, damping trials and reusable factors
 
-Two contracts are explicit:
-
-* `normal_equations(batch,J,g,rows,cols,A,rhs,fused=false)` returns JᵀJ and Jᵀg
-  in one dispatch, with ascending-row composed or fused dot updates. Results are final
-  on device and can feed a factorization in the same batch.
-* `normal_equations_exact(linalg,batch,J,g,rows,cols,A,rhs)` packs `[J g]` on device
-  and calls one exact augmented SYRK. Its `LinalgTicket` resolves at `wait()`. A completion
-  step extracts the **repaired** exact products after any host fallback; when no fallback
-  occurs, extraction remains on the GPU and the host copy is skipped. Wait before feeding
-  those outputs to a new resident operation. The new APIs reject an input that still needs
-  host completion, rather than consuming a provisional value.
+Use `normal_equations` for immediately final, sequential products, or `normal_equations_exact`
+for single-round exact dots. The [numerical contracts](numerics.md#batched-products-and-polynomial-source-recurrences)
+and [completion rules](execution.md#batched-numerical-operations) explain which can be chained in one batch.
 
 ```cpp
 auto batch = engine.batch();
@@ -78,19 +66,10 @@ auto submission = batch.submit();
 submission.wait();
 ```
 
-`cholesky_trials` factors `A + mu[t]*diag(D)` for all trials. A is a shared row-major
-`[n][n]` matrix whose lower triangle is used, D is `[n]`, mu is `[count]`, L is
-`[count][n][n]`, and status is `[count]` of `uint32_t`. Columns run in ascending order:
-round sqrt of the pivot, round each division, then subtract separately rounded products
-from the trailing lower triangle. The diagonal damping update is a separately rounded
-multiply and add. This differs from the blocked exact-update `Linalg::cholesky` sequence.
-
-Status is zero on success, otherwise the first unusable pivot plus one (one-based).
-Remaining lower factor columns carry `invalid`; the upper triangle is canonical zero.
-The solve returns canonical zero with `invalid` for a failed trial. It supports a shared
-B `[n][nrhs]` and writes X `[count][n][nrhs]`, with ascending forward and backward dot
-indices and separately rounded multiply/subtract/divide. Keep L/status resident for
-several solves or use them in subsequent batches after waiting. Inputs and X must differ.
+`cholesky_trials` factors a family of diagonally damped matrices; `cholesky_solve` supports
+shared multiple right-hand sides. Their [scalar-column sequence and failure statuses](numerics.md#batched-products-and-polynomial-source-recurrences)
+differ from `Linalg` factorization/solve contracts. Keep factors and statuses resident for reuse.
+Layouts and aliasing rules are in [Execution](execution.md#batched-numerical-operations).
 
 No host panel or intermediate readback occurs. Factorization currently uses scalar-column
 pivot/column/update passes, with shrinking update grids; it is a resident baseline rather
@@ -103,18 +82,8 @@ comparisons belong to the subsequent full audit.
 `polynomial_recurrence(batch,shape,start,cp,cq,y,Ep,Eq,out)` evaluates sources and applies
 `v <- v + p*(q^T v)` for each four-component trajectory without allocating p/q tables.
 
-* cp/cq: `[coefficient_sets][4][terms]` in **ascending degree**.
-* coefficient_sets: one shared set or `ceil(lanes/lanes_per_weight)` sets.
-* y: `[steps][weight_groups]`; Ep/Eq: `[steps][4][weight_groups]`.
-* start: component-major `[4][lanes]`; out: the same, or `[steps+1][4][lanes]`.
-
-The sources are `p_a = Ep_a*Horner(cp_a,y)` and `q_a = Eq_a*Horner(cq_a,y)`.
-Horner runs from the highest degree down, source scaling uses composed multiplication,
-and the rank-one dot visits components 0,1,2,3 before updating any component.
-`fused` selects cfma for Horner and recurrence updates. `reverse` applies steps in reverse
-coefficient order; `all_steps` writes states in **application order**, starting with the
-input state. Adjacent lanes may share weights; the final group may be incomplete.
-Zero terms means the zero polynomial. Zero steps copies the initial state.
+Coefficient ordering, Horner and recurrence rounding, sharing tails and empty inputs are
+specified in [Numerics](numerics.md#batched-products-and-polynomial-source-recurrences).
 
 This variant covers the rank-one base trajectory. The existing `Engine::vector_recurrence`
 retains its matrix, affine and tangent variants. Explicit source tables generated by
@@ -125,31 +94,11 @@ its rolled exact complex-FMA primitive to keep shader compilation manageable.
 
 ## Bridges, external MPC storage and completion
 
-`mpfr_bridge.hpp` adds runtime-width scalar and array overloads of `from_mpfr`, `to_mpfr`,
-`from_mpc` and `to_mpc`. `bridge_element_bytes(bits,complex)` gives the element size.
-Byte buffers need sufficient capacity; unaligned byte storage is supported via memcpy.
-Rounding, statuses, array worker selection and error behavior follow the typed bridge.
-The output is LimbForge's ordinary packed representation, not an MPFR structure.
-
-With `mpc_staging.hpp`, call `describe_inline_mpc(bits,allocation,bytes,pointers,count)`
-then `import_inline_complex(batch,allocation,bytes,records,count,out)`. The GPU reads
-the original significands and writes ordinary resident Complex values. **No host limb
-repacking occurs**, but this is not an alias between the incompatible MPC/LimbForge layouts.
-Small exponent/sign/status metadata is copied. Precisions must already equal bits;
-otherwise use the ordinary bridge. This includes both odd 32-bit limb counts (e.g. 352-bit
-values in six 64-bit limbs) and even counts (e.g. 640 bits in ten limbs).
-
-The allocation must own complete, page-aligned pages, be shared with Metal, and remain
-alive and immutable until completion. Each significand must be aligned and within that
-allocation. Little-endian 64-bit GMP limbs are required. NaN/Inf and out-of-range exponents
-become the usual arithmetic status. MPC structures and the descriptor array need not
-remain alive after encoding, because their metadata is copied.
-
-`wait_all_async(std::vector<Submission>)` moves already-submitted work to a waiter thread
-and returns `std::future<std::vector<Timing>>`. The CPU can do independent work, poll the
-future, or wait on it. The helper drains every submission even if one fails, then rethrows
-the first error. It preserves the usual rule: buffers become available after submission
-completion and host repair. It is not a GPU event that bypasses those completion steps.
+Runtime-width scalar/array MPFR/MPC conversions follow the [typed bridge contract](numerics.md#mpfr-and-mpc-bridge).
+External MPC imports read original significands on the GPU, with metadata copied on the host.
+Allocation requirements, lifetime and `wait_all_async` completion are specified in
+[Execution](execution.md#batched-numerical-operations). This import writes ordinary resident values;
+it does not alias the incompatible MPC and LimbForge layouts.
 
 ## Offline calibration and scope of this audit
 
@@ -190,3 +139,32 @@ sharing tails, and a 224-bit runtime bridge/inline MPC import. The existing thre
 smoke passed separately. No full width sweep, large-factor audit, adversarial cancellation
 suite, QSC column comparison, or end-to-end Δ/iteration measurement was run in this round.
 The numbers in §9.0 are supplied integration observations and were not independently rerun.
+
+### Follow-up reference runner
+
+`test_limbforge_section9_audit` is a separate, opt-in target; it is excluded from the default
+build and CTest so `section9_smoke` remains light. It reuses the smoke references and adds
+real/complex tiled and 4×4 GEMM in both modes, cancellation/status inputs, padding and
+broadcasts; real/complex triple products and accumulated empty dots; real/complex powers
+at positive, zero and negative n0 across a row-tile boundary, with both modes and accumulation;
+fused normal equations with statuses; late/zero/error Cholesky pivots and multiple RHS;
+polynomial modes, shared coefficients, sharing tails, empty terms/steps and statuses;
+inline MPC full-width significands, NaN/Inf, zero and exponent boundaries.
+Every width from 64 to 1024 bits in steps of 32 is compiled into the runner. This does not
+establish that every width has passed on the GPU.
+
+```sh
+cmake --build build --target test_limbforge_section9_audit -j4
+./build/test_limbforge_section9_audit --bits 352
+# Later full audit, explicitly requested rather than part of a light check:
+./build/test_limbforge_section9_audit --all-widths --dense
+MTL_SHADER_VALIDATION=1 ./build/test_limbforge_section9_audit --all-widths --dense
+```
+
+`--dense` adds repeated GEMM runs with 4,097 small matrices (65,552 output entries per run)
+and 257 tiled matrices. It does not stress large Cholesky factors or dense recurrence/import
+batches; those and consumer integration checks remain part of the later audit.
+
+Follow-up light validation on 2026-10-08: the unchanged smoke test and expanded cases at
+352 and 1024 bits passed on the M5 Max. Logs are `benchmarks/results/section9_p0_*`.
+No full sweep, dense stress, shader-validation or performance runs were made in that round.

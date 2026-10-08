@@ -73,6 +73,13 @@ chunk's exception after all chunks finish; other chunks may already be written.
 before writing. The MPC functions appear when `<mpc.h>` is on the include path,
 need no libmpc symbols, and are disabled by `LIMBFORGE_NO_MPC`.
 
+Runtime-width scalar and array overloads accept `bits` in [64,1024], divisible by 32.
+`bridge_element_bytes(bits,complex)` gives the packed element size; provide sufficient
+capacity. Unaligned byte storage is supported by memcpy. Rounding, statuses, worker selection
+and error behavior match the typed bridge. External inline MPC import requires source precision
+already equal to `bits`, uses the same zero/non-finite/exponent conversion rules, and writes
+ordinary `Complex` values; see [its storage/lifetime rules](execution.md#batched-numerical-operations).
+
 ## Fused multiply-add
 
 `Operation::fma` and `fms` return `RN(a·b + c)` and `RN(a·b − c)` with a single rounding, as
@@ -1371,3 +1378,83 @@ path: at n = 1000 and 224 bits it takes 0.96 s of the 1.12 s factorization, whil
 (0.68 s wall, 0.38 s GPU) run behind it on the look-ahead thread. The ratio to the embedding therefore
 grows with n, from 1.3–1.6× at n ≤ 400 to 2.4× at n = 1000. The trailing updates use the same residue
 products as the real QR. A host-only factorization gives the same bits (checked in the n ≤ 400 timing rows and in the tests).
+
+## Batched products and polynomial-source recurrences
+
+`BatchedLinalg` provides sequential composed/fused operations distinct from `Linalg`'s
+single-round exact products. All widths 64–1024 in steps of 32 are supported. The following
+sequences are part of the 1.x compatibility contract; performance changes preserve them.
+Shapes and buffer/completion rules are in [Execution](execution.md#batched-numerical-operations).
+
+| Operation | Rounding contract | Finality |
+|---|---|---|
+| `Linalg::gemm` / `syrk` | One rounding per entry from its exact dot | Resident ticket final at wait |
+| `BatchedLinalg::gemm` / `power_moments` | Ascending sequential composed or fused dot updates; powers composed | Final within batch |
+| `normal_equations` | Ascending-row composed or fused dots | Final within batch |
+| `normal_equations_exact` | Augmented exact SYRK, one rounding per dot | Final at wait, after any fallback repair |
+| `cholesky_trials` / `BatchedLinalg::cholesky_solve` | Scalar-column updates / sequential multiply-subtract-divide | Final within batch |
+| `Linalg::cholesky` / `Linalg::cholesky_solve` | Existing blocked exact-update / triangular-solve contracts above | Synchronous |
+
+### Sequential products and powers
+
+Products visit k in ascending order. By default, complex multiplication uses the existing
+four separately rounded real products, followed by rounded real add/subtract, and each
+dot update uses a separate rounded addition. `fused=true` uses fma/cfma for each update.
+Accumulation starts from the supplied output; `negative=true` negates the completed
+GEMM result, including its initial accumulator. Power generation uses composed integer
+exponentiation by squaring at n0, then repeated composed multiplication by y; E is
+multiplied afterwards. Thus the result has a deterministic **sequence of roundings**,
+not the single-round exact-dot contract of `Linalg::gemm`.
+
+Integer exponentiation starts from one, visits the absolute exponent's bits low to high,
+multiplies the accumulator by the current base for each set bit, and squares the base only
+when another bit remains. Negative n0 takes the composed reciprocal of the result. Each row
+then multiplies the previous unscaled power by y; multiplying by E does not feed back into
+that sequence. In particular, recomputing `powi(y,n0+row)` can give different bits.
+`product3` executes the two selected GEMM sequences with a rounded resident intermediate;
+the optional final negation applies after the second product.
+
+### Normal equations and damping trials
+
+`normal_equations` computes both JᵀJ and Jᵀg by ascending row-index updates, composed by
+default or explicitly fused. `normal_equations_exact` forms the exact Gram matrix of `[J g]`
+and extracts JᵀJ and Jᵀg, with the same bits as the corresponding `Linalg` exact products.
+
+`cholesky_trials` factors `A + mu[t]*diag(D)` for all trials. A is a shared row-major
+`[n][n]` matrix whose lower triangle is used, D is `[n]`, mu is `[count]`, L is
+`[count][n][n]`, and status is `[count]` of `uint32_t`. Columns run in ascending order:
+round sqrt of the pivot, round each division, then subtract separately rounded products
+from the trailing lower triangle. The diagonal damping update is a separately rounded
+multiply and add. This differs from the blocked exact-update `Linalg::cholesky` sequence.
+
+Status is zero on success, otherwise the first unusable pivot plus one (one-based).
+Remaining lower factor columns carry `invalid`; the upper triangle is canonical zero.
+The solve returns canonical zero with `invalid` for a failed trial. It supports a shared
+B `[n][nrhs]` and writes X `[count][n][nrhs]`, with ascending forward and backward dot
+indices and separately rounded multiply/subtract/divide. Keep L/status resident for
+several solves or use them in subsequent batches after waiting. Inputs and X must differ.
+
+A failed pivot has an arithmetic status or is nonpositive. Factor columns before that pivot
+remain as computed; in the remaining lower columns the payload is canonical zero with `invalid`.
+For a successful solve, forward rows ascend and backward rows descend. Within each row,
+subtraction terms visit column indices in ascending order before the rounded division.
+
+### Polynomial-source rank-one recurrence
+
+`polynomial_recurrence` computes `v <- v + p*(q^T v)` for four-component complex trajectories.
+
+* cp/cq: `[coefficient_sets][4][terms]` in **ascending degree**.
+* coefficient_sets: one shared set or `ceil(lanes/lanes_per_weight)` sets.
+* y: `[steps][weight_groups]`; Ep/Eq: `[steps][4][weight_groups]`.
+* start: component-major `[4][lanes]`; out: the same, or `[steps+1][4][lanes]`.
+
+The sources are `p_a = Ep_a*Horner(cp_a,y)` and `q_a = Eq_a*Horner(cq_a,y)`.
+Horner runs from the highest degree down, source scaling uses composed multiplication,
+and the rank-one dot visits components 0,1,2,3 before updating any component.
+`fused` selects cfma for Horner and recurrence updates. `reverse` applies steps in reverse
+coefficient order; `all_steps` writes states in **application order**, starting with the
+input state. Adjacent lanes may share weights; the final group may be incomplete.
+Zero terms means the zero polynomial. Zero steps copies the initial state.
+
+The transpose is not conjugated. With zero terms, Horner returns canonical zero; the subsequent
+source scaling and recurrence operations still execute and propagate arithmetic statuses.

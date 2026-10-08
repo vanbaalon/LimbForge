@@ -14,7 +14,9 @@ bit-for-bit against MPFR. Twelve optimisation rounds are done (below). Two consu
 - **BSolver4D** (Baxter equation, `BSolver4D/cpp/baxter.hpp`): the existing scalar 4-term `recurrence` kernel at **384 bits**,
   ~128 trajectories × 600 dependent steps — *latency-bound*, the GPU is mostly idle (`benchmarks/m5_max_baxter.txt`).
 
-The API is a development preview: **breaking changes to structs, layouts and API are allowed** (owner's decision).
+The public API baseline is now **1.0.0**. Preserve source compatibility, layouts, ownership and documented numerical
+behavior within 1.x; see `docs/versioning.md`. A changed rounding sequence or default needs an explicit new option/API
+or a major release. Earlier development-preview permission to break the API no longer applies.
 Correctness is non-negotiable: every accepted change passes MPFR comparison on CPU *and physical GPU*.
 
 ---
@@ -274,7 +276,7 @@ For BSolver (≈128 lanes × 600 steps) the GPU runs ~128 threads. Two complemen
 
 ---
 
-## Status summary (2026-10-08, after round 38, 35-D7 and 39-resident)
+## Status summary (2026-10-08, through round 46 and section 9)
 
 | Item | Status | Where |
 |---|---|---|
@@ -302,8 +304,13 @@ For BSolver (≈128 lanes × 600 steps) the GPU runs ~128 threads. Two complemen
 | D7 transcendentals (exp, expm1, log, log1p, sin, cos, atan2, complex exp/log, powi) | done (35-D7); L2-style certified rounding with compacted retries; resident passes (39); GPU retry rungs ≤ 35 words, resident outputs final in the batch (44) | `transcendental.hpp` |
 | Resident unit hook | done (39) | `src/engine_internal.hpp`; `docs/execution.md`, "Resident units" |
 | Resident linalg: `syrk`/`gemm` in a `CommandBatch` (GPU band analysis and plan, indirect dispatch, host fallback at `wait()`); synchronous `Buffer` forms of Cholesky/solves/QR | done (42-resident-linalg) | `Linalg(Engine&)`, `LinalgTicket`; `docs/numerics.md`, "Resident products" |
+| Section 9 batched products, polynomial sources, damping trials and infrastructure | implemented (`65c4373`); light reference coverage, full audit pending | `batched_linalg.hpp`, `docs/section9.md` |
+| Section 9 P0 verification harness | all 31 widths selectable; dense GEMM repeats opt-in; full runs pending | `test_limbforge_section9_audit`, `docs/section9-next.md` |
+| Production API versioning | baseline 1.0.0 (`ed41426`), immutable tag `v1.0.0` | `version.hpp`, `docs/versioning.md` |
 
-Next, by consumer value: qscmx/BSolver integration and end-to-end timing on an idle host (also the
+For section 9, finish the correctness gates in `docs/section9-next.md` P0 before accepting P1 performance changes.
+Full-width, dense and shader-validation runs remain pending; a selectable harness is not evidence that they pass.
+Other priorities: qscmx/BSolver integration and end-to-end timing on an idle host (also the
 pending GitHub speed figures); transcendental retry rungs above 35 words (W ≥ 36 miscompile, round 44); a cheaper next-panel QR update
 (the panel and that update are the critical path, 45-lookahead), pivoted W rows off the host, a reconstruction-bound trailing
 update; G = 4/8 cooperative shapes with ≥ 3 limbs per lane (validation-only failures, 41-L4b).

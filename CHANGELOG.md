@@ -2,7 +2,15 @@
 
 ## Unreleased
 
-No changes since 1.0.0.
+- Added the section 9 follow-up review and optimization priorities. Aligned planning documents
+  with the 1.x compatibility policy, clarified recorded test coverage, and documented power-tile
+  rounding and recurrence-sharing constraints. Documentation only; no numerical behavior changes.
+- Added an opt-in section 9 MPFR reference runner selecting all 31 widths, expanded arithmetic,
+  status and shape cases, and repeated dense GEMM stress cases. The default smoke test remains
+  light. Smoke and expanded 352/1024-bit checks passed; full-width, dense and shader-validation
+  runs are pending. Public API and kernels unchanged.
+- Consolidated section 9 numerical contracts and completion/storage rules into the canonical
+  numerics and execution documents, with links from the usage guide and follow-up records.
 
 ## 1.0.0 — 2026-10-08
 
