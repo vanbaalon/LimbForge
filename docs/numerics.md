@@ -600,6 +600,40 @@ host-array forms make for arrays that are not page aligned), and the results equ
 calls bit for bit. L may be A and X may be B (in place); X must not be L, and a QR solution must not
 be B. A `QRFactor` made from a buffer owns copies as before (`factor_qr` only reads A).
 
+### Workspace release
+
+```cpp
+LinalgWorkspaces w = la.workspaces();          // scratch_bytes, idle_bytes, busy_bytes, busy_workspaces
+LinalgWorkspaces r = la.release_workspaces();  // what was freed now (scratch, idle) and detached (busy)
+```
+
+A `Linalg` keeps memory between calls so that repeated calls do not allocate and wire pages again (about
+28 ms/GB):
+
+- **scratch** of the host-array calls, by role: staging of the products (copies of operands that are not
+  page aligned, band member lists, digit planes, residues, accumulators, copied outputs) and the
+  factorization and solve scratch (QR and complex QR work matrices, W and Y blocks, right-hand sides, the
+  Cholesky work matrix). It is used only during a call on the `Linalg`'s host thread, including the solves
+  and Q applications of the factors it made;
+- the **resident-product workspaces** above, per call and per batch.
+
+`release_workspaces()` frees the scratch and every idle resident workspace at once. A busy workspace (held by
+an unsubmitted batch, or by a submission whose completion step has not run: the host fallback at wait reads
+the snapshots in its call workspace) is **detached**: the `Linalg` forgets it, it stays valid for the batch
+that holds it, and it is freed when that completion step has run (`Submission::wait()` or the submission's
+destructor) or the unsubmitted batch is destroyed. No memory still used by an unwaited batch is freed. Later
+calls allocate afresh; a later call into a batch that held a released workspace gets a new one (the batch
+then uses both, which changes no result). `workspaces()` reports the retained bytes; detached workspaces
+count as busy until they are freed. Compiled pipelines, modulus tables and worker threads are kept. Factor
+objects own their arrays and are not affected: a factor made before a release still solves (its solve
+allocates scratch again) with the same bits.
+
+Call both on the `Linalg`'s host thread between its host-array calls (not during a factorization, solve or
+product of that thread). Other threads may encode resident products concurrently: the resident pools are
+locked. Tested in `tests/test_resident_linalg.cpp` (`release`): scratch after QR calls, idle workspaces
+after wait, a pending submission with host-fallback outputs released before its wait, a later call into the
+same batch, an unsubmitted batch released and destroyed, and identical results throughout.
+
 ## Cholesky factorization and triangular solves
 
 ```cpp
@@ -976,7 +1010,11 @@ storage that the GPU uses in place. For block b:
    buffers, the last with `subtract`), each placed by its own size (exact host dots below
    `host_macs` multiply-adds, so the small `Y` of the next panel avoids a GPU round trip).
 3. A second host thread updates the rest of the trailing matrix the same way while this thread
-   factors the next panel (one block of look-ahead, as in the Cholesky).
+   factors the next panel (one block of look-ahead, as in the Cholesky). A second block of look-ahead
+   (round 45: block b's rest overlapping two panels, the calling thread waiting only for its next panel's
+   columns) gave identical bits but no gain for the real or complex QR at n = 400/1000: it removed the
+   waits for the side thread, but the next panel's update, which is on the critical path with the panel,
+   slowed by as much under the concurrent GPU work (`benchmarks/experiments/qr_lookahead_depth2.patch`).
 
 Host phases use a worker pool whose dispatch returns when every item is done, not when every
 worker has been scheduled (a worker the loaded host runs late finds no item left). The exact host
@@ -1086,17 +1124,18 @@ excess alike (e.g. 256 bits, `kappa = 100`, consistent b: −43.5 against −43.
 ## Complex QR factorization and least squares
 
 ```cpp
-QROptions o;                                          // as for factor_qr: block, host_macs, solve_host_macs, gpu, rank_bits
+QROptions o;                                          // as for factor_qr: block, host_macs, solve_host_macs, gpu, rank_bits, pivot
 ComplexQRFactor qr = la.factor_qr_complex(bits, A, m, n, o); // A: m x n Complex<bits/32>, row-major, m >= n; A = Q R
+                                                      // o.pivot: A P = Q R, P = qr.permutation() (column j of R is column perm[j] of A)
 qr.solve(B, nrhs, X);                                 // X (n x nrhs) minimises ||A x - b|| for each complex column b of B (m x nrhs)
 qr.apply_q(B, nrhs, adjoint);                         // B (m x nrhs) <- Q^H B (adjoint) or Q B, in place
 qr.r(); qr.v(); qr.tau(); qr.t();                     // complex R (real diagonal), V, tau, T (nb x nb per block)
 qr.info();                                            // QRInfo: rank, reason, status, timings
 ```
 
-Ownership, threading, options, rank and status rules, and the refusal to solve a rank-deficient factor
-are those of `QRFactor` ("QR factorization and least squares"). Column pivoting is not supported:
-`QROptions::pivot` throws `std::invalid_argument` (see "Open" below). Implementation:
+Ownership, threading, options, rank and status rules, and the refusal to solve a rank-deficient unpivoted
+factor are those of `QRFactor` ("QR factorization and least squares"). Column pivoting (`QROptions::pivot`,
+round 45) follows the real pivoted QR; see "Complex column pivoting" below. Implementation:
 `src/linalg_complex.mm`; it reaches the real QR's block update and triangular solve through the private
 hooks of `src/linalg_internal.hpp`.
 
@@ -1206,10 +1245,67 @@ entries, and never forms an embedding:
 - the reflector uses `mpfr_sqrt`, `mpfr_sub`, `mpfr_mul_2si`, `mpfr_div` and `reference::dot2_add`;
 - `T` uses `reference::complex_fused`.
 
-**Open.** Column pivoting is not implemented. The real pivoted path computes a W row of every trailing
-column per step on the host; a complex version would follow it, with `nu_k` downdated by `|r_jk|^2`. Also
-open: an augmented `[J; diag(d)]` entry point (for now, stack the rows and call `factor_qr_complex`), and
+**Open.** An augmented `[J; diag(d)]` entry point (for now, stack the rows and call `factor_qr_complex`), and
 storing V only once (the complex V is kept for `v()`; the embedding alone would suffice for the products).
+
+### Complex column pivoting
+
+With `QROptions::pivot` the complex factorization is column pivoted as LAPACK `zgeqp3`, in the same way as
+the real one ("Column pivoting"): `A P = Q R`, and R, V, tau and T are exactly what the sequence above gives
+for the matrix `A P` (`permutation()[j]` is the column of A in position j; `pivoted()`). The squared column
+norms are real; they are downdated by `|r_jk|^2` and compared exactly:
+
+```
+nu_k = nuref_k = RN(sum_r |a_rk|^2) over all rows (one rounding of 2m exact squares)        every column k
+step j (block b, c = j - k0), while no column has failed:
+  pivot: p = the column in positions [j, n) with the largest nu (a nu with a status ranks above every value;
+         exact comparison, no rounding); ties go to the lowest original column index. Swap positions j and p
+         (the column, its W and Y rows so far, nu, nuref, perm).
+  column j: reduced, tested and turned into reflector j exactly as above (rank_bits is the rank tolerance)
+  every trailing column k > j (positions):
+    w_k(c) = P(v_j^H a_k; rows [j, m))                       a_k as at the start of block b
+    y_k(c) = P(T_b[k0..j][j]^H w_k(0..c))                    (conjugated column of T_b)
+    r_jk   = D(a_jk; V[j][k0..j], y_k(0..c))                 per component; = R[j][k], the final row-j entry
+    nu_k   = RN(nu_k - (Re r_jk)^2 - (Im r_jk)^2)            one rounding
+    if nuref_k != 0, neither has a status, and (nu_k <= 0 or exponent(nu_k) + bits/2 < exponent(nuref_k)):
+      nu_k = nuref_k = RN(sum_r |x_rk|^2) over rows (j, m) of x_rk = D(a_rk; V[r][k0..j], y_k(0..c))
+  after the block: X = D(X; V_b, Y) for the trailing columns with the W, Y rows formed above
+after a failing column p: no further pivoting; block b's reflectors [k0, p) are applied to columns [p, n)
+```
+
+As in the real case, `r_jk` is the entry that the unpivoted sequence of `A P` puts in R (`V[j][i] = 0` for
+`i > j`), the recomputation rule is LAPACK's (`tol3z = sqrt(eps)` on the norm ratio) in squared form with an
+exponent comparison, and the permutation is as deterministic as the rest of the sequence. A column with a
+status in either component is chosen first, so it fails at once (`status_column`, rank = its position).
+Zero columns move last. An exactly dependent column (a copy, or `i` times another column) keeps a norm of
+rounding size and fails only with a rank test such as `rank_bits = bits/2`.
+
+**Rank and solve.** `|r_jj| = |beta_j|` is real and decreases (up to rounding) along the diagonal, so
+`rank_bits > 0` gives a numerical rank. For rank p the solve returns the **basic solution** `x[perm[i]] = z_i`
+for `i < p` and `x[perm[i]] = 0` otherwise, where `R[0:p,0:p] z = (Q^H b)[0:p)` is solved by the backward
+substitution above on the leading `2p x 2p` block of R's embedding with blocks `2 min(nb, p)` (the same
+coupling-term rule). It is not the minimum-norm solution of the rank-deficient problem. A `status_column`
+failure gives zero with that status and `invalid` in both components of every entry of X.
+
+**Execution and cost.** As the real pivoted QR, with no look-ahead (the next panel's columns are chosen
+during it). The panel loads each column after its pivot step. W row c of every trailing column (two exact
+real dots per column over rows `[j, m)` of the block-start work matrix, read by rows in tiles of 16 columns,
+each component in an exact window anchored at the product of the exponent ranges; `exact_dot` on the
+interleaved sequences beyond 128 words) runs in the same pool dispatch as the Gram windows, after the rows of
+`v`, `i v` and the reflector rows are set. Y row c, `r_jk` and the downdate follow per tile. The trailing
+update is the embedded `X = D(X; V_b, Y)` with the host-formed Y (the private block-update hook takes
+`have_y`). The W rows are about `2 m n^2` real multiply-adds (four per complex product), done on the host
+(the BLAS-2 half of `zgeqp3`). On QSC-like J (m = 2n, four right-hand sides, interleaved with the unpivoted
+factorization, load 33–48; `benchmarks/results/round45_qr_complex_pivot.csv`) factor + solve takes 1.6–1.7×
+the unpivoted time at n = 200, 2.0–2.1× at n = 400 and 2.9–4.2× at n = 1000 (6.2 s at 224 bits, 7.6 s at 256
+bits, of which the panel with the W rows is 5.5–6.5 s); the real pivoted QR costs 1.2× at n = 400 and 2.6×
+at n = 1000 (round 40). Pivoting moved nearly every column of these J and recomputed no norm.
+
+**Reference.** `ref_qrp` in `tests/test_qr_complex.cpp` is a right-looking MPFR program of the pivoted
+sequence on complex entries (the replay functions above; norms as `mpfr_sum` of the exact squares; pivot
+comparisons with `mpfr_cmp`). Rank, reason, status, `norm_recomputations`, the permutation, R, V, tau, T,
+the basic solutions and the Q / Q^H applications are compared bit for bit, and full-rank status-free inputs
+are also compared with the unpivoted replay `ref_qr` of `A P`.
 
 ### Complex QR accuracy and speed
 

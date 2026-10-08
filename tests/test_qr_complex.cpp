@@ -3,7 +3,9 @@
 // left-looking and column by column on complex entries: every complex dot product or update is two mpfr_sum calls (one per
 // real component) over the exact products of the components (reference::dot / dot_sub on the component lists), and the
 // reflector uses mpfr_sqrt, mpfr_sub, mpfr_mul_2si, mpfr_div and reference::dot2_add. Also: a real matrix gives the real QR
-// (Linalg::factor_qr) bit for bit in the real parts and zero imaginary parts.
+// (Linalg::factor_qr) bit for bit in the real parts and zero imaginary parts. Column pivoting (QROptions::pivot) against a separate
+// right-looking replay of the pivoted sequence (ref_qrp: permutation, rank, recomputed norms, R, V, tau, T, basic solutions), and
+// full-rank status-free pivoted factors against the unpivoted replay of A P.
 // Usage: test_limbforge_qr_complex [--quick] [--all-widths] (every 32-bit width from 64 to 1024 bits on small GPU shapes).
 #include "reference.hpp"
 #include "limbforge/linalg.hpp"
@@ -49,7 +51,7 @@ template<int Bits> CF<Bits> pdot(const CF<Bits>* u,std::ptrdiff_t su,const CF<Bi
 template<int Bits> CF<Bits> dsub(const CF<Bits>& c,const CF<Bits>* u,std::ptrdiff_t su,const CF<Bits>* w,std::ptrdiff_t sw,std::size_t K,const F<Bits>* ex=nullptr,const F<Bits>* ey=nullptr){
     Terms<Bits> re,im;for(std::size_t k=0;k<K;++k){const CF<Bits> &x=u[std::ptrdiff_t(k)*su],&y=w[std::ptrdiff_t(k)*sw];re.add(x.re,y.re);re.add(x.im,y.im,-1);im.add(x.re,y.im);im.add(x.im,y.re);}
     if(ex)re.add(*ex,*ey);return {re.sub_from(c.re),im.sub_from(c.im)};}
-template<int Bits> struct RefQR {std::size_t m=0,n=0,nb=0,rank=0;int reason=0;word status=0;std::vector<CF<Bits>> R,V,T,tau;};
+template<int Bits> struct RefQR {std::size_t m=0,n=0,nb=0,rank=0;int reason=0;word status=0;std::vector<CF<Bits>> R,V,T,tau;std::vector<std::size_t> perm;std::size_t recomputed=0;};
 template<int Bits> RefQR<Bits> ref_qr(const std::vector<CF<Bits>>& A,std::size_t m,std::size_t n,std::size_t nb,int rank_bits){
     constexpr int N=Bits/32;RefQR<Bits> q;q.m=m;q.n=n;q.nb=nb=nb&&nb<n?nb:n;q.rank=n;std::size_t blocks=nb?(n+nb-1)/nb:0;
     std::vector<CF<Bits>> a=A;q.V.assign(m*n,czero<Bits>());q.T.assign(blocks*nb*nb,czero<Bits>());q.tau.assign(n,czero<Bits>());long top=LONG_MIN;CF<Bits>* V=q.V.data();
@@ -106,6 +108,83 @@ template<int Bits> std::vector<CF<Bits>> ref_solve(const RefQR<Bits>& q,std::vec
         const F<Bits> xim=mp<Bits>(Operation::div,dsub<Bits>(v,R+i*n+i+1,1,X.data()+(i+1)*nrhs+c,std::ptrdiff_t(nrhs),r1-i-1).im,R[i*n+i].re),coupling=negate(R[i*n+i].im);
         const F<Bits> u=dsub<Bits>(v,R+i*n+i+1,1,X.data()+(i+1)*nrhs+c,std::ptrdiff_t(nrhs),r1-i-1,&coupling,&xim).re;
         X[i*nrhs+c]={mp<Bits>(Operation::div,u,R[i*n+i].re),xim};});
+    return X;
+}
+// sum_k |x_k|^2 over K complex entries (stride sx): one MPFR rounding of the exact real value.
+template<int Bits> F<Bits> norm2(const CF<Bits>* x,std::ptrdiff_t sx,std::size_t K){Terms<Bits> t;for(std::size_t k=0;k<K;++k){const CF<Bits>& z=x[std::ptrdiff_t(k)*sx];t.add(z.re,z.re);t.add(z.im,z.im);}return t.sum();}
+// Column-pivoted complex QR (QROptions::pivot): a right-looking MPFR program of the pivoted sequence (docs/numerics.md, "Complex column
+// pivoting"). nu_k = nuref_k = sum |a_rk|^2 (one rounding); before step j the remaining column with the largest nu (status first; exact
+// comparison by mpfr_cmp; ties to the lowest original index) is swapped into place; column j is reduced by the block's reflectors so far
+// (its y from the steps before) and gives reflector j as in ref_qr; then every trailing column k gets w_k = P(v_j^H a_k) (rows [j, m),
+// a_k as at the block start), y_k = P(T[.][j]^H w_k), its row-j entry r_jk = D(a_jk; V[j][block], y_k) and nu_k = RN(nu_k - |r_jk|^2),
+// recomputed from the reduced column (rows (j, m)) when it falls to <= 0 or more than bits/2 binades below its last exact value.
+// After the block, X = D(X; V_b, Y) with these W and Y; after a failing column p, block b's reflectors [b0, p) with fresh W, Y.
+template<int Bits> RefQR<Bits> ref_qrp(const std::vector<CF<Bits>>& A,std::size_t m,std::size_t n,std::size_t nb,int rank_bits){
+    constexpr int N=Bits/32;RefQR<Bits> q;q.m=m;q.n=n;q.nb=nb=nb&&nb<n?nb:n;q.rank=n;std::size_t blocks=nb?(n+nb-1)/nb:0;
+    std::vector<CF<Bits>> a=A;q.V.assign(m*n,czero<Bits>());q.T.assign(blocks*nb*nb,czero<Bits>());q.tau.assign(n,czero<Bits>());long top=LONG_MIN;CF<Bits>* V=q.V.data();
+    q.perm.resize(n);for(std::size_t k=0;k<n;++k)q.perm[k]=k;
+    std::vector<F<Bits>> nu(n),nuref(n);std::vector<CF<Bits>> Wr(nb*n,czero<Bits>()),Yr(nb*n,czero<Bits>());
+    parallel_rows(n,[&](std::size_t k){nu[k]=nuref[k]=norm2<Bits>(a.data()+k,std::ptrdiff_t(n),m);});
+    auto greater=[](const F<Bits>& x,const F<Bits>& y){ // exact order, a status above every value
+        if(x.status||y.status)return x.status&&!y.status;reference::MP u(Bits),v(Bits);to_mpfr<Bits>(u.x,x);to_mpfr<Bits>(v.x,y);return mpfr_cmp(u.x,v.x)>0;};
+    // Applies reflectors [b0, b0+g) of block b0/nb to columns [c0, n) with Wr/Yr rows [0, g) (fresh = form them first).
+    auto apply=[&](std::size_t b0,std::size_t g,std::size_t c0,bool fresh){const CF<Bits>* Tb=q.T.data()+(b0/nb)*nb*nb;
+        if(fresh)parallel_rows(n-c0,[&](std::size_t u){const std::size_t k=c0+u;
+            for(std::size_t i=0;i<g;++i)Wr[i*n+k]=hdot<Bits>(V+(b0+i)*n+b0+i,std::ptrdiff_t(n),a.data()+(b0+i)*n+k,std::ptrdiff_t(n),m-b0-i);
+            for(std::size_t i=0;i<g;++i)Yr[i*n+k]=hdot<Bits>(Tb+i,std::ptrdiff_t(nb),Wr.data()+k,std::ptrdiff_t(n),i+1);});
+        parallel_rows(m-b0,[&](std::size_t r){for(std::size_t k=c0;k<n;++k){CF<Bits>& x=a[(b0+r)*n+k];x=dsub<Bits>(x,V+(b0+r)*n+b0,1,Yr.data()+k,std::ptrdiff_t(n),std::min(g,r+1));}});};
+    for(std::size_t b0=0;b0<n&&q.rank==n;b0+=nb){const std::size_t kb=std::min(n,b0+nb)-b0;CF<Bits>* Tb=q.T.data()+(b0/nb)*nb*nb;
+        for(std::size_t c=0;c<kb;++c){const std::size_t j=b0+c;
+            std::size_t p=j;for(std::size_t k=j+1;k<n;++k)if(greater(nu[k],nu[p])||(!greater(nu[p],nu[k])&&q.perm[k]<q.perm[p]))p=k;
+            if(p!=j){for(std::size_t r=0;r<m;++r)std::swap(a[r*n+j],a[r*n+p]);for(std::size_t i=0;i<c;++i){std::swap(Wr[i*n+j],Wr[i*n+p]);std::swap(Yr[i*n+j],Yr[i*n+p]);}
+                std::swap(nu[j],nu[p]);std::swap(nuref[j],nuref[p]);std::swap(q.perm[j],q.perm[p]);}
+            std::vector<CF<Bits>> x(m-b0);for(std::size_t r=0;r<m-b0;++r)x[r]=c?dsub<Bits>(a[(b0+r)*n+j],V+(b0+r)*n+b0,1,Yr.data()+j,std::ptrdiff_t(n),std::min(c,r+1)):a[(b0+r)*n+j];
+            const std::size_t len=m-j;const CF<Bits> alpha=x[c];const F<Bits> s=norm2<Bits>(x.data()+c,1,len);
+            bool below=false;for(std::size_t r=c+1;r<m-b0;++r)below|=x[r].re.sign||x[r].im.sign;const bool needs=below||alpha.im.sign;
+            int reason=s.status?QRInfo::status_column:(!alpha.re.sign&&!alpha.im.sign&&!below)?QRInfo::zero_column:0;F<Bits> beta=alpha.re,v0=power<Bits>(0);
+            if(!reason&&needs){beta=mp<Bits>(Operation::sqrt,s,s);if(alpha.re.sign>=0)beta=negate(beta);v0=mp<Bits>(Operation::sub,alpha.re,beta);}
+            if(!reason&&rank_bits>0&&top!=LONG_MIN&&long(beta.exponent)+rank_bits<top)reason=QRInfo::small_column;
+            if(reason){q.rank=j;q.reason=reason;q.status=s.status;if(c)apply(b0,c,j,true);break;}
+            for(std::size_t r=0;r<m-b0;++r)a[(b0+r)*n+j]=x[r];
+            CF<Bits> t=czero<Bits>();
+            if(needs){const long e=v0.exponent;V[j*n+j]={times_power<Bits>(v0,-e),times_power<Bits>(alpha.im,-e)};
+                for(std::size_t r=j+1;r<m;++r)V[r*n+j]={times_power<Bits>(a[r*n+j].re,-e),times_power<Bits>(a[r*n+j].im,-e)};
+                const F<Bits> sv=norm2<Bits>(V+j*n+j,std::ptrdiff_t(n),len),vi=V[j*n+j].im;
+                if(!vi.sign&&!vi.status)t={mp<Bits>(Operation::div,power<Bits>(1),sv),zero<N>()};
+                else{const F<Bits> h=times_power<Bits>(sv,-1),bb=mp<Bits>(Operation::mul,times_power<Bits>(beta,-e),vi),d=reference::dot2_add<Bits>(h,h,bb,bb,zero<N>());
+                    t={mp<Bits>(Operation::div,h,d),negate(mp<Bits>(Operation::div,bb,d))};}}
+            else V[j*n+j]={power<Bits>(0),zero<N>()};
+            a[j*n+j]={beta,zero<N>()};q.tau[j]=t;top=std::max(top,long(beta.exponent));
+            std::vector<CF<Bits>> G(c);parallel_rows(c,[&](std::size_t i){G[i]=hdot<Bits>(V+b0*n+b0+i,std::ptrdiff_t(n),V+b0*n+j,std::ptrdiff_t(n),m-b0);});
+            Tb[c*nb+c]=t;for(std::size_t l=0;l<c;++l){CF<Bits> z=reference::complex_fused<Bits>(t,pdot<Bits>(Tb+l*nb+l,1,G.data()+l,1,c-l),czero<Bits>());Tb[l*nb+c]={negate(z.re),negate(z.im)};}
+            // Trailing columns: W and Y rows c, row j of R, downdated norms (recomputed when they collapse).
+            std::vector<char> redo(n,0);
+            parallel_rows(n-j-1,[&](std::size_t u){const std::size_t k=j+1+u;
+                Wr[c*n+k]=hdot<Bits>(V+j*n+j,std::ptrdiff_t(n),a.data()+j*n+k,std::ptrdiff_t(n),len);
+                Yr[c*n+k]=hdot<Bits>(Tb+c,std::ptrdiff_t(nb),Wr.data()+k,std::ptrdiff_t(n),c+1);
+                const CF<Bits> r=dsub<Bits>(a[j*n+k],V+j*n+b0,1,Yr.data()+k,std::ptrdiff_t(n),c+1);
+                const F<Bits> rr[2]={r.re,r.im};nu[k]=reference::dot_sub<Bits>(nu[k],rr,1,rr,1,2);
+                redo[k]=nuref[k].sign&&!nuref[k].status&&!nu[k].status&&(nu[k].sign<=0||long(nu[k].exponent)+Bits/2<long(nuref[k].exponent));
+                if(redo[k]){std::vector<CF<Bits>> z;for(std::size_t i=j+1;i<m;++i)z.push_back(dsub<Bits>(a[i*n+k],V+i*n+b0,1,Yr.data()+k,std::ptrdiff_t(n),c+1));
+                    nu[k]=nuref[k]=norm2<Bits>(z.data(),1,z.size());}});
+            for(char x:redo)q.recomputed+=x!=0;
+        }
+        if(q.rank==n&&b0+kb<n)apply(b0,kb,b0+kb,false);
+    }
+    q.R.assign(n*n,czero<Bits>());for(std::size_t i=0;i<n;++i)for(std::size_t j=std::min(i,q.rank);j<n;++j)q.R[i*n+j]=a[i*n+j];
+    return q;
+}
+// Pivoted solve: z = R[0:p,0:p]^-1 (Q^H b)[0:p) by the backward substitution of ref_solve (blocks min(nb, p)), x[perm[i]] = z_i, 0 beyond p.
+template<int Bits> std::vector<CF<Bits>> ref_solve_pivoted(const RefQR<Bits>& q,std::vector<CF<Bits>> C,std::size_t nrhs){
+    const std::size_t n=q.n,p=q.rank,nb=std::min(q.nb,p);std::vector<CF<Bits>> X(n*nrhs,czero<Bits>());
+    if(p<n&&q.reason==QRInfo::status_column){std::fill(X.begin(),X.end(),czero<Bits>(invalid|q.status));return X;}
+    ref_apply<Bits>(q,C,nrhs,true);std::vector<CF<Bits>> Z(C.begin(),C.begin()+p*nrhs);const CF<Bits>* R=q.R.data();
+    for(std::size_t i=p;i-->0;)parallel_rows(nrhs,[&](std::size_t c){CF<Bits> v=Z[i*nrhs+c];std::size_t r0=i/nb*nb,r1=std::min(p,r0+nb);
+        for(std::size_t b=(p-1)/nb*nb;b>=r1&&b>r0;b-=nb)v=dsub<Bits>(v,R+i*n+b,1,Z.data()+b*nrhs+c,std::ptrdiff_t(nrhs),std::min(p,b+nb)-b);
+        const F<Bits> xim=mp<Bits>(Operation::div,dsub<Bits>(v,R+i*n+i+1,1,Z.data()+(i+1)*nrhs+c,std::ptrdiff_t(nrhs),r1-i-1).im,R[i*n+i].re),coupling=negate(R[i*n+i].im);
+        const F<Bits> u=dsub<Bits>(v,R+i*n+i+1,1,Z.data()+(i+1)*nrhs+c,std::ptrdiff_t(nrhs),r1-i-1,&coupling,&xim).re;
+        Z[i*nrhs+c]={mp<Bits>(Operation::div,u,R[i*n+i].re),xim};});
+    for(std::size_t i=0;i<p;++i)for(std::size_t c=0;c<nrhs;++c)X[q.perm[i]*nrhs+c]=Z[i*nrhs+c];
     return X;
 }
 // ---- Inputs ----
@@ -197,13 +276,73 @@ template<int Bits> void special(Linalg& la,std::mt19937_64& rng){
      auto A=matrix<Bits>(5,0,moderate,rng);ComplexQRFactor z=la.factor_qr_complex(Bits,A.data(),5,0);require(z.info().rank==0,"5x0");
      A=matrix<Bits>(6,4,moderate,rng);ComplexQRFactor f=la.factor_qr_complex(Bits,A.data(),6,4);ComplexQRFactor g=std::move(f);require(f.empty()&&!g.empty(),"move");
      std::vector<CF<Bits>> X;g.solve(none.data(),0,X.data());bool threw=false;try{la.factor_qr_complex(Bits,A.data(),3,4);}catch(const std::invalid_argument&){threw=true;}require(threw,"m < n must throw");
-     threw=false;QROptions p;p.pivot=true;try{la.factor_qr_complex(Bits,A.data(),6,4,p);}catch(const std::invalid_argument&){threw=true;}require(threw,"pivot must throw (not supported)");}
+     QROptions p;p.pivot=true;ComplexQRFactor pe=la.factor_qr_complex(Bits,none.data(),0,0,p);require(pe.pivoted()&&pe.full_rank(),"pivoted 0x0");
+     ComplexQRFactor pz=la.factor_qr_complex(Bits,A.data(),6,0,p);require(pz.info().rank==0,"pivoted 6x0");}
     // Real input: the real QR's bits.
     {QROptions d,g16,h7;g16.block=16;g16.host_macs=0;g16.solve_host_macs=0;h7.block=7;h7.gpu=false;
      real_equivalence<Bits>(la,33,7,graded,rng,d);real_equivalence<Bits>(la,70,40,qsc,rng,g16);real_equivalence<Bits>(la,70,40,moderate,rng,h7);real_equivalence<Bits>(la,150,60,wide,rng,d);}
 }
+// Pivoted factor against ref_qrp (permutation, rank, R, V, tau, T, recomputed norms), its basic least-squares solution and Q / Q^H
+// applications; full-rank status-free inputs also against ref_qr of A P (the pivoted sequence is the unpivoted one of A P).
+std::size_t pivoted_run=0,pivoted_deficient=0,recomputations=0,crossed_run=0;
+std::vector<Run> pivot_runs(std::size_t n){QROptions def,gpu16,host7,single,gpu1;def.pivot=gpu16.pivot=host7.pivot=single.pivot=gpu1.pivot=true;gpu16.block=16;gpu16.host_macs=0;gpu16.solve_host_macs=0;
+    host7.block=7;host7.gpu=false;single.block=0;single.solve_host_macs=0;gpu1.block=1;gpu1.host_macs=0;gpu1.solve_host_macs=0;
+    std::vector<Run> rs={{"default",def},{"gpu block 16",gpu16},{"host block 7",host7}};if(n<=100)rs.push_back({"single block",single});if(n<=24)rs.push_back({"gpu block 1",gpu1});return rs;}
+template<int Bits> void factor_pivoted(Linalg& la,const std::vector<CF<Bits>>& A,std::size_t m,std::size_t n,const std::string& label,std::mt19937_64& rng,
+                                       int rank_bits=0,std::size_t expect_rank=SIZE_MAX,bool expect_recompute=false,std::vector<Run> rs={}){
+    if(rs.empty())rs=pivot_runs(n);std::map<std::size_t,RefQR<Bits>> refs;bool crossed=false;
+    for(std::size_t k=0;k<rs.size();++k){Run run=rs[k];run.options.rank_bits=rank_bits;const std::size_t nb=run.options.block&&run.options.block<n?run.options.block:n;
+        auto found=refs.find(nb);if(found==refs.end())found=refs.emplace(nb,ref_qrp<Bits>(A,m,n,nb,rank_bits)).first;const RefQR<Bits>& want=found->second;
+        std::string l="pivoted complex qr bits="+std::to_string(Bits)+" "+std::to_string(m)+"x"+std::to_string(n)+" "+label+" ["+run.name+"]";
+        if(expect_rank!=SIZE_MAX)require(want.rank==expect_rank,l+": reference rank "+std::to_string(want.rank)+", fixture expects "+std::to_string(expect_rank));
+        if(expect_recompute)require(want.recomputed>0,l+": fixture expects recomputed norms");
+        bool aligned=k%2==0;Mat<CF<Bits>> a(A,aligned);ComplexQRFactor qr=la.factor_qr_complex(Bits,a.p,m,n,run.options);const QRInfo& info=qr.info();
+        require(qr.pivoted()&&info.rank==want.rank&&info.reason==want.reason&&info.status==want.status&&info.norm_recomputations==want.recomputed,l+": rank "+std::to_string(info.rank)+
+            " reason "+std::to_string(info.reason)+" status "+std::to_string(info.status)+" recomputed "+std::to_string(info.norm_recomputations)+", want "+std::to_string(want.rank)+" "+
+            std::to_string(want.reason)+" "+std::to_string(want.status)+" "+std::to_string(want.recomputed));
+        for(std::size_t j=0;j<n;++j)require(qr.permutation()[j]==want.perm[j],l+": permutation entry "+std::to_string(j)+" is "+std::to_string(qr.permutation()[j])+", want "+std::to_string(want.perm[j]));
+        same<Bits>(static_cast<const CF<Bits>*>(qr.r()),want.R,n,l+" R");same<Bits>(static_cast<const CF<Bits>*>(qr.v()),want.V,n,l+" V");
+        same<Bits>(static_cast<const CF<Bits>*>(qr.tau()),want.tau,1,l+" tau");same<Bits>(static_cast<const CF<Bits>*>(qr.t()),want.T,nb?nb:1,l+" T");
+        if(!crossed&&want.rank==n&&!want.status&&n<=200){crossed=true;++crossed_run;std::vector<CF<Bits>> AP(m*n);for(std::size_t r=0;r<m;++r)for(std::size_t j=0;j<n;++j)AP[r*n+j]=A[r*n+want.perm[j]];
+            auto u=ref_qr<Bits>(AP,m,n,nb,rank_bits);require(u.rank==n,l+": A P reference rank");
+            same<Bits>(u.R.data(),want.R,n,l+" R of A P");same<Bits>(u.V.data(),want.V,n,l+" V of A P");same<Bits>(u.T.data(),want.T,nb?nb:1,l+" T of A P");same<Bits>(u.tau.data(),want.tau,1,l+" tau of A P");}
+        ++pivoted_run;pivoted_deficient+=want.rank<n;recomputations+=want.recomputed;gpu_updates+=info.gpu_updates;host_updates+=info.host_updates;
+        std::size_t nrhs=k%3==0?1:k%3==1?3:5;auto B=rhs<Bits>(m,nrhs,rng);if(k==1&&m>3)B[nrhs+1].im.status=invalid;
+        {Mat<CF<Bits>> b(B,!aligned),x(n*nrhs,aligned,czero<Bits>());qr.solve(b.p,nrhs,x.p);same<Bits>(x.p,ref_solve_pivoted<Bits>(want,B,nrhs),nrhs,"pivoted solve nrhs="+std::to_string(nrhs)+" "+l);}
+        for(bool adjoint:{true,false}){auto C=B;ref_apply<Bits>(want,C,nrhs,adjoint);Mat<CF<Bits>> b(B,aligned!=adjoint);qr.apply_q(b.p,nrhs,adjoint);
+            same<Bits>(b.p,C,nrhs,std::string(adjoint?"pivoted Q^H":"pivoted Q")+" "+l);}
+    }
+}
+template<int Bits> void pivoted(Linalg& la,std::mt19937_64& rng,bool thorough){
+    constexpr int N=Bits/32;
+    for(auto [m,n,kind]:std::vector<std::tuple<std::size_t,std::size_t,Kind>>{{1,1,moderate},{5,3,qsc},{33,7,graded},{60,30,qsc},{64,32,wide},{70,40,spread},{150,60,moderate},{40,20,realonly}})
+        factor_pivoted<Bits>(la,matrix<Bits>(m,n,kind,rng),m,n,kind_name(kind),rng);
+    // Rank deficiency: exactly dependent columns (column n-1 = column 1, column n/2 = i column 0; found with rank_bits), zero columns
+    // (moved last), duplicate and i-multiple columns (ties go to the lower original index), a status (chosen first: rank 0, in either
+    // part), and nearly parallel columns (a column plus a perturbation 2^-(bits/4+10) below it, or (1+i) times one: norms recomputed).
+    factor_pivoted<Bits>(la,matrix<Bits>(41,7,dependent,rng),41,7,"dependent",rng,Bits/2,5);
+    factor_pivoted<Bits>(la,matrix<Bits>(90,40,dependent,rng),90,40,"dependent 90x40",rng,Bits/2,38);
+    {auto A=matrix<Bits>(30,12,moderate,rng);for(std::size_t r=0;r<30;++r){A[r*12+2]=czero<Bits>();A[r*12+7]=czero<Bits>();}factor_pivoted<Bits>(la,A,30,12,"zero columns 2, 7",rng,0,10);}
+    {auto A=matrix<Bits>(25,9,moderate,rng);for(std::size_t r=0;r<25;++r){A[r*9+6]=A[r*9+2];const CF<Bits> z=A[r*9+2];A[r*9+8]={negate(z.im),z.re};}
+     factor_pivoted<Bits>(la,A,25,9,"duplicate and i-multiple columns",rng,Bits/2,7);}
+    {auto A=matrix<Bits>(25,10,moderate,rng);A[7*10+4].re.status=invalid;factor_pivoted<Bits>(la,A,25,10,"status at (7,4).re",rng,0,0);
+     A=matrix<Bits>(40,24,qsc,rng);A[33*24+17].im.status=exponent_overflow;factor_pivoted<Bits>(la,A,40,24,"status at (33,17).im",rng,0,0);}
+    {auto A=matrix<Bits>(80,20,moderate,rng);for(std::size_t r=0;r<80;++r){for(std::size_t j:{5,13}){CF<Bits> t{reference::random_number<Bits>(rng,4),reference::random_number<Bits>(rng,4)};
+            t.re.exponent-=Bits/4+10;t.im.exponent-=Bits/4+10;A[r*20+j]=reference::complex<Bits>(Operation::complex_add,A[r*20+j-1],t);}
+         const CF<Bits> one_i{power<Bits>(0),power<Bits>(0)};CF<Bits> t{reference::random_number<Bits>(rng,4),zero<N>()};t.re.exponent-=Bits/4+10;
+         A[r*20+17]=reference::complex<Bits>(Operation::complex_add,reference::complex<Bits>(Operation::complex_mul,A[r*20+9],one_i),t);}
+     factor_pivoted<Bits>(la,A,80,20,"nearly parallel columns",rng,0,SIZE_MAX,true);}
+    // Rank deficiency found by the rank test after pivoting, in a block boundary case (rank 33 of 48 at block 16 / 32).
+    {const std::size_t m=70,n=48;auto B=matrix<Bits>(m,33,moderate,rng),C=matrix<Bits>(33,15,moderate,rng);std::vector<CF<Bits>> A(m*n);
+     for(std::size_t r=0;r<m;++r){for(std::size_t j=0;j<33;++j)A[r*n+j]=B[r*33+j];
+         for(std::size_t j=0;j<15;++j){std::vector<CF<Bits>> u(B.begin()+r*33,B.begin()+r*33+33);A[r*n+33+j]=pdot<Bits>(u.data(),1,C.data()+j,15,33);}}
+     QROptions b16,b32;b16.pivot=b32.pivot=true;b16.block=16;b16.host_macs=0;b16.solve_host_macs=0;b32=b16;b32.block=32;
+     factor_pivoted<Bits>(la,A,m,n,"rank 33 of 48 (products of random factors)",rng,Bits/2,33,false,{{"gpu block 16",b16},{"gpu block 32",b32}});}
+    factor_pivoted<Bits>(la,matrix<Bits>(300,150,qsc,rng),300,150,"QSC-like",rng);
+    if(thorough)factor_pivoted<Bits>(la,matrix<Bits>(400,200,qsc,rng),400,200,"QSC-like",rng);
+}
 template<int Bits> void suite(Linalg& la,bool thorough){
-    std::mt19937_64 rng(4343+Bits);special<Bits>(la,rng);
+    std::mt19937_64 rng(4343+Bits);special<Bits>(la,rng);pivoted<Bits>(la,rng,thorough);
     std::vector<std::tuple<std::size_t,std::size_t,Kind>> shapes={{1,1,moderate},{3,2,qsc},{33,7,graded},{128,64,wide},{257,129,qsc}};
     for(auto [m,n,kind]:shapes){if(m==257&&!thorough)continue;factor<Bits>(la,matrix<Bits>(m,n,kind,rng),m,n,kind_name(kind),rng);}
     if(!thorough)return;
@@ -216,12 +355,16 @@ template<int Bits> void suite(Linalg& la,bool thorough){
 // Every 32-bit width: small shapes with every product on the GPU (block 7 and 16), against the replay.
 template<int Bits> void width(Linalg& la){std::mt19937_64 rng(77+Bits);QROptions g7,g16;g7.block=7;g7.host_macs=0;g7.solve_host_macs=0;g16=g7;g16.block=16;
     std::vector<Run> rs={{"gpu block 7",g7},{"gpu block 16",g16}};factor<Bits>(la,matrix<Bits>(45,23,qsc,rng),45,23,"all widths",rng,rs);
-    factor<Bits>(la,matrix<Bits>(40,33,spread,rng),40,33,"all widths spread",rng,rs);}
+    factor<Bits>(la,matrix<Bits>(40,33,spread,rng),40,33,"all widths spread",rng,rs);
+    QROptions p7=g7,p16=g16;p7.pivot=p16.pivot=true;std::vector<Run> ps={{"pivoted gpu block 7",p7},{"pivoted gpu block 16",p16}};
+    factor_pivoted<Bits>(la,matrix<Bits>(45,23,qsc,rng),45,23,"all widths",rng,0,SIZE_MAX,false,ps);
+    factor_pivoted<Bits>(la,matrix<Bits>(41,7,dependent,rng),41,7,"all widths dependent",rng,Bits/2,5,false,ps);}
 template<int B=64> void all_widths(Linalg& la){width<B>(la);std::cout<<B<<' '<<std::flush;if constexpr(B<1024)all_widths<B+32>(la);}
 int main(int argc,char** argv){try{
     bool quick=false,widths=false;for(int i=1;i<argc;++i){std::string a=argv[i];if(a=="--quick")quick=true;else if(a=="--all-widths")widths=true;else throw std::invalid_argument("usage: test_limbforge_qr_complex [--quick] [--all-widths]");}
     Linalg la;std::cout<<la.device_name()<<"\n";
-    if(widths){std::cout<<"all widths: ";all_widths(la);std::cout<<"\n"<<factors_run<<" factorizations, "<<solves_run<<" solves and "<<applies_run<<" Q applications at every width bit-identical to the reference\n";return 0;}
+    if(widths){std::cout<<"all widths: ";all_widths(la);std::cout<<"\n"<<factors_run<<" factorizations, "<<solves_run<<" solves and "<<applies_run<<" Q applications at every width bit-identical to the reference; "
+                          <<pivoted_run<<" pivoted factorizations (with solves and Q applications) bit-identical to the pivoted reference\n";return 0;}
     suite<224>(la,!quick);std::cout<<"complex qr 224 bits: match the MPFR replay\n";
     suite<256>(la,!quick);std::cout<<"complex qr 256 bits: match the MPFR replay\n";
     suite<64>(la,false);suite<384>(la,false);std::cout<<"complex qr 64, 384 bits: match the MPFR replay\n";
@@ -231,6 +374,7 @@ int main(int argc,char** argv){try{
             if(bits==224)factor<224>(la,matrix<224>(2*n,n,qsc,rng),2*n,n,"QSC-like",rng,rs);else factor<256>(la,matrix<256>(2*n,n,qsc,rng),2*n,n,"QSC-like",rng,rs);
             std::cout<<"QSC-like complex "<<2*n<<"x"<<n<<" at "<<bits<<" bits: match the MPFR replay\n";}}
     std::cout<<real_matches<<" real-input factorizations bit-identical to Linalg::factor_qr\n";
+    std::cout<<pivoted_run<<" pivoted factorizations ("<<pivoted_deficient<<" rank-deficient, "<<recomputations<<" recomputed norms; "<<crossed_run<<" equal to the unpivoted replay of A P) bit-identical to the pivoted reference\n";
     std::cout<<factors_run<<" factorizations ("<<deficient<<" rank-deficient; "<<gpu_updates<<" GPU and "<<host_updates<<" host block updates), "<<solves_run<<" solves and "
              <<applies_run<<" Q applications bit-identical to the reference\n";return 0;}
 catch(const std::exception& e){std::cerr<<e.what()<<'\n';return 1;}}

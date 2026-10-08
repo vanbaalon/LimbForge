@@ -36,6 +36,13 @@ struct LinalgReport {
     bool resident_overflow=false;                   // resident: band rows exceeded the workspace; every output with no zero line on the host
     double analysis_seconds=0,upload_seconds=0,gpu_seconds=0,assembly_seconds=0,fallback_seconds=0;
 };
+// Memory a Linalg retains between calls (Linalg::workspaces / release_workspaces; docs/numerics.md, "Workspace release"), in bytes.
+struct LinalgWorkspaces {
+    std::size_t scratch_bytes=0;   // host-thread scratch: product staging, QR/Cholesky work matrices, W/Y blocks, right-hand sides
+    std::size_t idle_bytes=0;      // resident-product workspaces (per call and per batch) held by no batch
+    std::size_t busy_bytes=0;      // resident-product workspaces held by an unsubmitted batch or an unwaited submission (also released ones)
+    std::size_t busy_workspaces=0;
+};
 namespace detail {
 struct LinalgPass;
 template<class T> constexpr int real_bits(){static_assert(Format<T>::bits&&!Format<T>::complex,"dense linear algebra uses real Float<bits> buffers");return Format<T>::bits;}
@@ -154,6 +161,14 @@ public:
     ComplexQRFactor factor_qr_complex(int bits,const void* A,std::size_t m,std::size_t n,const QROptions& options={});
     const LinalgReport& report() const;
     const LinalgOptions& options() const;
+    // Retained memory, and its release: the scratch and the idle resident workspaces are freed now; busy resident workspaces are
+    // detached and stay valid for the batches holding them, which free them when their submission's completion step has run (wait
+    // or destruction of the submission) or the unsubmitted batch is destroyed. Later calls allocate afresh (a batch that already
+    // holds a workspace gets a new one for its later calls). Compiled pipelines and worker threads are kept. Call on the Linalg's
+    // host thread between its calls (not while a factorization of that thread runs); other threads may keep encoding resident
+    // products. Returns what was freed (scratch, idle) and detached (busy).
+    LinalgWorkspaces workspaces() const;
+    LinalgWorkspaces release_workspaces();
 
     // ---- Resident products (docs/numerics.md, "Resident products"; docs/execution.md, "Resident units") ----
     // syrk / gemm encoded into an Engine's CommandBatch on Buffer<Float<bits>> operands of that engine (row-major, sizes as the
@@ -292,7 +307,9 @@ namespace detail { struct ComplexQRData; }
 // H_j = I - tau_j v_j v_j^H and complex tau_j (the LAPACK zgeqrf convention), so H_j^H maps the reduced column (alpha; x) to
 // (beta_j; 0) with real beta_j = -sgn(Re alpha) ||(alpha; x)|| (sgn(0) = +1): R is upper triangular with a real diagonal.
 // Options, rank and status rules, ownership and threading are those of QRFactor (block, rank_bits, GPU/host split, which never
-// changes a bit). Column pivoting is not supported (QROptions::pivot throws std::invalid_argument).
+// changes a bit). QROptions::pivot: column pivoting as the real QR (xGEQP3 style; real squared column norms downdated by |r_jk|^2,
+// exact comparisons, ties to the lowest original index): A P = Q R, every array below belongs to A P, and a rank-deficient
+// pivoted factor solves for the basic (not minimum-norm) solution.
 class ComplexQRFactor {
 public:
     ComplexQRFactor(); ~ComplexQRFactor(); ComplexQRFactor(ComplexQRFactor&&) noexcept; ComplexQRFactor& operator=(ComplexQRFactor&&) noexcept;
@@ -302,8 +319,11 @@ public:
     // the unreduced remainder in columns j >= p), V (m x n: column j is v_j, zero above row j, v_j[j] = the scaled v0), tau (n)
     // and T (blocks of nb x nb, the compact-WY upper triangles: H_k0 ... H_k1-1 = I - V_b T_b V_b^H; block b at offset b*nb*nb).
     const void* r() const; const void* v() const; const void* tau() const; const void* t() const;
+    bool pivoted() const; const std::size_t* permutation() const;  // column j of R and V is column permutation()[j] of A (identity unpivoted)
     // X (n x nrhs, complex) = least-squares solution of min ||A x - b|| for each column b of B (m x nrhs): Q^H B, then
-    // R X = (Q^H B)[0:n). A rank-deficient factor writes zero with status invalid to every entry of X. X must not overlap B.
+    // R X = (Q^H B)[0:n) (pivoted: x[perm[i]] = z_i). Rank deficient (rank p < n): an unpivoted factor writes zero with status
+    // invalid to every entry of X; a pivoted one gives the basic solution x[perm[i]] = z_i from R[0:p,0:p] z = (Q^H b)[0:p) and
+    // x[perm[i]] = 0 for i >= p; a status column gives zero with that status (and invalid) everywhere. X must not overlap B.
     Timing solve(const void* B,std::size_t nrhs,void* X) const;
     // B (m x nrhs, complex) <- Q^H B (adjoint) or Q B, in place.
     Timing apply_q(void* B,std::size_t nrhs,bool adjoint) const;

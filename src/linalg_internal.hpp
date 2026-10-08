@@ -16,9 +16,10 @@ struct LinalgHooks {
     static void run(Linalg& la,std::size_t n,const std::function<void(std::size_t,unsigned)>& f); // f(item, worker < lanes())
     static void side(bool on);  // marks the calling thread as a factorization's second (trailing-update) thread
     // Block b of a real compact-WY factor (m x n reflectors V with stride n, blocks nb, T blocks of nb x nb) applied to columns
-    // [c0, c1) of X (row stride ld): Linalg::Impl::qr_block with qt (Q^T) or not (Q). V and T must be resident.
+    // [c0, c1) of X (row stride ld): Linalg::Impl::qr_block with qt (Q^T) or not (Q). V and T must be resident. have_y: Yb already
+    // holds Y (pivoted factorizations form it during the panel) and only X = D(X; V_b, Y) is applied.
     static Timing qr_block(Linalg& la,int bits,std::size_t m,std::size_t n,std::size_t nb,const void* V,const void* T,std::size_t b,void* X,std::size_t ld,
-                           std::size_t c0,std::size_t c1,bool qt,void* Wb,void* Yb,double threshold,bool gpu,bool& on_gpu);
+                           std::size_t c0,std::size_t c1,bool qt,void* Wb,void* Yb,double threshold,bool gpu,bool& on_gpu,bool have_y=false);
     // X (n x nrhs) solves R X = B for upper triangular R (n x n): the backward substitution of QRFactor::solve (blocks fo.block).
     static Timing solve_upper(Linalg& la,int bits,const void* R,std::size_t n,const void* B,std::size_t nrhs,void* X,const FactorOptions& fo);
 };

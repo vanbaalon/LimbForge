@@ -3,7 +3,7 @@
 // [[Re J, -Im J], [Im J, Re J]] with right-hand sides [Re b; Im b], and against a consumer-style MPC Householder (qsccpp
 // mx.hpp QR: unblocked, every operation rounded; serial and multithreaded). Modes: default timing table (interleaved repeats),
 // --accuracy (errors against a high-precision MPC Householder solve: complex QR, real QR of the embedding, normal equations
-// of the embedding, consumer MPC Householder).
+// of the embedding, consumer MPC Householder), --pivot (unpivoted and column-pivoted complex QR, interleaved; round 45).
 #import <Foundation/Foundation.h>
 #include "limbforge/linalg.hpp"
 #include "benchmark_support.hpp"
@@ -114,6 +114,22 @@ template<int Bits> void bench(Linalg& la,Workers& workers,const Options& o,std::
         <<(o.embed?median(ee2e)*1e3:0)<<','<<(o.embed?quantile(ee2e,0)*1e3:0)<<','<<(o.embed?median(efactor)*1e3:0)<<','<<(o.embed?median(ee2e)/e:0)<<','
         <<serial<<','<<s<<','<<parallel<<','<<workers.size()<<','<<msolve<<','<<(serial?serial/e:0)<<','<<(parallel?(parallel+msolve)/e:0)<<std::endl;
 }
+// Column pivoting: factor + solve wall of unpivoted and pivoted complex QR, interleaved with alternating order (medians and minima),
+// recomputed norms and how many columns the pivoting moved.
+template<int Bits> void pivot_time(Linalg& la,const Options& o,std::size_t n,std::mt19937_64& rng,bool header){
+    if(header)std::cout<<"bits,m,n,nrhs,block,repeats,load_before,load_after,cqr_e2e_ms,cqr_e2e_min_ms,cqrp_e2e_ms,cqrp_e2e_min_ms,cqrp_panel_ms,cqrp_update_ms,cqrp_gpu_ms,cqrp_over_cqr,norm_recomputations,moved_columns\n";
+    const std::size_t m=2*n,nrhs=o.nrhs;auto J=jacobian<Bits>(m,n,rng);std::vector<CF<Bits>> B(m*nrhs),X(n*nrhs);
+    for(auto& b:B)b={reference::random_number<Bits>(rng,20),reference::random_number<Bits>(rng,20)};
+    QROptions po=o.factor;po.pivot=true;{ComplexQRFactor a=la.factor_qr_complex(Bits,J.data(),m,n,o.factor),b=la.factor_qr_complex(Bits,J.data(),m,n,po);} // warm-up
+    std::vector<double> u,p,panel,update,gpu;QRInfo info;std::size_t moved=0;const double l0=load_average();
+    auto plain=[&]{auto t=Clock::now();ComplexQRFactor q=la.factor_qr_complex(Bits,J.data(),m,n,o.factor);q.solve(B.data(),nrhs,X.data());u.push_back(std::chrono::duration<double>(Clock::now()-t).count());};
+    auto pivoted=[&]{auto t=Clock::now();ComplexQRFactor q=la.factor_qr_complex(Bits,J.data(),m,n,po);if(!q.full_rank())throw std::runtime_error("benchmark J is rank deficient");
+        q.solve(B.data(),nrhs,X.data());p.push_back(std::chrono::duration<double>(Clock::now()-t).count());
+        info=q.info();panel.push_back(info.panel_seconds);update.push_back(info.update_seconds);gpu.push_back(info.timing.gpu_seconds);moved=0;for(std::size_t j=0;j<n;++j)moved+=q.permutation()[j]!=j;};
+    for(int r=0;r<o.repeats;++r){if(r%2){pivoted();plain();}else{plain();pivoted();}}
+    std::cout<<std::setprecision(5)<<Bits<<','<<m<<','<<n<<','<<nrhs<<','<<o.factor.block<<','<<o.repeats<<','<<l0<<','<<load_average()<<','<<median(u)*1e3<<','<<quantile(u,0)*1e3<<','
+        <<median(p)*1e3<<','<<quantile(p,0)*1e3<<','<<median(panel)*1e3<<','<<median(update)*1e3<<','<<median(gpu)*1e3<<','<<median(p)/median(u)<<','<<info.norm_recomputations<<','<<moved<<std::endl;
+}
 // log2 of a nonnegative MPFR value (-1e9 for zero).
 double lg(mpfr_srcptr x){if(mpfr_zero_p(x))return -1e9;long e;double d=mpfr_get_d_2exp(&e,x,MPFR_RNDN);return std::log2(std::fabs(d))+double(e);}
 // Errors of least-squares solutions against x* from an MPC Householder solve at P = 3*bits + 2*kappa bits (J and b exact):
@@ -171,12 +187,12 @@ int main(int argc,char** argv){try{
         else if(a=="--threads")o.threads=unsigned(std::stoul(next()));else if(a=="--serial-max")o.serial_max=std::stoul(next());else if(a=="--parallel-max")o.parallel_max=std::stoul(next());
         else if(a=="--nrhs")o.nrhs=std::stoul(next());else if(a=="--block")o.factor.block=std::stoul(next());else if(a=="--host-macs")o.factor.host_macs=std::stod(next());
         else if(a=="--kappa")kappas={std::stoi(next())};else if(a=="--host-threads")host_threads=unsigned(std::stoul(next()));else if(a=="--no-host-only")o.host_only=false;
-        else if(a=="--no-embedding")o.embed=false;else if(a=="--accuracy")mode="accuracy";
-        else throw std::invalid_argument("usage: qr_complex_limbforge [--bits 224|256] [--size n] [--repeats r] [--threads t] [--serial-max n] [--parallel-max n] [--nrhs k] [--block nb] [--host-macs x] [--no-host-only] [--no-embedding] [--accuracy [--kappa k (-1: QSC-like)]]");}
+        else if(a=="--no-embedding")o.embed=false;else if(a=="--accuracy")mode="accuracy";else if(a=="--pivot")mode="pivot";
+        else throw std::invalid_argument("usage: qr_complex_limbforge [--bits 224|256] [--size n] [--repeats r] [--threads t] [--serial-max n] [--parallel-max n] [--nrhs k] [--block nb] [--host-macs x] [--no-host-only] [--no-embedding] [--pivot|--accuracy [--kappa k (-1: QSC-like)]]");}
     LinalgOptions lo;lo.host_threads=host_threads;Linalg la(lo);Workers workers(o.threads);std::mt19937_64 rng(20261043);bool header=true;
     std::cerr<<la.device_name()<<"; times: wall = host call (median of interleaved repeats), gpu = summed command buffers\n";
     for(int b:bits)for(auto n:sizes){
-        auto go=[&](auto tag){constexpr int B=decltype(tag)::value;if(mode=="time")bench<B>(la,workers,o,n,rng,header);else for(int k:kappas){accuracy<B>(la,workers,o,n,k,rng,header);header=false;}};
+        auto go=[&](auto tag){constexpr int B=decltype(tag)::value;if(mode=="time")bench<B>(la,workers,o,n,rng,header);else if(mode=="pivot")pivot_time<B>(la,o,n,rng,header);else for(int k:kappas){accuracy<B>(la,workers,o,n,k,rng,header);header=false;}};
         if(b==224)go(std::integral_constant<int,224>{});else if(b==256)go(std::integral_constant<int,256>{});else throw std::invalid_argument("bits: 224 or 256");header=false;}
     return 0;
 }catch(const std::exception& e){std::cerr<<e.what()<<'\n';return 1;}}

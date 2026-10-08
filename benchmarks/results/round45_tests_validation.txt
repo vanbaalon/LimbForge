@@ -1,0 +1,96 @@
+== ctest (plain) ==
+Thu Oct  8 13:57:12 EDT 2026
+13:57  up 3 days,  1:21, 2 users, load averages: 29.93 30.08 25.90
+Test project /Users/k0959535/Dropbox/IntegrabilityProjects/2026 4d SoV/LimbForge/.claude/worktrees/agent-ab9cc953d2c07dc26/build
+      Start  1: arithmetic_cpu
+ 1/22 Test  #1: arithmetic_cpu ...................   Passed    2.33 sec
+      Start  2: bridge_cpu
+ 2/22 Test  #2: bridge_cpu .......................   Passed    5.02 sec
+      Start  3: fused_cpu
+ 3/22 Test  #3: fused_cpu ........................   Passed    0.50 sec
+      Start  4: fused_gpu
+ 4/22 Test  #4: fused_gpu ........................   Passed  383.21 sec
+      Start  5: transcendental_cpu
+ 5/22 Test  #5: transcendental_cpu ...............   Passed   50.50 sec
+      Start  6: linalg_cpu
+ 6/22 Test  #6: linalg_cpu .......................   Passed    0.62 sec
+      Start  7: linalg_gpu
+ 7/22 Test  #7: linalg_gpu .......................   Passed   27.88 sec
+      Start  8: linalg_cholesky
+ 8/22 Test  #8: linalg_cholesky ..................   Passed   16.68 sec
+      Start  9: linalg_qr
+ 9/22 Test  #9: linalg_qr ........................   Passed   53.91 sec
+      Start 10: linalg_qr_complex
+10/22 Test #10: linalg_qr_complex ................   Passed  106.01 sec
+      Start 11: arithmetic_gpu
+11/22 Test #11: arithmetic_gpu ...................   Passed    5.59 sec
+      Start 12: broadcast_gpu
+12/22 Test #12: broadcast_gpu ....................   Passed    1.11 sec
+      Start 13: batched4_gpu
+13/22 Test #13: batched4_gpu .....................   Passed    1.22 sec
+      Start 14: cast_gpu
+14/22 Test #14: cast_gpu .........................   Passed    2.04 sec
+      Start 15: segmented_dot_gpu
+15/22 Test #15: segmented_dot_gpu ................   Passed   52.14 sec
+      Start 16: vector_recurrence_gpu
+16/22 Test #16: vector_recurrence_gpu ............   Passed    4.23 sec
+      Start 17: numerics_gpu
+17/22 Test #17: numerics_gpu .....................   Passed    4.41 sec
+      Start 18: resident_units_gpu
+18/22 Test #18: resident_units_gpu ...............   Passed    1.19 sec
+      Start 19: resident_linalg_gpu
+19/22 Test #19: resident_linalg_gpu ..............   Passed    7.54 sec
+      Start 20: resident_buffers
+20/22 Test #20: resident_buffers .................   Passed   12.12 sec
+      Start 21: transcendental_gpu
+21/22 Test #21: transcendental_gpu ...............   Passed   45.77 sec
+      Start 22: tree_reduction
+22/22 Test #22: tree_reduction ...................   Passed   24.73 sec
+
+100% tests passed out of 22
+
+Total Test time (real) = 808.77 sec
+Thu Oct  8 14:10:41 EDT 2026
+
+== MTL_SHADER_VALIDATION=1 ctest -R linalg ==
+Thu Oct  8 14:10:41 EDT 2026
+Test project /Users/k0959535/Dropbox/IntegrabilityProjects/2026 4d SoV/LimbForge/.claude/worktrees/agent-ab9cc953d2c07dc26/build
+    Start  6: linalg_cpu
+1/6 Test  #6: linalg_cpu .......................   Passed    0.23 sec
+    Start  7: linalg_gpu
+2/6 Test  #7: linalg_gpu .......................   Passed   31.79 sec
+    Start  8: linalg_cholesky
+3/6 Test  #8: linalg_cholesky ..................   Passed   20.43 sec
+    Start  9: linalg_qr
+4/6 Test  #9: linalg_qr ........................   Passed   55.89 sec
+    Start 10: linalg_qr_complex
+5/6 Test #10: linalg_qr_complex ................   Passed  138.07 sec
+    Start 19: resident_linalg_gpu
+6/6 Test #19: resident_linalg_gpu ..............   Passed   62.82 sec
+
+100% tests passed out of 6
+
+Total Test time (real) = 309.24 sec
+Thu Oct  8 14:15:50 EDT 2026
+
+== MTL_SHADER_VALIDATION=1 test_limbforge_qr_complex --all-widths ==
+Thu Oct  8 14:15:50 EDT 2026
+2026-10-08 14:15:50.644 test_limbforge_qr_complex[25384:160185039] Metal GPU Validation Enabled
+Apple M5 Max
+all widths: 64 96 128 160 192 224 256 288 320 352 384 416 448 480 512 544 576 608 640 672 704 736 768 800 832 864 896 928 960 992 1024 
+124 factorizations, 124 solves and 248 Q applications at every width bit-identical to the reference; 124 pivoted factorizations (with solves and Q applications) bit-identical to the pivoted reference
+Thu Oct  8 14:16:21 EDT 2026
+
+== test_limbforge_qr_complex (full, plain; run before the docs edits, same library code) ==
+Apple M5 Max
+complex qr 224 bits: match the MPFR replay
+complex qr 256 bits: match the MPFR replay
+complex qr 64, 384 bits: match the MPFR replay
+QSC-like complex 400x200 at 224 bits: match the MPFR replay
+QSC-like complex 800x400 at 224 bits: match the MPFR replay
+QSC-like complex 400x200 at 256 bits: match the MPFR replay
+QSC-like complex 800x400 at 256 bits: match the MPFR replay
+16 real-input factorizations bit-identical to Linalg::factor_qr
+306 pivoted factorizations (124 rank-deficient, 338 recomputed norms; 42 equal to the unpivoted replay of A P) bit-identical to the pivoted reference
+608 factorizations (246 rank-deficient; 2149 GPU and 422 host block updates), 608 solves and 1216 Q applications bit-identical to the reference
+./build/test_limbforge_qr_complex  444.76s user 69.94s system 392% cpu 2:11.10 total

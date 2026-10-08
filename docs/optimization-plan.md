@@ -289,7 +289,9 @@ For BSolver (≈128 lanes × 600 steps) the GPU runs ~128 threads. Two complemen
 | D6 SYRK/GEMM, Cholesky, triangular solves | done (20-D6, 23-D6b); resident SYRK/GEMM, Buffer-form factorizations (42) | `linalg.hpp` |
 | S5 Householder QR factor object, least squares, apply Q (+ augmented LM) | done (31-S5), host-array, full rank | `Linalg::factor_qr`, `QRFactor` |
 | S5b faster QR panel and products; column-pivoted QR (basic solutions) | done (40-S5b), host-array | `QROptions::pivot`, `QRFactor::permutation` |
-| S5c complex Householder QR, least squares, apply Q / Q^H (zgeqrf convention, real diagonal) | done (43-complex-QR), host-array, unpivoted | `Linalg::factor_qr_complex`, `ComplexQRFactor` |
+| S5c complex Householder QR, least squares, apply Q / Q^H (zgeqrf convention, real diagonal) | done (43-complex-QR), host-array; column pivoting (45-complex-pivot) | `Linalg::factor_qr_complex`, `ComplexQRFactor`, `ComplexQRFactor::permutation` |
+| Linalg workspace release (scratch, idle and pending resident workspaces) | done (45-workspace-release) | `Linalg::workspaces`, `Linalg::release_workspaces` |
+| Deeper QR look-ahead (depth 2, real and complex) | measured, rejected (45-lookahead): bit-identical, no gain | `benchmarks/experiments/qr_lookahead_depth2.patch` |
 | C1 broadcast operands | done (28) | `Broadcast` |
 | C7 pipeline prewarm | done (33) | `Engine::prewarm_async` |
 | S6 precision casts | done (38) | `Engine::cast`, `CommandBatch::cast` |
@@ -302,8 +304,9 @@ For BSolver (≈128 lanes × 600 steps) the GPU runs ~128 threads. Two complemen
 | Resident linalg: `syrk`/`gemm` in a `CommandBatch` (GPU band analysis and plan, indirect dispatch, host fallback at `wait()`); synchronous `Buffer` forms of Cholesky/solves/QR | done (42-resident-linalg) | `Linalg(Engine&)`, `LinalgTicket`; `docs/numerics.md`, "Resident products" |
 
 Next, by consumer value: qscmx/BSolver integration and end-to-end timing on an idle host (also the
-pending GitHub speed figures); transcendental retry rungs above 35 words (W ≥ 36 miscompile, round 44); deeper QR look-ahead
-(and complex column pivoting, a reconstruction-bound trailing update); G = 4/8 cooperative shapes with ≥ 3 limbs per lane
+pending GitHub speed figures); transcendental retry rungs above 35 words (W ≥ 36 miscompile, round 44); a cheaper next-panel QR update
+(the panel and that update are the critical path, 45-lookahead), pivoted W rows off the host, a reconstruction-bound trailing
+update; G = 4/8 cooperative shapes with ≥ 3 limbs per lane
 (validation-only failures, 41-L4b); fused `vector_recurrence` above 512 bits.
 
 ## 5. Order, tracks and dependencies
@@ -513,6 +516,14 @@ real component; trailing updates are the real block products on 2x2-block real e
 (`src/linalg_complex.mm`, hooks in `src/linalg_internal.hpp`). Bit-identical to an MPFR replay at 64/224/256/384 bits and all 31 widths,
 also under shader validation. Accuracy equals the real QR of the 2m x 2n embedding (within 2 bits); 1.3-2.4x faster than that embedding,
 18-45x the 18-thread MPC Householder. Open: complex pivoting, augmented entry point, a single copy of V.
+*Status (round 45): complex column pivoting, workspace release; deeper look-ahead rejected.* `QROptions::pivot` now works for
+`factor_qr_complex` (`ComplexQRFactor::pivoted` / `permutation`): zgeqp3-style on real squared norms downdated by `|r_jk|^2`, exact
+comparisons, status columns first, ties to the lowest original index, LAPACK's recomputation rule in squared form, `rank_bits` as the
+rank tolerance, basic (not minimum-norm) solutions; bit-identical to an MPFR replay of the pivoted sequence (64/224/256/384 bits, all 31
+widths, rank-deficient/dependent/nearly parallel/status/QSC-like inputs) and to the unpivoted replay of `A P`; 2.0-2.1x the unpivoted
+time at n = 400 and 2.9-4.2x at n = 1000 (host W rows). `Linalg::workspaces` / `release_workspaces` free the host scratch and idle
+resident workspaces and detach busy ones (freed by their batches after the completion step). A second block of look-ahead (real and
+complex) was bit-identical but not faster (0.97-1.03x): the next panel's update is on the critical path with the panel.
 
 Sketch: `factor_qr(A, workspace, options) -> QRFactor`, `factor.solve(B)`,
 `factor.apply_q(B, transpose)`, plus factor/solve separation for D5 LU and D6 Cholesky.

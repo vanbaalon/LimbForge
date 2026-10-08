@@ -1,0 +1,27 @@
+Round 45 (plan S5): complex column-pivoted QR, Linalg workspace release, deeper QR look-ahead (rejected).
+Apple M5 Max (6 P + 12 E cores, 128 GB), macOS 26.6, Release build, base revision 5dc412c plus this round's working tree,
+2026-10-08 13:45-14:00 EDT. Host loaded by other work (other agents' builds and tests): load average 17-48 during the runs
+(recorded per row in load_before / load_after); differences below ~15% are noise.
+
+Commands:
+  round45_qr_complex_pivot.csv: benchmarks/qr_complex.mm --pivot (target qr_complex_limbforge): QSC-like complex J (m = 2n), 4
+    complex right-hand sides, block 32; each repeat runs the unpivoted and the pivoted factor + solve, alternating which goes first.
+      qr_complex_limbforge --pivot --bits B --size n --repeats 5     (n = 200, 400; B = 224, 256)
+      qr_complex_limbforge --pivot --bits B --size 1000 --repeats 3
+    moved_columns: positions whose column changed; norm_recomputations: recomputed downdated norms.
+  round45_qr_lookahead.csv: depth-2 look-ahead experiment (benchmarks/experiments/qr_lookahead_depth2.patch, which adds the
+    LIMBFORGE_QR_LOOKAHEAD knob and the --lookahead modes): each repeat runs factor + solve with depth 1 and depth 2 (setenv per
+    call), alternating which goes first; the factors of both depths were compared bit for bit in every repeat (identical = 1).
+      qr_limbforge --lookahead --bits B --size n --repeats 6|5          (qr = real; n = 400: 6 repeats, n = 1000: 5)
+      qr_complex_limbforge --lookahead --bits B --size n --repeats 6|5  (qr = complex)
+    run 2: the real n = 400 rows again with 10 repeats (the 224-bit ratio moved from 1.25 to 0.73: noise).
+    Instrumented single runs (not in the CSV; real, n = 1000, 256 bits, 2 repeats): waits for the side thread 46-61 ms (depth 1)
+    vs 0-20 ms (depth 2); the next panel's update on the calling thread 65-88 ms vs 118-128 ms; panel 269-329 ms.
+  round45_tests_validation.txt: correctness gate (ctest, then the linalg suites with MTL_SHADER_VALIDATION=1, then the complex QR
+    all-widths run with validation).
+
+Summary:
+  Complex pivoted factor + solve / unpivoted (medians): 1.61 / 1.74 (n = 200; 224 / 256 bits), 2.01 / 2.12 (n = 400), 4.18 / 2.89
+    (n = 1000: 6.17 / 7.56 s, panel with the host W rows 5.48 / 6.52 s). Nearly every column moved; no norm recomputed.
+  Look-ahead depth 1 / depth 2 (medians): real 1.25*, 0.97, 1.01, 1.02 and complex 1.03, 0.98, 1.03, 0.98 (n = 400 / 1000, 224 /
+    256 bits; *repeat: 0.73 and 0.97). Rejected.

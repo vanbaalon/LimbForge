@@ -62,6 +62,19 @@ GPU/MPFR validation and was removed from the installed implementation.
   A static split of the QR panel rows into one chunk per worker (round 40 development) was
   slower than dynamically claimed row blocks on the mixed performance/efficiency cores and
   was not kept.
+- `qr_lookahead_depth2.patch`: based on round 45 (complex column pivoting and workspace release; apply on
+  top of that commit with `git apply`). A measured rejection: a second block of look-ahead in the unpivoted
+  real and complex QR (`LIMBFORGE_QR_LOOKAHEAD=2`). The trailing updates run in order on one side thread
+  (`SideQueue`), block b's split into the panel after next and the rest, so the rest overlaps two panels and
+  the calling thread waits only for its next panel's columns; the side thread gets its own scratch pool and
+  report so that two products can run at once. Bit-identical to the MPFR replays (`test_limbforge_qr` and
+  `test_limbforge_qr_complex --quick` with depth 2) and to depth 1 in every benchmark repeat, but not faster:
+  interleaved A/B (`qr_limbforge --lookahead`, `qr_complex_limbforge --lookahead`, load 20-33,
+  `../results/round45_qr_lookahead.csv`), depth 1 / depth 2 factor + solve medians 0.97-1.03 at n = 400/1000,
+  224/256 bits, real and complex, except two noisy real n = 400, 224-bit runs (1.25 and 0.73, equal minima).
+  Instrumented single runs (real, n = 1000, 256 bits): the waits for the side thread fell from 46-61 ms to
+  0-20 ms, but the next panel's update (on the critical path with the panel) rose from 65-88 ms to 118-128 ms
+  under the concurrent GPU products.
 - `sum_width_probe.mm` (diagnostic, not a patch; build as in its header): the exact
   two-term sum of the update kernels at every precision and both instantiated widths
   against MPFR. With argument 1 (no rounding of the workspace width) 8 of 62 widths

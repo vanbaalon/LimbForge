@@ -30,7 +30,8 @@ struct PageMemory {
 };
 // Complex outputs (V, R, tau, T; Complex<N>) and the real embeddings used by the block updates and the solve: ev = V as a real
 // 2m x 2n matrix of 2x2 blocks, et = T blocks as real 2nb x 2nb matrices, er = R as a real 2n x 2n matrix.
-struct ComplexQRData {Linalg* owner=nullptr;int bits=0;std::size_t m=0,n=0,nb=0;QRInfo info;QROptions options;PageMemory v,r,t,tau,ev,et,er;};
+// perm: column j of the factor is column perm[j] of A (identity without pivoting).
+struct ComplexQRData {Linalg* owner=nullptr;int bits=0;std::size_t m=0,n=0,nb=0;QRInfo info;QROptions options;PageMemory v,r,t,tau,ev,et,er;std::vector<std::size_t> perm;};
 }
 namespace {
 using Clock=std::chrono::steady_clock;
@@ -106,6 +107,13 @@ template<int N> Number<N> reflector_norm(const std::vector<word>& S,long lo,cons
     if(x0.sign){detail::mantissa_mul<N>(x0.limb,x0.limb,t);detail::accumulate(acc,t,2*N,sx-low,-1);}
     return detail::pack_words<N>(acc,low-2*(32*N-1)-2*e,1,ok);
 }
+// Exact order of two reals for the pivot choice: +1 if a > b, -1 if a < b, 0 if equal; a status ranks above every value.
+template<int N> int compare_values(const Number<N>& a,const Number<N>& b){
+    if(a.status||b.status)return (a.status!=0)-(b.status!=0);
+    if(a.sign!=b.sign)return a.sign>b.sign?1:-1;if(!a.sign)return 0;
+    int cmp=a.exponent!=b.exponent?(a.exponent>b.exponent?1:-1):0;
+    for(int i=N-1;i>=0&&!cmp;--i)if(a.limb[i]!=b.limb[i])cmp=a.limb[i]>b.limb[i]?1:-1;
+    return a.sign>0?cmp:-cmp;}
 }
 template<int N> static void factor_n(Linalg& la,const Cx<N>* A,detail::ComplexQRData& f);
 template<int N> static Timing apply_n(const detail::ComplexQRData& f,Cx<N>* B,std::size_t nrhs,bool adjoint);
@@ -122,6 +130,13 @@ template<int N> static void factor_n(Linalg& la,const Cx<N>* A,detail::ComplexQR
         Yb=static_cast<T*>(Hooks::scratch(la,"cqr_y",2*nb*n*sizeof(T)));Hooks::resident(la,f.ev.p,f.ev.bytes);Hooks::resident(la,f.et.p,f.et.bytes);}
     else{host.resize(2*m*n+4*nb*n);Wk=host.data();Wb=Wk+2*m*n;Yb=Wb+2*nb*n;}
     Hooks::each(la,m,[&](std::size_t r){for(std::size_t j=0;j<n;++j){Wk[2*r*n+j]=A[r*n+j].re;Wk[(2*r+1)*n+j]=A[r*n+j].im;}});
+    // Pivoting (as the real QR): the permutation, real squared column norms nu (downdated by |r_jk|^2 after every step) and nuref
+    // (their values at the last exact computation), exponent ranges of the trailing columns at the block start (rows [k0, m), both
+    // parts). A column of the row-split work matrix read with stride n is the interleaved sequence (re_0, im_0, re_1, ...).
+    const bool pivot=fo.pivot;auto& perm=f.perm;perm.resize(n);for(std::size_t k=0;k<n;++k)perm[k]=k;
+    std::vector<T> nu(pivot?n:0),nuref(pivot?n:0);std::vector<Range> crange(pivot?n:0);std::vector<std::uint8_t> flag(pivot?n:0);
+    if(pivot)Hooks::each(la,n,[&](std::size_t k){nu[k]=nuref[k]=exact_dot<N>(Wk+k,std::ptrdiff_t(n),Wk+k,std::ptrdiff_t(n),2*m);});
+    constexpr std::size_t TW=16; // trailing columns per item of the pivoted W/Y rows
     // Panel scratch, columns contiguous over rows [k0, m): the panel's columns (Pt), reflectors v (Vt) and i v (Vi); reflector
     // rows (Vr, nb per row) for the column updates; panel W rows (Wp[i][c] = P(v_i^H a_c), a_c as at the block start); Gram column.
     std::vector<C> Pt(nb*m),Vt(nb*m),Vi(nb*m),Vr(nb*m),Wp(nb*nb),G(nb),Gc(nb),Gic(nb),y(nb),yc(nb),yic(nb),tcol(nb),itcol(nb),wl(nb);
@@ -135,19 +150,49 @@ template<int N> static void factor_n(Linalg& la,const Cx<N>* A,detail::ComplexQR
     std::vector<Acc> accs(std::size_t(lanes)*D);std::vector<word> acc_arena(accs.size()*2*cap);
     for(std::size_t i=0;i<accs.size();++i){accs[i].pos=acc_arena.data()+i*2*cap;accs[i].neg=accs[i].pos+cap;}
     std::vector<Range> prange(nb),vrange(nb);std::vector<long> dlo(D);std::vector<int> dwords(D);
+    // Pivoting: W row c of the trailing columns [a, e): w_k = P(v_j^H a_k) over local rows [c, mr) of the block-start columns (Wk,
+    // read by rows), stored row split (Wb rows 2c, 2c+1). Each component sums its exact products (Re: v_re a_re + v_im a_im; Im:
+    // v_re a_im - v_im a_re) in a window anchored at the product of the exponent ranges, else exact_dot on the interleaved sequences.
+    auto w_tile=[&](std::size_t k0,std::size_t mr,std::size_t c,std::size_t a,std::size_t e,const C* vc,const C* ic,Range vr,int logl){
+        word acc[TW][2][2][cap];long lo[TW];int words[TW];word status[TW];
+        for(std::size_t k=a;k<e;++k){const std::size_t i=k-a;status[i]=0;words[i]=0;lo[i]=0;if(vr.lo>vr.hi||crange[k].lo>crange[k].hi)continue;
+            lo[i]=vr.lo+crange[k].lo;const long need=vr.hi+crange[k].hi-lo[i]+64*N+logl+1;
+            if(need>32L*(cap-2)){words[i]=-1;continue;}words[i]=int(need/32)+2;for(auto& z:acc[i])for(auto& h:z)std::fill(h,h+words[i],0);}
+        for(std::size_t r=c;r<mr;++r){const C& v=vc[r];const T* re=Wk+2*(k0+r)*n;const T* im=re+n;
+            for(std::size_t k=a;k<e;++k){const std::size_t i=k-a;const T &xr=re[k],&xi=im[k];const word st=v.re.status|v.im.status|xr.status|xi.status;status[i]|=st;
+                if(st||words[i]<=0)continue;auto& w=acc[i];
+                if(v.re.sign&&xr.sign)add_product<N>(w[0][0],w[0][1],v.re,xr,lo[i]);if(v.im.sign&&xi.sign)add_product<N>(w[0][0],w[0][1],v.im,xi,lo[i]);
+                if(v.re.sign&&xi.sign)add_product<N>(w[1][0],w[1][1],v.re,xi,lo[i]);if(v.im.sign&&xr.sign)add_product<N>(w[1][1],w[1][0],v.im,xr,lo[i]);}}
+        for(std::size_t k=a;k<e;++k){const std::size_t i=k-a;T& ore=Wb[2*c*n+k];T& oim=Wb[(2*c+1)*n+k];
+            if(words[i]<0){const T* col=Wk+2*(k0+c)*n+k;ore=exact_dot<N>(flat(vc+c),1,col,std::ptrdiff_t(n),2*(mr-c));oim=exact_dot<N>(flat(ic+c),1,col,std::ptrdiff_t(n),2*(mr-c));}
+            else if(!words[i])ore=oim=zero<N>(status[i]);
+            else{ore=round_parts<N>(acc[i][0][0],acc[i][0][1],std::size_t(words[i]),lo[i],status[i]);oim=round_parts<N>(acc[i][1][0],acc[i][1][1],std::size_t(words[i]),lo[i],status[i]);}}};
     auto factor_panel=[&](std::size_t k0,std::size_t k1)->std::size_t{auto t=Clock::now();++info.blocks;
         const std::size_t kb=k1-k0,mr=m-k0;C* Tb=Tc+(k0/nb)*nb*nb;
-        Hooks::each(la,kb,[&](std::size_t c){C* x=Pt.data()+c*mr;for(std::size_t r=0;r<mr;++r)x[r]={Wk[2*(k0+r)*n+k0+c],Wk[(2*(k0+r)+1)*n+k0+c]};prange[c]=range_of<N>(flat(x),2*mr);
+        Hooks::each(la,kb,[&](std::size_t c){C* x=Pt.data()+c*mr;if(!pivot){for(std::size_t r=0;r<mr;++r)x[r]={Wk[2*(k0+r)*n+k0+c],Wk[(2*(k0+r)+1)*n+k0+c]};prange[c]=range_of<N>(flat(x),2*mr);}
             std::fill(Vt.data()+c*mr,Vt.data()+(c+1)*mr,czero<N>());std::fill(Vi.data()+c*mr,Vi.data()+(c+1)*mr,czero<N>());});
-        std::fill(Vr.begin(),Vr.begin()+mr*nb,czero<N>());
+        if(pivot)Hooks::each(la,(n-k0+TW-1)/TW,[&](std::size_t t){const std::size_t a=k0+t*TW,e=std::min(n,a+TW);for(std::size_t k=a;k<e;++k)crange[k]={LONG_MAX,LONG_MIN};
+            for(std::size_t r=2*k0;r<2*m;++r)for(std::size_t k=a;k<e;++k){const T& z=Wk[r*n+k];
+                if(z.sign&&!z.status){crange[k].lo=std::min(crange[k].lo,long(z.exponent));crange[k].hi=std::max(crange[k].hi,long(z.exponent));}}});
+        std::fill(Vr.begin(),Vr.begin()+mr*nb,czero<N>());std::size_t done=kb; // columns of this panel that end with a reflector or the remainder
         // Row blocks of BR rows (about four per lane, claimed dynamically).
         const std::size_t BR=std::clamp<std::size_t>(mr/(4*lanes),8,256);
-        for(std::size_t c=0;c<kb;++c){const std::size_t j=k0+c;C* x=Pt.data()+c*mr;const std::size_t q=std::min(j,info.rank)-k0;const bool reflect=info.rank==n;
+        for(std::size_t c=0;c<kb;++c){const std::size_t j=k0+c;C* x=Pt.data()+c*mr;
+            if(pivot){
+                // Pivot: the largest nu over columns [j, n) (a status above every value), ties to the lowest original index; columns
+                // j and p are swapped everywhere (A P), then column j is loaded.
+                std::size_t p=j;for(std::size_t k=j+1;k<n;++k){const int cmp=compare_values(nu[k],nu[p]);if(cmp>0||(cmp==0&&perm[k]<perm[p]))p=k;}
+                if(p!=j){for(std::size_t r=0;r<2*m;++r)std::swap(Wk[r*n+j],Wk[r*n+p]);for(std::size_t i=0;i<2*c;++i){std::swap(Wb[i*n+j],Wb[i*n+p]);std::swap(Yb[i*n+j],Yb[i*n+p]);}
+                    std::swap(nu[j],nu[p]);std::swap(nuref[j],nuref[p]);std::swap(crange[j],crange[p]);std::swap(perm[j],perm[p]);}
+                for(std::size_t r=0;r<mr;++r)x[r]={Wk[2*(k0+r)*n+j],Wk[(2*(k0+r)+1)*n+j]};prange[c]=crange[j];}
+            const std::size_t q=std::min(j,info.rank)-k0;const bool reflect=info.rank==n;
             // Column j by the block's reflectors [k0, k0+q): y_i = P(conj(T_b[0..i][i]) . w[0..i]) (w_l = Wp[l][c]), then
             // x_r = D(x_r; V[r][k0..k0+q), y) per component. In the same pass every row block sums its part of |x[c..mr)|^2 exactly
-            // and notes the nonzeros below row c and their exponents.
-            for(std::size_t i=0;i<q;++i){for(std::size_t l=0;l<=i;++l){tcol[l]=Tb[l*nb+i];itcol[l]=times_i(tcol[l]);wl[l]=Wp[l*nb+c];}
-                y[i]=hdot<N>(tcol.data(),itcol.data(),wl.data(),i+1);yc[i]=conj(y[i]);yic[i]=i_conj(y[i]);}
+            // and notes the nonzeros below row c and their exponents. Pivoting formed this column's y with the other trailing columns (Yb).
+            for(std::size_t i=0;i<q;++i){
+                if(pivot)y[i]={Yb[2*i*n+j],Yb[(2*i+1)*n+j]};
+                else{for(std::size_t l=0;l<=i;++l){tcol[l]=Tb[l*nb+i];itcol[l]=times_i(tcol[l]);wl[l]=Wp[l*nb+c];}y[i]=hdot<N>(tcol.data(),itcol.data(),wl.data(),i+1);}
+                yc[i]=conj(y[i]);yic[i]=i_conj(y[i]);}
             const std::size_t nbk=(mr+BR-1)/BR;
             Hooks::each(la,nbk,[&](std::size_t k){const std::size_t r0=k*BR,r1=std::min(mr,r0+BR);
                 if(q)for(std::size_t r=r0;r<r1;++r){const T* vr=flat(Vr.data()+r*nb);
@@ -170,7 +215,7 @@ template<int N> static void factor_n(Linalg& la,const Cx<N>* A,detail::ComplexQR
             int reason=s.status?QRInfo::status_column:(!alpha.re.sign&&!alpha.im.sign&&!below)?QRInfo::zero_column:QRInfo::full_rank;T beta=alpha.re,v0=one;
             if(!reason&&needs){beta=sqrt(s);if(alpha.re.sign>=0)beta=negate(beta);v0=sub(alpha.re,beta);}
             if(!reason&&fo.rank_bits>0&&top!=LONG_MIN&&long(beta.exponent)+fo.rank_bits<top)reason=QRInfo::small_column;
-            if(reason){info.rank=j;info.reason=reason;info.status=s.status;continue;}
+            if(reason){info.rank=j;info.reason=reason;info.status=s.status;if(pivot){done=c;break;}continue;}
             C* vc=Vt.data()+c*mr;C* ic=Vi.data()+c*mr;C tj=czero<N>();long e=0;bool scale_rows=false;vrange[c]={0,0};
             if(needs){e=v0.exponent;vc[c]={scaled(v0,e),scaled(alpha.im,e)};T sv;
                 const long ai=alpha.im.sign?long(alpha.im.exponent)-e:0;
@@ -184,13 +229,18 @@ template<int N> static void factor_n(Linalg& la,const Cx<N>* A,detail::ComplexQR
             // Gram column G_u = P(v_u^H v_j) (u < c) and panel W row c: Wp[c][u] = P(v_j^H a_u) (u > c), rows [c, mr), as 2(kb-1) real
             // dots d (u = d/2, Im for odd d). Every thread adds the rows it claims into its own window per dot (after scaling those
             // rows of v when not done above, and setting i v and the reflector rows); the windows are added exactly and rounded once.
-            int logl=0;while((std::size_t(1)<<logl)<=2*len)++logl;const std::size_t ndots=2*(kb-1);
+            // Pivoting: only the Gram column here; W row c of every trailing column k > j, P(v_j^H a_k) over rows [j, m), is formed in
+            // the same dispatch by column tiles (items after the row blocks), after the rows of v, i v and Vr are set.
+            int logl=0;while((std::size_t(1)<<logl)<=2*len)++logl;const std::size_t ndots=pivot?2*c:2*(kb-1),nbc=(len+BR-1)/BR,ntiles=pivot?(n-j-1+TW-1)/TW:0;
             for(std::size_t d=0;d<ndots;++d){const std::size_t u=d/2;const Range &ra=u<c?vrange[u]:vrange[c],&rb=u<c?vrange[c]:prange[u+1];dwords[d]=-1;
                 if(ra.lo>ra.hi||rb.lo>rb.hi){dwords[d]=0;continue;}
                 const long lo=ra.lo+rb.lo,need=ra.hi+rb.hi-lo+64*N+logl+1;if(need<=32L*(cap-2)){dlo[d]=lo;dwords[d]=int(need/32)+2;}}
             for(auto& g:accs)g.used=false;
-            Hooks::run(la,(len+BR-1)/BR,[&](std::size_t k,unsigned id){const std::size_t r0=c+k*BR,r1=std::min(mr,r0+BR);
-                for(std::size_t r=std::max(r0,c+1);r<r1;++r){if(scale_rows)vc[r]={scaled(x[r].re,e),scaled(x[r].im,e)};ic[r]=times_i(vc[r]);Vr[r*nb+c]=vc[r];}
+            auto rows=[&](std::size_t r0,std::size_t r1){for(std::size_t r=std::max(r0,c+1);r<r1;++r){if(scale_rows)vc[r]={scaled(x[r].re,e),scaled(x[r].im,e)};ic[r]=times_i(vc[r]);Vr[r*nb+c]=vc[r];}};
+            if(ntiles)Hooks::each(la,nbc,[&](std::size_t k){const std::size_t r0=c+k*BR;rows(r0,std::min(mr,r0+BR));});
+            Hooks::run(la,nbc+ntiles,[&](std::size_t k,unsigned id){
+                if(k>=nbc){const std::size_t a=j+1+(k-nbc)*TW;w_tile(k0,mr,c,a,std::min(n,a+TW),vc,ic,vrange[c],logl);return;}
+                const std::size_t r0=c+k*BR,r1=std::min(mr,r0+BR);if(!ntiles)rows(r0,r1);
                 Acc* ac=accs.data()+std::size_t(id)*D;
                 for(std::size_t d=0;d<ndots;++d){if(dwords[d]<0)continue;const std::size_t u=d/2;const bool im=d%2;Acc& g=ac[d];
                     if(!g.used){g.used=true;g.status=0;std::fill(g.pos,g.pos+dwords[d],0);std::fill(g.neg,g.neg+dwords[d],0);}
@@ -207,20 +257,41 @@ template<int N> static void factor_n(Linalg& la,const Cx<N>* A,detail::ComplexQR
             // T_b column c: T_cc = tau_j, T_lc = -RN(tau_j * P(T_b[l][l..c) . G[l..c))) per component.
             for(std::size_t l=0;l<c;++l){Gc[l]=conj(G[l]);Gic[l]=i_conj(G[l]);}
             Tb[c*nb+c]=tj;for(std::size_t l=0;l<c;++l){const C p=pdot<N>(Tb+l*nb+l,Gc.data()+l,Gic.data()+l,c-l),z=cfma(tj,p,czero<N>());Tb[l*nb+c]={negate(z.re),negate(z.im)};}
+            if(pivot&&j+1<n){
+                // Every trailing column k > j: y_k(c) = P(T_b[0..c][c]^H w_k[0..c]) (row c of Y, row split), r_jk = D(a_jk; V[j][k0..j], y_k)
+                // per component (its entry in row j of R) and nu_k = D(nu_k; r_jk, r_jk) = RN(nu_k - |r_jk|^2). A nu_k that drops to <= 0
+                // or more than bits/2 binades below nuref_k (nuref_k != 0, no status) is recomputed: nu_k = nuref_k = P(x_k^H x_k) over
+                // rows (j, m) of the reduced column x_rk = D(a_rk; V[r][k0..j], y_k).
+                for(std::size_t l=0;l<=c;++l){tcol[l]=Tb[l*nb+c];itcol[l]=times_i(tcol[l]);}
+                auto conj_y=[&](std::size_t k,C* yk,C* yik){for(std::size_t l=0;l<=c;++l){const C z{Yb[2*l*n+k],Yb[(2*l+1)*n+k]};yk[l]=conj(z);yik[l]=i_conj(z);}};
+                auto reduced=[&](std::size_t row,std::size_t k,const C* yk,const C* yik)->C{const T* vr=flat(Vr.data()+(row-k0)*nb);
+                    return {exact_dot_add<N>(&Wk[2*row*n+k],true,vr,1,flat(yk),1,2*(c+1)),exact_dot_add<N>(&Wk[(2*row+1)*n+k],true,vr,1,flat(yik),1,2*(c+1))};};
+                Hooks::each(la,(n-j-1+TW-1)/TW,[&](std::size_t t){std::vector<C> yk(c+1),yik(c+1);for(std::size_t k=j+1+t*TW;k<std::min(n,j+1+(t+1)*TW);++k){
+                    Yb[2*c*n+k]=exact_dot<N>(flat(tcol.data()),1,Wb+k,std::ptrdiff_t(n),2*(c+1));Yb[(2*c+1)*n+k]=exact_dot<N>(flat(itcol.data()),1,Wb+k,std::ptrdiff_t(n),2*(c+1));
+                    conj_y(k,yk.data(),yik.data());const C r=reduced(j,k,yk.data(),yik.data());nu[k]=exact_dot_add<N>(&nu[k],true,flat(&r),1,flat(&r),1,2);
+                    flag[k]=nuref[k].sign&&!nuref[k].status&&!nu[k].status&&(nu[k].sign<=0||long(nu[k].exponent)+32*N/2<long(nuref[k].exponent));}});
+                std::vector<std::size_t> redo;for(std::size_t k=j+1;k<n;++k)if(flag[k])redo.push_back(k);info.norm_recomputations+=redo.size();
+                Hooks::each(la,redo.size(),[&](std::size_t i){const std::size_t k=redo[i];std::vector<C> yk(c+1),yik(c+1),z(m-j-1);conj_y(k,yk.data(),yik.data());
+                    for(std::size_t r=j+1;r<m;++r)z[r-j-1]=reduced(r,k,yk.data(),yik.data());nu[k]=nuref[k]=exact_dot<N>(flat(z.data()),1,flat(z.data()),1,2*z.size());});}
         }
         // Write back the panel (R entries, remainders), V and its embedding, and the embedding of T_b.
-        Hooks::each(la,mr,[&](std::size_t r){for(std::size_t c=0;c<kb;++c){const C& x=Pt[c*mr+r];const C& v=Vt[c*mr+r];
+        Hooks::each(la,mr,[&](std::size_t r){for(std::size_t c=0;c<done;++c){const C& x=Pt[c*mr+r];const C& v=Vt[c*mr+r];
             Wk[2*(k0+r)*n+k0+c]=x.re;Wk[(2*(k0+r)+1)*n+k0+c]=x.im;V[(k0+r)*n+k0+c]=v;embed<N>(EV,2*n,k0+r,k0+c,v);}});
         T* Eb=ET+(k0/nb)*4*nb*nb;for(std::size_t l=0;l<kb;++l)for(std::size_t c=l;c<kb;++c)embed<N>(Eb,2*nb,l,c,Tb[l*nb+c]);
         info.panel_seconds+=since(t);return std::min(k1,info.rank);};
     // Block b applied (as Q^H) to columns [c0, c1): the real block update of the embeddings.
-    auto update=[&](std::size_t b,std::size_t c0,std::size_t c1,bool& on_gpu){auto t=Clock::now();
-        Timing tm=Hooks::qr_block(la,32*N,2*m,2*n,2*nb,EV,ET,b,Wk,n,c0,c1,true,Wb,Yb,fo.host_macs,gpu,on_gpu);tm.wall_seconds=since(t);return tm;};
+    auto update=[&](std::size_t b,std::size_t c0,std::size_t c1,bool& on_gpu,bool have_y=false){auto t=Clock::now();
+        Timing tm=Hooks::qr_block(la,32*N,2*m,2*n,2*nb,EV,ET,b,Wk,n,c0,c1,true,Wb,Yb,fo.host_macs,gpu,on_gpu,have_y);tm.wall_seconds=since(t);return tm;};
     auto account=[&](Timing tm,bool on_gpu){info.timing.gpu_seconds+=tm.gpu_seconds;info.update_seconds+=tm.wall_seconds;++(on_gpu?info.gpu_updates:info.host_updates);};
     // Right-looking with one block of look-ahead, as the real QR: block b updates the next panel's columns, then the rest of
     // the trailing matrix on a second thread while this thread factors the next panel (disjoint columns, identical bits).
-    std::size_t k0=0,k1=std::min(n,nb),p=n?factor_panel(0,k1):0;
-    while(k1<n){const std::size_t b=k0/nb;bool on_gpu=false;
+    // Pivoting: no look-ahead (the next panel's columns are chosen during it); the panel formed W and Y of the trailing columns,
+    // so the update is X = D(X; V_b, Y) only. After a failing column p, block b (reflectors [k0, p)) is applied to columns [p, n).
+    if(pivot)for(std::size_t k0=0;k0<n;k0+=nb){const std::size_t k1=std::min(n,k0+nb),b=k0/nb,p=factor_panel(k0,k1);bool on_gpu=false;
+        if(p<k1){if(p>k0)account(update(b,p,n,on_gpu),on_gpu);break;}
+        if(k1<n)account(update(b,k1,n,on_gpu,true),on_gpu);}
+    std::size_t k0=0,k1=std::min(n,nb),p=n&&!pivot?factor_panel(0,k1):0;
+    while(!pivot&&k1<n){const std::size_t b=k0/nb;bool on_gpu=false;
         if(p<k1){if(p>k0)account(update(b,k1,n,on_gpu),on_gpu);break;}
         const std::size_t k2=std::min(n,k1+nb);account(update(b,k1,k2,on_gpu),on_gpu);
         if(k2<n){Timing rest{0,0};bool rest_gpu=false,async=gpu;std::thread side;std::exception_ptr failed;
@@ -253,14 +324,18 @@ template<int N> static Timing apply_n(const detail::ComplexQRData& f,Cx<N>* B,st
 }}
 // X = R^-1 (Q^H B)[0, n): Q^H B by blocks, then the real backward substitution of QRFactor::solve on the embedding of R (blocks
 // 2 nb): the real diagonal makes each embedded diagonal block diag(r_ii, r_ii), so x_i = (RN(u_re / r_ii), RN(u_im / r_ii)).
+// Pivoted (rank p): z = R[0:p,0:p]^-1 (Q^H B)[0:p) on the leading 2p x 2p block of the embedding (blocks 2 min(nb, p)),
+// x[perm[i]] = z_i and 0 for i >= p (the basic solution); unpivoted, perm is the identity and p = n.
 template<int N> static Timing solve_n(const detail::ComplexQRData& f,const Cx<N>* B,std::size_t nrhs,Cx<N>* X){
-    using T=Number<N>;auto start=Clock::now();Timing tm{0,0};const std::size_t m=f.m,n=f.n;if(!n||!nrhs)return tm;Linalg& la=*f.owner;
-    if(f.info.rank<n){Scope scope(la);Hooks::each(la,n,[&](std::size_t i){for(std::size_t c=0;c<nrhs;++c)X[i*nrhs+c]={zero<N>(invalid),zero<N>(invalid)};});tm.wall_seconds=since(start);return tm;}
+    using T=Number<N>;auto start=Clock::now();Timing tm{0,0};const std::size_t m=f.m,n=f.n,p=f.info.rank;if(!n||!nrhs)return tm;Linalg& la=*f.owner;const bool pivoted=f.options.pivot;
+    if(p<n&&(!pivoted||f.info.reason==QRInfo::status_column)){const word st=invalid|(pivoted?f.info.status:0);Scope scope(la);
+        Hooks::each(la,n,[&](std::size_t i){for(std::size_t c=0;c<nrhs;++c)X[i*nrhs+c]={zero<N>(st),zero<N>(st)};});tm.wall_seconds=since(start);return tm;}
     std::vector<Cx<N>> C(B,B+m*nrhs);tm.gpu_seconds+=apply_n<N>(f,C.data(),nrhs,true).gpu_seconds;
-    std::vector<T> Cs(2*n*nrhs),Xs(2*n*nrhs);
-    for(std::size_t i=0;i<n;++i)for(std::size_t c=0;c<nrhs;++c){Cs[2*i*nrhs+c]=C[i*nrhs+c].re;Cs[(2*i+1)*nrhs+c]=C[i*nrhs+c].im;}
-    FactorOptions fo=f.options;fo.block=2*f.nb;tm.gpu_seconds+=Hooks::solve_upper(la,32*N,f.er.p,2*n,Cs.data(),nrhs,Xs.data(),fo).gpu_seconds;
-    for(std::size_t i=0;i<n;++i)for(std::size_t c=0;c<nrhs;++c)X[i*nrhs+c]={Xs[2*i*nrhs+c],Xs[(2*i+1)*nrhs+c]};
+    std::vector<T> Cs(2*p*nrhs),Xs(2*p*nrhs),R11;const T* ER=static_cast<const T*>(f.er.p);
+    for(std::size_t i=0;i<p;++i)for(std::size_t c=0;c<nrhs;++c){Cs[2*i*nrhs+c]=C[i*nrhs+c].re;Cs[(2*i+1)*nrhs+c]=C[i*nrhs+c].im;}
+    if(p<n){R11.resize(4*p*p);for(std::size_t i=0;i<2*p;++i)std::copy(ER+i*2*n,ER+i*2*n+2*p,R11.begin()+i*2*p);ER=R11.data();}
+    FactorOptions fo=f.options;fo.block=2*std::min(f.nb,p);if(p)tm.gpu_seconds+=Hooks::solve_upper(la,32*N,ER,2*p,Cs.data(),nrhs,Xs.data(),fo).gpu_seconds;
+    for(std::size_t i=0;i<n;++i)for(std::size_t c=0;c<nrhs;++c)X[f.perm[i]*nrhs+c]=i<p?Cx<N>{Xs[2*i*nrhs+c],Xs[(2*i+1)*nrhs+c]}:czero<N>();
     tm.wall_seconds=since(start);return tm;
 }
 static void check_bits(int bits){if(bits<64||bits>1024||bits%32)throw std::invalid_argument("bits must be a multiple of 32 in [64,1024]");}
@@ -269,7 +344,6 @@ static void check_size(std::size_t n,std::size_t other){if(2*n>=46341||4*n*other
 ComplexQRFactor Linalg::factor_qr_complex(int bits,const void* A,std::size_t m,std::size_t n,const QROptions& o){
     check_bits(bits);if(m<n)throw std::invalid_argument("factor_qr_complex: rows >= columns required");check_size(n,m);if(m*n&&!A)throw std::invalid_argument("null matrix");
     if(o.rank_bits<0)throw std::invalid_argument("factor_qr_complex: rank_bits >= 0");
-    if(o.pivot)throw std::invalid_argument("factor_qr_complex: column pivoting is not supported");
     ComplexQRFactor q;q.d=std::make_unique<detail::ComplexQRData>();auto& f=*q.d;f.owner=this;f.bits=bits;f.m=m;f.n=n;f.nb=o.block?std::min(o.block,n):n;f.options=o;
     const std::size_t e=std::size_t(bits/8+12),blocks=f.nb?(n+f.nb-1)/f.nb:0;
     f.v=detail::PageMemory(2*m*n*e);f.r=detail::PageMemory(2*n*n*e);f.t=detail::PageMemory(2*blocks*f.nb*f.nb*e);f.tau=detail::PageMemory(2*n*e);
@@ -291,6 +365,8 @@ const void* ComplexQRFactor::r()const{return data(d).r.p;}
 const void* ComplexQRFactor::v()const{return data(d).v.p;}
 const void* ComplexQRFactor::tau()const{return data(d).tau.p;}
 const void* ComplexQRFactor::t()const{return data(d).t.p;}
+bool ComplexQRFactor::pivoted()const{return data(d).options.pivot;}
+const std::size_t* ComplexQRFactor::permutation()const{return data(d).perm.data();}
 Timing ComplexQRFactor::solve(const void* B,std::size_t nrhs,void* X)const{const auto& f=data(d);check_size(f.n,nrhs);check_size(1,f.m*nrhs);if(f.n&&nrhs&&(!B||!X))throw std::invalid_argument("null matrix");
     return words_of(f.bits/32,[&](auto w){constexpr int N=decltype(w)::value;return solve_n<N>(f,static_cast<const Cx<N>*>(B),nrhs,static_cast<Cx<N>*>(X));});}
 Timing ComplexQRFactor::apply_q(void* B,std::size_t nrhs,bool adjoint)const{const auto& f=data(d);check_size(f.n,nrhs);check_size(1,f.m*nrhs);if(f.m&&nrhs&&!B)throw std::invalid_argument("null matrix");

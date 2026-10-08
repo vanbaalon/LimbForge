@@ -1,0 +1,221 @@
+diff --git a/benchmarks/qr.mm b/benchmarks/qr.mm
+index c1da106..731ae6e 100644
+--- a/benchmarks/qr.mm
++++ b/benchmarks/qr.mm
+@@ -109,6 +109,24 @@ template<int Bits> void pivot_time(Linalg& la,const Options& o,std::size_t n,std
+     std::cout<<std::setprecision(5)<<Bits<<','<<m<<','<<n<<','<<nrhs<<','<<o.factor.block<<','<<o.repeats<<','<<median(u)*1e3<<','<<quantile(u,0)*1e3<<','<<median(p)*1e3<<','<<quantile(p,0)*1e3<<','
+         <<median(panel)*1e3<<','<<median(update)*1e3<<','<<median(gpu)*1e3<<','<<median(p)/median(u)<<','<<info.norm_recomputations<<','<<moved<<std::endl;
+ }
++// Look-ahead depth A/B (LIMBFORGE_QR_LOOKAHEAD = 1 / 2, alternating which goes first): factor + solve wall (medians, minima),
++// panel and update wall; the factors of both depths must be identical.
++double load_average(){double l[1];return getloadavg(l,1)==1?l[0]:-1;}
++template<int Bits> void lookahead_ab(Linalg& la,const Options& o,std::size_t n,std::mt19937_64& rng,bool header){
++    if(header)std::cout<<"bits,m,n,nrhs,block,repeats,load_before,load_after,d1_e2e_ms,d1_min_ms,d2_e2e_ms,d2_min_ms,d1_over_d2,d1_panel_ms,d2_panel_ms,d1_update_ms,d2_update_ms,d1_gpu_ms,d2_gpu_ms,identical\n";
++    const std::size_t m=2*n,nrhs=o.nrhs;auto J=jacobian<Bits>(m,n,rng);std::vector<Float<Bits>> B(m*nrhs),X(n*nrhs);for(auto& b:B)b=reference::random_number<Bits>(rng,20);
++    std::vector<double> e2e[2],panel[2],update[2],gpu[2];QRFactor last[2];bool same=true;
++    auto run=[&](int d,bool record){setenv("LIMBFORGE_QR_LOOKAHEAD",d==2?"2":"1",1);auto t=Clock::now();QRFactor q=la.factor_qr(Bits,J.data(),m,n,o.factor);q.solve(B.data(),nrhs,X.data());
++        const double w=std::chrono::duration<double>(Clock::now()-t).count();if(!record)return;const QRInfo& i=q.info();e2e[d-1].push_back(w);panel[d-1].push_back(i.panel_seconds);
++        update[d-1].push_back(i.update_seconds);gpu[d-1].push_back(i.timing.gpu_seconds);last[d-1]=std::move(q);};
++    run(1,false);run(2,false);const double l0=load_average();
++    for(int r=0;r<o.repeats;++r){if(r%2){run(2,true);run(1,true);}else{run(1,true);run(2,true);}
++        same=same&&identical<Bits>(last[0].r(),last[1].r(),n*n)&&identical<Bits>(last[0].v(),last[1].v(),m*n)&&identical<Bits>(last[0].t(),last[1].t(),last[0].block()*last[0].block()*((n+last[0].block()-1)/last[0].block()));}
++    unsetenv("LIMBFORGE_QR_LOOKAHEAD");if(!same)throw std::runtime_error("look-ahead depths give different factors");
++    std::cout<<std::setprecision(5)<<Bits<<','<<m<<','<<n<<','<<nrhs<<','<<o.factor.block<<','<<o.repeats<<','<<l0<<','<<load_average()<<','<<median(e2e[0])*1e3<<','<<quantile(e2e[0],0)*1e3<<','
++        <<median(e2e[1])*1e3<<','<<quantile(e2e[1],0)*1e3<<','<<median(e2e[0])/median(e2e[1])<<','<<median(panel[0])*1e3<<','<<median(panel[1])*1e3<<','<<median(update[0])*1e3<<','
++        <<median(update[1])*1e3<<','<<median(gpu[0])*1e3<<','<<median(gpu[1])*1e3<<','<<same<<std::endl;
++}
+ // Block-size sweep (factor + solve wall, medians).
+ template<int Bits> void sweep(Linalg& la,const Options& o,std::size_t n,std::mt19937_64& rng,bool header){
+     if(header)std::cout<<"bits,m,n,block,host_macs,repeats,qr_wall_ms,qr_wall_min_ms,qr_gpu_ms,qr_panel_ms,qr_update_ms,gpu_updates,host_updates,solve_wall_ms\n";
+@@ -178,12 +196,12 @@ int main(int argc,char** argv){try{
+         else if(a=="--threads")o.threads=unsigned(std::stoul(next()));else if(a=="--serial-max")o.serial_max=std::stoul(next());else if(a=="--parallel-max")o.parallel_max=std::stoul(next());
+         else if(a=="--nrhs")o.nrhs=std::stoul(next());else if(a=="--block")o.factor.block=std::stoul(next());else if(a=="--host-macs")o.factor.host_macs=std::stod(next());
+         else if(a=="--kappa")kappas={std::stoi(next())};else if(a=="--host-threads")host_threads=unsigned(std::stoul(next()));else if(a=="--no-host-only")o.host_only=false;
+-        else if(a=="--sweep")mode="sweep";else if(a=="--accuracy")mode="accuracy";else if(a=="--pivot")mode="pivot";
+-        else throw std::invalid_argument("usage: qr_limbforge [--bits 224|256] [--size n] [--repeats r] [--threads t] [--serial-max n] [--parallel-max n] [--nrhs k] [--block nb] [--host-macs x] [--no-host-only] [--sweep|--pivot|--accuracy [--kappa k (-1: QSC-like)]]");}
++        else if(a=="--sweep")mode="sweep";else if(a=="--accuracy")mode="accuracy";else if(a=="--pivot")mode="pivot";else if(a=="--lookahead")mode="lookahead";
++        else throw std::invalid_argument("usage: qr_limbforge [--bits 224|256] [--size n] [--repeats r] [--threads t] [--serial-max n] [--parallel-max n] [--nrhs k] [--block nb] [--host-macs x] [--no-host-only] [--sweep|--pivot|--lookahead|--accuracy [--kappa k (-1: QSC-like)]]");}
+     LinalgOptions lo;lo.host_threads=host_threads;Linalg la(lo);Workers workers(o.threads);std::mt19937_64 rng(20261031);bool header=true;
+     std::cerr<<la.device_name()<<"; times: wall = host call (median), gpu = summed command buffers\n";
+     for(int b:bits)for(auto n:sizes){
+-        auto go=[&](auto tag){constexpr int B=decltype(tag)::value;if(mode=="time")bench<B>(la,workers,o,n,rng,header);else if(mode=="sweep")sweep<B>(la,o,n,rng,header);else if(mode=="pivot")pivot_time<B>(la,o,n,rng,header);
++        auto go=[&](auto tag){constexpr int B=decltype(tag)::value;if(mode=="time")bench<B>(la,workers,o,n,rng,header);else if(mode=="sweep")sweep<B>(la,o,n,rng,header);else if(mode=="pivot")pivot_time<B>(la,o,n,rng,header);else if(mode=="lookahead")lookahead_ab<B>(la,o,n,rng,header);
+             else for(int k:kappas){accuracy<B>(la,workers,o,n,k,rng,header);header=false;}};
+         if(b==224)go(std::integral_constant<int,224>{});else if(b==256)go(std::integral_constant<int,256>{});else throw std::invalid_argument("bits: 224 or 256");header=false;}
+     return 0;
+diff --git a/benchmarks/qr_complex.mm b/benchmarks/qr_complex.mm
+index d3f8312..4507500 100644
+--- a/benchmarks/qr_complex.mm
++++ b/benchmarks/qr_complex.mm
+@@ -130,6 +130,24 @@ template<int Bits> void pivot_time(Linalg& la,const Options& o,std::size_t n,std
+     std::cout<<std::setprecision(5)<<Bits<<','<<m<<','<<n<<','<<nrhs<<','<<o.factor.block<<','<<o.repeats<<','<<l0<<','<<load_average()<<','<<median(u)*1e3<<','<<quantile(u,0)*1e3<<','
+         <<median(p)*1e3<<','<<quantile(p,0)*1e3<<','<<median(panel)*1e3<<','<<median(update)*1e3<<','<<median(gpu)*1e3<<','<<median(p)/median(u)<<','<<info.norm_recomputations<<','<<moved<<std::endl;
+ }
++// Look-ahead depth A/B (LIMBFORGE_QR_LOOKAHEAD = 1 / 2, alternating which goes first): factor + solve wall, panel and update wall;
++// the factors of both depths must be identical.
++template<int Bits> void lookahead_ab(Linalg& la,const Options& o,std::size_t n,std::mt19937_64& rng,bool header){
++    if(header)std::cout<<"bits,m,n,nrhs,block,repeats,load_before,load_after,d1_e2e_ms,d1_min_ms,d2_e2e_ms,d2_min_ms,d1_over_d2,d1_panel_ms,d2_panel_ms,d1_update_ms,d2_update_ms,d1_gpu_ms,d2_gpu_ms,identical\n";
++    const std::size_t m=2*n,nrhs=o.nrhs;auto J=jacobian<Bits>(m,n,rng);std::vector<CF<Bits>> B(m*nrhs),X(n*nrhs);
++    for(auto& b:B)b={reference::random_number<Bits>(rng,20),reference::random_number<Bits>(rng,20)};
++    std::vector<double> e2e[2],panel[2],update[2],gpu[2];ComplexQRFactor last[2];bool same=true;
++    auto run=[&](int d,bool record){setenv("LIMBFORGE_QR_LOOKAHEAD",d==2?"2":"1",1);auto t=Clock::now();ComplexQRFactor q=la.factor_qr_complex(Bits,J.data(),m,n,o.factor);q.solve(B.data(),nrhs,X.data());
++        const double w=std::chrono::duration<double>(Clock::now()-t).count();if(!record)return;const QRInfo& i=q.info();e2e[d-1].push_back(w);panel[d-1].push_back(i.panel_seconds);
++        update[d-1].push_back(i.update_seconds);gpu[d-1].push_back(i.timing.gpu_seconds);last[d-1]=std::move(q);};
++    run(1,false);run(2,false);const double l0=load_average();
++    for(int r=0;r<o.repeats;++r){if(r%2){run(2,true);run(1,true);}else{run(1,true);run(2,true);}
++        same=same&&identical<Bits>(last[0].r(),last[1].r(),n*n)&&identical<Bits>(last[0].v(),last[1].v(),m*n)&&identical<Bits>(last[0].t(),last[1].t(),last[0].block()*last[0].block()*((n+last[0].block()-1)/last[0].block()));}
++    unsetenv("LIMBFORGE_QR_LOOKAHEAD");if(!same)throw std::runtime_error("look-ahead depths give different factors");
++    std::cout<<std::setprecision(5)<<Bits<<','<<m<<','<<n<<','<<nrhs<<','<<o.factor.block<<','<<o.repeats<<','<<l0<<','<<load_average()<<','<<median(e2e[0])*1e3<<','<<quantile(e2e[0],0)*1e3<<','
++        <<median(e2e[1])*1e3<<','<<quantile(e2e[1],0)*1e3<<','<<median(e2e[0])/median(e2e[1])<<','<<median(panel[0])*1e3<<','<<median(panel[1])*1e3<<','<<median(update[0])*1e3<<','
++        <<median(update[1])*1e3<<','<<median(gpu[0])*1e3<<','<<median(gpu[1])*1e3<<','<<same<<std::endl;
++}
+ // log2 of a nonnegative MPFR value (-1e9 for zero).
+ double lg(mpfr_srcptr x){if(mpfr_zero_p(x))return -1e9;long e;double d=mpfr_get_d_2exp(&e,x,MPFR_RNDN);return std::log2(std::fabs(d))+double(e);}
+ // Errors of least-squares solutions against x* from an MPC Householder solve at P = 3*bits + 2*kappa bits (J and b exact):
+@@ -187,12 +205,12 @@ int main(int argc,char** argv){try{
+         else if(a=="--threads")o.threads=unsigned(std::stoul(next()));else if(a=="--serial-max")o.serial_max=std::stoul(next());else if(a=="--parallel-max")o.parallel_max=std::stoul(next());
+         else if(a=="--nrhs")o.nrhs=std::stoul(next());else if(a=="--block")o.factor.block=std::stoul(next());else if(a=="--host-macs")o.factor.host_macs=std::stod(next());
+         else if(a=="--kappa")kappas={std::stoi(next())};else if(a=="--host-threads")host_threads=unsigned(std::stoul(next()));else if(a=="--no-host-only")o.host_only=false;
+-        else if(a=="--no-embedding")o.embed=false;else if(a=="--accuracy")mode="accuracy";else if(a=="--pivot")mode="pivot";
++        else if(a=="--no-embedding")o.embed=false;else if(a=="--accuracy")mode="accuracy";else if(a=="--pivot")mode="pivot";else if(a=="--lookahead")mode="lookahead";
+         else throw std::invalid_argument("usage: qr_complex_limbforge [--bits 224|256] [--size n] [--repeats r] [--threads t] [--serial-max n] [--parallel-max n] [--nrhs k] [--block nb] [--host-macs x] [--no-host-only] [--no-embedding] [--pivot|--accuracy [--kappa k (-1: QSC-like)]]");}
+     LinalgOptions lo;lo.host_threads=host_threads;Linalg la(lo);Workers workers(o.threads);std::mt19937_64 rng(20261043);bool header=true;
+     std::cerr<<la.device_name()<<"; times: wall = host call (median of interleaved repeats), gpu = summed command buffers\n";
+     for(int b:bits)for(auto n:sizes){
+-        auto go=[&](auto tag){constexpr int B=decltype(tag)::value;if(mode=="time")bench<B>(la,workers,o,n,rng,header);else if(mode=="pivot")pivot_time<B>(la,o,n,rng,header);else for(int k:kappas){accuracy<B>(la,workers,o,n,k,rng,header);header=false;}};
++        auto go=[&](auto tag){constexpr int B=decltype(tag)::value;if(mode=="time")bench<B>(la,workers,o,n,rng,header);else if(mode=="pivot")pivot_time<B>(la,o,n,rng,header);else if(mode=="lookahead")lookahead_ab<B>(la,o,n,rng,header);else for(int k:kappas){accuracy<B>(la,workers,o,n,k,rng,header);header=false;}};
+         if(b==224)go(std::integral_constant<int,224>{});else if(b==256)go(std::integral_constant<int,256>{});else throw std::invalid_argument("bits: 224 or 256");header=false;}
+     return 0;
+ }catch(const std::exception& e){std::cerr<<e.what()<<'\n';return 1;}}
+diff --git a/src/linalg.mm b/src/linalg.mm
+index f4b005a..a105896 100644
+--- a/src/linalg.mm
++++ b/src/linalg.mm
+@@ -158,7 +158,11 @@ struct Linalg::Impl {
+     std::mutex workspace_mutex;std::vector<std::shared_ptr<Workspace>> call_spaces,batch_spaces;std::map<void*,std::weak_ptr<Workspace>> by_batch;
+     std::vector<std::weak_ptr<Workspace>> detached; // busy workspaces dropped by release_workspaces (freed by their batches)
+     static std::shared_ptr<Workspace> free_space(std::vector<std::shared_ptr<Workspace>>& pool){
+-        for(auto& w:pool)if(w.use_count()==1)return w;pool.push_back(std::make_shared<Workspace>());return pool.back();}std::map<std::string,id<MTLBuffer>> pool;std::unique_ptr<Pool> workers;
++        for(auto& w:pool)if(w.use_count()==1)return w;pool.push_back(std::make_shared<Workspace>());return pool.back();}
++    // Host-call scratch by role: one pool for the calling thread and one for a factorization's side thread (trailing updates run
++    // there while the calling thread runs other products of the factorization), and the report of each.
++    std::map<std::string,id<MTLBuffer>> pool,side_pool;LinalgReport side_report;std::unique_ptr<Pool> workers;
++    LinalgReport& last_report(){return side_thread?side_report:report;}
+     // Buffers that the factorization drivers keep on the GPU: views and outputs inside them are used in place.
+     std::vector<id<MTLBuffer>> resident;
+     unsigned threads()const{return options.host_threads?options.host_threads:std::max(1u,std::thread::hardware_concurrency());}
+@@ -175,7 +179,7 @@ struct Linalg::Impl {
+     id<MTLBuffer> wrap(const void* p,std::size_t bytes){std::size_t page=std::size_t(getpagesize());if(!p||!bytes||reinterpret_cast<std::uintptr_t>(p)%page)return nil;
+         return [device newBufferWithBytesNoCopy:const_cast<void*>(p) length:up(bytes,page) options:MTLResourceStorageModeShared deallocator:nil];}
+     id<MTLBuffer> buffer(const std::string& role,std::size_t bytes){
+-        auto& b=pool[role];if(!b||b.length<bytes){b=nil;b=[device newBufferWithLength:std::max<std::size_t>(bytes,16) options:MTLResourceStorageModeShared];}
++        auto& b=(side_thread?side_pool:pool)[role];if(!b||b.length<bytes){b=nil;b=[device newBufferWithLength:std::max<std::size_t>(bytes,16) options:MTLResourceStorageModeShared];}
+         if(!b)throw std::runtime_error("Metal allocation failed ("+role+")");return b;}
+     id<MTLComputePipelineState> state(id<MTLLibrary> lib,NSString* name,int sub=-1){NSError* e=nil;id<MTLFunction> f=nil;
+         if(sub<0)f=[lib newFunctionWithName:name];
+@@ -257,12 +261,12 @@ const LinalgReport& Linalg::report()const{return impl->report;}
+ const LinalgOptions& Linalg::options()const{return impl->options;}
+ // Retained memory (docs/numerics.md, "Workspace release"). The scratch pool belongs to the host thread; resident workspaces are counted under
+ // workspace_mutex: idle when only the pool refers to them, busy while a batch's completion step (or the unsubmitted batch) holds them.
+-LinalgWorkspaces Linalg::workspaces()const{LinalgWorkspaces w;for(auto& e:impl->pool)if(e.second)w.scratch_bytes+=e.second.length;
++LinalgWorkspaces Linalg::workspaces()const{LinalgWorkspaces w;for(auto* p:{&impl->pool,&impl->side_pool})for(auto& e:*p)if(e.second)w.scratch_bytes+=e.second.length;
+     std::lock_guard<std::mutex> lock(impl->workspace_mutex);
+     for(auto* pool:{&impl->call_spaces,&impl->batch_spaces})for(auto& s:*pool){const std::size_t b=s->bytes.load();if(s.use_count()==1)w.idle_bytes+=b;else{w.busy_bytes+=b;++w.busy_workspaces;}}
+     for(auto& d:impl->detached)if(auto s=d.lock()){w.busy_bytes+=s->bytes.load();++w.busy_workspaces;}
+     return w;}
+-LinalgWorkspaces Linalg::release_workspaces(){LinalgWorkspaces w;for(auto& e:impl->pool)if(e.second)w.scratch_bytes+=e.second.length;impl->pool.clear();
++LinalgWorkspaces Linalg::release_workspaces(){LinalgWorkspaces w;for(auto* p:{&impl->pool,&impl->side_pool}){for(auto& e:*p)if(e.second)w.scratch_bytes+=e.second.length;p->clear();}
+     std::vector<std::shared_ptr<Workspace>> freed; // destroyed after the lock is released
+     {std::lock_guard<std::mutex> lock(impl->workspace_mutex);
+         impl->detached.erase(std::remove_if(impl->detached.begin(),impl->detached.end(),[](const std::weak_ptr<Workspace>& d){return d.expired();}),impl->detached.end());
+@@ -283,7 +287,7 @@ Timing Linalg::gemm(int bits,bool transpose_a,const void* A,const void* B,std::s
+     return impl->run(bits,lv,{static_cast<const unsigned char*>(B),e,1,n,bits/32},m,n,k,C,false,false,subtract);
+ }
+ Timing Linalg::Impl::run(int bits,View lv,View rv,std::size_t M,std::size_t Nc,std::size_t K,void* C,bool syrk,bool lower_only,bool sub,std::size_t stride){@autoreleasepool{
+-    auto start=Clock::now();report=LinalgReport{};report.m=M;report.n=Nc;report.k=K;if(!stride)stride=Nc;pool_workers();
++    LinalgReport& report=last_report();auto start=Clock::now();report=LinalgReport{};report.m=M;report.n=Nc;report.k=K;if(!stride)stride=Nc;pool_workers();
+     const std::size_t limit=std::size_t(1)<<31;if(M>=limit||Nc>=limit||K>=limit||M*stride>=limit)throw std::invalid_argument("matrix dimensions exceed 32-bit indexing");
+     if(M&&Nc&&!C)throw std::invalid_argument("null output");if(M*Nc&&K&&(!lv.base||!rv.base))throw std::invalid_argument("null input");
+     const int N=bits/32;const std::size_t eb=lv.bytes;const unsigned nt=threads();
+@@ -710,6 +714,17 @@ template<int N> void Linalg::Impl::qr_n(const Number<N>* A,std::size_t m,std::si
+         if(p<k1){if(p>k0)account(update(b,p,n,on_gpu),on_gpu);break;}
+         if(k1<n)account(update(b,k1,n,on_gpu,true),on_gpu);}
+     std::size_t k0=0,k1=std::min(n,nb),p=n&&!pivot?factor_panel(0,k1):0;
++    // Depth 2 (LIMBFORGE_QR_LOOKAHEAD=2): the trailing updates run in order on a side thread, block b's split into the panel after
++    // next and the rest; the calling thread waits only for the columns of its next panel, so block b's rest overlaps two panels.
++    if(!pivot&&gpu&&detail::qr_lookahead()>=2&&k1<n){std::mutex am;auto locked=[&](Timing tm,bool g){std::lock_guard<std::mutex> l(am);account(tm,g);};
++        detail::SideQueue side;std::size_t ready=0;
++        for(;k1<n;k0=k1,k1=std::min(n,k1+nb)){const std::size_t b=k0/nb;bool on_gpu=false;
++            if(p<k1){side.finish();if(p>k0)locked(update(b,k1,n,on_gpu),on_gpu);break;}
++            const std::size_t k2=std::min(n,k1+nb),k3=std::min(n,k2+nb);side.wait(ready);locked(update(b,k1,k2,on_gpu),on_gpu);
++            if(k2<n){ready=side.push([&,b,k2,k3]{bool g=false;Timing tm=update(b,k2,k3,g);locked(tm,g);});
++                if(k3<n)side.push([&,b,k3]{bool g=false;Timing tm=update(b,k3,n,g);locked(tm,g);});}
++            p=factor_panel(k1,k2);}
++        side.finish();k1=n;}
+     while(!pivot&&k1<n){const std::size_t b=k0/nb;bool on_gpu=false;
+         if(p<k1){if(p>k0)account(update(b,k1,n,on_gpu),on_gpu);break;}
+         const std::size_t k2=std::min(n,k1+nb);account(update(b,k1,k2,on_gpu),on_gpu);
+diff --git a/src/linalg_complex.mm b/src/linalg_complex.mm
+index b920e59..fd5ced7 100644
+--- a/src/linalg_complex.mm
++++ b/src/linalg_complex.mm
+@@ -291,6 +291,16 @@ template<int N> static void factor_n(Linalg& la,const Cx<N>* A,detail::ComplexQR
+         if(p<k1){if(p>k0)account(update(b,p,n,on_gpu),on_gpu);break;}
+         if(k1<n)account(update(b,k1,n,on_gpu,true),on_gpu);}
+     std::size_t k0=0,k1=std::min(n,nb),p=n&&!pivot?factor_panel(0,k1):0;
++    // Depth 2 (LIMBFORGE_QR_LOOKAHEAD=2): as the real QR's experiment.
++    if(!pivot&&gpu&&detail::qr_lookahead()>=2&&k1<n){std::mutex am;auto locked=[&](Timing tm,bool g){std::lock_guard<std::mutex> l(am);account(tm,g);};
++        detail::SideQueue side;std::size_t ready=0;
++        for(;k1<n;k0=k1,k1=std::min(n,k1+nb)){const std::size_t b=k0/nb;bool on_gpu=false;
++            if(p<k1){side.finish();if(p>k0)locked(update(b,k1,n,on_gpu),on_gpu);break;}
++            const std::size_t k2=std::min(n,k1+nb),k3=std::min(n,k2+nb);side.wait(ready);locked(update(b,k1,k2,on_gpu),on_gpu);
++            if(k2<n){ready=side.push([&,b,k2,k3]{bool g=false;Timing tm=update(b,k2,k3,g);locked(tm,g);});
++                if(k3<n)side.push([&,b,k3]{bool g=false;Timing tm=update(b,k3,n,g);locked(tm,g);});}
++            p=factor_panel(k1,k2);}
++        side.finish();k1=n;}
+     while(!pivot&&k1<n){const std::size_t b=k0/nb;bool on_gpu=false;
+         if(p<k1){if(p>k0)account(update(b,k1,n,on_gpu),on_gpu);break;}
+         const std::size_t k2=std::min(n,k1+nb);account(update(b,k1,k2,on_gpu),on_gpu);
+diff --git a/src/linalg_internal.hpp b/src/linalg_internal.hpp
+index 45d5ebd..5ebc869 100644
+--- a/src/linalg_internal.hpp
++++ b/src/linalg_internal.hpp
+@@ -2,7 +2,13 @@
+ // Private hooks into Linalg's internals for src/linalg_complex.mm (complex QR, round 43). Implemented at the end of
+ // src/linalg.mm, where Linalg::Impl is complete; nothing here is public API.
+ #include "limbforge/linalg.hpp"
++#include <condition_variable>
++#include <cstdlib>
++#include <deque>
++#include <exception>
+ #include <functional>
++#include <mutex>
++#include <thread>
+ namespace limbforge {
+ namespace detail {
+ struct LinalgHooks {
+@@ -23,5 +29,24 @@ struct LinalgHooks {
+     // X (n x nrhs) solves R X = B for upper triangular R (n x n): the backward substitution of QRFactor::solve (blocks fo.block).
+     static Timing solve_upper(Linalg& la,int bits,const void* R,std::size_t n,const void* B,std::size_t nrhs,void* X,const FactorOptions& fo);
+ };
++// Look-ahead depth of the unpivoted QR drivers: LIMBFORGE_QR_LOOKAHEAD (1 or 2; experiments), read per factorization.
++inline int qr_lookahead(){const char* e=std::getenv("LIMBFORGE_QR_LOOKAHEAD");return e&&std::atoi(e)>=2?2:1;}
++// Ordered trailing updates of a factorization on one side thread (marked with LinalgHooks::side, so it uses its own worker pool and
++// scratch): tasks run one at a time in submission order; wait(t) returns when task t (and every earlier one) is done and rethrows the
++// first failure. The destructor drops tasks not yet started and joins.
++class SideQueue {
++    std::mutex m;std::condition_variable cv;std::deque<std::function<void()>> q;std::size_t issued=0,finished=0;bool stop=false;std::exception_ptr failed;std::thread worker;
++public:
++    SideQueue():worker([this]{LinalgHooks::side(true);std::unique_lock<std::mutex> l(m);
++        for(;;){cv.wait(l,[&]{return stop||!q.empty();});if(q.empty())break;auto f=std::move(q.front());q.pop_front();l.unlock();
++            std::exception_ptr e;if(!failed){try{@autoreleasepool{f();}}catch(...){e=std::current_exception();}}
++            l.lock();if(e&&!failed)failed=e;++finished;cv.notify_all();}
++        LinalgHooks::side(false);}){}
++    ~SideQueue(){{std::lock_guard<std::mutex> l(m);finished+=q.size();q.clear();stop=true;}cv.notify_all();worker.join();}
++    SideQueue(const SideQueue&)=delete;SideQueue& operator=(const SideQueue&)=delete;
++    std::size_t push(std::function<void()> f){std::lock_guard<std::mutex> l(m);q.push_back(std::move(f));cv.notify_all();return ++issued;}
++    void wait(std::size_t t){std::unique_lock<std::mutex> l(m);cv.wait(l,[&]{return finished>=t;});if(failed)std::rethrow_exception(failed);}
++    void finish(){std::size_t t;{std::lock_guard<std::mutex> l(m);t=issued;}wait(t);}
++};
+ }
+ }

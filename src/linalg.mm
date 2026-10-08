@@ -142,10 +142,10 @@ struct Kernels {
 // Named shared buffers that grow on demand (resident products). A workspace is free when only its pool refers to it: a resident
 // call holds its workspaces from encoding until its completion step has run at wait (or its unsubmitted batch is destroyed).
 struct Workspace {
-    std::map<std::string,id<MTLBuffer>> buffers;
-    id<MTLBuffer> get(id<MTLDevice> device,const std::string& role,std::size_t bytes){auto& b=buffers[role];
-        if(!b||b.length<bytes){b=nil;b=[device newBufferWithLength:std::max<std::size_t>(bytes,16) options:MTLResourceStorageModeShared];
-            if(!b)throw std::runtime_error("Metal allocation failed (linalg workspace "+role+")");}
+    std::map<std::string,id<MTLBuffer>> buffers;std::atomic<std::size_t> bytes{0}; // bytes: total length (read by Linalg::workspaces on any thread)
+    id<MTLBuffer> get(id<MTLDevice> device,const std::string& role,std::size_t size){auto& b=buffers[role];
+        if(!b||b.length<size){if(b)bytes-=b.length;b=nil;b=[device newBufferWithLength:std::max<std::size_t>(size,16) options:MTLResourceStorageModeShared];
+            if(!b)throw std::runtime_error("Metal allocation failed (linalg workspace "+role+")");bytes+=b.length;}
         return b;}
 };
 struct LineInfo {std::uint32_t status;std::int32_t cls,nb,pad;}; // linalg.metal LineInfo
@@ -156,6 +156,7 @@ struct Linalg::Impl {
     // Resident workspaces: per call (analysis, plan, snapshots: read at wait) and per batch (digit planes, residues, accumulators:
     // shared by the calls of one batch, whose dispatches run in order); by_batch maps a batch's command buffer to its workspace.
     std::mutex workspace_mutex;std::vector<std::shared_ptr<Workspace>> call_spaces,batch_spaces;std::map<void*,std::weak_ptr<Workspace>> by_batch;
+    std::vector<std::weak_ptr<Workspace>> detached; // busy workspaces dropped by release_workspaces (freed by their batches)
     static std::shared_ptr<Workspace> free_space(std::vector<std::shared_ptr<Workspace>>& pool){
         for(auto& w:pool)if(w.use_count()==1)return w;pool.push_back(std::make_shared<Workspace>());return pool.back();}std::map<std::string,id<MTLBuffer>> pool;std::unique_ptr<Pool> workers;
     // Buffers that the factorization drivers keep on the GPU: views and outputs inside them are used in place.
@@ -254,6 +255,22 @@ Linalg::~Linalg()=default;
 std::string Linalg::device_name()const{return [[impl->device name] UTF8String];}
 const LinalgReport& Linalg::report()const{return impl->report;}
 const LinalgOptions& Linalg::options()const{return impl->options;}
+// Retained memory (docs/numerics.md, "Workspace release"). The scratch pool belongs to the host thread; resident workspaces are counted under
+// workspace_mutex: idle when only the pool refers to them, busy while a batch's completion step (or the unsubmitted batch) holds them.
+LinalgWorkspaces Linalg::workspaces()const{LinalgWorkspaces w;for(auto& e:impl->pool)if(e.second)w.scratch_bytes+=e.second.length;
+    std::lock_guard<std::mutex> lock(impl->workspace_mutex);
+    for(auto* pool:{&impl->call_spaces,&impl->batch_spaces})for(auto& s:*pool){const std::size_t b=s->bytes.load();if(s.use_count()==1)w.idle_bytes+=b;else{w.busy_bytes+=b;++w.busy_workspaces;}}
+    for(auto& d:impl->detached)if(auto s=d.lock()){w.busy_bytes+=s->bytes.load();++w.busy_workspaces;}
+    return w;}
+LinalgWorkspaces Linalg::release_workspaces(){LinalgWorkspaces w;for(auto& e:impl->pool)if(e.second)w.scratch_bytes+=e.second.length;impl->pool.clear();
+    std::vector<std::shared_ptr<Workspace>> freed; // destroyed after the lock is released
+    {std::lock_guard<std::mutex> lock(impl->workspace_mutex);
+        impl->detached.erase(std::remove_if(impl->detached.begin(),impl->detached.end(),[](const std::weak_ptr<Workspace>& d){return d.expired();}),impl->detached.end());
+        for(auto* pool:{&impl->call_spaces,&impl->batch_spaces}){for(auto& s:*pool){const std::size_t b=s->bytes.load();
+                if(s.use_count()==1)w.idle_bytes+=b;else{w.busy_bytes+=b;++w.busy_workspaces;impl->detached.push_back(s);}freed.push_back(std::move(s));}
+            pool->clear();}
+        impl->by_batch.clear();}
+    return w;}
 static void check_bits(int bits){if(bits<64||bits>1024||bits%32)throw std::invalid_argument("bits must be a multiple of 32 in [64,1024]");}
 Timing Linalg::syrk(int bits,const void* A,std::size_t rows,std::size_t cols,void* C,bool lower_only,bool subtract){
     check_bits(bits);if(subtract&&!lower_only)throw std::invalid_argument("syrk: subtract updates the lower triangle only (lower_only)");
@@ -800,11 +817,11 @@ void LinalgHooks::each(Linalg& la,std::size_t n,const std::function<void(std::si
 void LinalgHooks::run(Linalg& la,std::size_t n,const std::function<void(std::size_t,unsigned)>& f){la.impl->pool_workers().run(n,f);}
 void LinalgHooks::side(bool on){side_thread=on;}
 Timing LinalgHooks::qr_block(Linalg& la,int bits,std::size_t m,std::size_t n,std::size_t nb,const void* V,const void* T,std::size_t b,void* X,std::size_t ld,
-                             std::size_t c0,std::size_t c1,bool qt,void* Wb,void* Yb,double threshold,bool gpu,bool& on_gpu){
+                             std::size_t c0,std::size_t c1,bool qt,void* Wb,void* Yb,double threshold,bool gpu,bool& on_gpu,bool have_y){
     QRData f;f.m=m;f.n=n;f.nb=nb;f.v.p=const_cast<void*>(V);f.t.p=const_cast<void*>(T);  // borrowed: released below, never freed here
     struct Borrow {QRData& f;~Borrow(){f.v.p=nullptr;f.t.p=nullptr;}} borrow{f};
     return by_words(bits/32,[&](auto w){constexpr int N=decltype(w)::value;
-        return la.impl->qr_block<N>(f,b,static_cast<Number<N>*>(X),ld,c0,c1,qt,static_cast<Number<N>*>(Wb),static_cast<Number<N>*>(Yb),threshold,gpu,on_gpu);});}
+        return la.impl->qr_block<N>(f,b,static_cast<Number<N>*>(X),ld,c0,c1,qt,static_cast<Number<N>*>(Wb),static_cast<Number<N>*>(Yb),threshold,gpu,on_gpu,have_y);});}
 Timing LinalgHooks::solve_upper(Linalg& la,int bits,const void* R,std::size_t n,const void* B,std::size_t nrhs,void* X,const FactorOptions& fo){
     return by_words(bits/32,[&](auto w){constexpr int N=decltype(w)::value;
         return la.impl->solve_n<N>(static_cast<const Number<N>*>(R),n,static_cast<const Number<N>*>(B),nrhs,static_cast<Number<N>*>(X),fo,2,true);});}

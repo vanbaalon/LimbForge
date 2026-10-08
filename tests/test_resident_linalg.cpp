@@ -2,7 +2,8 @@
 // on Buffer operands, bitwise against the host-array calls (themselves MPFR-validated by test_linalg / test_cholesky / test_qr) at
 // 64/224/256/384 bits, including QSC-like 800 x 400, multi-band, host-fallback and workspace-overflow paths, statuses, report
 // fields, chains with engine and Numerics operations in one batch, ownership errors and lifetimes; and the synchronous Buffer
-// forms of cholesky, trsm, cholesky_solve, factor_qr, QRFactor::solve and apply_q. Usage: test_limbforge_resident_linalg [--quick]
+// forms of cholesky, trsm, cholesky_solve, factor_qr, QRFactor::solve and apply_q; Linalg::workspaces / release_workspaces with idle,
+// pending (submitted, unwaited) and unsubmitted batches. Usage: test_limbforge_resident_linalg [--quick]
 #include "reference.hpp"
 #include "limbforge/linalg.hpp"
 #include "limbforge/numerics.hpp"
@@ -190,6 +191,49 @@ void lifetime(Engine& e){
      same_all(get(Cb,want.size()),want,"syrk after a discarded batch");}
     std::cout<<"lifetime: tickets and batches outlive the Linalg; discarded batches and destroyed submissions"<<std::endl;
 }
+// ---------------- workspace release ----------------
+// release_workspaces frees the host scratch and idle resident workspaces at once and detaches busy ones: a pending submission (whose
+// host fallback at wait reads its call workspace) and an unsubmitted batch keep theirs until the completion step has run or the batch
+// is destroyed, and their results are unchanged. Later calls (also into a batch that held a released workspace) allocate afresh.
+void release(Engine& e){
+    constexpr int B=256;using T=F<B>;constexpr int N=B/32;std::mt19937_64 rng(77);const std::size_t rows=120,cols=80,nrhs=3;
+    auto A=matrix<B>(rows,cols,wide,rng),Q=matrix<B>(rows,cols,qsc,rng);std::vector<T> want(cols*cols,zero<N>()),wantq(cols*cols,zero<N>());
+    {Linalg ref(e);ref.syrk(B,A.data(),rows,cols,want.data(),false);require(ref.report().fallback_outputs>0,"release fixture: host fallback");ref.syrk(B,Q.data(),rows,cols,wantq.data(),false);}
+    Linalg la(e);{const auto w=la.workspaces();require(!w.scratch_bytes&&!w.idle_bytes&&!w.busy_bytes&&!w.busy_workspaces,"a fresh Linalg retains nothing");}
+    // Host scratch (QR work matrix, W/Y, staging of the products, right-hand sides): released, and a factor made before still solves.
+    QROptions qo;qo.host_macs=0;qo.solve_host_macs=0;QRFactor f=la.factor_qr(B,Q.data(),rows,cols,qo);std::vector<T> b(rows*nrhs),x0(cols*nrhs),x1(cols*nrhs);
+    for(auto& v:b)v=reference::random_number<B>(rng,3);f.solve(b.data(),nrhs,x0.data());
+    const auto w0=la.workspaces();require(w0.scratch_bytes>0&&!w0.idle_bytes&&!w0.busy_bytes,"scratch after host calls");
+    {const auto r=la.release_workspaces();require(r.scratch_bytes==w0.scratch_bytes&&!r.idle_bytes&&!r.busy_bytes,"released scratch");require(!la.workspaces().scratch_bytes,"no scratch after release");}
+    f.solve(b.data(),nrhs,x1.data());same_all(x1,x0,"QR solve after release");
+    {QRFactor g=la.factor_qr(B,Q.data(),rows,cols,qo);require(std::memcmp(g.r(),f.r(),cols*cols*sizeof(T))==0,"QR factor after release");}
+    la.release_workspaces();
+    // Resident: idle after wait.
+    auto Ab=put(e,A),Qb=put(e,Q);auto C1=e.make_buffer<T>(cols*cols),C2=e.make_buffer<T>(cols*cols),C3=e.make_buffer<T>(cols*cols),C4=e.make_buffer<T>(cols*cols);
+    {auto batch=e.batch();la.syrk(batch,Qb,rows,cols,C1,false);batch.submit().wait();same_all(get(C1,want.size()),wantq,"syrk before release");}
+    const auto w1=la.workspaces();require(w1.idle_bytes>0&&!w1.busy_bytes&&!w1.busy_workspaces,"idle resident workspaces after wait");
+    // A pending submission with host-fallback outputs (computed at wait from the snapshots in its call workspace).
+    auto batch=e.batch();auto t=la.syrk(batch,Ab,rows,cols,C2,false);
+    const auto w2=la.workspaces();require(w2.busy_workspaces==2&&w2.busy_bytes>0,"call and batch workspaces busy after encoding");
+    {const auto r=la.release_workspaces();require(r.busy_workspaces==2&&r.busy_bytes==w2.busy_bytes&&r.idle_bytes==w2.idle_bytes,"release detaches busy workspaces");
+     const auto w=la.workspaces();require(w.busy_workspaces==2&&w.busy_bytes==w2.busy_bytes&&!w.idle_bytes&&!w.scratch_bytes,"detached workspaces stay alive while held");}
+    // A later call into the same (unsubmitted) batch gets new workspaces; then the batch is submitted and released again before wait.
+    auto t2=la.syrk(batch,Qb,rows,cols,C3,false);require(la.workspaces().busy_workspaces==4,"new workspaces for a later call of the batch");
+    auto sub=batch.submit();{const auto r=la.release_workspaces();require(r.busy_workspaces==2,"second release with the submission pending");}
+    // A second, unsubmitted batch released and destroyed: its workspaces are freed with it and C4 is untouched.
+    {auto other=e.batch();std::vector<T> marker(cols*cols,power<B>(5));C4.upload(marker.data(),marker.size());auto Q2=put(e,Q);la.syrk(other,Q2,rows,cols,C4,false);
+     require(la.workspaces().busy_workspaces==6,"pending and unsubmitted workspaces");la.release_workspaces();
+     require(la.workspaces().busy_workspaces==6,"released workspaces of an unsubmitted batch stay until it is destroyed");}
+    require(la.workspaces().busy_workspaces==4,"a destroyed batch frees its released workspaces");
+    for(auto& x:get(C4,cols*cols))require(same(x,power<B>(5)),"a destroyed batch leaves its output untouched");
+    sub.wait();require(t.resolved()&&t2.resolved()&&t.report().fallback_outputs>0,"tickets after wait");
+    same_all(get(C2,want.size()),want,"syrk with host fallback, workspaces released before wait");same_all(get(C3,want.size()),wantq,"later call after a release");
+    {const auto w=la.workspaces();require(!w.busy_bytes&&!w.busy_workspaces&&!w.idle_bytes,"released workspaces freed after wait");}
+    // Calls after the release allocate afresh and give the same bits.
+    {auto again=e.batch();la.syrk(again,Ab,rows,cols,C4,false);again.submit().wait();same_all(get(C4,want.size()),want,"syrk after release");
+     require(la.workspaces().idle_bytes>0,"new idle workspaces");}
+    std::cout<<"workspace release: host scratch, idle, pending and unsubmitted resident workspaces (results unchanged)"<<std::endl;
+}
 // ---------------- synchronous Buffer forms of the factorizations ----------------
 template<int B> void factor_forms(Engine& e){
     using T=F<B>;constexpr int N=B/32;std::mt19937_64 rng(31+B);Linalg la(e);const std::size_t m=160,n=96,nrhs=3;
@@ -219,7 +263,7 @@ int main(int argc,char** argv){try{
     Engine e;std::cout<<e.device_name()<<std::endl;
     products<224>(e,quick);products<256>(e,quick);products<64>(e,quick);products<384>(e,quick);
     if(!quick){std::size_t calls=0;all_widths<64>(e,calls);std::cout<<"all 31 widths: "<<calls<<" resident syrk/gemm calls (wide and QSC fixtures) equal the host-array calls"<<std::endl;}
-    chains(e);ownership(e);lifetime(e);
+    chains(e);ownership(e);lifetime(e);release(e);
     factor_forms<256>(e);factor_forms<224>(e);
     return 0;}
 catch(const std::exception& e){std::cerr<<e.what()<<'\n';return 1;}}
