@@ -1,6 +1,6 @@
 #import <Foundation/Foundation.h>
 #import <Metal/Metal.h>
-#include "limbforge/engine.hpp"
+#include "engine_internal.hpp"
 #include "shader_source.hpp"
 #include <chrono>
 #include <cstring>
@@ -13,6 +13,7 @@
 #include <vector>
 #include <algorithm>
 #include <array>
+#include <functional>
 
 namespace limbforge {
 namespace {
@@ -60,9 +61,6 @@ unsigned lu4_flags(const Batched4& s){return (s.fused?1:0)|(s.determinant?2:0)|(
 unsigned vector_flags(const VectorRecurrence& s){return (s.affine?1:0)|(s.matrix?2:0)|(s.all_steps?4:0)|(s.reverse?8:0)|(s.tangent?16:0)|(s.fused?32:0);}
 }
 namespace detail {
-struct BufferStorage {
-    id<MTLBuffer> buffer;std::shared_ptr<int> owner;std::atomic<bool> busy{false};std::size_t bytes;
-};
 void* mapped(const std::shared_ptr<BufferStorage>& storage){
     if(!storage)throw std::invalid_argument("empty buffer handle");
     if(storage->busy.load(std::memory_order_acquire))throw std::logic_error("buffer belongs to an unwaited submission");
@@ -286,11 +284,15 @@ struct Engine::Impl {
 struct Submission::Impl {
     id<MTLCommandBuffer> command;
     std::vector<std::shared_ptr<detail::BufferStorage>> resources;
+    std::vector<id> objects;std::vector<std::function<void()>> completions; // unit pipelines/tables; unit host steps
     std::chrono::steady_clock::time_point start;
-    std::once_flag finished;Timing timing{};std::string error;
+    std::once_flag finished;Timing timing{};std::string error,host_error;
     void finish(){std::call_once(finished,[&]{
         [command waitUntilCompleted];
         if(command.status==MTLCommandBufferStatusError)error=error_message(command.error);
+        // Unit host steps (e.g. transcendental retries) run while the buffers are still owned by this submission.
+        else for(auto& f:completions){try{f();}catch(const std::exception& e){if(host_error.empty())host_error=e.what();}catch(...){if(host_error.empty())host_error="unknown error in a completion step";}}
+        completions.clear();objects.clear();
         timing={command.GPUEndTime-command.GPUStartTime,std::chrono::duration<double>(std::chrono::steady_clock::now()-start).count()};
         for(auto& r:resources)r->busy.store(false,std::memory_order_release);
     });}
@@ -298,17 +300,31 @@ struct Submission::Impl {
 };
 struct CommandBatch::Impl {
     std::shared_ptr<Engine::Impl> engine;
-    id<MTLCommandBuffer> command;id<MTLComputeCommandEncoder> encoder;
+    id<MTLCommandBuffer> command;id<MTLComputeCommandEncoder> encoder;id<MTLBlitCommandEncoder> blit;
     std::vector<std::shared_ptr<detail::BufferStorage>> resources;
+    std::vector<id> objects;std::vector<std::function<void()>> completions;
+    // Outputs of unit passes that are final only after the submission's completion steps (detail::Internal::provisional).
+    std::vector<std::pair<std::shared_ptr<detail::BufferStorage>,detail::ProvisionalFlag>> provisional;
     std::chrono::steady_clock::time_point start=std::chrono::steady_clock::now();bool submitted=false;
     explicit Impl(std::shared_ptr<Engine::Impl> e):engine(std::move(e)){
         command=[engine->queue commandBuffer];if(!command)throw std::runtime_error("Metal command allocation failed");
     }
-    ~Impl(){if(encoder)[encoder endEncoding];}
-    void retain(const std::shared_ptr<detail::BufferStorage>& r){
+    ~Impl(){end();}
+    void end(){if(encoder){[encoder endEncoding];encoder=nil;}if(blit){[blit endEncoding];blit=nil;}}
+    // Written buffers must not hold provisional results of this batch; reading one is recorded.
+    void retain(const std::shared_ptr<detail::BufferStorage>& r,bool written=false){
         if(!r||r->owner!=engine->identity)throw std::invalid_argument("buffer belongs to another engine");
         if(r->busy.load(std::memory_order_acquire))throw std::logic_error("buffer belongs to an unwaited submission");
+        for(auto& p:provisional)if(p.first==r){
+            if(written)throw std::logic_error("buffer holds provisional results of an earlier pass in this batch (final after wait)");
+            p.second->store(true);}
         if(std::find(resources.begin(),resources.end(),r)==resources.end())resources.push_back(r);
+    }
+    id<MTLComputeCommandEncoder> compute(){
+        if(blit){[blit endEncoding];blit=nil;}
+        if(!encoder){encoder=[command computeCommandEncoder];if(!encoder)throw std::runtime_error("Metal encoder allocation failed");}
+        else [encoder memoryBarrierWithScope:MTLBarrierScopeBuffers];
+        return encoder;
     }
 };
 CommandBatch::CommandBatch(std::unique_ptr<Impl> p):impl_(std::move(p)){}
@@ -320,11 +336,9 @@ void CommandBatch::encode(int bits,bool complex,Operation op,const std::shared_p
     if(!impl_||impl_->submitted)throw std::logic_error("batch already submitted or moved");
     validate(bits,count);int operation=int(op);
     if(!operation_is_valid(op)||operation_is_complex(op)!=complex)throw std::invalid_argument("operation and buffer format mismatch");
-    impl_->retain(a);impl_->retain(b);impl_->retain(c);impl_->retain(out);if(!count)return;
+    impl_->retain(a);impl_->retain(b);impl_->retain(c);impl_->retain(out,true);if(!count)return;
     auto state=impl_->engine->pipeline(bits,operation);
-    if(!impl_->encoder){impl_->encoder=[impl_->command computeCommandEncoder];if(!impl_->encoder)throw std::runtime_error("Metal encoder allocation failed");}
-    else [impl_->encoder memoryBarrierWithScope:MTLBarrierScopeBuffers];
-    auto encoder=impl_->encoder;[encoder setComputePipelineState:state];
+    auto encoder=impl_->compute();[encoder setComputePipelineState:state];
     [encoder setBuffer:a->buffer offset:0 atIndex:0];[encoder setBuffer:b->buffer offset:0 atIndex:1];[encoder setBuffer:out->buffer offset:0 atIndex:2];
     if(operation_is_ternary(op))[encoder setBuffer:c->buffer offset:0 atIndex:4];
     Params params={std::uint32_t(count),std::uint32_t(operation),0,std::uint32_t(count),1,index32(b_index.stride),index32(b_index.period),index32(c_index.stride),index32(c_index.period)};
@@ -337,11 +351,9 @@ void CommandBatch::encode_vector(int bits,const VectorRecurrence& s,const std::s
     if(!impl_||impl_->submitted)throw std::logic_error("batch already submitted or moved");
     auto n=vector_elements(bits,s);
     for(int i=0;i<7;++i){if(n[i]&&(!in[i]||sizes[i]<n[i]))throw std::invalid_argument("vector recurrence buffer too small or missing");if(in[i])impl_->retain(in[i]);}
-    if(out_size<n[7])throw std::invalid_argument("vector recurrence output too small");impl_->retain(out);if(!s.lanes)return;
+    if(out_size<n[7])throw std::invalid_argument("vector recurrence output too small");impl_->retain(out,true);if(!s.lanes)return;
     int operation=200+int(vector_flags(s));auto state=impl_->engine->pipeline(bits,operation);
-    if(!impl_->encoder){impl_->encoder=[impl_->command computeCommandEncoder];if(!impl_->encoder)throw std::runtime_error("Metal encoder allocation failed");}
-    else [impl_->encoder memoryBarrierWithScope:MTLBarrierScopeBuffers];
-    auto encoder=impl_->encoder;[encoder setComputePipelineState:state];
+    auto encoder=impl_->compute();[encoder setComputePipelineState:state];
     // Unused inputs are bound to start; the kernel never reads them.
     const unsigned slot[7]={0,1,4,5,6,7,8};
     for(int i=0;i<7;++i)[encoder setBuffer:(in[i]?in[i]:in[0])->buffer offset:0 atIndex:slot[i]];
@@ -353,12 +365,10 @@ void CommandBatch::encode_vector(int bits,const VectorRecurrence& s,const std::s
 void CommandBatch::encode_lu4(int bits,const Batched4& s,const std::shared_ptr<detail::BufferStorage>* in,const std::size_t* sizes){
     if(!impl_||impl_->submitted)throw std::logic_error("batch already submitted or moved");
     auto n=lu4_elements(bits,s);
-    for(int i=0;i<5;++i){if(n[i]&&(!in[i]||sizes[i]<n[i]))throw std::invalid_argument("batched 4x4 buffer too small or missing");if(in[i])impl_->retain(in[i]);}
+    for(int i=0;i<5;++i){if(n[i]&&(!in[i]||sizes[i]<n[i]))throw std::invalid_argument("batched 4x4 buffer too small or missing");if(in[i])impl_->retain(in[i],i>=2&&n[i]);}
     if(!s.count)return;
     int operation=400+int(lu4_flags(s));auto state=impl_->engine->pipeline(bits,operation);
-    if(!impl_->encoder){impl_->encoder=[impl_->command computeCommandEncoder];if(!impl_->encoder)throw std::runtime_error("Metal encoder allocation failed");}
-    else [impl_->encoder memoryBarrierWithScope:MTLBarrierScopeBuffers];
-    auto encoder=impl_->encoder;[encoder setComputePipelineState:state];
+    auto encoder=impl_->compute();[encoder setComputePipelineState:state];
     // Unused outputs/inputs are bound to A; the kernel neither reads nor writes them.
     const unsigned slot[5]={0,1,2,4,5};for(int i=0;i<5;++i)[encoder setBuffer:(in[i]&&n[i]?in[i]:in[0])->buffer offset:0 atIndex:slot[i]];
     std::uint32_t params[2]={std::uint32_t(s.count),s.rhs};[encoder setBytes:params length:sizeof(params) atIndex:3];
@@ -366,11 +376,9 @@ void CommandBatch::encode_lu4(int bits,const Batched4& s,const std::shared_ptr<d
 }
 void CommandBatch::encode_cast(int from,int to,bool complex,const std::shared_ptr<detail::BufferStorage>& in,const std::shared_ptr<detail::BufferStorage>& out,std::size_t count){
     if(!impl_||impl_->submitted)throw std::logic_error("batch already submitted or moved");
-    validate(from,count);validate(to,count);impl_->retain(in);impl_->retain(out);if(!count)return;
+    validate(from,count);validate(to,count);impl_->retain(in);impl_->retain(out,true);if(!count)return;
     int operation=complex?501:500;auto state=impl_->engine->pipeline(to,operation);
-    if(!impl_->encoder){impl_->encoder=[impl_->command computeCommandEncoder];if(!impl_->encoder)throw std::runtime_error("Metal encoder allocation failed");}
-    else [impl_->encoder memoryBarrierWithScope:MTLBarrierScopeBuffers];
-    auto encoder=impl_->encoder;[encoder setComputePipelineState:state];
+    auto encoder=impl_->compute();[encoder setComputePipelineState:state];
     [encoder setBuffer:in->buffer offset:0 atIndex:0];[encoder setBuffer:out->buffer offset:0 atIndex:2];
     std::uint32_t params[2]={std::uint32_t(count),std::uint32_t(from/32)};[encoder setBytes:params length:sizeof(params) atIndex:3];
     [encoder dispatchThreads:MTLSizeMake(count,1,1) threadsPerThreadgroup:MTLSizeMake(impl_->engine->group_size(state,to,operation),1,1)];
@@ -379,11 +387,9 @@ void CommandBatch::encode_dot(int bits,bool complex,const SegmentedDot& s,const 
                               const std::shared_ptr<detail::BufferStorage>& b,std::size_t b_size,const std::shared_ptr<detail::BufferStorage>& out,std::size_t out_size){
     if(!impl_||impl_->submitted)throw std::logic_error("batch already submitted or moved");
     auto n=dot_elements(bits,s);if(a_size<n[0]||b_size<n[1]||out_size<n[2])throw std::invalid_argument("segmented dot buffer too small");
-    impl_->retain(a);impl_->retain(b);impl_->retain(out);if(!s.segments)return;
+    impl_->retain(a);impl_->retain(b);impl_->retain(out,true);if(!s.segments)return;
     int operation=300+(complex?2:0)+(s.shared_right?1:0);auto state=impl_->engine->pipeline(bits,operation);
-    if(!impl_->encoder){impl_->encoder=[impl_->command computeCommandEncoder];if(!impl_->encoder)throw std::runtime_error("Metal encoder allocation failed");}
-    else [impl_->encoder memoryBarrierWithScope:MTLBarrierScopeBuffers];
-    auto encoder=impl_->encoder;[encoder setComputePipelineState:state];
+    auto encoder=impl_->compute();[encoder setComputePipelineState:state];
     [encoder setBuffer:a->buffer offset:0 atIndex:0];[encoder setBuffer:b->buffer offset:0 atIndex:1];[encoder setBuffer:out->buffer offset:0 atIndex:2];
     std::uint32_t params[2]={std::uint32_t(s.segments),std::uint32_t(s.length)};[encoder setBytes:params length:sizeof(params) atIndex:3];
     [encoder dispatchThreads:MTLSizeMake(s.segments,1,1) threadsPerThreadgroup:MTLSizeMake(impl_->engine->group_size(state,bits,operation),1,1)];
@@ -391,7 +397,7 @@ void CommandBatch::encode_dot(int bits,bool complex,const SegmentedDot& s,const 
 void CommandBatch::encode_tree_sum(int bits,bool complex,const std::shared_ptr<detail::BufferStorage>& input,
                                    const std::shared_ptr<detail::BufferStorage>& out,std::size_t count){
     if(!impl_||impl_->submitted)throw std::logic_error("batch already submitted or moved");
-    validate(bits,count);impl_->retain(input);impl_->retain(out);
+    validate(bits,count);impl_->retain(input);impl_->retain(out,true);
     // Wider complex values lose in repeated interleaved comparisons. Small
     // copies/pairs need no local tree or barriers at all.
     bool cooperative=impl_->engine->options.cooperative_reductions&&count>2&&(!complex||bits<=384);
@@ -405,15 +411,13 @@ void CommandBatch::encode_tree_sum(int bits,bool complex,const std::shared_ptr<d
     auto reduced=[&](std::size_t n){return std::max(std::size_t(1),n/span+(n%span!=0));};
     std::size_t stride=std::size_t(bits/8+12)*(complex?2:1),first=reduced(count),second=reduced(first);
     std::shared_ptr<detail::BufferStorage> scratch[2];
-    if(first>1){scratch[0]=impl_->engine->allocate(checked_size(first,stride));impl_->retain(scratch[0]);}
-    if(second>1){scratch[1]=impl_->engine->allocate(checked_size(second,stride));impl_->retain(scratch[1]);}
+    if(first>1){scratch[0]=impl_->engine->allocate(checked_size(first,stride));impl_->retain(scratch[0],true);}
+    if(second>1){scratch[1]=impl_->engine->allocate(checked_size(second,stride));impl_->retain(scratch[1],true);}
     auto source=input;unsigned level=0;
     do {
         std::size_t next=reduced(count);
         auto destination=next==1?out:scratch[level%2];
-        if(!impl_->encoder){impl_->encoder=[impl_->command computeCommandEncoder];if(!impl_->encoder)throw std::runtime_error("Metal encoder allocation failed");}
-        else [impl_->encoder memoryBarrierWithScope:MTLBarrierScopeBuffers];
-        auto encoder=impl_->encoder;[encoder setComputePipelineState:state];
+        auto encoder=impl_->compute();[encoder setComputePipelineState:state];
         [encoder setBuffer:source->buffer offset:0 atIndex:0];[encoder setBuffer:destination->buffer offset:0 atIndex:2];
         Params params={std::uint32_t(count),std::uint32_t(operation),0,0,1};[encoder setBytes:&params length:sizeof(params) atIndex:3];
         if(cooperative)[encoder dispatchThreadgroups:MTLSizeMake(next,1,1) threadsPerThreadgroup:MTLSizeMake(group,1,1)];
@@ -430,14 +434,37 @@ Submission CommandBatch::submit(){
         ticket->resources.clear();ticket->command=nil;throw std::logic_error("buffer belongs to an unwaited submission");}
         ++claimed;
     }
-    if(impl_->encoder){[impl_->encoder endEncoding];impl_->encoder=nil;}
+    impl_->end();ticket->objects=std::move(impl_->objects);ticket->completions=std::move(impl_->completions);impl_->provisional.clear();
     impl_->submitted=true;[impl_->command commit];return Submission(std::move(ticket));
 }
 bool Submission::ready()const{
     if(!impl_)throw std::logic_error("empty submission");
     return impl_->command.status==MTLCommandBufferStatusCompleted||impl_->command.status==MTLCommandBufferStatusError;
 }
-Timing Submission::wait(){if(!impl_)throw std::logic_error("empty submission");impl_->finish();if(!impl_->error.empty())throw std::runtime_error("Metal execution: "+impl_->error);return impl_->timing;}
+Timing Submission::wait(){if(!impl_)throw std::logic_error("empty submission");impl_->finish();if(!impl_->error.empty())throw std::runtime_error("Metal execution: "+impl_->error);
+    if(!impl_->host_error.empty())throw std::runtime_error(impl_->host_error);return impl_->timing;}
+// ---- detail::Internal: the private hook of src/engine_internal.hpp ----
+namespace detail {
+#define LF_OPEN(b) if(!(b).impl_||(b).impl_->submitted)throw std::logic_error("batch already submitted or moved");auto& batch=*(b).impl_
+id<MTLDevice> Internal::device(const Engine& e){return e.impl->device;}
+id<MTLCommandQueue> Internal::queue(const Engine& e){return e.impl->queue;}
+id<MTLDevice> Internal::device(const CommandBatch& b){LF_OPEN(b);return batch.engine->device;}
+id<MTLComputeCommandEncoder> Internal::compute(CommandBatch& b){LF_OPEN(b);return batch.compute();}
+void Internal::copy(CommandBatch& b,const std::shared_ptr<BufferStorage>& from,const std::shared_ptr<BufferStorage>& to,std::size_t bytes){
+    LF_OPEN(b);batch.retain(from);batch.retain(to,true);if(!bytes)return;
+    if(bytes>from->bytes||bytes>to->bytes)throw std::invalid_argument("copy exceeds buffer");
+    if(batch.encoder){[batch.encoder endEncoding];batch.encoder=nil;}
+    if(!batch.blit){batch.blit=[batch.command blitCommandEncoder];if(!batch.blit)throw std::runtime_error("Metal blit encoder allocation failed");}
+    [batch.blit copyFromBuffer:from->buffer sourceOffset:0 toBuffer:to->buffer destinationOffset:0 size:bytes];
+}
+void Internal::retain(CommandBatch& b,const std::shared_ptr<BufferStorage>& r,bool written){LF_OPEN(b);batch.retain(r,written);}
+std::shared_ptr<BufferStorage> Internal::scratch(CommandBatch& b,std::size_t bytes){LF_OPEN(b);auto r=batch.engine->allocate(bytes);batch.retain(r,true);return r;}
+void Internal::keep(CommandBatch& b,id object){LF_OPEN(b);if(object)batch.objects.push_back(object);}
+ProvisionalFlag Internal::provisional(CommandBatch& b,const std::shared_ptr<BufferStorage>& r){
+    LF_OPEN(b);batch.retain(r,true);auto flag=std::make_shared<std::atomic<bool>>(false);batch.provisional.emplace_back(r,flag);return flag;}
+void Internal::on_completion(CommandBatch& b,std::function<void()> f){LF_OPEN(b);batch.completions.push_back(std::move(f));}
+#undef LF_OPEN
+}
 std::shared_ptr<detail::BufferStorage> Engine::allocate(std::size_t bytes){return impl->allocate(bytes);}
 CommandBatch Engine::batch(){return CommandBatch(std::make_unique<CommandBatch::Impl>(impl));}
 Engine::Engine(EngineOptions options):impl(new Impl(options)){} Engine::~Engine()=default;

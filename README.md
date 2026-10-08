@@ -68,7 +68,8 @@ measurements.
 - Correctly rounded element-wise `exp`, `expm1`, `log`, `log1p`, `sin`, `cos`, `atan2` and complex `exp`/`log`
   (`transcendental.hpp`, bit-identical to MPFR/MPC): certified GPU evaluation with rare host retries at more limbs,
   plus complex integer powers by a documented fused sequence.
-- Typed resident buffers, asynchronous submissions, and dependent operations in one command batch.
+- Typed resident buffers, asynchronous submissions, and dependent operations in one command batch, including
+  polynomials, norms and transcendental functions (`docs/execution.md`, "Resident units").
 - In-place pointwise arithmetic, cached pipelines, and explicit buffer ownership checks.
 - Fixed-order real and complex tree reductions with GPU-resident intermediate levels.
 - Configurable threadgroup sizes and per-pipeline limits for measured tuning.

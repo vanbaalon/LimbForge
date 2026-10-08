@@ -60,6 +60,7 @@ struct Prewarm {
 };
 namespace detail {
 struct BufferStorage;
+struct Internal; // src/engine_internal.hpp: Metal objects behind Engine/CommandBatch for library units (not public API)
 void* mapped(const std::shared_ptr<BufferStorage>&);
 void transfer(const std::shared_ptr<BufferStorage>&,void*,std::size_t,bool);
 template<class T> struct Format;
@@ -67,11 +68,13 @@ template<int N> struct Format<Number<N>> {static_assert(N>=2&&N<=32,"unsupported
 template<int N> struct Format<Complex<N>> {static_assert(N>=2&&N<=32,"unsupported precision");static constexpr int bits=32*N;static constexpr bool complex=true;};
 // Status words (e.g. batched 4x4 pivot statuses); not an arithmetic format.
 template<> struct Format<std::uint32_t> {static constexpr int bits=0;static constexpr bool complex=false;};
+template<> struct Format<std::int32_t> {static constexpr int bits=0;static constexpr bool complex=false;};
+struct Access;
 }
 template<class T> class Buffer {
     std::shared_ptr<detail::BufferStorage> storage_;std::size_t count_=0;
     Buffer(std::shared_ptr<detail::BufferStorage> storage,std::size_t count):storage_(std::move(storage)),count_(count){}
-    friend class Engine;friend class CommandBatch;
+    friend class Engine;friend class CommandBatch;friend struct detail::Access;
 public:
     Buffer()=default;
     std::size_t size()const{return count_;}
@@ -81,6 +84,11 @@ public:
     void upload(const T* source,std::size_t count){if(count>count_)throw std::invalid_argument("upload exceeds buffer");detail::transfer(storage_,const_cast<T*>(source),count*sizeof(T),true);}
     void download(T* target,std::size_t count)const{if(count>count_)throw std::invalid_argument("download exceeds buffer");detail::transfer(storage_,target,count*sizeof(T),false);}
 };
+namespace detail {
+// Type-erased buffer operand for the resident encoders of separate units (numerics.hpp, transcendental.hpp).
+struct Operand { std::shared_ptr<BufferStorage> storage; std::size_t size=0; };
+struct Access { template<class T> static Operand operand(const Buffer<T>& b){return {b.storage_,b.size()};} };
+}
 class Submission {
     struct Impl;std::shared_ptr<Impl> impl_;
     explicit Submission(std::shared_ptr<Impl> impl):impl_(std::move(impl)){}
@@ -105,7 +113,7 @@ class CommandBatch {
                     const std::shared_ptr<detail::BufferStorage>&,std::size_t);
     void encode_tree_sum(int,bool,const std::shared_ptr<detail::BufferStorage>&,
                          const std::shared_ptr<detail::BufferStorage>&,std::size_t);
-    friend class Engine;
+    friend class Engine;friend struct detail::Internal;
 public:
     ~CommandBatch();CommandBatch(CommandBatch&&)noexcept;CommandBatch& operator=(CommandBatch&&)noexcept;
     template<class T> void run(Operation op,const Buffer<T>& a,const Buffer<T>& b,Buffer<T>& out){
@@ -169,6 +177,7 @@ public:
         encode_dot(detail::Format<T>::bits,detail::Format<T>::complex,shape,a.storage_,a.size(),b.storage_,b.size(),out.storage_,out.size());
     }
     Submission submit(); // Single use; explicit barriers order dependent dispatches.
+    // Separate units (Numerics, Transcendentals) also encode into a batch: docs/execution.md, "Resident units".
 };
 // One Engine per host thread. Buffers and specialized pipelines are reused.
 class Engine {
@@ -211,7 +220,7 @@ public:
     Timing vector_recurrence(int bits,const VectorRecurrence& shape,const void* start,const void* p,const void* q,const void* r,void* out,
                              const void* base=nullptr,const void* dp=nullptr,const void* dq=nullptr);
 private:
-    friend class CommandBatch;
+    friend class CommandBatch;friend struct detail::Internal;
     std::shared_ptr<detail::BufferStorage> allocate(std::size_t bytes);
     struct Impl; std::shared_ptr<Impl> impl;
 };

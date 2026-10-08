@@ -4,6 +4,7 @@
 #import <Foundation/Foundation.h>
 #import <Metal/Metal.h>
 #include "limbforge/transcendental.hpp"
+#include "engine_internal.hpp"
 #include "transcendental_core.hpp"
 #include "transcendental_source.hpp"
 #include <algorithm>
@@ -207,11 +208,13 @@ struct Library { id<MTLLibrary> lib;std::map<int,id<MTLComputePipelineState>> pi
 struct Transcendentals::Impl {
     TranscendentalOptions options;TranscendentalReport report;id<MTLDevice> device;id<MTLCommandQueue> queue;
     std::map<int,Library> libs;id<MTLBuffer> bits_buffer;std::map<std::string,id<MTLBuffer>> pool;
+    // As Engine::Impl: lookups hold the lock, compilation does not; the first stored object is kept (map nodes are stable).
+    std::mutex cache_mutex;
     id<MTLBuffer> buffer(const std::string& role,std::size_t bytes){
         auto& b=pool[role];if(!b||b.length<bytes){b=nil;b=[device newBufferWithLength:std::max<std::size_t>(bytes,16) options:MTLResourceStorageModeShared];}
         if(!b)throw std::runtime_error("Metal allocation failed ("+role+")");return b;}
     Library& library(int bits){
-        auto found=libs.find(bits);if(found!=libs.end())return found->second;
+        {std::lock_guard<std::mutex> lock(cache_mutex);auto found=libs.find(bits);if(found!=libs.end())return found->second;}
         const int W=gpu_words(bits/32);Library L;
         NSString* source=[NSString stringWithFormat:@"#define LF_BITS %d\n#define LF_W %d\n%s",bits,W,limbforge_transcendental_source];
         MTLCompileOptions* o=[MTLCompileOptions new];o.languageVersion=MTLLanguageVersion((4u<<16)|0u);o.mathMode=MTLMathModeSafe;
@@ -219,26 +222,33 @@ struct Transcendentals::Impl {
         if(!L.lib)throw std::runtime_error("Metal compilation (transcendental): "+message(e));
         const void* t=detail::transcendental_tables(W);
         L.tables=[device newBufferWithBytes:t length:table_bytes(W) options:MTLResourceStorageModeShared];
-        if(!bits_buffer){const word* q=detail::two_over_pi_bits();std::size_t n=std::size_t(two_over_pi_length/32+2);
-            bits_buffer=[device newBufferWithBytes:q length:4*n options:MTLResourceStorageModeShared];}
-        if(!L.tables||!bits_buffer)throw std::runtime_error("Metal allocation failed (transcendental tables)");
+        const word* q=detail::two_over_pi_bits();std::size_t n=std::size_t(two_over_pi_length/32+2);
+        id<MTLBuffer> bits_copy=[device newBufferWithBytes:q length:4*n options:MTLResourceStorageModeShared];
+        if(!L.tables||!bits_copy)throw std::runtime_error("Metal allocation failed (transcendental tables)");
+        std::lock_guard<std::mutex> lock(cache_mutex);if(!bits_buffer)bits_buffer=bits_copy;
         return libs.emplace(bits,L).first->second;
     }
     id<MTLComputePipelineState> pipeline(int bits,Function f){
-        Library& L=library(bits);auto it=L.pipes.find(int(f));if(it!=L.pipes.end())return it->second;
+        Library& L=library(bits);
+        {std::lock_guard<std::mutex> lock(cache_mutex);auto it=L.pipes.find(int(f));if(it!=L.pipes.end())return it->second;}
         NSString* name=f==Function::atan2?@"lf_atan2":f==Function::complex_powi?@"lf_powi":function_is_complex(f)?@"lf_complex":@"lf_unary";
         MTLFunctionConstantValues* v=[MTLFunctionConstantValues new];int op=int(f);[v setConstantValue:&op type:MTLDataTypeInt atIndex:0];
         NSError* e=nil;id<MTLFunction> fn=[L.lib newFunctionWithName:name constantValues:v error:&e];
         if(!fn)throw std::runtime_error("missing Metal function: "+message(e));
         id<MTLComputePipelineState> p=[device newComputePipelineStateWithFunction:fn error:&e];
         if(!p)throw std::runtime_error("Metal pipeline: "+message(e));
-        return L.pipes.emplace(int(f),p).first->second;
+        std::lock_guard<std::mutex> lock(cache_mutex);return L.pipes.emplace(int(f),p).first->second;
     }
+    NSUInteger group(id<MTLComputePipelineState> p)const{return std::min<NSUInteger>(std::max(1u,options.threads_per_threadgroup),p.maxTotalThreadsPerThreadgroup);}
     Timing dispatch(int bits,Function f,const void* a,const void* b,const std::int32_t* k,std::size_t k_count,void* out,std::size_t count);
 };
 static_assert(sizeof(tr::Tables<10>)==4*(8+15+3*13+3*65*13),"table layout");
 Transcendentals::Transcendentals(TranscendentalOptions options):impl(std::make_unique<Impl>()){
     impl->options=options;impl->device=MTLCreateSystemDefaultDevice();if(!impl->device)throw std::runtime_error("no Metal GPU available");
+    impl->queue=[impl->device newCommandQueue];if(!impl->queue)throw std::runtime_error("cannot create Metal command queue");
+}
+Transcendentals::Transcendentals(Engine& engine,TranscendentalOptions options):impl(std::make_unique<Impl>()){
+    impl->options=options;impl->device=detail::Internal::device(engine);
     impl->queue=[impl->device newCommandQueue];if(!impl->queue)throw std::runtime_error("cannot create Metal command queue");
 }
 Transcendentals::~Transcendentals()=default;
@@ -271,8 +281,7 @@ Timing Transcendentals::Impl::dispatch(int bits,Function f,const void* a,const v
     [enc setBuffer:L.tables offset:0 atIndex:3];[enc setBuffer:bits_buffer offset:0 atIndex:4];
     [enc setBuffer:R offset:0 atIndex:5];[enc setBuffer:R offset:4 atIndex:6];[enc setBytes:&n32 length:4 atIndex:7];
     [enc setBuffer:(K?K:A) offset:0 atIndex:8];[enc setBytes:&ks length:4 atIndex:9];
-    NSUInteger tg=std::min<NSUInteger>(std::max(1u,options.threads_per_threadgroup),p.maxTotalThreadsPerThreadgroup);
-    [enc dispatchThreads:MTLSizeMake(count,1,1) threadsPerThreadgroup:MTLSizeMake(tg,1,1)];[enc endEncoding];
+    [enc dispatchThreads:MTLSizeMake(count,1,1) threadsPerThreadgroup:MTLSizeMake(group(p),1,1)];[enc endEncoding];
     [cb commit];[cb waitUntilCompleted];
     if(cb.status!=MTLCommandBufferStatusCompleted)throw std::runtime_error("transcendental: Metal command failed: "+message(cb.error));
     report.gpu_seconds=cb.GPUEndTime-cb.GPUStartTime;
@@ -286,5 +295,62 @@ Timing Transcendentals::Impl::dispatch(int bits,Function f,const void* a,const v
         for(int r=0;r<3;++r)report.resolved[r]=c.resolved[r];report.unresolved=c.unresolved;report.retry_seconds=since(rt);
     }
     report.wall_seconds=since(start);return {report.gpu_seconds,report.wall_seconds};
+}}
+// ---- Resident passes ----
+namespace detail { struct TranscendentalPass { TranscendentalReport report;std::atomic<bool> done{false}; }; }
+bool TranscendentalTicket::resolved()const{return pass_&&pass_->done.load(std::memory_order_acquire);}
+const TranscendentalReport& TranscendentalTicket::report()const{
+    if(!resolved())throw std::logic_error("transcendental pass not resolved: wait for the submission that contains it");return pass_->report;}
+TranscendentalTicket Transcendentals::encode(CommandBatch& batch,int bits,bool complex,Function f,const detail::Operand& a,const detail::Operand& b,
+                                             const detail::Operand& k,const detail::Operand& out){@autoreleasepool{
+    using detail::Internal;
+    if(Internal::device(batch)!=impl->device)throw std::invalid_argument("unit and batch use different Metal devices (construct the unit from the batch's Engine)");
+    check_bits(bits);if(int(f)<0||int(f)>int(Function::complex_powi))throw std::invalid_argument("transcendental: invalid function");
+    if(function_is_complex(f)!=complex)throw std::invalid_argument("transcendental: function and buffer format mismatch");
+    const bool two=f==Function::atan2,powi=f==Function::complex_powi;
+    if(two!=bool(b.storage))throw std::invalid_argument(two?"atan2 needs the x operand":"only atan2 takes a second operand");
+    if(!a.storage||!out.storage||(powi&&a.size&&!k.storage))throw std::invalid_argument("transcendental: missing buffer");
+    const std::size_t count=a.size;
+    if(out.size!=count||(two&&b.size!=count))throw std::invalid_argument("transcendental: buffer counts must match");
+    if(powi&&count&&k.size!=1&&k.size!=count)throw std::invalid_argument("powi: k must hold 1 or count values");
+    if(count>=(std::size_t(1)<<31))throw std::invalid_argument("transcendental: count exceeds 32-bit indexing");
+    Internal::retain(batch,a.storage);if(two)Internal::retain(batch,b.storage);if(powi&&k.storage)Internal::retain(batch,k.storage);Internal::retain(batch,out.storage,true);
+    auto pass=std::make_shared<detail::TranscendentalPass>();pass->report.count=count;
+    auto cs=Clock::now();id<MTLComputePipelineState> p=count?impl->pipeline(bits,f):nil;pass->report.compile_seconds=count?since(cs):0;
+    if(!count||powi){ // no retries: final when the GPU completes
+        if(count){Internal::keep(batch,p);auto enc=Internal::compute(batch);std::uint32_t n32=std::uint32_t(count),ks=k.size==1?0u:1u;
+            [enc setComputePipelineState:p];[enc setBuffer:a.storage->buffer offset:0 atIndex:0];[enc setBuffer:out.storage->buffer offset:0 atIndex:2];
+            [enc setBytes:&n32 length:4 atIndex:7];[enc setBuffer:k.storage->buffer offset:0 atIndex:8];[enc setBytes:&ks length:4 atIndex:9];
+            [enc dispatchThreads:MTLSizeMake(count,1,1) threadsPerThreadgroup:MTLSizeMake(impl->group(p),1,1)];}
+        Internal::on_completion(batch,[pass]{pass->done.store(true,std::memory_order_release);});return TranscendentalTicket(pass);
+    }
+    Library& L=impl->library(bits);id<MTLBuffer> tables=L.tables,bits_buffer;{std::lock_guard<std::mutex> lock(impl->cache_mutex);bits_buffer=impl->bits_buffer;}
+    // The kernel reads a snapshot (taken in the batch, after earlier writes), so the retry sees the same operands even when
+    // out aliases an input or a later operation overwrites one.
+    const std::size_t bytes=std::size_t(bits/8+12)*(complex?2:1)*count;
+    auto A=Internal::scratch(batch,bytes);Internal::copy(batch,a.storage,A,bytes);
+    std::shared_ptr<detail::BufferStorage> B;if(two){B=Internal::scratch(batch,bytes);Internal::copy(batch,b.storage,B,bytes);}
+    auto R=Internal::scratch(batch,4*(count+1));std::memset(R->buffer.contents,0,4);
+    Internal::keep(batch,p);Internal::keep(batch,tables);Internal::keep(batch,bits_buffer);
+    auto enc=Internal::compute(batch);std::uint32_t n32=std::uint32_t(count),ks=0;
+    [enc setComputePipelineState:p];[enc setBuffer:A->buffer offset:0 atIndex:0];[enc setBuffer:(B?B:A)->buffer offset:0 atIndex:1];[enc setBuffer:out.storage->buffer offset:0 atIndex:2];
+    [enc setBuffer:tables offset:0 atIndex:3];[enc setBuffer:bits_buffer offset:0 atIndex:4];
+    [enc setBuffer:R->buffer offset:0 atIndex:5];[enc setBuffer:R->buffer offset:4 atIndex:6];[enc setBytes:&n32 length:4 atIndex:7];
+    [enc setBuffer:A->buffer offset:0 atIndex:8];[enc setBytes:&ks length:4 atIndex:9];
+    [enc dispatchThreads:MTLSizeMake(count,1,1) threadsPerThreadgroup:MTLSizeMake(impl->group(p),1,1)];
+    auto flag=Internal::provisional(batch,out.storage);auto O=out.storage;const unsigned threads=impl->options.host_threads;
+    // Host retries after the GPU pass (run by Submission::wait before the buffers are released): as the host-array call.
+    Internal::on_completion(batch,[pass,flag,A,B,R,O,f,bits,threads]{
+        auto rt=Clock::now();TranscendentalReport& rep=pass->report;std::uint32_t failed;std::memcpy(&failed,R->buffer.contents,4);
+        if(failed){
+            rep.retried=failed;std::vector<std::uint32_t> list(failed);std::memcpy(list.data(),static_cast<const char*>(R->buffer.contents)+4,4*std::size_t(failed));
+            std::sort(list.begin(),list.end());Counters c;
+            by_words(bits/32,[&](auto tag){constexpr int N=decltype(tag)::value;
+                resolve<N>(f,static_cast<const Number<N>*>(A->buffer.contents),B?static_cast<const Number<N>*>(B->buffer.contents):nullptr,
+                           static_cast<Number<N>*>(O->buffer.contents),list.data(),list.size(),threads,c);});
+            for(int r=0;r<3;++r)rep.resolved[r]=c.resolved[r];rep.unresolved=c.unresolved;rep.retry_seconds=since(rt);
+        }
+        rep.provisional_reads=flag->load();pass->done.store(true,std::memory_order_release);});
+    return TranscendentalTicket(pass);
 }}
 }

@@ -254,7 +254,7 @@ Each item: written contract → MPFR/MPC reference → CPU implementation in `co
   **Status (round 35-D7):** done as host-array `Transcendentals` (`transcendental.hpp`): real `exp`, `expm1`, `log`, `log1p`,
   `sin`, `cos`, `atan2` and complex `exp`/`log` correctly rounded (W = N+2 words on the GPU with a rigorous error bound,
   compacted retry list resolved on the host at N+4, 2N+4, 4N+8 words), `powi` as a documented fused sequence. Open: a
-  resident `CommandBatch` version (design note in the header), GPU-side retries, faster large-batch evaluation.
+  GPU-side retries, faster large-batch evaluation. The resident `CommandBatch` pass is done (round 39; retries run at `wait()`).
 
 ### Phase E — Latency-bound workloads: cooperative intra-number arithmetic — Track T1, after B
 
@@ -270,7 +270,7 @@ For BSolver (≈128 lanes × 600 steps) the GPU runs ~128 threads. Two complemen
 
 ---
 
-## Status summary (2026-10-08, after round 38 and 35-D7)
+## Status summary (2026-10-08, after round 38, 35-D7 and 39-resident)
 
 | Item | Status | Where |
 |---|---|---|
@@ -289,12 +289,14 @@ For BSolver (≈128 lanes × 600 steps) the GPU runs ~128 threads. Two complemen
 | S6 precision casts | done (38) | `Engine::cast`, `CommandBatch::cast` |
 | E1 cooperative recurrence | done for G = 16/32 (17, 22) | `cooperative.metal` |
 | L1 residue GEMM | done (16, 18, 20) | `linalg.hpp` |
-| S1 polynomial values and jets (order ≤ 2) | done (32-S1), host-array | `Numerics::poly_eval(_jet)` in `numerics.hpp` |
-| S4 norms, scaled residual, status summaries | done (32-S4), host-array | `Numerics::norm_inf/norm_max/norm2/scaled_residual/summarize_status` |
-| D7 transcendentals (exp, expm1, log, log1p, sin, cos, atan2, complex exp/log, powi) | done (35-D7), host-array; L2-style certified rounding with compacted host retries | `transcendental.hpp` |
+| S1 polynomial values and jets (order ≤ 2) | done (32-S1), resident (39) | `Numerics::poly_eval(_jet)` in `numerics.hpp` |
+| S4 norms, scaled residual, status summaries | done (32-S4), resident (39) | `Numerics::norm_inf/norm_max/norm2/scaled_residual/summarize_status` |
+| D7 transcendentals (exp, expm1, log, log1p, sin, cos, atan2, complex exp/log, powi) | done (35-D7); L2-style certified rounding with compacted host retries; resident first pass with retries at `wait()` (39) | `transcendental.hpp` |
+| Resident unit hook | done (39) | `src/engine_internal.hpp`; `docs/execution.md`, "Resident units" |
 
 Next, by consumer value: qscmx/BSolver integration and end-to-end timing on an idle host (also the
-pending GitHub speed figures); resident `linalg`/`numerics`/transcendentals (`CommandBatch` versions); S5 pivoted/complex
+pending GitHub speed figures); resident `linalg` (`CommandBatch` versions through `src/engine_internal.hpp`; numerics and
+transcendentals done in round 39), GPU-side transcendental retries, the on-device norm threshold; S5 pivoted/complex
 QR and a faster QR panel; G = 4/8 cooperative kernels under shader validation; fused `vector_recurrence` above
 512 bits.
 
@@ -401,7 +403,7 @@ Paths refer to the local consumer checkouts; their equations are evidence for de
 
 *Status (round 32-S1): host-array `Numerics::poly_eval` / `poly_eval_jet` (order ≤ 2, real/complex, composed or
 fused, coefficient sets shared by adjacent points) in `numerics.hpp`; MPFR-replay bitwise at 64–1024 bits.
-Open: resident `CommandBatch` version, C1 views, comparison with D3 shared-table dots for QSC power tables.*
+Resident `CommandBatch` version done in round 39. Open: C1 views, comparison with D3 shared-table dots for QSC power tables.*
 
 Sketch: `poly_eval(coeffs, points, out)` and `poly_eval_jet<2>(coeffs, points, jets)`.
 Accept shared coefficient sets, batched points and C1 views. Coefficients use ascending powers.
@@ -458,7 +460,7 @@ requiring its own accuracy contract; it is not a prerequisite for this family.
 
 *Status (round 32-S4): host-array `Numerics::norm_inf`, `norm_max`, `norm2`, `scaled_residual`, `summarize_status`
 with segments, per-segment `NormInfo` (OR, failing count, first failing, argmax); MPFR-replay bitwise at 64–1024
-bits. Open: resident buffers and the on-device threshold comparison (design note in `numerics.md`).*
+bits. Resident `CommandBatch` versions done in round 39. Open: the on-device threshold comparison (`numerics.md`).*
 
 Sketch: `norm_inf`, `norm2`, `scaled_residual`, and `summarize_status`, with optional segmented outputs.
 Return multiprecision scalars and a status summary in resident buffers; host double conversion is an

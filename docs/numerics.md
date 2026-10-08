@@ -170,8 +170,15 @@ empty), so inverses can feed later operations in the same batch.
 `Transcendentals::run(bits, f, a, out, count, b)` (`transcendental.hpp`, plan D7) evaluates element-wise
 real `exp`, `expm1`, `log`, `log1p`, `sin`, `cos`, `atan2(a = y, b = x)` on `Float<bits>` arrays and
 complex `exp`, `log` on `Complex<bits/32>` arrays; `Transcendentals::powi(bits, z, k, k_count, out, count)`
-computes `z^k`. `transcendental_cpu` gives the same results on the host. Host arrays only; `out` may
-alias an input.
+computes `z^k`. `transcendental_cpu` gives the same results on the host. `out` may alias an input.
+Resident passes (round 39): `Transcendentals tr(engine); auto t = tr.run(batch, f, a, out)` (`atan2`:
+`tr.run(batch, f, y, x, out)`; `tr.powi(batch, z, k, out)` with `Buffer<std::int32_t> k`) encode the same
+GPU pass on an in-batch snapshot of the inputs and keep the undecided indices on a resident compacted
+list; `Submission::wait()` runs the host retry ladder below and patches `out` before releasing the
+buffers, so `out` equals the host call bit for bit once waited. Until then `out` is provisional: it
+cannot be written again in the batch, and operations of the same batch that read it see the GPU
+value of undecided elements (`t.report().retried`, `provisional_reads`; `docs/execution.md`,
+"Resident units").
 
 **Contract.** Every real function and every component of complex `exp` and `log` is **correctly
 rounded**: the result is `RN(f(x))`, round to nearest, ties to even, of the exact mathematical value,
@@ -560,6 +567,9 @@ points share a set; there are `ceil(points / points_per_set)` sets. `terms = deg
 the zero polynomial. Jets are Taylor coefficients with respect to the argument: `(p, p', p''/2!)`. For
 inverse-power evaluation pass `x = 1/u`; the chain rule and any prefactor in `u` belong to the caller.
 `values` may equal the points array for `poly_eval`; otherwise outputs must not overlap inputs.
+Resident form (round 39): `Numerics nm(engine); nm.poly_eval(batch, p, C, X, V)` and
+`nm.poly_eval_jet(batch, p, order, C, X, J)` on `Buffer<T>` operands of the batch's engine, bit-identical
+to the host calls (`docs/execution.md`, "Resident units"); `p.complex` must match `T`.
 
 **Rounding sequence.** `mac(a, x, b)` is one of
 
@@ -701,14 +711,20 @@ call and transfers), 10 ms for `scaled_residual` (one square root and one divisi
 consumer-style CPU maximum of `mpfr_hypot` takes 1.1 s serial and 0.10 s on 18 workers. 10^4
 segments of 100 entries take the same time.
 
-**Resident versions (later).** Both families are short dispatch sequences with small scratch, so
-`CommandBatch` versions would encode the same pipelines on `Buffer<T>` operands: one dispatch for
-`poly_eval_jet`; for the norms the passes above plus a small initialisation dispatch for the summary
-words (written by the host today), with block-root scratch of `2 * count * ceil(length/32)` keys and
-indices from a workspace query, and `values`/`info` written to resident buffers. A threshold
-comparison (value against a caller's tolerance) fits in the final pass, so the host reads back only
-`info`. This needs the private `Buffer`/`CommandBatch` internals of `engine.hpp`, which this round
-did not modify.
+**Resident versions (round 39).** `Numerics(Engine&)` encodes both families into an engine's
+`CommandBatch` on `Buffer<T>` operands: `poly_eval(batch, shape, coeffs, points, values)`,
+`poly_eval_jet(batch, shape, order, ...)`, `norm_inf` / `norm_max` / `norm2(batch, segments, x, values[, info])`,
+`scaled_residual(batch, segments, r, scale, values[, info])` and `summarize_status(batch, segments, x, info)`,
+with `values` a `Buffer<Float<bits>>` (one per segment) and `info` a `Buffer<NormInfo>`. They run the
+same pipelines and dispatch sequence as the host calls (one code path, `encode_norm_passes` in
+`src/numerics.mm`), so results are bit-identical; the summary words are initialised on the host in
+fresh per-call scratch (no extra dispatch), block roots use per-call scratch retained until the
+submission is waited, and empty segments are written by the finish pass alone. Tested bitwise against
+the host calls at 64/224/256/384/1024 bits, real and complex, including three tree passes inside one
+batch after an engine operation and chained unit/engine operations (`tests/test_resident_units.cpp`).
+Open: the on-device threshold comparison (it fits in the finish pass, so the host would read back only
+`info`).
+
 ## QR factorization and least squares
 
 ```cpp
