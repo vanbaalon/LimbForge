@@ -288,6 +288,27 @@ template<int W,int N> inline Exact<W> exact_number(LIMBFORGE_THREAD const Number
 template<int N,int W> inline Number<N> round_exact(LIMBFORGE_THREAD const Exact<W>& x){
     if(!x.sign)return zero<N>();return pack<N>(x.w,x.scale,x.sign,ok);
 }
+// Exact sum in one two's-complement window of F words: when every nonzero term lies within the
+// window (with room for carries and a sign bit), the sum is exact there and rounded once into r.
+// Returns false when the terms are spread too widely; callers then use the ordered exact path.
+template<int F,int A> inline void window_accumulate(LIMBFORGE_THREAD word (&acc)[F],LIMBFORGE_THREAD const Exact<A>& t,exponent_type lo){
+    if(!t.sign)return;word x[F];for(int k=0;k<F;++k)x[k]=0;place(x,t.w,t.scale-lo);
+    if(t.sign>0){dword c=0;for(int k=0;k<F;++k){dword v=dword(acc[k])+x[k]+c;acc[k]=word(v);c=v>>32;}}
+    else{dword b=0;for(int k=0;k<F;++k){dword v=dword(x[k])+b;word old=acc[k];acc[k]=word(dword(old)-v);b=dword(old)<v;}}
+}
+template<int N,int F,int A,int B,int C> inline bool window_sum(LIMBFORGE_THREAD const Exact<A>& x,LIMBFORGE_THREAD const Exact<B>& y,LIMBFORGE_THREAD const Exact<C>& z,LIMBFORGE_THREAD Number<N>& r){
+    exponent_type lo=0,hi=0;bool any=false;
+    if(x.sign){lo=x.scale;hi=exact_msb(x);any=true;}
+    if(y.sign){exponent_type l=y.scale,h=exact_msb(y);if(!any||l<lo)lo=l;if(!any||h>hi)hi=h;any=true;}
+    if(z.sign){exponent_type l=z.scale,h=exact_msb(z);if(!any||l<lo)lo=l;if(!any||h>hi)hi=h;any=true;}
+    if(!any){r=zero<N>();return true;}
+    if(hi+3-lo>=exponent_type(32*F))return false;
+    word acc[F];for(int k=0;k<F;++k)acc[k]=0;
+    window_accumulate(acc,x,lo);window_accumulate(acc,y,lo);window_accumulate(acc,z,lo);
+    int sign=1;if(acc[F-1]>>31){sign=-1;dword c=1;for(int k=0;k<F;++k){dword v=dword(~acc[k])+c;acc[k]=word(v);c=v>>32;}}
+    bool nonzero=false;for(int k=0;k<F;++k)nonzero|=acc[k]!=0;
+    r=nonzero?pack<N>(acc,lo,sign,ok):zero<N>();return true;
+}
 // RN(a*b+c) with a single rounding (MPFR mpfr_fma contract).
 template<int N> inline Number<N> fma(LIMBFORGE_THREAD const Number<N>& a,LIMBFORGE_THREAD const Number<N>& b,LIMBFORGE_THREAD const Number<N>& c){
     word status=a.status|b.status|c.status;if(status)return zero<N>(status);
@@ -295,6 +316,8 @@ template<int N> inline Number<N> fma(LIMBFORGE_THREAD const Number<N>& a,LIMBFOR
     // 16-32-word addend must be padded, or the GPU returns wrong results (docs/gpu-codegen.md).
     constexpr int P=2*N+1,C=N>=16?scratch(N):N,FMA_W=scratch(exact_words(N,P,C));
     auto p=exact_product<N,P>(a,b);auto q=exact_number<C>(c);
+    Exact<1> none;none.sign=0;none.scale=0;none.w[0]=0;
+    {Number<N> r;if(window_sum<N,scratch(3*N+4)>(p,q,none,r))return r;}
     return round_exact<N>(exact_add<N,FMA_W>(p,q));
 }
 template<int N> inline Number<N> fms(LIMBFORGE_THREAD const Number<N>& a,LIMBFORGE_THREAD const Number<N>& b,LIMBFORGE_THREAD const Number<N>& c){
@@ -309,23 +332,8 @@ template<int N> inline Number<N> dot2_add(LIMBFORGE_THREAD const Number<N>& a,LI
     word status=a.status|b.status|c.status|d.status|e.status;if(status)return zero<N>(status);
     constexpr int P=product_words<N>(),W1=exact_words(N,P,P),W2=exact_words(N,P,W1);
     Exact<P> t[3]={exact_product(a,b),exact_product(c,d),exact_number<P>(e)};
-    // Fast path: when every nonzero term fits one two's-complement window of F words (with room
-    // for carries and a sign bit), the sum is exact there and is rounded once. Wider spreads take the
-    // general ordered path below. Same contract either way.
-    constexpr int F=scratch(3*N+4);
-    {exponent_type lo=0,hi=0;bool any=false;
-        for(int i=0;i<3;++i)if(t[i].sign){exponent_type l=t[i].scale,h=exact_msb(t[i]);if(!any||l<lo)lo=l;if(!any||h>hi)hi=h;any=true;}
-        if(!any)return zero<N>();
-        if(hi+3-lo<exponent_type(32*F)){
-            word acc[F];for(int k=0;k<F;++k)acc[k]=0;
-            for(int i=0;i<3;++i)if(t[i].sign){word x[F];for(int k=0;k<F;++k)x[k]=0;place(x,t[i].w,t[i].scale-lo);
-                if(t[i].sign>0){dword c=0;for(int k=0;k<F;++k){dword v=dword(acc[k])+x[k]+c;acc[k]=word(v);c=v>>32;}}
-                else{dword b=0;for(int k=0;k<F;++k){dword v=dword(x[k])+b;word old=acc[k];acc[k]=word(dword(old)-v);b=dword(old)<v;}}}
-            int sign=1;if(acc[F-1]>>31){sign=-1;dword c=1;for(int k=0;k<F;++k){dword v=dword(~acc[k])+c;acc[k]=word(v);c=v>>32;}}
-            bool nonzero=false;for(int k=0;k<F;++k)nonzero|=acc[k]!=0;if(!nonzero)return zero<N>();
-            return pack<N>(acc,lo,sign,ok);
-        }
-    }
+    // Fast path: every nonzero term fits one exact two's-complement window (see window_sum).
+    {Number<N> r;if(window_sum<N,scratch(3*N+4)>(t[0],t[1],t[2],r))return r;}
     exponent_type key[3];for(int i=0;i<3;++i)key[i]=t[i].sign?exact_msb(t[i]):-(exponent_type(1)<<62);
     // Three named terms ordered by msb, largest first.
     int i1=key[0]>=key[1]?(key[0]>=key[2]?0:2):(key[1]>=key[2]?1:2);
