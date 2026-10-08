@@ -398,6 +398,14 @@ sub-block. The integer GEMM is the exact residue GEMM of plan item L1b:
 - three TensorOps int8 matrix products per modulus, exact in int32 for `K <= 65472`;
 - the products recombined modulo `m`.
 
+Since round 40 one dispatch per batch of moduli (every modulus for small products; batches limited
+by a digit-plane budget of 64 MB for large ones) forms the three products of each 64 × 32 output
+tile in registers (MPP cooperative tensors) and writes only the residue, instead of three int32
+planes per modulus and a separate combine pass: per output and modulus, 4 instead of 28 bytes of
+memory traffic (int32 planes written and read back, residue written and read by `reconstruct`),
+which dominates a QR trailing update `RN(X - V Y)` (K = 32); a small product needs a handful of
+dispatches instead of four per modulus. The residues are the same exact values.
+
 The modulus count makes `prod m > 4 * K * 2^(Pb + Pc)`, where `Pb` and `Pc` are the widest integer
 widths (`bits` plus the widest band). This is strictly more than the `2 * |sum|` that the signed
 Garner reconstruction needs. When both lines of an output have one band, its reconstructed integer
@@ -728,8 +736,9 @@ Open: the on-device threshold comparison (it fits in the finish pass, so the hos
 ## QR factorization and least squares
 
 ```cpp
-QROptions o;                                       // FactorOptions (block = 32, host_macs, solve_host_macs, gpu) + rank_bits
+QROptions o;                                       // FactorOptions (block = 32, host_macs, solve_host_macs, gpu) + rank_bits, pivot
 QRFactor qr = la.factor_qr(bits, A, m, n, o);      // A (m x n, m >= n) = Q R; qr.info().rank == n when full rank
+                                                   // o.pivot: A P = Q R, P = qr.permutation() (column j of R is column perm[j] of A)
 qr.solve(B, nrhs, X);                              // X (n x nrhs) minimises ||A x - b|| for each column b of B (m x nrhs)
 qr.apply_q(B, nrhs, transpose);                    // B (m x nrhs) <- Q^T B (transpose) or Q B, in place
 qr.r(); qr.v(); qr.tau(); qr.t();                  // R (n x n), V (m x n), tau (n), T (nb x nb per block)
@@ -785,38 +794,106 @@ the partial group `[k0, j)`. A trailing column receiving the whole block gives t
 group formula because `T_b` is upper triangular and `V_b` is zero above its diagonal, and zero
 terms do not change an exact sum. After a failing column the reflectors `[0, p)` still reach every
 later column, so rows `< p` of R are final; rows `>= p` of R hold the unreduced remainder in
-columns `>= p` (zero elsewhere), and V, tau and T are zero from column p.
+columns `>= p` (zero elsewhere), and V, tau and T are zero from column p. When p is the first column
+of its block, that block has no reflectors and leaves the later columns unchanged (before round 40 an
+all-zero block update was still applied, which turned a later column with a status entry into
+zero-with-status entries; the sequence above never did).
 
 **Status and rank.** `info().rank = p` and `info().reason`: `zero_column` (the reduced column is
 exactly zero), `status_column` (a status in the column; `info().status` is the OR), or
 `small_column` (the optional exponent test above, off by default). Exactly dependent columns are
 not exactly zero after rounding: they pass with `rank_bits = 0` and fail with a test such as
 `rank_bits = bits/2`. A rank-deficient factor still applies Q (its first p reflectors), but `solve`
-writes zero with status `invalid` to every entry of X: least squares needs full rank, and no
-minimum-norm solution is claimed (column pivoting and a complete orthogonal factorization are later
-work, plan S5). Statuses in B reach X through the dot products, as in the Cholesky solves.
+of an unpivoted factor writes zero with status `invalid` to every entry of X: without pivoting the
+failing column says nothing about the numerical rank. Pivoted factors give the basic solution
+("Column pivoting" below); no minimum-norm solution is claimed (that needs a complete orthogonal
+factorization or SVD, later work). Statuses in B reach X through the dot products, as in the
+Cholesky solves.
 
-**Determinism.** The result depends only on the inputs, `bits` and `block`: not on GPU/host
+**Determinism.** The result depends only on the inputs, `bits`, `block` and `pivot`: not on GPU/host
 placement (`host_macs`, `solve_host_macs`, `gpu`), host threads, page alignment or the look-ahead
 overlap. `block` is part of the result.
 
 **Execution.** The work matrix is a resident GPU buffer; V and T live in page-aligned factor
 storage that the GPU uses in place. For block b:
 
-1. Panel on the host (columns contiguous in a scratch copy): for each column, its `y` and the update
-   by the earlier reflectors of the block (exact dots over at most nb terms, rows in parallel), the
-   reflector, then the Gram column `g` and row c of the panel's W (`P(v_j, a_c')` for the later
-   panel columns, unreduced by this block, in parallel), then column c of `T_b`.
+1. Panel on the host (columns contiguous in a scratch copy), two parallel phases per column, each
+   over row blocks of about `mr / (4 threads)` rows claimed dynamically (the cores differ in speed):
+   - the update of column j by the earlier reflectors of the block (`exact_dot_add`, at most nb
+     terms per row); in the same pass every row block sums its part of `x^2` exactly into a window
+     anchored at its lowest term. Merging the windows gives the exact `S = sum x_r^2`, so `s = RN(S)`
+     and `P(v_j, v_j) = RN(2^-2e (v0^2 + S - x_j^2))` need no serial pass over the column (the exact
+     value is the same, hence the same bits; `exact_dot` is used when a window would exceed 128
+     words or `v` would leave the exponent range);
+   - the Gram column `g` and row c of the panel's W (`P(v_j, a_c')` for the later panel columns,
+     unreduced by this block): every thread adds the rows it claims into its own exact accumulator
+     per dot, anchored at the product of the two vectors' exponent ranges (which bounds every term),
+     and the accumulators are added exactly and rounded once (`exact_dot` beyond 128 words).
+   Then column c of `T_b` and the next column's `y`, serially.
 2. The next panel's columns are updated by block b: `W = P(V_b^T A)`, `Y = P(T_b^T W)`,
    `A = D(A; V_b, Y)`: three products of "Dense products" (`gemm`-style views of the resident
-   buffers, the last with `subtract`), or exact host dots below `host_macs` multiply-adds.
+   buffers, the last with `subtract`), each placed by its own size (exact host dots below
+   `host_macs` multiply-adds, so the small `Y` of the next panel avoids a GPU round trip).
 3. A second host thread updates the rest of the trailing matrix the same way while this thread
    factors the next panel (one block of look-ahead, as in the Cholesky).
 
-The solves apply the blocks to a copy of B the same way (GPU above `solve_host_macs`), then call
-the backward substitution. The independent reference (`tests/test_qr.cpp`) is a left-looking,
-column-by-column MPFR program of the sequence above (`reference::dot`, `reference::dot_sub`,
-`mpfr_sqrt`, `mpfr_sub`, `mpfr_div`, `mpfr_mul`, `mpfr_mul_2si`).
+Host phases use a worker pool whose dispatch returns when every item is done, not when every
+worker has been scheduled (a worker the loaded host runs late finds no item left). The exact host
+dots form products with 64-bit limbs. The solves apply the blocks to a copy of B the same way (GPU
+above `solve_host_macs`), then call the backward substitution. The independent reference
+(`tests/test_qr.cpp`) is a left-looking, column-by-column MPFR program of the sequence above
+(`reference::dot`, `reference::dot_sub`, `mpfr_sqrt`, `mpfr_sub`, `mpfr_div`, `mpfr_mul`, `mpfr_mul_2si`).
+
+### Column pivoting
+
+With `QROptions::pivot` the factorization is column pivoted as LAPACK `xGEQP3`: `A P = Q R`, and R,
+V, tau and T are exactly what the sequence above gives for the matrix `A P` (`permutation()[j]` is
+the column of A in position j). The permutation is chosen during the factorization from squared
+column norms `nu_k` that are downdated after every step, with exact comparisons:
+
+```
+nu_k = nuref_k = P(a_k, a_k) over all rows                        every column k, before the first step
+step j (block b, c = j - k0), while no column has failed:
+  pivot: p = the column in positions [j, n) with the largest nu (a nu with a status ranks above every value;
+         exact comparison, no rounding); ties go to the lowest original column index. Swap positions j and p
+         (the column, its W and Y rows so far, nu, nuref, perm).
+  column j: reduced, tested and turned into reflector j exactly as above (rank_bits is the rank tolerance)
+  every trailing column k > j (positions):
+    w_k(c) = P(v_j, a_k; rows [j, m))       a_k as at the start of block b
+    y_k(c) = P(T_b[k0..j][j], w_k(0..c))
+    r_jk   = D(a_jk; V[j][k0..j], y_k(0..c))                       = R[j][k], the final row-j entry
+    nu_k   = D(nu_k; r_jk, r_jk)
+    if nuref_k != 0, neither has a status, and (nu_k <= 0 or exponent(nu_k) + bits/2 < exponent(nuref_k)):
+      nu_k = nuref_k = P(x, x) over rows (j, m) of x_r = D(a_rk; V[r][k0..j], y_k(0..c))
+  after the block: X = D(X; V_b, Y) for the trailing columns with the W, Y rows formed above
+after a failing column p: no further pivoting; block b's reflectors [k0, p) are applied to columns [p, n) as above
+```
+
+`r_jk` is the entry the unpivoted sequence of `A P` puts in R (`V[j][i] = 0` for `i > j`, so the
+block update of row j only involves the reflectors up to j), so the downdates use the final row of
+R. The recomputation rule is LAPACK's (`tol3z = sqrt(eps)` on the norm ratio) in squared form, with
+an exponent comparison. With exact comparisons and the documented tie rule, the permutation is as
+deterministic as the rest of the sequence. A column with a status is chosen first, so it fails at
+once (`status_column`, rank = its position). Zero columns are moved last. `info().norm_recomputations`
+counts the recomputed norms.
+
+**Rank and solve.** `|r_jj|` decreases (up to rounding) along the diagonal, so the first failing
+column gives a numerical rank: `rank_bits > 0` stops at the first `|r_pp|` more than `rank_bits`
+binades below the largest earlier `|r_kk|` (e.g. `bits/2`, or the problem's own tolerance). For
+rank p the solve returns the **basic solution** `x[perm[i]] = z_i` for `i < p`, `x[perm[i]] = 0`
+otherwise, where `R[0:p,0:p] z = (Q^T b)[0:p)` is solved by the backward substitution with blocks
+`min(nb, p)`, as `xGEQP3` followed by a truncated triangular solve. It is a least-squares solution
+for the column space spanned by the selected columns, **not** the minimum-norm solution of the
+rank-deficient problem (that needs a complete orthogonal factorization or SVD). A `status_column`
+failure gives zero with that status and `invalid` in every entry of X.
+
+**Cost.** The pivot choice needs the row of R in every trailing column after every step, i.e. one
+exact dot of length `m - j` per trailing column per step (`~ m n^2 / 2` multiply-adds, done on the
+host in column tiles that read the work matrix by rows), as the BLAS-2 half of `xGEQP3`. These are
+the W rows of the trailing update, so the GPU only applies `X = D(X; V_b, Y)`; there is no
+look-ahead. The independent reference (`ref_qrp` in `tests/test_qr.cpp`) is a right-looking MPFR
+program of the pivoted sequence, and full-rank status-free cases are also compared with the
+unpivoted reference applied to `A P`.
 
 ### QR accuracy
 
@@ -859,3 +936,8 @@ keeps 9–41 bits, 4–5 bits more than the MPFR Householder. QR's residual stay
 the optimum in every case; the normal equations' residual exceeds it by up to 2^107. The componentwise
 normal-equation backward error `max_j |J^T r|_j / (|J|^T (|b| + |J| |x|))_j` (in the CSV) is about
 `2^-bits` for all three methods, so it does not separate them.
+
+Column-pivoted QR (`round40_qr_accuracy.csv`, n = 200, same J and b; the unpivoted rows there are
+identical to round 31's) is within 1.5 bits of unpivoted QR in every case, forward error and residual
+excess alike (e.g. 256 bits, `kappa = 100`, consistent b: −43.5 against −43.4; QSC-like random b:
+−252.5 against −253.5). These J have full numerical rank, so pivoting buys rank decisions, not accuracy.

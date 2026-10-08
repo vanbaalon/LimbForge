@@ -2,7 +2,8 @@
 // updates through the exact residue GEMM) + QRFactor::solve, against a consumer-style MPFR Householder (qsccpp mx.hpp QR:
 // unblocked, every operation rounded; serial and multithreaded) and against the normal equations (SYRK + J^T b + Cholesky +
 // solve, round 23). Modes: default timing table, --accuracy (errors against a high-precision MPFR least-squares solve, QR vs
-// normal equations on well- and ill-conditioned J), --sweep (block size).
+// normal equations on well- and ill-conditioned J, and column-pivoted QR since round 40), --sweep (block size), --pivot
+// (unpivoted vs column-pivoted factor + solve, round 40).
 #import <Foundation/Foundation.h>
 #include "limbforge/linalg.hpp"
 #include "benchmark_support.hpp"
@@ -94,6 +95,20 @@ template<int Bits> void bench(Linalg& la,Workers& workers,const Options& o,std::
         <<median(e2e)*1e3<<','<<host_ms<<','<<same<<','<<median(ne)*1e3<<','<<quantile(ne,0)*1e3<<','<<median(e2e)/median(ne)<<','<<serial<<','<<s<<','<<parallel<<','<<workers.size()<<','
         <<msolve<<','<<serial/median(wall)<<','<<(parallel?parallel/median(wall):0)<<std::endl;
 }
+// Column pivoting: factor + solve wall of unpivoted and pivoted QR, interleaved (medians and minima), recomputed norms and
+// how many columns the pivoting moved.
+template<int Bits> void pivot_time(Linalg& la,const Options& o,std::size_t n,std::mt19937_64& rng,bool header){
+    if(header)std::cout<<"bits,m,n,nrhs,block,repeats,qr_e2e_ms,qr_e2e_min_ms,qrp_e2e_ms,qrp_e2e_min_ms,qrp_panel_ms,qrp_update_ms,qrp_gpu_ms,qrp_over_qr,norm_recomputations,moved_columns\n";
+    const std::size_t m=2*n,nrhs=o.nrhs;auto J=jacobian<Bits>(m,n,rng);std::vector<Float<Bits>> B(m*nrhs),X(n*nrhs);for(auto& b:B)b=reference::random_number<Bits>(rng,20);
+    QROptions po=o.factor;po.pivot=true;{QRFactor a=la.factor_qr(Bits,J.data(),m,n,o.factor),b=la.factor_qr(Bits,J.data(),m,n,po);} // warm-up
+    std::vector<double> u,p,panel,update,gpu;QRInfo info;std::size_t moved=0;
+    for(int r=0;r<o.repeats;++r){auto t=Clock::now();{QRFactor q=la.factor_qr(Bits,J.data(),m,n,o.factor);q.solve(B.data(),nrhs,X.data());}u.push_back(std::chrono::duration<double>(Clock::now()-t).count());
+        t=Clock::now();QRFactor q=la.factor_qr(Bits,J.data(),m,n,po);q.solve(B.data(),nrhs,X.data());p.push_back(std::chrono::duration<double>(Clock::now()-t).count());
+        info=q.info();panel.push_back(info.panel_seconds);update.push_back(info.update_seconds);gpu.push_back(info.timing.gpu_seconds);
+        moved=0;for(std::size_t j=0;j<n;++j)moved+=q.permutation()[j]!=j;}
+    std::cout<<std::setprecision(5)<<Bits<<','<<m<<','<<n<<','<<nrhs<<','<<o.factor.block<<','<<o.repeats<<','<<median(u)*1e3<<','<<quantile(u,0)*1e3<<','<<median(p)*1e3<<','<<quantile(p,0)*1e3<<','
+        <<median(panel)*1e3<<','<<median(update)*1e3<<','<<median(gpu)*1e3<<','<<median(p)/median(u)<<','<<info.norm_recomputations<<','<<moved<<std::endl;
+}
 // Block-size sweep (factor + solve wall, medians).
 template<int Bits> void sweep(Linalg& la,const Options& o,std::size_t n,std::mt19937_64& rng,bool header){
     if(header)std::cout<<"bits,m,n,block,host_macs,repeats,qr_wall_ms,qr_wall_min_ms,qr_gpu_ms,qr_panel_ms,qr_update_ms,gpu_updates,host_updates,solve_wall_ms\n";
@@ -117,6 +132,7 @@ template<int Bits> void accuracy(Linalg& la,Workers& workers,const Options& o,st
     for(std::size_t q=0;q<m*n;++q){to_mpfr<Bits>(Jm[q],J[q]);mpfr_set(a[q],Jm[q],MPFR_RNDN);mpfr_set(c[q],Jm[q],MPFR_RNDN);}
     mpfr_householder(P,a,m,n,v,tw,&workers);mpfr_householder(Bits,c,m,n,cv,ct,&workers);
     QRFactor qr=la.factor_qr(Bits,J.data(),m,n,o.factor);if(!qr.full_rank())throw std::runtime_error("accuracy J rank deficient");
+    QROptions po=o.factor;po.pivot=true;QRFactor qp=la.factor_qr(Bits,J.data(),m,n,po);
     for(bool consistent:{false,true}){std::vector<Float<Bits>> B(m*nrhs);
         if(consistent){std::vector<Float<Bits>> x0(n*nrhs);for(auto& x:x0)x=reference::random_number<Bits>(rng,4);la.gemm(Bits,false,J.data(),x0.data(),m,nrhs,n,B.data());}
         else for(auto& b:B)b=reference::random_number<Bits>(rng,4);
@@ -148,6 +164,8 @@ template<int Bits> void accuracy(Linalg& la,Workers& workers,const Options& o,st
             std::cout<<std::setprecision(5)<<Bits<<','<<m<<','<<n<<','<<kappa<<','<<(consistent?"consistent":"random")<<','<<nrhs<<','<<method<<','<<fn<<','<<fc<<','<<bc<<','<<rr<<','<<ro<<','<<rx<<std::endl;};
         std::vector<Float<Bits>> X(n*nrhs),XN;qr.solve(B.data(),nrhs,X.data());
         report("limbforge_qr",[&](std::size_t q,mpfr_ptr out){to_mpfr<Bits>(out,X[q]);});
+        std::vector<Float<Bits>> XP(n*nrhs);qp.solve(B.data(),nrhs,XP.data());
+        report(qp.full_rank()?"limbforge_qr_pivoted":"limbforge_qr_pivoted_basic",[&](std::size_t q,mpfr_ptr out){to_mpfr<Bits>(out,XP[q]);});
         bool ok=true;normal_equations<Bits>(la,J,m,n,B,nrhs,XN,ok);
         if(ok)report("limbforge_normal_equations",[&](std::size_t q,mpfr_ptr out){to_mpfr<Bits>(out,XN[q]);});
         else std::cout<<Bits<<','<<m<<','<<n<<','<<kappa<<','<<(consistent?"consistent":"random")<<','<<nrhs<<",limbforge_normal_equations,cholesky_failed,,,,\n";
@@ -160,12 +178,12 @@ int main(int argc,char** argv){try{
         else if(a=="--threads")o.threads=unsigned(std::stoul(next()));else if(a=="--serial-max")o.serial_max=std::stoul(next());else if(a=="--parallel-max")o.parallel_max=std::stoul(next());
         else if(a=="--nrhs")o.nrhs=std::stoul(next());else if(a=="--block")o.factor.block=std::stoul(next());else if(a=="--host-macs")o.factor.host_macs=std::stod(next());
         else if(a=="--kappa")kappas={std::stoi(next())};else if(a=="--host-threads")host_threads=unsigned(std::stoul(next()));else if(a=="--no-host-only")o.host_only=false;
-        else if(a=="--sweep")mode="sweep";else if(a=="--accuracy")mode="accuracy";
-        else throw std::invalid_argument("usage: qr_limbforge [--bits 224|256] [--size n] [--repeats r] [--threads t] [--serial-max n] [--parallel-max n] [--nrhs k] [--block nb] [--host-macs x] [--no-host-only] [--sweep|--accuracy [--kappa k (-1: QSC-like)]]");}
+        else if(a=="--sweep")mode="sweep";else if(a=="--accuracy")mode="accuracy";else if(a=="--pivot")mode="pivot";
+        else throw std::invalid_argument("usage: qr_limbforge [--bits 224|256] [--size n] [--repeats r] [--threads t] [--serial-max n] [--parallel-max n] [--nrhs k] [--block nb] [--host-macs x] [--no-host-only] [--sweep|--pivot|--accuracy [--kappa k (-1: QSC-like)]]");}
     LinalgOptions lo;lo.host_threads=host_threads;Linalg la(lo);Workers workers(o.threads);std::mt19937_64 rng(20261031);bool header=true;
     std::cerr<<la.device_name()<<"; times: wall = host call (median), gpu = summed command buffers\n";
     for(int b:bits)for(auto n:sizes){
-        auto go=[&](auto tag){constexpr int B=decltype(tag)::value;if(mode=="time")bench<B>(la,workers,o,n,rng,header);else if(mode=="sweep")sweep<B>(la,o,n,rng,header);
+        auto go=[&](auto tag){constexpr int B=decltype(tag)::value;if(mode=="time")bench<B>(la,workers,o,n,rng,header);else if(mode=="sweep")sweep<B>(la,o,n,rng,header);else if(mode=="pivot")pivot_time<B>(la,o,n,rng,header);
             else for(int k:kappas){accuracy<B>(la,workers,o,n,k,rng,header);header=false;}};
         if(b==224)go(std::integral_constant<int,224>{});else if(b==256)go(std::integral_constant<int,256>{});else throw std::invalid_argument("bits: 224 or 256");header=false;}
     return 0;

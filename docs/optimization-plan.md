@@ -248,7 +248,8 @@ Each item: written contract → MPFR/MPC reference → CPU implementation in `co
     passes), or a cooperative (SIMD-group per row) GPU panel; the one-thread-per-row panel was slower
     (`benchmarks/experiments/cholesky_gpu_panel.patch`);
   - resident `Buffer` operands in a `CommandBatch` (design note in `numerics.md`), so that J, A and L stay on the GPU;
-  - QR (S5) and factor handles: done in round 31-S5 (`Linalg::factor_qr` / `QRFactor`, see S5).
+  - QR (S5) and factor handles: done in round 31-S5 (`Linalg::factor_qr` / `QRFactor`, see S5); faster panel and
+    column pivoting in round 40-S5b.
 - **D7. Transcendentals at buffer level (tips #8)** — L, lowest priority: complex `exp`, `log`, integer `powi` with explicit
   accuracy contracts (faithful or correctly rounded via Ziv-style retry).
   **Status (round 35-D7):** done as host-array `Transcendentals` (`transcendental.hpp`): real `exp`, `expm1`, `log`, `log1p`,
@@ -284,6 +285,7 @@ For BSolver (≈128 lanes × 600 steps) the GPU runs ~128 threads. Two complemen
 | D5 batched 4×4 LU/solve/inverse/det | done (29, resident 34) | `Engine::lu4`, `CommandBatch::lu4` |
 | D6 SYRK/GEMM, Cholesky, triangular solves | done (20-D6, 23-D6b), host-array | `linalg.hpp` |
 | S5 Householder QR factor object, least squares, apply Q (+ augmented LM) | done (31-S5), host-array, full rank | `Linalg::factor_qr`, `QRFactor` |
+| S5b faster QR panel and products; column-pivoted QR (basic solutions) | done (40-S5b), host-array; complex QR open | `QROptions::pivot`, `QRFactor::permutation` |
 | C1 broadcast operands | done (28) | `Broadcast` |
 | C7 pipeline prewarm | done (33) | `Engine::prewarm_async` |
 | S6 precision casts | done (38) | `Engine::cast`, `CommandBatch::cast` |
@@ -296,9 +298,9 @@ For BSolver (≈128 lanes × 600 steps) the GPU runs ~128 threads. Two complemen
 
 Next, by consumer value: qscmx/BSolver integration and end-to-end timing on an idle host (also the
 pending GitHub speed figures); resident `linalg` (`CommandBatch` versions through `src/engine_internal.hpp`; numerics and
-transcendentals done in round 39), GPU-side transcendental retries, the on-device norm threshold; S5 pivoted/complex
-QR and a faster QR panel; G = 4/8 cooperative kernels under shader validation; fused `vector_recurrence` above
-512 bits.
+transcendentals done in round 39), GPU-side transcendental retries, the on-device norm threshold; S5 complex QR
+(and deeper QR look-ahead, a reconstruction-bound trailing update); G = 4/8 cooperative kernels under shader
+validation; fused `vector_recurrence` above 512 bits.
 
 ## 5. Order, tracks and dependencies
 
@@ -490,6 +492,16 @@ when J has conditioning beyond its column scaling. Speed (loaded host): n = 1000
 the 18-thread MPFR Householder, but ~8× the SYRK + Cholesky normal equations; the host panel is the critical path.
 Next: a faster panel (fewer dependent host phases per column, or GPU), column pivoting with explicit rank decisions,
 complex QR (QSC `JCD` factors are real; BSolver needs complex), resident operands, LM comparison on real QSC points.
+*Status (round 40-S5b): faster panel and products, column pivoting done; same unpivoted rounding sequence (bit-identical).*
+The panel's two parallel phases per column now run over dynamically claimed row blocks with exact windowed partial sums
+(the column norm and `P(v, v)` from one exact sum, no serial pass; Gram/W dots in per-thread exact accumulators), host
+exact dots use 64-bit limbs, and the pool returns when the items are done; the residue products batch their moduli and
+form the three int8 products of a tile in registers (no int32 planes). QSC-like n = 1000, 256 bits, load 39-68 with a
+shared GPU: factor + solve 5.1 -> 2.0 s median, 2.0 -> 0.60 s best (panel 2.2 -> 0.64 s). `QROptions::pivot`: xGEQP3-style
+pivoting on downdated squared norms with exact comparisons, ties to the lowest original index, LAPACK's recomputation rule,
+`rank_bits` as the rank tolerance, basic (not minimum-norm) solutions; equal to its own MPFR replay and to the unpivoted
+sequence of `A P`. Costs 1.2x at n = 400 and 2.6x at n = 1000 (host BLAS-2 rows). Open: complex QR, deeper look-ahead
+(the trailing updates are now often the critical path on a shared GPU), the reconstruction-bound `RN(X - V Y)` update.
 
 Sketch: `factor_qr(A, workspace, options) -> QRFactor`, `factor.solve(B)`,
 `factor.apply_q(B, transpose)`, plus factor/solve separation for D5 LU and D6 Cholesky.

@@ -1,0 +1,26 @@
+Round 40-S5b correctness gate (Release, Apple M5 Max, macOS 26.6.2, 2026-10-08). Plain ctest: 19/19 passed. Then
+MTL_SHADER_VALIDATION=1 ctest --test-dir build --output-on-failure (below). linalg_qr summary lines:
+  252 pivoted factorizations (96 rank-deficient, 194 recomputed norms) bit-identical to the pivoted reference
+  538 factorizations (243 rank-deficient; 1636 GPU and 108 host block updates), 538 solves and 1076 Q applications bit-identical to the reference
+linalg_gpu also passed with LIMBFORGE_LINALG_PLANE_BUDGET=1 and =3000000 (forced small modulus batches).
+ 1/19 Test  #1: arithmetic_cpu ...................   Passed    2.22 sec
+ 2/19 Test  #2: bridge_cpu .......................   Passed    4.78 sec
+ 3/19 Test  #3: fused_cpu ........................   Passed    0.40 sec
+ 4/19 Test  #4: fused_gpu ........................   Passed  368.29 sec
+ 5/19 Test  #5: transcendental_cpu ...............   Passed   48.16 sec
+ 6/19 Test  #6: linalg_cpu .......................   Passed    0.25 sec
+ 7/19 Test  #7: linalg_gpu .......................   Passed   25.58 sec
+ 8/19 Test  #8: linalg_cholesky ..................   Passed   21.62 sec
+ 9/19 Test  #9: linalg_qr ........................   Passed   69.80 sec
+10/19 Test #10: arithmetic_gpu ...................   Passed   60.48 sec
+11/19 Test #11: broadcast_gpu ....................   Passed   21.84 sec
+12/19 Test #12: batched4_gpu .....................   Passed  381.79 sec
+13/19 Test #13: cast_gpu .........................   Passed    0.07 sec
+14/19 Test #14: segmented_dot_gpu ................   Passed   60.75 sec
+15/19 Test #15: vector_recurrence_gpu ............   Passed    7.55 sec
+16/19 Test #16: numerics_gpu .....................   Passed   10.17 sec
+17/19 Test #17: resident_buffers .................   Passed   37.58 sec
+18/19 Test #18: transcendental_gpu ...............   Passed   86.57 sec
+19/19 Test #19: tree_reduction ...................   Passed   97.31 sec
+100% tests passed out of 19
+Total Test time (real) = 1305.22 sec

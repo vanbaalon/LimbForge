@@ -1,0 +1,32 @@
+Round 40-S5b (plan S5): faster QR panel and residue products, column-pivoted QR. Apple M5 Max (6 P + 12 E cores), macOS
+26.6.2, Release build, base revision 96cf7c0 plus this round's working tree, 2026-10-08 02:00-04:40 EDT. Host heavily
+loaded by other work (qscmx at ~800% CPU and heavy GPU use, other agents' builds and tests): load average 19-68 during
+the runs, and the GPU shared with another process (the same command buffers took 0.2-5 s of GPU time). Read medians and
+minima of interleaved runs; differences below ~15% are noise.
+
+Commands:
+  round40_qr_ab.csv: interleaved A/B of benchmarks/qr.mm default mode, base (96cf7c0 built from `git archive`) and this
+    round, alternating per round; each line "version,round,load_before,load_after," then the qr_limbforge row of
+      qr_limbforge --bits B --size n --repeats 3 --parallel-max 0 --no-host-only --serial-max 200
+    (no parallel MPFR baseline; the serial MPFR column is the n = 200 measurement scaled by n^3, as in round 31).
+    6 rounds at n = 1000 / 256 bits (load 39-68), 4 rounds at n = 400 / 256 bits (load 26-35), 4 at n = 400 / 224 bits
+    (load 19-26). One n = 1000 round overlapped a test run of this round (rounds 3-4 of n = 1000).
+  round40_qr_pivot.csv: qr_limbforge --pivot --bits B --size n --repeats 3 (unpivoted and pivoted factor + solve
+    interleaved; moved_columns: positions whose column changed; load 35-38).
+  round40_qr_accuracy.csv: qr_limbforge --accuracy --size 200 --nrhs 4 (as round 31, plus limbforge_qr_pivoted). The
+    unpivoted limbforge_qr rows are identical to round31_qr_accuracy.csv (same inputs, same rounding sequence).
+  round40_qr_tests_validation.txt: correctness gate (plain ctest 19/19, then MTL_SHADER_VALIDATION=1 19/19).
+
+Summary (medians over the interleaved rounds; minima in parentheses), factor + solve with 4 right-hand sides, QSC-like J:
+  n = 1000, m = 2000, 256 bits:  base 5081 ms (2030)  ->  2000 ms (596): 2.5x (3.4x)
+    panel 2176 (1129) -> 638 (382) ms; GPU 2806 (478) -> 1409 (204) ms; solve 301 (106) -> 100 (43) ms
+    normal equations (SYRK + gemm + Cholesky + solve) 932 (279) -> 601 (120) ms (shared residue-product changes)
+  n = 400, m = 800, 256 bits:    base 978 ms (256)  ->  184 ms (123)
+  n = 400, m = 800, 224 bits:    base 815 ms (209)  ->  449 ms (117)
+  Paired n = 1000 ratios ranged 0.81-11.7 (GPU contention); every n = 400 pair favoured this round (1.7-7.9x).
+  Product GPU times (uncommitted scratch harness: Linalg::gemm/syrk on random entries with exponents in [-30, 30],
+  minimum of 15 calls, 256 bits, base binary interleaved): W = V^T A (32 x 500, K = 1500)
+  4.6 -> 1.6 ms; X = RN(X - V Y) (1500 x 500, K = 32) 5.7 -> 4.5 ms; SYRK 500 x 500, K = 1500: 6.2 -> 3.9 ms.
+  Pivoted QR: n = 400 1.16x (256 bits) / 1.22x (224) the unpivoted factor + solve; n = 1000 2.6x (7.3 s vs 2.8 s,
+  panel 6.5 s: the per-step W rows of every trailing column on the host). Accuracy: pivoted within 1.5 bits of
+  unpivoted QR in every case (forward error and residual excess).

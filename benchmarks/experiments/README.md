@@ -52,6 +52,16 @@ GPU/MPFR validation and was removed from the installed implementation.
   slower on the loaded host (n = 400, 256 bits, load about 40, interleaved: panel
   250-740 ms against 185-455 ms), because spinning members are descheduled. A pool whose
   workers poll before blocking was slower too and is not kept.
+- `pool_dispatch_probe.cpp` (diagnostic, round 40-S5b; build as in its header): dispatch
+  cost of the host worker pool before round 40 (waits for every worker), the round 40 pool
+  (returns when every item is done) and a variant that spins 20 or 100 µs before blocking.
+  On the loaded host (load 30-60) the claim-based pool was faster in most paired runs
+  (e.g. 2000 dispatches of 72 × 3 µs: 167-414 ms against 191-280 ms; 72 × 10 µs: 598-772 ms
+  against 741-811 ms) and is kept; the spinning variant had no consistent gain (85-884 ms)
+  and is rejected, as the unbounded spin barrier of `qr_panel_team.patch` was before.
+  A static split of the QR panel rows into one chunk per worker (round 40 development) was
+  slower than dynamically claimed row blocks on the mixed performance/efficiency cores and
+  was not kept.
 - `sum_width_probe.mm` (diagnostic, not a patch; build as in its header): the exact
   two-term sum of the update kernels at every precision and both instantiated widths
   against MPFR. With argument 1 (no rounding of the workspace width) 8 of 62 widths

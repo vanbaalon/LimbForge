@@ -37,53 +37,62 @@ inline Digits digits(device const Number<N>& x,int lo,int hi,device const uint* 
         int d0=((v+128)&255)-128;d.d1[q]=char((v-d0)/256);d.d0[q]=char(d0);}
     return d;
 }
-// Left band, one plane per modulus of the group: cat = [d1 | d0] (Mp x 2Kp), d1, d0 (Mp x Kp); padding is written as zero.
+// Left band, one plane per modulus of the batch (p.j0 .. p.j0+p.group-1; grid z = group of LF_GROUP moduli, each input entry
+// read once per group): cat = [d1 | d0] (Mp x 2Kp), d1, d0 (Mp x Kp); padding is written as zero.
 // With p.both (SYRK) the right band of the same lines is written too: rcat = [d0 ; d1] (2Kp x Np), Np = Mp.
 kernel void digits_left(device const Number<N>* src [[buffer(0)]],device const Member* band [[buffer(1)]],device int8_t* cat [[buffer(2)]],
                         device int8_t* d1 [[buffer(3)]],device int8_t* d0 [[buffer(4)]],constant Params& p [[buffer(5)]],
                         device int8_t* rcat [[buffer(6)]],device const uint* moduli [[buffer(11)]],device const uint* recips [[buffer(12)]],
-                        uint2 g [[thread_position_in_grid]]){
-    uint k=g.x,r=g.y;if(k>=p.Kp||r>=p.Mp)return;
+                        uint3 g [[thread_position_in_grid]]){
+    uint k=g.x,r=g.y,q0=g.z*LF_GROUP;if(k>=p.Kp||r>=p.Mp||q0>=p.group)return;
     Digits d;for(int q=0;q<LF_GROUP;++q){d.d1[q]=0;d.d0[q]=0;}
-    if(k<p.K&&r<p.rows){Member b=band[r];d=digits(src[ulong(b.line)*p.ls_line+ulong(k)*p.ls_k],b.lo,b.hi,moduli,recips,p.j0);}
-    ulong row=r,cp=ulong(p.Mp)*2*p.Kp,hp=ulong(p.Mp)*p.Kp,rp=ulong(2)*p.Kp*p.Np;
-    for(uint q=0;q<p.group;++q){
-        cat[q*cp+row*2*p.Kp+k]=d.d1[q];cat[q*cp+row*2*p.Kp+p.Kp+k]=d.d0[q];d1[q*hp+row*p.Kp+k]=d.d1[q];d0[q*hp+row*p.Kp+k]=d.d0[q];
-        if(p.both){rcat[q*rp+ulong(k)*p.Np+r]=d.d0[q];rcat[q*rp+ulong(p.Kp+k)*p.Np+r]=d.d1[q];}
+    if(k<p.K&&r<p.rows){Member b=band[r];d=digits(src[ulong(b.line)*p.ls_line+ulong(k)*p.ls_k],b.lo,b.hi,moduli,recips,p.j0+q0);}
+    ulong row=r,cp=ulong(p.Mp)*2*p.Kp,hp=ulong(p.Mp)*p.Kp,rp=ulong(2)*p.Kp*p.Np;uint count=min(uint(LF_GROUP),p.group-q0);
+    for(uint q=0;q<count;++q){ulong z=q0+q;
+        cat[z*cp+row*2*p.Kp+k]=d.d1[q];cat[z*cp+row*2*p.Kp+p.Kp+k]=d.d0[q];d1[z*hp+row*p.Kp+k]=d.d1[q];d0[z*hp+row*p.Kp+k]=d.d0[q];
+        if(p.both){rcat[z*rp+ulong(k)*p.Np+r]=d.d0[q];rcat[z*rp+ulong(p.Kp+k)*p.Np+r]=d.d1[q];}
     }
 }
-// Right band: rcat = [d0 ; d1] (2Kp x Np) per modulus of the group.
+// Right band: rcat = [d0 ; d1] (2Kp x Np) per modulus of the batch.
 kernel void digits_right(device const Number<N>* src [[buffer(0)]],device const Member* band [[buffer(1)]],device int8_t* cat [[buffer(2)]],
                          constant Params& p [[buffer(5)]],device const uint* moduli [[buffer(11)]],device const uint* recips [[buffer(12)]],
-                         uint2 g [[thread_position_in_grid]]){
-    uint c=g.x,k=g.y;if(c>=p.Np||k>=p.Kp)return;
+                         uint3 g [[thread_position_in_grid]]){
+    uint c=g.x,k=g.y,q0=g.z*LF_GROUP;if(c>=p.Np||k>=p.Kp||q0>=p.group)return;
     Digits d;for(int q=0;q<LF_GROUP;++q){d.d1[q]=0;d.d0[q]=0;}
-    if(k<p.K&&c<p.cols){Member b=band[c];d=digits(src[ulong(b.line)*p.rs_line+ulong(k)*p.rs_k],b.lo,b.hi,moduli,recips,p.j0);}
-    ulong rp=ulong(2)*p.Kp*p.Np;
-    for(uint q=0;q<p.group;++q){cat[q*rp+ulong(k)*p.Np+c]=d.d0[q];cat[q*rp+ulong(p.Kp+k)*p.Np+c]=d.d1[q];}
-}
-// C (M x N) = A (M x K) B (K x N), int8 -> exact int32 (|sum| <= K*2^14 < 2^31). mnk.w: skip tiles strictly above the diagonal.
-kernel void product(device int8_t* A [[buffer(0)]],device int8_t* B [[buffer(1)]],device int32_t* C [[buffer(2)]],
-                    constant uint4& mnk [[buffer(3)]],uint2 tgid [[threadgroup_position_in_grid]]){
-    if(mnk.w&&int(tgid.y)*64+63<int(tgid.x)*32)return;
-    int M=int(mnk.x),Nn=int(mnk.y),K=int(mnk.z);
-    auto tA=tensor<device int8_t,dextents<int32_t,2>,tensor_inline>(A,dextents<int32_t,2>(K,M));
-    auto tB=tensor<device int8_t,dextents<int32_t,2>,tensor_inline>(B,dextents<int32_t,2>(Nn,K));
-    auto tC=tensor<device int32_t,dextents<int32_t,2>,tensor_inline>(C,dextents<int32_t,2>(Nn,M));
-    constexpr auto d=matmul2d_descriptor(64,32,static_cast<int>(dynamic_extent),false,false,false);
-    matmul2d<d,execution_simdgroups<4>> op;
-    auto mA=tA.slice(0,int(tgid.y)*64);auto mB=tB.slice(int(tgid.x)*32,0);auto mC=tC.slice(int(tgid.x)*32,int(tgid.y)*64);
-    op.run(mA,mB,mC);
+    if(k<p.K&&c<p.cols){Member b=band[c];d=digits(src[ulong(b.line)*p.rs_line+ulong(k)*p.rs_k],b.lo,b.hi,moduli,recips,p.j0+q0);}
+    ulong rp=ulong(2)*p.Kp*p.Np;uint count=min(uint(LF_GROUP),p.group-q0);
+    for(uint q=0;q<count;++q){ulong z=q0+q;cat[z*rp+ulong(k)*p.Np+c]=d.d0[q];cat[z*rp+ulong(p.Kp+k)*p.Np+c]=d.d1[q];}
 }
 inline uint reduce(int g,uint m){int r=g%int(m);return uint(r<0?r+int(m):r);}
-// residue_j = (65536*G11 + 256*Gmid + G00) mod m.
-kernel void combine(device const int* g11 [[buffer(0)]],device const int* gmid [[buffer(1)]],device const int* g00 [[buffer(2)]],
-                    device ushort* res [[buffer(3)]],constant Params& p [[buffer(5)]],device const uint* moduli [[buffer(11)]],
-                    device const uint* recips [[buffer(12)]],uint2 g [[thread_position_in_grid]]){
-    uint c=g.x,r=g.y;if(r>=p.rows||c>=p.cols||(p.tri&&r<c))return;
-    ulong idx=ulong(r)*p.Np+c;uint m=moduli[p.j],cm=recips[p.j];
-    uint v=reduce32(reduce(g11[idx],m)<<16,m,cm)+reduce32(reduce(gmid[idx],m)<<8,m,cm);v=(v>=m?v-m:v)+reduce(g00[idx],m);
-    res[ulong(p.j)*p.Mp*p.Np+idx]=ushort(v>=m?v-m:v);
+// The three int8 products of one 64 x 32 tile for modulus j = p.j + z (grid z; digit planes of batch member z), exact in int32
+// (|sum| <= 2 Kp 2^14 < 2^31), kept in registers (cooperative tensors of one op, hence one layout), and residue_j =
+// (65536*G11 + 256*Gmid + G00) mod m written directly: no int32 planes in memory (round 40; before, three products and a
+// combine pass per modulus). st: element strides of the lcat, a1/a0 and rcat planes. Skips tiles above the diagonal (p.tri).
+kernel void product_residue(device int8_t* lcat [[buffer(0)]],device int8_t* a1 [[buffer(1)]],device int8_t* a0 [[buffer(2)]],device int8_t* rcat [[buffer(3)]],
+                            device ushort* res [[buffer(4)]],constant Params& p [[buffer(5)]],constant uint4& st [[buffer(6)]],
+                            device const uint* moduli [[buffer(11)]],device const uint* recips [[buffer(12)]],uint3 tgid [[threadgroup_position_in_grid]]){
+    if(p.tri&&int(tgid.y)*64+63<int(tgid.x)*32)return;
+    const int M=int(p.Mp),Nn=int(p.Np),K=int(p.Kp);const ulong z=tgid.z;
+    lcat+=z*st.x;a1+=z*st.y;a0+=z*st.y;rcat+=z*st.z;
+    auto tL=tensor<device int8_t,dextents<int32_t,2>,tensor_inline>(lcat,dextents<int32_t,2>(2*K,M));
+    auto t1=tensor<device int8_t,dextents<int32_t,2>,tensor_inline>(a1,dextents<int32_t,2>(K,M));
+    auto t0=tensor<device int8_t,dextents<int32_t,2>,tensor_inline>(a0,dextents<int32_t,2>(K,M));
+    auto tR=tensor<device int8_t,dextents<int32_t,2>,tensor_inline>(rcat,dextents<int32_t,2>(Nn,2*K));
+    auto tRlo=tensor<device int8_t,dextents<int32_t,2>,tensor_inline>(rcat,dextents<int32_t,2>(Nn,K));
+    auto tRhi=tensor<device int8_t,dextents<int32_t,2>,tensor_inline>(rcat+ulong(K)*Nn,dextents<int32_t,2>(Nn,K));
+    constexpr auto d=matmul2d_descriptor(64,32,static_cast<int>(dynamic_extent),false,false,false);
+    matmul2d<d,execution_simdgroups<4>> op;
+    const int r0=int(tgid.y)*64,c0=int(tgid.x)*32;
+    auto mL=tL.slice(0,r0);auto m1=t1.slice(0,r0);auto m0=t0.slice(0,r0);auto mR=tR.slice(c0,0);auto mRlo=tRlo.slice(c0,0);auto mRhi=tRhi.slice(c0,0);
+    auto c11=op.get_destination_cooperative_tensor<decltype(m1),decltype(mRhi),int32_t>();op.run(m1,mRhi,c11);
+    auto c00=op.get_destination_cooperative_tensor<decltype(m0),decltype(mRlo),int32_t>();op.run(m0,mRlo,c00);
+    auto cmid=op.get_destination_cooperative_tensor<decltype(mL),decltype(mR),int32_t>();op.run(mL,mR,cmid);
+    const uint j=p.j+tgid.z,m=moduli[j],cm=recips[j];device ushort* out=res+ulong(j)*ulong(M)*ulong(Nn);
+    for(uint16_t i=0;i<c11.get_capacity();++i){if(!c11.is_valid_element(i))continue;
+        auto idx=c11.get_multidimensional_index(i);const uint c=uint(c0+int(idx[0])),r=uint(r0+int(idx[1]));
+        if(r>=p.rows||c>=p.cols||(p.tri&&r<c))continue;
+        uint v=reduce32(reduce(c11[i],m)<<16,m,cm)+reduce32(reduce(cmid[i],m)<<8,m,cm);v=(v>=m?v-m:v)+reduce(c00[i],m);
+        out[ulong(r)*ulong(Nn)+c]=ushort(v>=m?v-m:v);}
 }
 // SUB (pipeline specialisation): outputs are updates RN(c - x) of the old output c, for the exact dot product
 // x = sign * X * 2^scale, with one rounding (round_sum). A status on c gives zero with that status.

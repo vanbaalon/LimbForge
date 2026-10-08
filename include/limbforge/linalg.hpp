@@ -9,6 +9,8 @@
 #include "engine.hpp"
 #include <algorithm>
 #include <cstddef>
+#include <cstdint>
+#include <cstring>
 #include <memory>
 #include <string>
 #include <vector>
@@ -53,17 +55,21 @@ struct CholeskyInfo {
 };
 // Householder QR (docs/numerics.md, "QR factorization and least squares"): FactorOptions (block, GPU/host split; the
 // result depends on block only) and an optional rank test: rank_bits > 0 also stops at the first column whose |r_jj|
-// lies more than rank_bits binades below the largest earlier |r_kk| (exponent comparison, no rounding).
-struct QROptions : FactorOptions { int rank_bits=0; };
-// Per-factor outcome. rank = n for a full-rank factor; otherwise the first column p (in order) whose norm is zero
-// (zero_column), carries a status (status_column; status = its OR) or fails rank_bits (small_column). Reflectors
+// lies more than rank_bits binades below the largest earlier |r_kk| (exponent comparison, no rounding). With pivot, column
+// pivoting (as LAPACK xGEQP3): step j takes the remaining column with the largest downdated squared norm (exact comparisons,
+// ties to the lowest original column index), so A P = Q R with |r_jj| nonincreasing up to rounding; rank_bits then is the
+// rank tolerance. Pivoted factors give basic (not minimum-norm) least-squares solutions when rank deficient.
+struct QROptions : FactorOptions { int rank_bits=0; bool pivot=false; };
+// Per-factor outcome. rank = n for a full-rank factor; otherwise the first column p (in order, after pivoting) whose norm
+// is zero (zero_column), carries a status (status_column; status = its OR) or fails rank_bits (small_column). Reflectors
 // 0 .. p-1 are then final, and the factorization stops there (see QRFactor::r).
 struct QRInfo {
     enum Reason {full_rank=0,zero_column=1,small_column=2,status_column=3};
     std::size_t rank=0; int reason=full_rank; word status=0;
     Timing timing{0,0};                       // gpu_seconds: summed command buffers; wall: whole call
-    std::size_t blocks=0,gpu_updates=0,host_updates=0; // trailing block updates (3 products each) by placement
+    std::size_t blocks=0,gpu_updates=0,host_updates=0; // trailing block updates (up to 3 products each) by placement
     double panel_seconds=0,update_seconds=0;  // host panels; trailing updates (GPU or host), wall
+    std::size_t norm_recomputations=0;        // pivoting: downdated norms recomputed from the reduced column
 };
 namespace detail { struct QRData; }
 class Linalg;
@@ -78,10 +84,14 @@ public:
     // Row-major Float<bits> arrays owned by the factor (valid while it lives): R (n x n, upper; with rank p < n, rows
     // i >= p hold the unreduced remainder in columns j >= p), V (m x n: column j is v_j, zero above row j, v_j[j] =
     // the scaled v0), tau (n) and T (blocks of nb x nb, the compact-WY upper triangles; block b at offset b*nb*nb).
+    // With pivoting all of them belong to A P: column j of R and V is column permutation()[j] of A.
     const void* r() const; const void* v() const; const void* tau() const; const void* t() const;
-    // X (n x nrhs) = least-squares solution of min ||A x - b|| for each column b of B (m x nrhs): Q^T B, then R X = (Q^T B)[0:n).
-    // Full rank only: a rank-deficient factor writes zero with status invalid to every entry of X (no minimum-norm claim).
-    // X must not overlap B.
+    bool pivoted() const; const std::size_t* permutation() const;  // identity without pivoting
+    // X (n x nrhs) = least-squares solution of min ||A x - b|| for each column b of B (m x nrhs): Q^T B, then R X = (Q^T B)[0:n)
+    // (pivoted: x[perm[i]] = z_i). Rank deficient (rank p < n): an unpivoted factor writes zero with status invalid to every
+    // entry of X; a pivoted one gives the basic solution x[perm[i]] = z_i from R[0:p,0:p] z = (Q^T b)[0:p) and x[perm[i]] = 0
+    // for i >= p (LAPACK xGEQP3 + a truncated triangular solve; it is not the minimum-norm solution). A status column gives
+    // zero with that status (and invalid) everywhere. X must not overlap B.
     Timing solve(const void* B,std::size_t nrhs,void* X) const;
     // B (m x nrhs) <- Q^T B (transpose) or Q B, in place.
     Timing apply_q(void* B,std::size_t nrhs,bool transpose) const;
@@ -139,11 +149,24 @@ template<int N> Number<N> pack_words(const word* w,std::size_t count,exponent_ty
     return checked(r);
 }
 template<int N> Number<N> pack_words(const std::vector<word>& w,exponent_type scale,int sign,word status){return pack_words<N>(w.data(),w.size(),scale,sign,status);}
-// acc += x * 2^shift for a nonnegative accumulator wide enough by construction.
+inline std::uint64_t load64(const word* p){std::uint64_t v;std::memcpy(&v,p,8);return v;}
+inline void store64(word* p,std::uint64_t v){std::memcpy(p,&v,8);}
+// acc += x * 2^shift for a nonnegative accumulator wide enough by construction (64-bit steps over pairs of words).
 inline void add_shifted(word* acc,const word* x,int words,long shift){
-    std::size_t w=std::size_t(shift/32);int s=int(shift%32);dword carry=0;
-    for(int i=0;i<=words;++i){word v=i<words?x[i]<<s:0;if(s&&i>0)v|=x[i-1]>>(32-s);dword t=dword(acc[w+i])+v+carry;acc[w+i]=word(t);carry=t>>32;}
-    for(std::size_t i=w+std::size_t(words)+1;carry;++i){dword t=dword(acc[i])+carry;acc[i]=word(t);carry=t>>32;}
+    std::size_t w=std::size_t(shift/32);const int s=int(shift%32);unsigned __int128 carry=0;int i=0;std::uint64_t prev=0;
+    for(;i+2<=words;i+=2){const std::uint64_t X=load64(x+i),v=(X<<s)|(s?prev>>(64-s):0);prev=X;
+        carry+=(unsigned __int128)load64(acc+w+i)+v;store64(acc+w+i,std::uint64_t(carry));carry>>=64;}
+    dword c=dword(carry);
+    for(;i<=words;++i){word v=i<words?x[i]<<s:0;if(s&&i>0)v|=x[i-1]>>(32-s);dword t=dword(acc[w+i])+v+c;acc[w+i]=word(t);c=t>>32;}
+    for(std::size_t k=w+std::size_t(words)+1;c;++k){dword t=dword(acc[k])+c;acc[k]=word(t);c=t>>32;}
+}
+// p (2N words) = x * y exactly for N-word mantissas, with 64-bit limbs (N may be odd).
+template<int N> inline void mantissa_mul(const word* x,const word* y,word* p){
+    constexpr int H=(N+1)/2;std::uint64_t a[H],b[H],r[2*H];
+    for(int i=0;i<H;++i){a[i]=x[2*i];b[i]=y[2*i];if(2*i+1<N){a[i]|=std::uint64_t(x[2*i+1])<<32;b[i]|=std::uint64_t(y[2*i+1])<<32;}}
+    for(int i=0;i<2*H;++i)r[i]=0;
+    for(int i=0;i<H;++i){unsigned __int128 cy=0;for(int j=0;j<H;++j){cy+=(unsigned __int128)a[i]*b[j]+r[i+j];r[i+j]=std::uint64_t(cy);cy>>=64;}r[i+H]=std::uint64_t(cy);}
+    for(int i=0;i<N;++i){p[2*i]=word(r[i]);p[2*i+1]=word(r[i]>>32);}
 }
 // Two's complement accumulator: acc += sign * x * 2^shift (acc wide enough by construction).
 inline void accumulate(std::vector<word>& acc,const word* x,int words,long shift,int sign){
@@ -174,8 +197,7 @@ template<int N> Number<N> exact_dot_add(const Number<N>* c,bool subtract,const N
     // Exact term k (2N words, or the N-word addend) into p; returns its sign.
     auto term=[&](std::size_t k,word* p,int& words)->int{
         if(k==K){for(int u=0;u<N;++u)p[u]=c->limb[u];words=N;return c->sign;}
-        const auto &x=a[std::ptrdiff_t(k)*sa],&y=b[std::ptrdiff_t(k)*sb];for(int u=0;u<2*N;++u)p[u]=0;words=2*N;
-        for(int u=0;u<N;++u){dword cy=0;for(int v=0;v<N;++v){dword z=dword(x.limb[u])*y.limb[v]+p[u+v]+cy;p[u+v]=word(z);cy=z>>32;}p[u+N]=word(cy);}
+        const auto &x=a[std::ptrdiff_t(k)*sa],&y=b[std::ptrdiff_t(k)*sb];detail::mantissa_mul<N>(x.limb,y.limb,p);words=2*N;
         return subtract?-x.sign*y.sign:x.sign*y.sign;};
     // Common case: all terms fit one exact accumulator pair (positive and negative parts), one rounding of the difference.
     {exponent_type hi=t[0].scale,lo=t[0].scale;for(std::size_t i=1;i<count;++i){hi=std::max(hi,t[i].scale);lo=std::min(lo,t[i].scale);}
