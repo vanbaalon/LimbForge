@@ -287,7 +287,7 @@ For BSolver (≈128 lanes × 600 steps) the GPU runs ~128 threads. Two complemen
 Next, by consumer value: qscmx/BSolver integration and end-to-end timing on an idle host (also the
 pending GitHub speed figures); resident
 `linalg`; S1 polynomial jets, S4 norms/status summaries, S5 QR; G = 4/8 cooperative kernels under
-shader validation; ≥ 1024-bit `vector_recurrence`; D7 transcendentals.
+shader validation; fused `vector_recurrence` above 512 bits; D7 transcendentals.
 
 ## 5. Order, tracks and dependencies
 

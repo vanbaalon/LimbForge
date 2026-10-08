@@ -35,6 +35,8 @@ std::array<std::size_t,8> vector_elements(int bits,const VectorRecurrence& s){
     if(!s.lanes_per_weight||!s.lanes_per_base||!s.lanes_per_tangent||s.lanes%s.lanes_per_weight||s.lanes%s.lanes_per_base||s.lanes%s.lanes_per_tangent)
         throw std::invalid_argument("lanes must be divisible by lanes_per_weight, lanes_per_base and lanes_per_tangent");
     if(s.matrix&&s.tangent)throw std::invalid_argument("tangent mode requires the rank-one form");
+    // Fused specialisations above 512 bits crashed the Metal compiler (round 36); composed works to 1024.
+    if(s.fused&&bits>512)throw std::invalid_argument("fused vector recurrence supports at most 512 bits");
     // Every shader index is 64-bit, but the lane count and per-step strides must fit 32 bits.
     if(s.lanes>std::numeric_limits<std::uint32_t>::max()/16)throw std::invalid_argument("vector recurrence exceeds 32-bit indexing");
     std::size_t steps=s.steps,G=s.lanes/s.lanes_per_weight,coefficients=s.matrix?16:4;

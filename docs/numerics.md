@@ -199,9 +199,9 @@ on resident buffers (unused inputs may be empty buffers; `out` may alias `start`
 `all_steps` and the tangent pass reading its output can share one batch, so the base chain never
 leaves the GPU; buffer sizes are checked against the shape before encoding.
 
-Current limits: shapes are validated before submission; widths through 512 bits are tested. At
-1024 bits the Metal compiler failed while specialising this kernel (the exact complex `fma`
-workspaces are large); wider widths are not supported yet. Pipeline compilation for a new
+Current limits: shapes are validated before submission. Composed mode is tested at every width
+through 1024 bits. Fused mode is limited to 512 bits and rejected above (a fused 1024-bit
+specialisation crashed the Metal compiler; 768/1024-bit rank-one variants compiled in 23–34 s). Pipeline compilation for a new
 width/flag combination can take minutes on first use, so warm the pipelines before timing.
 
 ## Recurrences

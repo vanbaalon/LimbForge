@@ -78,8 +78,10 @@ template<int Bits> void resident(Engine& e,bool fused){
     require(rejected,"undersized resident output accepted");
     std::cout<<Bits<<" bits: resident base + tangent batch matches the host path ("<<(fused?"fused":"composed")<<")"<<std::endl;
 }
-int main(){try{Engine e;resident<256>(e,false);resident<224>(e,false);resident<256>(e,true);for(bool f:{false,true}){run<224>(e,150,f);run<256>(e,150,f);run<384>(e,60,f);run<64>(e,40,f);run<512>(e,12,f);}
+int main(){try{Engine e;resident<256>(e,false);resident<224>(e,false);resident<256>(e,true);for(bool f:{false,true}){run<224>(e,150,f);run<256>(e,150,f);run<384>(e,60,f);run<64>(e,40,f);run<512>(e,12,f);if(!f)run<1024>(e,6,f);}
     bool rejected=false;try{VectorRecurrence s;s.lanes=6;s.lanes_per_weight=4;std::vector<Complex<2>> x(24);e.vector_recurrence(64,s,x.data(),x.data(),x.data(),nullptr,x.data());}
     catch(const std::invalid_argument&){rejected=true;}require(rejected,"indivisible lanes_per_weight accepted");
+    rejected=false;try{VectorRecurrence s;s.lanes=1;s.steps=1;s.fused=true;std::vector<Complex<32>> x(4);e.vector_recurrence(1024,s,x.data(),x.data(),x.data(),nullptr,x.data());}
+    catch(const std::invalid_argument&){rejected=true;}require(rejected,"fused vector recurrence above 512 bits accepted");
     std::cout<<"All vector recurrence checks passed."<<std::endl;return 0;}
 catch(const std::exception& e){std::cerr<<e.what()<<'\n';return 1;}}
