@@ -1,0 +1,134 @@
+# Section 9 follow-up: review and next tasks
+
+*Review of commit `65c4373` ("Add section 9 batched products, polynomial sources and resident damping trials",
+`tips.md` §9, `docs/section9.md`) on top of `3d0eb0c`. Written 2026-10-08 for the agents continuing §9 work.
+Read `docs/optimization-plan.md` §3 (ground rules) and `docs/gpu-codegen.md` (all rules) before starting.*
+
+## State
+
+`65c4373` delivers every §9 item as a new unit (`batched_linalg.hpp/.mm/.metal`, `dispatch_policy.hpp`,
+`mpc_staging.hpp`, runtime-width overloads in `mpfr_bridge.hpp`, `Internal::require_final`):
+
+| §9 item | API |
+|---|---|
+| 9.1 power moments / strided batched GEMM | `BatchedLinalg::power_moments`, `gemm` (real/complex, strides, broadcast, accumulate, negate; composed or fused sequential dots) |
+| 9.2 batched small products | 4×4 path inside `gemm`, `product3` (A·B·D, optional negation) |
+| 9.3 resident normal equations, damping trials | `normal_equations` (sequential), `normal_equations_exact` (augmented exact `syrk`), `cholesky_trials`, `cholesky_solve` |
+| 9.4 recurrence with on-device sources | `polynomial_recurrence` (rank-one; Horner per step per lane) |
+| 9.5 infrastructure | runtime-width bridge, `describe_inline_mpc` + `import_inline_complex`, `wait_all_async`, `BreakEvenTable` |
+
+Aliasing, statuses and provisional inputs are handled carefully. On current `main`
+all 25 CTest suites pass, including `section9_smoke`. The commit's own testing is a light smoke run (one 0.6 s test,
+essentially 352 bits plus one 224/704-bit case each), and its docs say so.
+
+## Measurements at QSC shapes (lead agent, 2026-10-08)
+
+Apple M5 Max, 352 bits, host load average 25–37 (CPU ratios optimistic for the GPU; recheck on an idle host).
+`section9_limbforge` checks every GPU output against an independent MPFR sequence.
+
+| Workload | GPU wall | Comparison | Ratio |
+|---|---:|---|---:|
+| `power_moments` complex, 128 batches, nmax+1 = 60, steps 160, ncols 16 | 0.115 s | 18-worker MPFR 0.73 s | 6.3× |
+| same, 520 batches | 0.48 s | 18-worker MPFR 2.88 s | 6.0× |
+| complex `gemm` 66×130 · 130×3800 (Fourier shape) | 0.17 s | 18-worker MPFR 1.36 s | 7.9× |
+| `cholesky_trials`, 8 trials, n = 200 | 0.034 s | 8 × `Linalg::cholesky` 0.17 s | 4.9× |
+| same, n = 400 | 0.094 s | 0.29 s | 3.1× |
+| same, n = 944 | 1.54 s | 1.23 s | **0.8×** |
+
+Commands:
+
+```sh
+./build/section9_limbforge --operation power --bits 352 --count 520 --m 60 --n 16 --k 160 --workers 18 --repeats 3
+./build/section9_limbforge --operation gemm --bits 352 --count 1 --m 66 --n 3800 --k 130 --workers 18 --repeats 3
+```
+
+The `cholesky_trials` timing used a scratch program: A = JᵀJ from `Linalg::syrk` with J of size (n + n/6) × n,
+D = diag(A), μ_t = 10⁻³·2⁻ᵗ, compared with eight host-loop `Linalg::cholesky` calls on A + μ_t D.
+Turn it into a committed benchmark (task P1.2).
+
+## Tasks
+
+Each task: one round, an independent reference for any new contract, all-width GPU tests before benchmarks,
+a row in `docs/optimizations.md`, rejected attempts kept under `benchmarks/experiments/`.
+
+### P0: correctness and records (do first)
+
+**P0.1: All-width verification of the §9 kernels.**
+- **Kernels:** MPFR (or MPC) replays of each documented sequence at all 31 widths (64–1024) for:
+  - `gemm`, real and complex: the tiled path and the 4×4 path, tails, broadcast, padding, accumulate, negate, composed and fused;
+  - `product3`;
+  - `power_moments`: n0 positive, zero and negative (reciprocal, zero denominator), accumulate;
+  - `normal_equations`, composed and fused;
+  - `cholesky_trials` and its solve: success, failing trials, statuses;
+  - `polynomial_recurrence`, composed and fused, reverse, all_steps, sharing tails;
+  - `import_inline_complex`: odd and even word counts, NaN/Inf, exponent limits.
+- **Inputs:** cancellation-heavy cases, statuses, and large dense batches (cross-thread corruption).
+- **Shader validation:** run the GPU suites again under `MTL_SHADER_VALIDATION=1`.
+- **Why widths matter:** several GPU-only miscompiles in this library appeared only at particular widths (`gpu-codegen.md` §3, §6–§12), and the new kernels instantiate `cfma_rolled`, `fma`, `cdiv` and Horner loops in new contexts.
+
+**P0.2: Records.**
+- Add a round row to `docs/optimizations.md` and update the status table in `docs/optimization-plan.md`.
+- Fold the contracts in `docs/section9.md` into `docs/numerics.md` (sequences) and `docs/execution.md` (resident and async rules), keeping a single source of truth.
+
+### P1: performance at real sizes
+
+**P1.1: `power_moments` without the device power table.**
+- **Problem:** the kernel materialises `count × (nmax+1) × steps` complex powers in device memory.
+- **Size of the table:**
+
+  | Shape | Table size |
+  |---|---|
+  | Measured: 520 × 60 × 160 at 352 bits | ≈ 0.56 GB |
+  | QSC upper range: 900 × 101 × 250 at 352–448 bits | ≈ 2.5–3 GB |
+
+- **Change:** generate the powers inside the GEMM tile loader. Per k column, start from `powi(y, n0)` and multiply by y down the rows of the tile, keeping the documented sequence (or document a new one with its own reference).
+- **Measure:** 400–900 batches, steps 100–250, nmax 40–100, ncols 16, at 352/384/448 bits, against the current kernel and 18-worker MPFR.
+
+**P1.2: Blocked `cholesky_trials`.**
+- **Problem:** the column-by-column passes (≈ 3n small dispatches with shrinking grids) lose to eight sequential `Linalg::cholesky` calls at n = 944 (1.54 s vs 1.23 s).
+- **Change:** use a blocked algorithm, with per-trial panels and trailing updates as batched GEMM over all trials.
+- **Target:** ≥ 3× over 8 × `Linalg::cholesky` at n ≈ 1000, and keep the n ≤ 400 advantage.
+- **Contract:** document the new sequence and give it an MPFR replay.
+- **Benchmark:** commit one for the trials (shape above), including `cholesky_solve` with several right-hand sides (the chord steps).
+
+**P1.3: GEMM kernel.**
+- **Baseline:** the composed tiled GEMM is 7.9× MPFR at the Fourier shape.
+- **Compare it against:**
+  - `Linalg::gemm` (exact, one rounding per entry; complex through the real embedding);
+  - a 3-multiplication complex product, in either path, with its own documented sequence;
+  - register blocking and a larger tile (try 8×8 / 16×8 outputs per SIMD group, TK sweep), within the 32 KB threadgroup limit at 1024-bit complex.
+- **Shapes:** both §9.2 shapes, plus the 4×4 batches at 1e4–1e5 matrices.
+
+**P1.4: Normal equations.**
+- **Measure:** `normal_equations` (sequential, one thread per output) against `normal_equations_exact` and plain `syrk`, at n ≈ 944, K ≈ 1100, for time and accuracy.
+- **Decision rule:** if the sequential form is slower and less accurate, make the exact form the documented default. Keep the sequential one for chaining within a batch, where its outputs are final immediately.
+
+**P1.5: `polynomial_recurrence` sources.**
+- **Problem:** every lane re-evaluates 8 Horner polynomials of degree ≈ Nc per step, and lanes sharing a weight group repeat identical work. Horner dominates, at roughly 60× the arithmetic of the recurrence update itself.
+- **Option to measure:** a device source pass that writes p and q per (step, weight group, component) into batch scratch. That scratch is small, e.g. 160 × 65 × 8 complex, and is not the host table the consumer wants to avoid. Follow it with the existing `vector_recurrence`, which also brings the matrix, affine and tangent modes.
+- **Contract:** keep the documented Horner order, so results stay identical.
+
+**P1.6: No allocation in hot paths.** `product3` and `normal_equations_exact` allocate engine buffers on every call. Reuse workspaces, and follow the `Linalg::release_workspaces` semantics: memory still used by an unwaited batch is detached, not freed.
+
+### P2: API cohesion
+
+**P2.1: Two contracts, similar names.** `Linalg` products and factorizations round once per entry from the exact value. `BatchedLinalg` uses sequential composed or fused dot products, and a different Cholesky sequence.
+- Make the contract visible in names or a contract enum.
+- Avoid same-named methods with different meanings (`cholesky_solve`).
+- Add a comparison table (contract, accuracy, speed, residency) to `docs/numerics.md`.
+
+**P2.2: Exact-contract damping trials.** A batched variant reproducing `Linalg::cholesky` bit for bit per trial, so Newton histories stay identical to the current exact GPU path.
+
+**P2.3: Break-even table.** `BreakEvenTable` has two smoke entries, both CPU wins at tiny shapes. Record measured entries at QSC shapes (host-array and resident) for each new operation.
+
+### P3: end-to-end (consumer)
+
+**P3.1: qscmx integration.**
+- **Switch over:**
+  - the adjoint descent tables to `power_moments`;
+  - the per-column 4×4 post-processing to batched products plus `lu4`;
+  - the Fourier residual to the GEMM;
+  - the damping trials to `cholesky_trials`;
+  - optionally the base pass to `polynomial_recurrence`.
+- **Check:** Δ agrees to 10⁻²⁵ at g = 0.1, 0.2, 0.5, and the Newton histories match.
+- **Measure:** wall time per Jacobian against the current ≈ 7 s (Nc = 59, Nsh = 160, nPts = 65, 352 bits), on an idle host.
