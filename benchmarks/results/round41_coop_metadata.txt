@@ -1,0 +1,29 @@
+Round 41-L4b: cooperative recurrence G = 4/8 under MTL_SHADER_VALIDATION, and the extended Engine::recurrence selection.
+Apple M5 Max (40-core GPU), macOS 26.6.2 (25G83), Apple clang 21, Release build, 2026-10-08. Base revision 96cf7c0.
+Host load average 15-60 during timing (other users' CPU work); other GPU work only where stated ("load").
+
+Files
+- round41_coop_validation_probe.txt: every probe run (benchmarks/experiments/coop_validation_probe.mm/.metal) that the
+  docs cite, with section letters; columns are explained at the top. "load" = a second process running unvalidated
+  1024-bit G=4 recurrences (16,384 trajectories x 64 steps, ~150 ms per dispatch, each compared with the CPU).
+- round41_coop_recurrence_timing.csv: benchmarks/coop_recurrence.mm timing mode (library kernels), four repeats:
+    1: --bits 128,256,384,512,768,1024 --lanes 512,1024,1536,2048,3072,4096,6144,8192 --groups 4,8,16 --steps 64 --samples 9 --warm 0.5
+       (with the bit-for-bit checks at those widths: 0 mismatches)
+    2: --bits 64,128,192,256,288,384,512,544,768,1024 --lanes 256,...,8192 --groups 4,8,16,32 ... --no-check
+    3: --bits 64,96,128,160 --lanes 32,128,512,1024,2048,4096 --groups 4,8,16,32 ... --no-check
+    4: --bits 96,128,160,256,288,384,512,544,640,768,1024 --lanes 768,1024,2048,3072,4096 --groups 4,8,16 ... --no-check
+  Protocol (as round 17): per cell 0.5 s warm-up cycling all kernels, then 9 interleaved rounds in rotated order;
+  median device time per step; every timed cooperative output memcmp-equal to the one-thread kernel's (0 differ).
+  Absolute times moved by up to 25% between repeats (host load); within-repeat ratios agree. No GPU load process ran.
+- round41_tests.txt: full CTest without validation after the change (19/19).
+- round41_metal_validation_tests.txt: full CTest with MTL_SHADER_VALIDATION=1 (while the load process ran for part of it),
+  repeated arithmetic_gpu (test_limbforge, includes test_cooperative_recurrence) under validation with the load process,
+  and the library-kernel validation of the selected shapes (coop_recurrence --no-time) under validation with load.
+
+Summary
+- Defect fixed: the rounding vote `vote(rb)!=0&&vote(sticky)!=0` ran its second simd_ballot in divergent control flow
+  (G = 4, 8, 16); both ballots now run unconditionally. Bit-identical results.
+- Remaining validation-only failures (G=4 with >= 3 limbs per lane: 33/960 validated loaded dispatches; G=8: 1/640) need
+  device-memory validation instrumentation and concurrent GPU work; they occur with any exchange mechanism, with all
+  lanes active and the lane mapping intact; never without validation (0 of 26,100 loaded 1024-bit G=4 dispatches).
+- Shapes with <= 2 limbs per lane: 0 of 4,780 validated loaded dispatches. Engine::recurrence uses only those.

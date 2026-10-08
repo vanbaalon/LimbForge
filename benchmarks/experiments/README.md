@@ -68,6 +68,16 @@ GPU/MPFR validation and was removed from the installed implementation.
   fail on the GPU; with 4 (the library) none fail. See ../../docs/gpu-codegen.md
   section 7.
 
+- `coop_validation_probe.mm` / `.metal` (diagnostic, CMake target `coop_validation_probe`;
+  round 41-L4b): a switchable copy of `src/cooperative.metal` (exchange through
+  threadgroup memory, SIMD barriers, active-lane and lane-mapping counters, per-step trace,
+  extra register pressure, the old short-circuit rounding vote) whose every dispatch is
+  compared with the CPU. It found the divergent rounding ballot and bisected the remaining
+  validation-only G = 4/8 failures (they need concurrent GPU work from another process to
+  appear often). `simd_validation_repro.mm` (target `simd_validation_repro`) is a
+  LimbForge-independent shuffle kernel that did not reproduce them. See
+  ../../docs/experiments.md (41-L4b) and ../../docs/gpu-codegen.md section 10.
+
 The cause of these GPU mismatches is unresolved. Do not treat the rejected
 measurements as validated performance results. The accepted library uses exact
 schoolbook multiplication and a restricted, separately validated unary square. See ../../docs/optimizations.md and the `round5_*`

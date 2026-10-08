@@ -23,8 +23,8 @@ inline std::size_t broadcast_elements(std::size_t count,Broadcast b){
     if(!b.stride)throw std::invalid_argument("broadcast stride must be positive");
     std::size_t n=count/b.stride+(count%b.stride!=0);return b.period&&b.period<n?b.period:n;
 }
-// 0 selects the default policy. cooperative_recurrence spreads each trajectory over 16/32 SIMD lanes
-// for small counts (bit-identical; docs/experiments.md).
+// 0 selects the default policy. cooperative_recurrence spreads each trajectory over 4/8/16/32 SIMD lanes
+// for small and mid-size counts (bit-identical; docs/experiments.md, round 41-L4b).
 struct EngineOptions { unsigned threads_per_threadgroup=0; bool cooperative_reductions=true; bool cooperative_recurrence=true; };
 struct PipelineInfo { unsigned simd_width,max_threads,threads_per_threadgroup; };
 // Segmented dot products: out[i] = sum_{k<length} a[i*length+k] * b[i*length+k] (or b[k] when

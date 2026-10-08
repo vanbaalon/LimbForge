@@ -1,7 +1,9 @@
 // Cooperative recurrence (round 17-L4, docs/experiments.md): each trajectory's numbers are spread over
 // G SIMD lanes (limbs(G) limbs per lane). Bit-identical to the one-thread recurrence kernel; selected by
-// Engine::recurrence for small trajectory counts. Only G = 16 and 32 are compiled: G = 4/8 gave
-// nondeterministic mismatches under MTL_SHADER_VALIDATION (never without it) and stay experimental.
+// Engine::recurrence for small trajectory counts. All G are compiled, but the engine uses only shapes with
+// at most 2 limbs per lane (G = 4 up to 256 bits, G = 8 up to 512). Shapes with >= 3 limbs per lane (G = 4 from
+// 288 bits, G = 8 from 544 bits) give nondeterministic mismatches under MTL_SHADER_VALIDATION when other GPU
+// work runs concurrently, never without validation (docs/experiments.md 41-L4b, docs/gpu-codegen.md section 10).
 namespace coop {
 constexpr int limbs(int g){return (N+g-1)/g;}
 template<int L> struct CN { uint l[L]; int exponent,sign; uint status; };
@@ -95,7 +97,9 @@ template<int G> inline CN<limbs(G)> round(thread const CW<limbs(G)>& w,long e,in
     for(int j=0;j<L;++j){int q=int(c.k)*L+j,q2=q+M;below|=q<R?w.lo[j]:q==R?w.lo[j]&0x7fffffffu:0u;below|=q2<R?w.hi[j]:q2==R?w.hi[j]&0x7fffffffu:0u;}
     if(BR<G)rb=c.k==uint(BR)&&(w.lo[PR]>>31);else rb=c.k==uint(BR-G)&&(w.hi[PR]>>31);
     bool lsb=c.k==uint(KQ)&&(w.hi[PQ]&1);
-    bool up=vote<G>(rb,c.base)!=0&&vote<G>(below!=0||lsb,c.base)!=0;
+    // Both ballots run on every lane: `vote(rb)!=0&&vote(...)!=0` short-circuits per lane group, so its second
+    // ballot ran in divergent control flow (found in round 41-L4b; results were unaffected).
+    ulong round_vote=vote<G>(rb,c.base),sticky_vote=vote<G>(below!=0||lsb,c.base);bool up=round_vote!=0&&sticky_vote!=0;
     CN<L> r;r.sign=sign;r.status=status;
     for(int j=0;j<L;++j)r.l[j]=int(c.k)*L+j>=P?w.hi[j]:0u;
     if(simd_any(up)){uint cc=up&&c.k==uint(KQ)?1u:0u;bool prop=c.k>uint(KQ)&&all_ones(r.l);
@@ -185,5 +189,7 @@ template<int G> inline void recurrence_body(device const Complex<N>* seeds,devic
 #define COOP_RECURRENCE(G) \
 kernel void recurrence_coop##G(device const Complex<N>* s [[buffer(0)]],device const Complex<N>* w [[buffer(1)]],device Complex<N>* out [[buffer(2)]],constant Params& p [[buffer(3)]],\
     uint gid [[thread_position_in_grid]],uint lane [[thread_index_in_simdgroup]]){coop::recurrence_body<G>(s,w,out,p,gid,lane);}
+COOP_RECURRENCE(4)
+COOP_RECURRENCE(8)
 COOP_RECURRENCE(16)
 COOP_RECURRENCE(32)

@@ -124,7 +124,7 @@ struct Engine::Impl {
             function=[lib newFunctionWithName:@"vector_recurrence" constantValues:constants error:&error];
         }
         else if(operation>=100){
-            NSString* names[]={@"recurrence",@"tree_sum_real",@"tree_sum_complex",@"global_tree_sum_real",@"global_tree_sum_complex",@"recurrence_coop16",@"recurrence_coop32"};
+            NSString* names[]={@"recurrence",@"tree_sum_real",@"tree_sum_complex",@"global_tree_sum_real",@"global_tree_sum_complex",@"recurrence_coop16",@"recurrence_coop32",@"recurrence_coop8",@"recurrence_coop4"};
             function=[lib newFunctionWithName:names[operation-100]];
         }
         else {
@@ -141,7 +141,7 @@ struct Engine::Impl {
     }
     unsigned group_size(id<MTLComputePipelineState> state,int bits,int operation)const{
         NSUInteger width=state.threadExecutionWidth,maximum=state.maxTotalThreadsPerThreadgroup;
-        NSUInteger preferred=options.threads_per_threadgroup?options.threads_per_threadgroup:((operation==100||operation==105||operation==106||operation>=200||(bits>=384&&(operation==5||operation==6||operation==11||operation==12)))?width:NSUInteger(128));
+        NSUInteger preferred=options.threads_per_threadgroup?options.threads_per_threadgroup:((operation==100||(operation>=105&&operation<=108)||operation>=200||(bits>=384&&(operation==5||operation==6||operation==11||operation==12)))?width:NSUInteger(128));
         if(preferred%width)throw std::invalid_argument("threadgroup size must be a multiple of pipeline SIMD width");
         NSUInteger result=std::min(preferred,maximum);result-=result%width;
         if(!result)throw std::runtime_error("pipeline cannot fit one SIMD group");
@@ -150,7 +150,7 @@ struct Engine::Impl {
     void prewarm(const Prewarm& r){
         for(int bits:r.bits){validate(bits,0);library(bits);
             for(auto op:r.operations){if(!operation_is_valid(op))throw std::invalid_argument("unknown arithmetic operation");pipeline(bits,int(op));}
-            if(r.recurrence)for(int op:{100,105,106})pipeline(bits,op);
+            if(r.recurrence)for(int op:{100,105,106,107,108})if((op!=107||bits<=512)&&(op!=108||bits<=256))pipeline(bits,op);
             if(r.reductions)for(int op:{101,102,103,104})pipeline(bits,op);
             for(auto& v:r.vector_shapes){if(v.matrix&&v.tangent)throw std::invalid_argument("tangent mode requires the rank-one form");pipeline(bits,200+int(vector_flags(v)));}
             for(auto& d:r.real_dots)pipeline(bits,300+(d.shared_right?1:0));
@@ -534,9 +534,14 @@ Timing Engine::recurrence(int bits,const void* seeds,const void* weights,void* o
     std::size_t stride=2*(bits/8+12),bytes=checked_size(count,stride);
     // Metal requires a bound weights buffer even for a zero-step dispatch.
     auto seed_bytes=checked_size(bytes,4),weight_bytes=checked_size(bytes/states_per_weight,std::size_t(steps)*4);
-    // Few trajectories leave the GPU idle: spread each over 32 (<= 128) or 16 (<= 1,024) SIMD lanes.
-    // Measured crossover in round 17; results are bit-identical.
-    unsigned g=impl->options.cooperative_recurrence&&steps?(count<=128?32:count<=1024?16:1):1;int op=g==32?106:g==16?105:100;
+    // Few trajectories leave the GPU idle: spread each over G SIMD lanes (bit-identical results). G falls with the
+    // count (32, 16, 8, 4 up to 128, 512, 1,024, 4,096 trajectories; 2,048 up to 160 bits), but each lane keeps at most
+    // 2 limbs (G >= 4 up to 256 bits, >= 8 up to 512, else 16): wider lane state fails under MTL_SHADER_VALIDATION
+    // (docs/experiments.md 41-L4b). At 64 bits the one-thread kernel is faster. Measured in rounds 17 and 41.
+    unsigned g=1;
+    if(impl->options.cooperative_recurrence&&steps&&bits>=96&&count<=(bits<=160?2048u:4096u))
+        g=std::max(count<=128?32u:count<=512?16u:count<=1024?8u:4u,bits<=256?4u:bits<=512?8u:16u);
+    int op=g==32?106:g==16?105:g==8?107:g==4?108:100;
     if(!steps)return impl->dispatch(bits,100,seeds,seed_bytes,seeds,stride,out,bytes,count,0,states_per_weight);
     return impl->dispatch(bits,op,seeds,seed_bytes,weights,weight_bytes,out,bytes,count,steps,states_per_weight,nullptr,0,g);
 }

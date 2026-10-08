@@ -127,15 +127,17 @@ void test_dense_complex(Engine* engine){
     }
     std::cout<<"1024 bits: dense complex batches passed ("<<count<<" values, three GPU repeats)"<<std::endl;
 }
-// Engine::recurrence selects 32 or 16 cooperating SIMD lanes per trajectory for small counts; the
-// one-thread kernel (validated against MPFR above) must give identical bits in every band.
+// Engine::recurrence selects 32, 16, 8 or 4 cooperating SIMD lanes per trajectory by count and width (round 41);
+// the one-thread kernel (validated against MPFR above) must give identical bits at every band edge. Counts above
+// 1,025 share one weight sequence (states_per_weight = count) to keep the data small.
 template<int Bits> void test_cooperative_recurrence(){
     using C=Complex<Bits/32>;std::mt19937_64 rng(Bits+5);Engine cooperative,single(EngineOptions{0,true,false});constexpr unsigned steps=23;
-    for(std::size_t count:{1ul,17ul,128ul,129ul,257ul,1000ul,1024ul,1025ul}){
-        std::vector<C> seed(4*count),weight(4*steps*count),a(count),b(count);
+    for(std::size_t count:{1ul,17ul,128ul,129ul,257ul,512ul,513ul,1000ul,1024ul,1025ul,2048ul,2049ul,3000ul,4096ul,4097ul}){
+        unsigned spw=count>1025?unsigned(count):1u;
+        std::vector<C> seed(4*count),weight(4*steps*(count/spw)),a(count),b(count);
         for(auto& z:seed)z={reference::random_number<Bits>(rng,5),reference::random_number<Bits>(rng,5)};
         for(auto& z:weight){z={reference::random_number<Bits>(rng,3),reference::random_number<Bits>(rng,3)};z.re.exponent-=5;z.im.exponent-=5;}
-        cooperative.recurrence(Bits,seed.data(),weight.data(),a.data(),count,steps);single.recurrence(Bits,seed.data(),weight.data(),b.data(),count,steps);
+        cooperative.recurrence(Bits,seed.data(),weight.data(),a.data(),count,steps,spw);single.recurrence(Bits,seed.data(),weight.data(),b.data(),count,steps,spw);
         for(std::size_t i=0;i<count;++i)require(reference::equal_complex<Bits>(a[i],b[i]),"cooperative recurrence bits="+std::to_string(Bits)+" count="+std::to_string(count)+" index="+std::to_string(i));
     }
     std::cout<<Bits<<" bits: cooperative recurrence identical to the one-thread kernel"<<std::endl;
@@ -154,7 +156,9 @@ int main(int argc,char** argv) {
         all_precisions<64>(engine.get());
         test_complex_and_recurrence<128>(engine.get());test_complex_and_recurrence<384>(engine.get());test_complex_and_recurrence<1024>(engine.get());
         test_dense_complex(engine.get());
-        if(engine){test_cooperative_recurrence<64>();test_cooperative_recurrence<256>();test_cooperative_recurrence<384>();test_cooperative_recurrence<1024>();}
+        if(engine){test_cooperative_recurrence<64>();test_cooperative_recurrence<96>();test_cooperative_recurrence<160>();test_cooperative_recurrence<256>();
+            test_cooperative_recurrence<288>();test_cooperative_recurrence<384>();test_cooperative_recurrence<512>();test_cooperative_recurrence<544>();
+            test_cooperative_recurrence<1024>();}
         if(engine){
             bool rejected=false;try{engine->run(80,Operation::add,nullptr,nullptr,nullptr,1);}catch(const std::invalid_argument&){rejected=true;}
             require(rejected,"invalid precision rejection");

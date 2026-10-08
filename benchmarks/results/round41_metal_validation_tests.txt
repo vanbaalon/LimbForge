@@ -1,0 +1,315 @@
+Round 41-L4b, MTL_SHADER_VALIDATION=1 runs after the change (Release build, Apple M5 Max, macOS 26.6.2, 2026-10-08).
+'load' = a second process running unvalidated 1024-bit G=4 recurrences (benchmarks/experiments/coop_validation_probe).
+
+## 1. Full CTest under validation (ctest -j2; the load process ran from about the fifth test on)
+Test project /Users/k0959535/Dropbox/IntegrabilityProjects/2026 4d SoV/LimbForge/.claude/worktrees/agent-aaeb27f457bae68a4/build
+      Start  4: fused_gpu
+      Start  9: linalg_qr
+ 1/19 Test  #9: linalg_qr ........................   Passed   67.87 sec
+      Start  5: transcendental_cpu
+ 2/19 Test  #5: transcendental_cpu ...............   Passed   49.27 sec
+      Start 18: transcendental_gpu
+ 3/19 Test #18: transcendental_gpu ...............   Passed   59.53 sec
+      Start 10: arithmetic_gpu
+ 4/19 Test #10: arithmetic_gpu ...................   Passed   73.43 sec
+      Start  8: linalg_cholesky
+ 5/19 Test  #8: linalg_cholesky ..................   Passed   95.96 sec
+      Start  7: linalg_gpu
+ 6/19 Test  #4: fused_gpu ........................   Passed  455.80 sec
+      Start  2: bridge_cpu
+ 7/19 Test  #2: bridge_cpu .......................   Passed   12.72 sec
+      Start 15: vector_recurrence_gpu
+ 8/19 Test  #7: linalg_gpu .......................   Passed  135.47 sec
+      Start 16: numerics_gpu
+ 9/19 Test #16: numerics_gpu .....................   Passed  250.61 sec
+      Start  1: arithmetic_cpu
+10/19 Test  #1: arithmetic_cpu ...................   Passed    2.43 sec
+      Start 14: segmented_dot_gpu
+11/19 Test #14: segmented_dot_gpu ................   Passed   79.40 sec
+      Start 19: tree_reduction
+12/19 Test #19: tree_reduction ...................   Passed   22.78 sec
+      Start  6: linalg_cpu
+13/19 Test  #6: linalg_cpu .......................   Passed    0.58 sec
+      Start 12: batched4_gpu
+14/19 Test #12: batched4_gpu .....................   Passed  598.36 sec
+      Start  3: fused_cpu
+15/19 Test  #3: fused_cpu ........................   Passed    0.39 sec
+      Start 11: broadcast_gpu
+16/19 Test #11: broadcast_gpu ....................   Passed   38.37 sec
+      Start 13: cast_gpu
+17/19 Test #13: cast_gpu .........................   Passed    2.15 sec
+      Start 17: resident_buffers
+18/19 Test #17: resident_buffers .................   Passed   15.81 sec
+19/19 Test #15: vector_recurrence_gpu ............   Passed  1243.36 sec
+
+100% tests passed out of 19
+
+Total Test time (real) = 1711.89 sec
+
+## 2. test_limbforge (arithmetic_gpu, includes test_cooperative_recurrence at 64-1024 bits and counts 1-4,097) under validation with load
+First loop (output filtered for cooperative/pass lines):
+== run 1 04:14:10 load: GPU load process running
+64 bits: cooperative recurrence identical to the one-thread kernel
+96 bits: cooperative recurrence identical to the one-thread kernel
+160 bits: cooperative recurrence identical to the one-thread kernel
+256 bits: cooperative recurrence identical to the one-thread kernel
+288 bits: cooperative recurrence identical to the one-thread kernel
+384 bits: cooperative recurrence identical to the one-thread kernel
+512 bits: cooperative recurrence identical to the one-thread kernel
+544 bits: cooperative recurrence identical to the one-thread kernel
+1024 bits: cooperative recurrence identical to the one-thread kernel
+All tests passed.
+exit 0
+== run 2 04:16:04 load: GPU load process running
+64 bits: cooperative recurrence identical to the one-thread kernel
+96 bits: cooperative recurrence identical to the one-thread kernel
+160 bits: cooperative recurrence identical to the one-thread kernel
+256 bits: cooperative recurrence identical to the one-thread kernel
+288 bits: cooperative recurrence identical to the one-thread kernel
+384 bits: cooperative recurrence identical to the one-thread kernel
+512 bits: cooperative recurrence identical to the one-thread kernel
+544 bits: cooperative recurrence identical to the one-thread kernel
+1024 bits: cooperative recurrence identical to the one-thread kernel
+All tests passed.
+exit 0
+== run 3 04:16:12 load: GPU load process running
+64 bits: cooperative recurrence identical to the one-thread kernel
+96 bits: cooperative recurrence identical to the one-thread kernel
+160 bits: cooperative recurrence identical to the one-thread kernel
+256 bits: cooperative recurrence identical to the one-thread kernel
+288 bits: cooperative recurrence identical to the one-thread kernel
+384 bits: cooperative recurrence identical to the one-thread kernel
+512 bits: cooperative recurrence identical to the one-thread kernel
+544 bits: cooperative recurrence identical to the one-thread kernel
+1024 bits: cooperative recurrence identical to the one-thread kernel
+All tests passed.
+exit 0
+== run 4 04:16:20 load: GPU load process running
+64 bits: cooperative recurrence identical to the one-thread kernel
+96 bits: cooperative recurrence identical to the one-thread kernel
+160 bits: cooperative recurrence identical to the one-thread kernel
+256 bits: cooperative recurrence identical to the one-thread kernel
+288 bits: cooperative recurrence identical to the one-thread kernel
+384 bits: cooperative recurrence identical to the one-thread kernel
+512 bits: cooperative recurrence identical to the one-thread kernel
+544 bits: cooperative recurrence identical to the one-thread kernel
+1024 bits: cooperative recurrence identical to the one-thread kernel
+All tests passed.
+exit 0
+== run 5 04:16:28 load: GPU load process running
+64 bits: cooperative recurrence identical to the one-thread kernel
+96 bits: cooperative recurrence identical to the one-thread kernel
+160 bits: cooperative recurrence identical to the one-thread kernel
+256 bits: cooperative recurrence identical to the one-thread kernel
+288 bits: cooperative recurrence identical to the one-thread kernel
+384 bits: cooperative recurrence identical to the one-thread kernel
+512 bits: cooperative recurrence identical to the one-thread kernel
+544 bits: cooperative recurrence identical to the one-thread kernel
+1024 bits: cooperative recurrence identical to the one-thread kernel
+All tests passed.
+exit 0
+== run 6 04:16:36 load: GPU load process running
+exit 1
+Note: run 6 of the first loop exited with status 1, and its message was filtered out by the grep. 'cooperative' was
+in the filter, so it was not a cooperative-recurrence mismatch. Its cause is unknown. All later runs (below, full
+output kept for failures) passed.
+Three unfiltered runs: exit 0, 'All tests passed.' each.
+Loop of 15 (load process running for every run):
+run 1 04:26:24 load exit 0 All tests passed.
+run 2 04:26:29 load exit 0 All tests passed.
+run 3 04:26:36 load exit 0 All tests passed.
+run 4 04:26:45 load exit 0 All tests passed.
+run 5 04:27:03 load exit 0 All tests passed.
+run 6 04:27:16 load exit 0 All tests passed.
+run 7 04:27:24 load exit 0 All tests passed.
+run 8 04:27:32 load exit 0 All tests passed.
+run 9 04:27:41 load exit 0 All tests passed.
+run 10 04:27:57 load exit 0 All tests passed.
+run 11 04:28:03 load exit 0 All tests passed.
+run 12 04:28:09 load exit 0 All tests passed.
+run 13 04:28:16 load exit 0 All tests passed.
+run 14 04:28:24 load exit 0 All tests passed.
+run 15 04:28:39 load exit 0 All tests passed.
+Loops of 40 and 60:
+run 1 04:29:55 load exit 0 All tests passed.
+run 2 04:30:06 load exit 0 All tests passed.
+run 3 04:30:15 load exit 0 All tests passed.
+run 4 04:30:24 load exit 0 All tests passed.
+run 5 04:30:39 load exit 0 All tests passed.
+run 6 04:30:50 load exit 0 All tests passed.
+run 7 04:30:59 load exit 0 All tests passed.
+run 8 04:31:08 load exit 0 All tests passed.
+run 9 04:31:18 load exit 0 All tests passed.
+run 10 04:31:23 load exit 0 All tests passed.
+run 11 04:31:30 load exit 0 All tests passed.
+run 12 04:31:39 load exit 0 All tests passed.
+run 13 04:31:47 load exit 0 All tests passed.
+run 14 04:31:55 load exit 0 All tests passed.
+run 15 04:32:04 load exit 0 All tests passed.
+run 16 04:32:19 load exit 0 All tests passed.
+run 17 04:32:29 load exit 0 All tests passed.
+run 18 04:32:37 load exit 0 All tests passed.
+run 19 04:32:44 load exit 0 All tests passed.
+run 20 04:32:52 load exit 0 All tests passed.
+run 21 04:32:59 load exit 0 All tests passed.
+run 22 04:33:05 load exit 0 All tests passed.
+run 23 04:33:12 load exit 0 All tests passed.
+run 24 04:33:18 load exit 0 All tests passed.
+run 25 04:33:25 load exit 0 All tests passed.
+run 26 04:33:33 load exit 0 All tests passed.
+run 27 04:33:39 load exit 0 All tests passed.
+run 28 04:33:46 load exit 0 All tests passed.
+run 29 04:33:52 load exit 0 All tests passed.
+run 30 04:33:59 load exit 0 All tests passed.
+run 31 04:34:12 load exit 0 All tests passed.
+run 32 04:34:21 load exit 0 All tests passed.
+run 33 04:34:27 load exit 0 All tests passed.
+run 34 04:34:33 load exit 0 All tests passed.
+run 35 04:34:40 load exit 0 All tests passed.
+run 36 04:34:45 load exit 0 All tests passed.
+run 37 04:34:53 load exit 0 All tests passed.
+run 38 04:35:03 load exit 0 All tests passed.
+run 39 04:35:13 load exit 0 All tests passed.
+run 40 04:35:24 load exit 0 All tests passed.
+run 1 04:36:10 load exit 0 All tests passed.
+run 2 04:36:16 load exit 0 All tests passed.
+run 3 04:36:22 load exit 0 All tests passed.
+run 4 04:36:30 load exit 0 All tests passed.
+run 5 04:36:36 load exit 0 All tests passed.
+run 6 04:36:42 load exit 0 All tests passed.
+run 7 04:36:50 load exit 0 All tests passed.
+run 8 04:37:03 load exit 0 All tests passed.
+run 9 04:37:12 load exit 0 All tests passed.
+run 10 04:37:24 load exit 0 All tests passed.
+run 11 04:37:35 load exit 0 All tests passed.
+run 12 04:37:44 load exit 0 All tests passed.
+run 13 04:37:51 load exit 0 All tests passed.
+run 14 04:37:57 load exit 0 All tests passed.
+run 15 04:38:03 load exit 0 All tests passed.
+run 16 04:38:11 load exit 0 All tests passed.
+run 17 04:38:20 load exit 0 All tests passed.
+run 18 04:38:32 load exit 0 All tests passed.
+run 19 04:38:42 load exit 0 All tests passed.
+run 20 04:38:50 load exit 0 All tests passed.
+run 21 04:38:57 load exit 0 All tests passed.
+run 22 04:39:04 load exit 0 All tests passed.
+run 23 04:39:10 load exit 0 All tests passed.
+run 24 04:39:22 load exit 0 All tests passed.
+run 25 04:39:31 load exit 0 All tests passed.
+run 26 04:39:36 load exit 0 All tests passed.
+run 27 04:39:43 load exit 0 All tests passed.
+run 28 04:39:53 load exit 0 All tests passed.
+run 29 04:40:04 load exit 0 All tests passed.
+run 30 04:40:14 load exit 0 All tests passed.
+run 31 04:40:25 load exit 0 All tests passed.
+run 32 04:40:34 load exit 0 All tests passed.
+run 33 04:40:47 load exit 0 All tests passed.
+run 34 04:40:56 load exit 0 All tests passed.
+run 35 04:41:07 load exit 0 All tests passed.
+run 36 04:41:12 load exit 0 All tests passed.
+run 37 04:41:18 load exit 0 All tests passed.
+run 38 04:41:23 load exit 0 All tests passed.
+run 39 04:41:30 load exit 0 All tests passed.
+run 40 04:41:43 load exit 0 All tests passed.
+run 41 04:41:52 load exit 0 All tests passed.
+run 42 04:41:58 load exit 0 All tests passed.
+run 43 04:42:04 load exit 0 All tests passed.
+run 44 04:42:13 load exit 0 All tests passed.
+run 45 04:42:25 load exit 0 All tests passed.
+run 46 04:42:35 load exit 0 All tests passed.
+run 47 04:42:45 load exit 0 All tests passed.
+run 48 04:42:50 load exit 0 All tests passed.
+run 49 04:42:59 load exit 0 All tests passed.
+run 50 04:43:10 load exit 0 All tests passed.
+run 51 04:43:21 load exit 0 All tests passed.
+run 52 04:43:32 load exit 0 All tests passed.
+run 53 04:43:41 load exit 0 All tests passed.
+run 54 04:43:54 load exit 0 All tests passed.
+run 55 04:44:04 load exit 0 All tests passed.
+run 56 04:44:16 load exit 0 All tests passed.
+run 57 04:44:24 load exit 0 All tests passed.
+run 58 04:44:29 load exit 0 All tests passed.
+run 59 04:44:34 load exit 0 All tests passed.
+run 60 04:44:40 load exit 0 All tests passed.
+
+## 3. Library kernels for the selected shapes (coop_recurrence --no-time: real/complex unit kernels and four recurrence
+## shapes, bit for bit against the CPU and the one-thread kernel) under validation with load, 3 runs;
+## G=4 at 96-256 bits, G=8 at 96-512 bits, G=16 at 544/640/768/896/1024 bits
+== run 1 04:14:26 load: GPU load process running
+# 96 bits G=4 L=1: real 0, complex 0, recurrence 0 mismatches (cumulative)
+# 128 bits G=4 L=1: real 0, complex 0, recurrence 0 mismatches (cumulative)
+# 160 bits G=4 L=2: real 0, complex 0, recurrence 0 mismatches (cumulative)
+# 192 bits G=4 L=2: real 0, complex 0, recurrence 0 mismatches (cumulative)
+# 224 bits G=4 L=2: real 0, complex 0, recurrence 0 mismatches (cumulative)
+# 256 bits G=4 L=2: real 0, complex 0, recurrence 0 mismatches (cumulative)
+# 96 bits G=8 L=1: real 0, complex 0, recurrence 0 mismatches (cumulative)
+# 128 bits G=8 L=1: real 0, complex 0, recurrence 0 mismatches (cumulative)
+# 160 bits G=8 L=1: real 0, complex 0, recurrence 0 mismatches (cumulative)
+# 192 bits G=8 L=1: real 0, complex 0, recurrence 0 mismatches (cumulative)
+# 224 bits G=8 L=1: real 0, complex 0, recurrence 0 mismatches (cumulative)
+# 256 bits G=8 L=1: real 0, complex 0, recurrence 0 mismatches (cumulative)
+# 288 bits G=8 L=2: real 0, complex 0, recurrence 0 mismatches (cumulative)
+# 320 bits G=8 L=2: real 0, complex 0, recurrence 0 mismatches (cumulative)
+# 352 bits G=8 L=2: real 0, complex 0, recurrence 0 mismatches (cumulative)
+# 384 bits G=8 L=2: real 0, complex 0, recurrence 0 mismatches (cumulative)
+# 416 bits G=8 L=2: real 0, complex 0, recurrence 0 mismatches (cumulative)
+# 448 bits G=8 L=2: real 0, complex 0, recurrence 0 mismatches (cumulative)
+# 480 bits G=8 L=2: real 0, complex 0, recurrence 0 mismatches (cumulative)
+# 512 bits G=8 L=2: real 0, complex 0, recurrence 0 mismatches (cumulative)
+# 544 bits G=16 L=2: real 0, complex 0, recurrence 0 mismatches (cumulative)
+# 640 bits G=16 L=2: real 0, complex 0, recurrence 0 mismatches (cumulative)
+# 768 bits G=16 L=2: real 0, complex 0, recurrence 0 mismatches (cumulative)
+# 896 bits G=16 L=2: real 0, complex 0, recurrence 0 mismatches (cumulative)
+# 1024 bits G=16 L=2: real 0, complex 0, recurrence 0 mismatches (cumulative)
+== run 2 04:19:13 load: GPU load process running
+# 96 bits G=4 L=1: real 0, complex 0, recurrence 0 mismatches (cumulative)
+# 128 bits G=4 L=1: real 0, complex 0, recurrence 0 mismatches (cumulative)
+# 160 bits G=4 L=2: real 0, complex 0, recurrence 0 mismatches (cumulative)
+# 192 bits G=4 L=2: real 0, complex 0, recurrence 0 mismatches (cumulative)
+# 224 bits G=4 L=2: real 0, complex 0, recurrence 0 mismatches (cumulative)
+# 256 bits G=4 L=2: real 0, complex 0, recurrence 0 mismatches (cumulative)
+# 96 bits G=8 L=1: real 0, complex 0, recurrence 0 mismatches (cumulative)
+# 128 bits G=8 L=1: real 0, complex 0, recurrence 0 mismatches (cumulative)
+# 160 bits G=8 L=1: real 0, complex 0, recurrence 0 mismatches (cumulative)
+# 192 bits G=8 L=1: real 0, complex 0, recurrence 0 mismatches (cumulative)
+# 224 bits G=8 L=1: real 0, complex 0, recurrence 0 mismatches (cumulative)
+# 256 bits G=8 L=1: real 0, complex 0, recurrence 0 mismatches (cumulative)
+# 288 bits G=8 L=2: real 0, complex 0, recurrence 0 mismatches (cumulative)
+# 320 bits G=8 L=2: real 0, complex 0, recurrence 0 mismatches (cumulative)
+# 352 bits G=8 L=2: real 0, complex 0, recurrence 0 mismatches (cumulative)
+# 384 bits G=8 L=2: real 0, complex 0, recurrence 0 mismatches (cumulative)
+# 416 bits G=8 L=2: real 0, complex 0, recurrence 0 mismatches (cumulative)
+# 448 bits G=8 L=2: real 0, complex 0, recurrence 0 mismatches (cumulative)
+# 480 bits G=8 L=2: real 0, complex 0, recurrence 0 mismatches (cumulative)
+# 512 bits G=8 L=2: real 0, complex 0, recurrence 0 mismatches (cumulative)
+# 544 bits G=16 L=2: real 0, complex 0, recurrence 0 mismatches (cumulative)
+# 640 bits G=16 L=2: real 0, complex 0, recurrence 0 mismatches (cumulative)
+# 768 bits G=16 L=2: real 0, complex 0, recurrence 0 mismatches (cumulative)
+# 896 bits G=16 L=2: real 0, complex 0, recurrence 0 mismatches (cumulative)
+# 1024 bits G=16 L=2: real 0, complex 0, recurrence 0 mismatches (cumulative)
+== run 3 04:21:31 load: GPU load process running
+# 96 bits G=4 L=1: real 0, complex 0, recurrence 0 mismatches (cumulative)
+# 128 bits G=4 L=1: real 0, complex 0, recurrence 0 mismatches (cumulative)
+# 160 bits G=4 L=2: real 0, complex 0, recurrence 0 mismatches (cumulative)
+# 192 bits G=4 L=2: real 0, complex 0, recurrence 0 mismatches (cumulative)
+# 224 bits G=4 L=2: real 0, complex 0, recurrence 0 mismatches (cumulative)
+# 256 bits G=4 L=2: real 0, complex 0, recurrence 0 mismatches (cumulative)
+# 96 bits G=8 L=1: real 0, complex 0, recurrence 0 mismatches (cumulative)
+# 128 bits G=8 L=1: real 0, complex 0, recurrence 0 mismatches (cumulative)
+# 160 bits G=8 L=1: real 0, complex 0, recurrence 0 mismatches (cumulative)
+# 192 bits G=8 L=1: real 0, complex 0, recurrence 0 mismatches (cumulative)
+# 224 bits G=8 L=1: real 0, complex 0, recurrence 0 mismatches (cumulative)
+# 256 bits G=8 L=1: real 0, complex 0, recurrence 0 mismatches (cumulative)
+# 288 bits G=8 L=2: real 0, complex 0, recurrence 0 mismatches (cumulative)
+# 320 bits G=8 L=2: real 0, complex 0, recurrence 0 mismatches (cumulative)
+# 352 bits G=8 L=2: real 0, complex 0, recurrence 0 mismatches (cumulative)
+# 384 bits G=8 L=2: real 0, complex 0, recurrence 0 mismatches (cumulative)
+# 416 bits G=8 L=2: real 0, complex 0, recurrence 0 mismatches (cumulative)
+# 448 bits G=8 L=2: real 0, complex 0, recurrence 0 mismatches (cumulative)
+# 480 bits G=8 L=2: real 0, complex 0, recurrence 0 mismatches (cumulative)
+# 512 bits G=8 L=2: real 0, complex 0, recurrence 0 mismatches (cumulative)
+# 544 bits G=16 L=2: real 0, complex 0, recurrence 0 mismatches (cumulative)
+# 640 bits G=16 L=2: real 0, complex 0, recurrence 0 mismatches (cumulative)
+# 768 bits G=16 L=2: real 0, complex 0, recurrence 0 mismatches (cumulative)
+# 896 bits G=16 L=2: real 0, complex 0, recurrence 0 mismatches (cumulative)
+# 1024 bits G=16 L=2: real 0, complex 0, recurrence 0 mismatches (cumulative)

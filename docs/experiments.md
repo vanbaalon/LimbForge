@@ -42,7 +42,7 @@ status are replicated on every lane of the group.
 
 Every branch that contains a shuffle or ballot is uniform across the whole SIMD group (`simd_any`/`simd_all`).
 Group-specific special cases (zeros, status, far gaps, exponent overflow) are computed alongside and selected at the
-end.
+end. (Round 41 found one exception: the short-circuit `&&` of the rounding vote; see 41-L4b.)
 
 ### Correctness
 
@@ -67,7 +67,8 @@ Each result is compared bit for bit with the core (CPU) and with the existing GP
   far-gap cutoff and a wrong compare lane. Two of them (product carry scan, h-carry) were caught only after the
   structured-limb cases were added; random limbs almost never make long carry chains.
 
-**Shader-validation finding (unresolved).** With `MTL_SHADER_VALIDATION=1`, G=4 recurrences from 512 bits upward
+**Shader-validation finding** (investigated in round 41-L4b below: one real defect fixed, the rest is specific to
+validation-instrumented code with ≥ 3 limbs per lane). With `MTL_SHADER_VALIDATION=1`, G=4 recurrences from 512 bits upward
 (L ≥ 4 limbs per lane) give wrong results for a few trajectories, often one whole SIMD group:
 
 - **Nondeterministic.** The failing widths change between runs: one full run failed at 512–832 bits and passed at
@@ -150,3 +151,126 @@ When moving the code into `kernels.metal` behind the existing API:
 
 The same building blocks (product, scan, shifter, pack) are the natural basis for cooperative `div` and fused
 operations.
+
+## 41-L4b: G = 4/8 under shader validation, and the extended cooperative selection
+
+Follow-up to 17-L4: root-cause the G = 4/8 mismatches seen only under `MTL_SHADER_VALIDATION=1`, then decide on
+G = 4/8 for `Engine::recurrence`. Tools:
+
+- `benchmarks/experiments/coop_validation_probe.mm` and `.metal`: a copy of `src/cooperative.metal` with switches
+  that replace, fence or instrument its SIMD operations. Every dispatch is compared with the core (CPU).
+- `simd_validation_repro.mm`: a LimbForge-independent shuffle kernel.
+- `coop_recurrence.mm`, which now uses the library's `coop` templates. Since round 22 it no longer compiled, because
+  its private copy of the namespace clashed with the library's.
+
+Data: `benchmarks/results/round41_coop_validation_probe.txt` (all runs), `round41_coop_recurrence_timing.csv`
+(four interleaved repeats) and `round41_*tests*.txt`. Device: Apple M5 Max, macOS 26.6.2, host load average 15–60.
+
+### Findings
+
+1. **Reproduction needs concurrent GPU work.** On an otherwise idle GPU the failures are rare: 1 of 4 full
+   `coop_recurrence --all-bits` runs under validation, at 768 and 832 bits. When a second process keeps the GPU
+   busy (unvalidated 1024-bit G=4 recurrences, 16,384 trajectories per dispatch), they are frequent: at 832 bits
+   G=4, 256 trajectories × 64 steps, 1–15 of 20–40 dispatches fail. Usually a whole SIMD group (8 trajectories)
+   fails.
+2. **A real defect: a ballot in divergent control flow.** The rounding decision `vote(rb)!=0 && vote(sticky)!=0`
+   short-circuits. Its second `simd_ballot` ran only in lane groups that hold a round bit. An active-lane counter
+   found 226,728 partial ballots in two 832-bit G=4 dispatches; G=8 and G=16 (the shipped kernel) had them too, G=32
+   did not. Both ballots now run unconditionally (`src/cooperative.metal`). The counter reads 0 at every G, with and
+   without validation, and results are unchanged. Under validation it was not the main cause, though. With the fix,
+   the shuffle form still fails at about the same rate. The threadgroup-memory form with `threadgroup_barrier`, whose
+   barrier had sat in the same divergent operand, went from 3 to 0 of 120 failing dispatches. Under heavier load it
+   failed again, 13 of 480.
+3. **The remaining failures are not a kernel defect that we can find.** With the fix, validation and load:
+   - **Not the exchange mechanism.** Threadgroup memory with `threadgroup_barrier` fails (13 of 480), so do
+     `simdgroup_barrier` (27 of 480) and `simd_shuffle`. `simdgroup_barrier(mem_none)` before every SIMD operation
+     makes it worse.
+   - **Not divergence or lane mapping.** No SIMD operation runs with fewer than 32 lanes. `lane == gid % 32` holds
+     for every thread, and indexing by SIMD-group identity fails as well. No shape has partial SIMD groups or early
+     exits.
+   - **Data independent.** The inputs are the same in every repeat, but other groups and steps fail each time. The
+     first wrong step follows an exact one. At 832 bits it changed the low 5 of 7 limb slots of every lane of a SIMD
+     group at once; at 768 bits, one last-limb ulp.
+   - **Device-memory instrumentation is required.** Test shape: 1024 bits, G=4, 2,048 × 64, 20 dispatches.
+     - All checks on: 12 fail. All checks off: 0 fail.
+     - Only global-memory or only resource-usage checking: 11 and 16 fail.
+     - Only stack-overflow, threadgroup-memory or texture checking: 0 fail.
+     - Any single check disabled: 11–19 fail.
+
+     `FAIL_MODE=allow` still fails, and no fault is reported. Re-reading every weight limb with an atomic load finds
+     0 differences from the values used, even with 19 of 20 dispatches wrong: the loads deliver the right data, and
+     the in-kernel state is what goes wrong. Per-pipeline validation through the API
+     (`MTLComputePipelineDescriptor.shaderValidation`) did not fail in 20 dispatches.
+   - **Grows with per-lane state, not dispatch time.** Before the fix, 96 extra live words per lane raised the rate
+     (832 bits G=4 from 13 to 18 of 20; 1024 bits G=8 from 0 to 10 of 20). A 16-step 1024-bit G=4 dispatch (11 ms)
+     fails, while 85 ms G=16/32 dispatches do not. The one-thread kernel never fails, even with 256 extra words.
+   - **Never without validation.** 0 of 26,100 unvalidated 1024-bit G=4 dispatches of 16,384 trajectories differ
+     from the CPU (the worst shape; they ran alongside the validated jobs). 0 of 480 loaded unvalidated runs with
+     0–96 extra words differ (before the fix), and the round-17 stress found 0 of 2,216.
+4. **Validated envelope.** With the fix, validation and load, shapes with at most 2 limbs per lane failed in 0 of
+   4,780 dispatches: G=4 up to 256 bits, G=8 up to 512 bits, and G=16/32 at every width. G=4 with 3 or more limbs
+   failed in 33 of 960, G=8 with 3 or more in 1 of 640.
+
+The mechanism lies in the validation-instrumented pipeline or its scheduling next to other GPU work. The AIR-level
+instrumentation cannot be inspected, and the synthetic shuffle kernel (up to 512 live words) did not reproduce it,
+so it is not fully explained. The smallest known reproducer is the probe:
+`MTL_SHADER_VALIDATION=1 coop_validation_probe --bits 1024 --groups 4 --count 2048 --steps 64 --repeats 20` while
+another process runs GPU work. It failed in 19 of 20 dispatches. See also gpu-codegen.md section 10 and rules 8–9.
+
+### Decision
+
+Unvalidated runs give strong evidence that G=4/8 are correct at every width. But the validation failures with
+≥ 3 limbs per lane are not explained, and the project gates GPU code on validation. The library therefore enables
+G = 4/8 only with at most 2 limbs per lane: G=4 up to 256 bits and G=8 up to 512 bits. That is the same per-lane
+state class as the G=16/32 kernels shipped in round 22. G=4 above 256 bits and G=8 above 512 bits stay disabled.
+
+`Engine::recurrence` now selects:
+
+| trajectories | G |
+|---|---|
+| ≤ 128 | 32 |
+| ≤ 512 | 16 |
+| ≤ 1,024 | 8 |
+| ≤ 4,096 (≤ 2,048 up to 160 bits) | 4 |
+| more | one-thread kernel |
+
+G is raised to the smallest allowed value: 4 up to 256 bits, 8 up to 512 bits, else 16. At 64 bits the
+cooperative kernels were always slower (0.56–0.70×), so 64 bits uses the one-thread kernel. That reverses a
+round-22 regression of up to 2.6×.
+
+### Latency (µs per step, warm, median of 9 interleaved samples per repeat; speed-ups are within-repeat ratios averaged over repeats)
+
+| bits | trajectories | round 22 | round 41 | one-thread µs/step | round 41 µs/step | vs round 22 | vs one-thread | repeats |
+|---:|---:|---|---|---:|---:|---:|---:|---:|
+| 64 | 128 | G=32 | one-thread | 13.5 | 13.5 | 1.46× | 1.00× | 1 |
+| 64 | 1,024 | G=16 | one-thread | 13.9 | 13.9 | 2.59× | 1.00× | 2 |
+| 96 | 2,048 | one-thread | G=4 | 37.0 | 32.3 | 1.15× | 1.15× | 2 |
+| 128 | 1,024 | G=16 | G=8 | 43.2 | 32.5 | 1.31× | 1.33× | 4 |
+| 128 | 2,048 | one-thread | G=4 | 48.3 | 34.0 | 1.42× | 1.42× | 4 |
+| 256 | 1,024 | G=16 | G=8 | 108.8 | 41.8 | 1.29× | 2.60× | 3 |
+| 256 | 2,048 | one-thread | G=4 | 112.3 | 50.5 | 2.23× | 2.23× | 3 |
+| 256 | 4,096 | one-thread | G=4 | 129.4 | 75.0 | 1.73× | 1.73× | 3 |
+| 384 | 1,024 | G=16 | G=8 | 168.1 | 44.8 | 1.27× | 3.75× | 3 |
+| 384 | 2,048 | one-thread | G=8 | 176.7 | 71.1 | 2.48× | 2.48× | 3 |
+| 384 | 4,096 | one-thread | G=8 | 196.2 | 139.6 | 1.40× | 1.40× | 3 |
+| 512 | 1,024 | G=16 | G=8 | 221.7 | 47.3 | 1.37× | 4.69× | 3 |
+| 512 | 2,048 | one-thread | G=8 | 227.0 | 75.5 | 3.01× | 3.01× | 3 |
+| 512 | 4,096 | one-thread | G=8 | 260.4 | 149.8 | 1.74× | 1.74× | 3 |
+| 544 | 2,048 | one-thread | G=16 | 248.5 | 138.3 | 1.80× | 1.80× | 2 |
+| 544 | 4,096 | one-thread | G=16 | 275.8 | 283.6 | 0.97× | 0.97× | 2 |
+| 768 | 2,048 | one-thread | G=16 | 405.6 | 163.9 | 2.48× | 2.48× | 3 |
+| 768 | 4,096 | one-thread | G=16 | 466.6 | 353.7 | 1.32× | 1.32× | 3 |
+| 1024 | 2,048 | one-thread | G=16 | 586.0 | 183.0 | 3.20× | 3.20× | 3 |
+| 1024 | 4,096 | one-thread | G=16 | 648.8 | 370.9 | 1.75× | 1.75× | 3 |
+
+Gains below 15% are within noise: absolute times moved by up to 25% between repeats on the loaded host, but the
+interleaved ratios agree. 96 bits at 768–1,024 trajectories (1.03–1.07×) and 544 bits at 4,096 (0.97×) are ties.
+Where G=4/8 with ≥ 3 limbs would win, it is left on the table. At 768 bits, 1,024 trajectories, G=8 would be 1.30×
+faster than G=16, and G=4 gains another 10–30% at 3,072–4,096 trajectories from 288 to 512 bits.
+
+### Tests
+
+`test_cooperative_recurrence` covers 64, 96, 160, 256, 288, 384, 512, 544 and 1024 bits and the counts 1, 17,
+128/129, 257, 512/513, 1,000, 1,024/1,025, 2,048/2,049, 3,000 and 4,096/4,097. Counts above 1,025 share one weight
+sequence. Every result must be bit-identical to the one-thread kernel. The validated runs are listed in the round-41
+test logs.

@@ -110,6 +110,57 @@ nothing). The kernels therefore use the smallest validated width `≥ N+2` (`gpu
 (`benchmarks/results/round35_transcendental_tests_all_widths.txt`). `LIMBFORGE_TRANSCENDENTAL_GUARD_WORDS=g`
 forces `W = N+g` for probing; `benchmarks/results/round35_transcendental_bad_widths.txt` is the failing run.
 
+## 10. Cooperative kernels under shader validation (round 41)
+
+The cooperative recurrence (`src/cooperative.metal`, G lanes per trajectory, L = ⌈N/G⌉ limbs per lane) gave
+nondeterministic wrong trajectories under `MTL_SHADER_VALIDATION=1` for G = 4/8 (round 17). Tools:
+`benchmarks/experiments/coop_validation_probe.mm` (a switchable copy of the kernel, every dispatch compared with the
+CPU) and `simd_validation_repro.mm`. Log: `benchmarks/results/round41_coop_validation_probe.txt`.
+
+**A real defect, now fixed.** The rounding decision was `bool up = vote(rb)!=0 && vote(sticky)!=0;`. The `&&`
+short-circuits per lane, and `vote(rb)` differs between the lane groups of one SIMD group, so the second
+`simd_ballot` ran in divergent control flow. An active-lane counter (`simd_ballot(true)` before every SIMD
+operation) counted 226,728 such partial ballots in two 832-bit G=4 dispatches (also at G=8 and G=16, the shipped
+kernel; none at G=32). Both ballots now run unconditionally; the counter reads 0 at every G, with and without
+validation. Results are unchanged, because the hardware returned the right bits for the active groups.
+
+**Validation-only failures remain after the fix.** Without other GPU work the failures are rare (1 of 4 full
+`coop_recurrence` runs). When another process keeps the GPU busy with an unvalidated 1024-bit recurrence, they are
+frequent: at 832 bits G=4, 1–15 of 20–40 dispatches.
+With validation and load, every exchange formulation of the same arithmetic fails: `simd_shuffle`, threadgroup
+memory with `simdgroup_barrier`, and threadgroup memory with `threadgroup_barrier` and no SIMD intrinsic at all.
+They do not depend on divergence, lane mapping or early exits:
+
+- every SIMD operation runs with 32 active lanes, also under validation (counter 0);
+- `thread_index_in_simdgroup == gid % 32` holds for every thread (counter 0), and indexing from the SIMD-group identity fails as well;
+- all shapes have whole SIMD groups and no early return.
+
+Further evidence that the kernel source is not at fault:
+
+- **Data independent.** The inputs are the same in every repeat, but other SIMD groups and steps fail each time.
+  The first wrong step follows an exact one, and often the same limb slots of every lane of a SIMD group change at once.
+- **Needs device-memory instrumentation.** It passes with all checks off. It fails when only global-memory checking
+  or only resource-usage checking is on, and passes when only stack, threadgroup or texture checking is on. It also
+  fails with `FAIL_MODE=allow`, and validation reports no fault (`REPORT_TO_STDERR`). Weight limbs re-read with
+  atomic loads match the values used, so the loads are right and the in-kernel state is corrupted.
+- **Follows lane state, not dispatch length.** Before the fix, 96 extra live words per lane raised the failure rate
+  to 90% and made G=8 fail. A 1024-bit G=4 dispatch of 16 steps (11 ms) fails, while G=16/32 dispatches of 85 ms do
+  not. The one-thread kernel never failed, even with 256 extra words.
+- **Never without validation.** 0 of 26,100 unvalidated dispatches of 16,384 G=4 1024-bit trajectories
+  (the worst shape) differ, run concurrently with the validated jobs. 0 of 480 unvalidated 832/1024-bit G=4/8
+  dispatches under load, with 0, 32 or 96 extra words, differ (before the fix).
+
+| shapes, fixed source, validation + load | bad dispatches |
+|---|---:|
+| L ≤ 2 (G=4 to 256 bits, G=8 to 512, G=16/32 everywhere) | 0 of 4,780 |
+| G=4, L ≥ 3 (288–1024 bits) | 33 of 960 |
+| G=8, L ≥ 3 (544–1024 bits) | 1 of 640 (and 10 of 20 with extra pressure) |
+
+The cause sits inside the validation-instrumented pipeline or its scheduling with concurrent work. The source
+cannot be inspected below AIR, and a synthetic shuffle kernel with up to 512 live words did not reproduce it, so
+the mechanism is not explained. The library therefore uses only cooperative shapes with L ≤ 2. This is the class
+of the G=16/32 kernels shipped in round 22, which never failed in any validated run.
+
 ## Rules for kernel code
 
 1. Do not index arrays of ≤ 32 words with runtime indices in hot loops. Either make every index a
@@ -126,3 +177,9 @@ forces `W = N+g` for probing; `benchmarks/results/round35_transcendental_bad_wid
    engine's unary kernel (section 8).
 7. A rigorous error bound computed by the same kernel does not detect a miscompilation (section 9);
    only the comparison with an independent reference at every instantiated width does.
+8. Never put a SIMD-group function (shuffle, ballot, `simd_any`/`simd_all`) or a barrier in an operand of `&&`,
+   `||` or `?:` that some lanes skip. Evaluate it unconditionally into a variable first (section 10). Check
+   cooperative kernels with an active-lane counter (`PROBE_CHECK_ACTIVE` in `coop_validation_probe`).
+9. Validate cooperative kernels under `MTL_SHADER_VALIDATION=1` while another process keeps the GPU busy; on an idle
+   GPU the section-10 failures are rare. Keep cooperative shapes at ≤ 2 limbs per lane until wider lane state
+   passes that test.

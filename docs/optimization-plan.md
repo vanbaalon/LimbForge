@@ -263,7 +263,7 @@ For BSolver (≈128 lanes × 600 steps) the GPU runs ~128 threads. Two complemen
 - **E0 (consumer-side, S):** round 13 measured ~165 µs per 384-bit recurrence step independent of lane
   count up to 4,096 lanes (saturation near 16,384). Recommend BSolver batch all `u` points / Newton finite-difference evaluations into one
   `recurrence` call (more trajectories per submission) — cheapest win; document in the BSolver integration notes.
-- **E1 status (rounds 17, 22):** cooperative G = 16/32 recurrence is in `Engine::recurrence` for ≤ 1,024 trajectories (BSolver `baxter_batch`: 6× with warm clocks, 2× when the call follows idle CPU work — GPU clock ramp-up now dominates; consider keeping the GPU busy or batching more work per call). Open: G = 4/8 under shader validation; a cooperative vector recurrence only if small-lane D4 shapes appear.
+- **E1 status (rounds 17, 22, 41-L4b):** cooperative recurrence is in `Engine::recurrence` with G = 32/16/8/4 for ≤ 128/512/1,024/4,096 trajectories, restricted to ≤ 2 limbs per lane (G = 4 up to 256 bits, G = 8 up to 512), one-thread kernel at 64 bits (BSolver `baxter_batch`: 6× with warm clocks, 2× when the call follows idle CPU work — GPU clock ramp-up now dominates; consider keeping the GPU busy or batching more work per call). Round 41 fixed a divergent ballot and traced the G = 4/8 validation mismatches to validation-instrumented code with ≥ 3 limbs per lane under concurrent GPU work (docs/experiments.md 41-L4b). Open: G = 4/8 with ≥ 3 limbs per lane (re-test on new macOS releases with `coop_validation_probe` under load); a cooperative vector recurrence only if small-lane D4 shapes appear.
 - **E1 (L, research):** one number per 8/16/32 SIMD lanes: limb-parallel multiply with `simd_shuffle` broadcasts, carry
   resolution with `simd_prefix_exclusive_sum`/ballot loops, normalisation via ballot + `clz`. Prototype `mul` + `add` in a
   `recurrence_coop` kernel at 384 bits; compare per-step latency against the thread-per-lane kernel; division via a
@@ -289,7 +289,7 @@ For BSolver (≈128 lanes × 600 steps) the GPU runs ~128 threads. Two complemen
 | C1 broadcast operands | done (28) | `Broadcast` |
 | C7 pipeline prewarm | done (33) | `Engine::prewarm_async` |
 | S6 precision casts | done (38) | `Engine::cast`, `CommandBatch::cast` |
-| E1 cooperative recurrence | done for G = 16/32 (17, 22) | `cooperative.metal` |
+| E1 cooperative recurrence | done for shapes with ≤ 2 limbs per lane, G = 4/8/16/32 (17, 22, 41-L4b) | `cooperative.metal` |
 | L1 residue GEMM | done (16, 18, 20) | `linalg.hpp` |
 | S1 polynomial values and jets (order ≤ 2) | done (32-S1), resident (39) | `Numerics::poly_eval(_jet)` in `numerics.hpp` |
 | S4 norms, scaled residual, status summaries | done (32-S4), resident (39) | `Numerics::norm_inf/norm_max/norm2/scaled_residual/summarize_status` |
@@ -299,8 +299,8 @@ For BSolver (≈128 lanes × 600 steps) the GPU runs ~128 threads. Two complemen
 Next, by consumer value: qscmx/BSolver integration and end-to-end timing on an idle host (also the
 pending GitHub speed figures); resident `linalg` (`CommandBatch` versions through `src/engine_internal.hpp`; numerics and
 transcendentals done in round 39), GPU-side transcendental retries, the on-device norm threshold; S5 complex QR
-(and deeper QR look-ahead, a reconstruction-bound trailing update); G = 4/8 cooperative kernels under shader
-validation; fused `vector_recurrence` above 512 bits.
+(and deeper QR look-ahead, a reconstruction-bound trailing update); G = 4/8 cooperative shapes with ≥ 3 limbs per lane
+(validation-only failures, 41-L4b); fused `vector_recurrence` above 512 bits.
 
 ## 5. Order, tracks and dependencies
 
