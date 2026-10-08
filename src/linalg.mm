@@ -106,6 +106,18 @@ DotFn dot_function(int words){static DotFn table[33]={};if(!table[2])dot_table<2
 // f(std::integral_constant<int, words>) for words in [2, 32].
 template<int N=2,class F> auto by_words(int words,F&& f){if constexpr(N<32){if(words!=N)return by_words<N+1>(words,f);}return f(std::integral_constant<int,N>{});}
 }
+// Factor storage: zeroed, page-aligned and a whole number of pages, so the GPU uses it in place (wrap).
+namespace detail {
+struct PageBlock {
+    void* p=nullptr;std::size_t bytes=0;
+    PageBlock()=default;
+    explicit PageBlock(std::size_t n){if(!n)return;std::size_t page=std::size_t(getpagesize());bytes=up(n,page);if(posix_memalign(&p,page,bytes))throw std::bad_alloc();std::memset(p,0,bytes);}
+    ~PageBlock(){std::free(p);}
+    PageBlock(PageBlock&& o)noexcept:p(o.p),bytes(o.bytes){o.p=nullptr;o.bytes=0;}
+    PageBlock& operator=(PageBlock&& o)noexcept{std::swap(p,o.p);std::swap(bytes,o.bytes);return *this;}
+};
+struct QRData {Linalg* owner=nullptr;int bits=0;std::size_t m=0,n=0,nb=0;QRInfo info;QROptions options;PageBlock v,r,t,tau;};
+}
 struct Kernels {
     id<MTLComputePipelineState> left,right,product,combine,reconstruct,finish,reconstruct_sub,finish_sub;int max_moduli,term_words,acc_words;
     id<MTLBuffer> moduli,recips,inv;std::map<int,std::vector<std::uint32_t>> bounds; // per modulus count: [M/2 | M], Wc words each
@@ -169,7 +181,12 @@ struct Linalg::Impl {
     // C[i*stride + j] (stride 0: Nc) = RN(dot), or RN(C - dot) with sub. Views and C inside a resident buffer are used in place.
     Timing run(int bits,View lv,View rv,std::size_t M,std::size_t Nc,std::size_t K,void* C,bool syrk,bool lower_only,bool sub=false,std::size_t stride=0);
     template<int N> CholeskyInfo cholesky_n(const Number<N>* A,std::size_t n,Number<N>* L,const FactorOptions& fo);
-    template<int N> Timing solve_n(const Number<N>* L,std::size_t n,const Number<N>* B,std::size_t nrhs,Number<N>* X,const FactorOptions& fo,int passes);
+    template<int N> Timing solve_n(const Number<N>* L,std::size_t n,const Number<N>* B,std::size_t nrhs,Number<N>* X,const FactorOptions& fo,int passes,bool upper=false);
+    // Householder QR (qr_n), one compact-WY block applied to columns [c0, c1) of X (qr_block), Q or Q^T applied to C (qr_apply_n).
+    template<int N> void qr_n(const Number<N>* A,std::size_t m,std::size_t n,detail::QRData& f);
+    template<int N> Timing qr_block(const detail::QRData& f,std::size_t b,Number<N>* X,std::size_t ld,std::size_t c0,std::size_t c1,bool qt,Number<N>* Wb,Number<N>* Yb,double threshold,bool gpu,bool& on_gpu);
+    template<int N> Timing qr_apply_n(const detail::QRData& f,Number<N>* C,std::size_t nrhs,bool qt);
+    template<int N> Timing qr_solve_n(const detail::QRData& f,const Number<N>* B,std::size_t nrhs,Number<N>* X);
     ~Impl(){if((workers&&current_pool==workers.get())||(side_workers&&current_pool==side_workers.get()))current_pool=nullptr;}
     // Restores the resident list on scope exit.
     struct Residency {Impl& im;std::size_t size;explicit Residency(Impl& i):im(i),size(i.resident.size()){} ~Residency(){im.resident.resize(size);}};
@@ -348,8 +365,9 @@ template<int N> CholeskyInfo Linalg::Impl::cholesky_n(const Number<N>* A,std::si
     if(W!=L)each(n,[&](std::size_t i){std::memcpy(static_cast<void*>(L+i*n),W+i*n,n*sizeof(T));});
     info.timing.wall_seconds=since(start);return info;
 }}
-// passes: 1 = L X = B (forward), 2 = L^T X = B (backward), 3 = both (forward first).
-template<int N> Timing Linalg::Impl::solve_n(const Number<N>* L,std::size_t n,const Number<N>* B,std::size_t nrhs,Number<N>* X,const FactorOptions& fo,int passes){@autoreleasepool{
+// passes: 1 = L X = B (forward), 2 = L^T X = B (backward), 3 = both (forward first). upper (backward only): L holds an upper
+// triangular R = L^T itself (row i of R in place of column i of L; the same sequence).
+template<int N> Timing Linalg::Impl::solve_n(const Number<N>* L,std::size_t n,const Number<N>* B,std::size_t nrhs,Number<N>* X,const FactorOptions& fo,int passes,bool upper){@autoreleasepool{
     using T=Number<N>;auto start=Clock::now();Timing timing{0,0};if(!n||!nrhs)return timing;
     const std::size_t nb=fo.block?std::min(fo.block,n):n;Residency keep(*this);const T* F=L;T* W=X;pool_workers();
     const bool gpu=fo.gpu&&n>nb&&double(n-nb)*double(nrhs)*double(nb)>=fo.solve_host_macs;
@@ -371,11 +389,124 @@ template<int N> Timing Linalg::Impl::solve_n(const Number<N>* L,std::size_t n,co
     // Backward (L^T): x_i = RN(D(b_i; column i of L, x; (i, r1)) / l_ii) from the last block, then b_i = D(b_i; column i, x; [r0, r1)) for i < r0.
     if(passes&2)for(std::size_t r0=(n-1)/nb*nb;;r0-=nb){const std::size_t r1=std::min(n,r0+nb);
         each(nrhs,[&](std::size_t c){for(std::size_t i=r1;i-->r0;){T& x=W[i*nrhs+c];
-            x=div(i+1<r1?D(x,F+(i+1)*n+i,std::ptrdiff_t(n),W+(i+1)*nrhs+c,std::ptrdiff_t(nrhs),r1-i-1):x,F[i*n+i]);}});
-        update(F+r0*n,1,n,r0,r0,r1-r0,W);if(!r0)break;}
+            x=div(i+1<r1?D(x,upper?F+i*n+i+1:F+(i+1)*n+i,std::ptrdiff_t(upper?1:n),W+(i+1)*nrhs+c,std::ptrdiff_t(nrhs),r1-i-1):x,F[i*n+i]);}});
+        if(upper)update(F+r0,n,1,r0,r0,r1-r0,W);else update(F+r0*n,1,n,r0,r0,r1-r0,W);if(!r0)break;}
     if(W!=X)std::memcpy(static_cast<void*>(X),W,n*nrhs*sizeof(T));
     timing.wall_seconds=since(start);return timing;
 }}
+// ---- Householder QR (docs/numerics.md, "QR factorization and least squares") ----
+// P(x, y; S) = RN(sum x_k y_k) and D(c; x, y; S) = RN(c - sum x_k y_k), one rounding each (exact_dot / exact_dot_add or
+// the GPU products: identical bits). Block b holds reflectors [k0, k0+kb), k0 = b nb; V_b, T_b as stored in the factor.
+namespace {
+// x * 2^-e exactly (an exponent outside the range gives exponent_overflow).
+template<int N> Number<N> scaled(Number<N> x,long e){if(!x.sign)return x;long r=long(x.exponent)-e;if(r>1000000000L||r< -1000000000L)return zero<N>(x.status|exponent_overflow);x.exponent=int(r);return x;}
+template<int N> Number<N> power2(int e){Number<N> x=zero<N>();x.limb[N-1]=0x80000000u;x.sign=1;x.exponent=e;return x;}
+}
+// Block b applied to columns [c0, c1) of X (rows [k0, m), row stride ld): W = P(V_b^T X), Y = P(T_b^T W) (qt: Q^T) or
+// P(T_b W) (Q), X = D(X; V_b, Y). Wb and Yb (nb rows, stride ld) are scratch indexed by the column of X.
+template<int N> Timing Linalg::Impl::qr_block(const detail::QRData& f,std::size_t b,Number<N>* X,std::size_t ld,std::size_t c0,std::size_t c1,bool qt,Number<N>* Wb,Number<N>* Yb,double threshold,bool gpu,bool& on_gpu){
+    using T=Number<N>;Timing tm{0,0};on_gpu=false;const std::size_t m=f.m,n=f.n,nb=f.nb,k0=b*nb,kb=std::min(n,k0+nb)-k0,c=c1-c0,mr=m-k0;if(!c||!kb)return tm;
+    const T* V=static_cast<const T*>(f.v.p)+k0*n+k0;const T* Tb=static_cast<const T*>(f.t.p)+b*nb*nb;T* Xb=X+k0*ld;constexpr std::size_t e=sizeof(T);
+    on_gpu=gpu&&double(kb)*double(c)*double(mr)>=threshold;
+    auto at=[](const void* p){return static_cast<const unsigned char*>(p);};
+    if(on_gpu){
+        tm.gpu_seconds+=run(32*N,View{at(V),e,1,n,N},View{at(Xb+c0),e,1,ld,N},kb,c,mr,Wb+c0,false,false,false,ld).gpu_seconds;
+        tm.gpu_seconds+=run(32*N,qt?View{at(Tb),e,1,nb,N}:View{at(Tb),e,nb,1,N},View{at(Wb+c0),e,1,ld,N},kb,c,kb,Yb+c0,false,false,false,ld).gpu_seconds;
+        tm.gpu_seconds+=run(32*N,View{at(V),e,n,1,N},View{at(Yb+c0),e,1,ld,N},mr,c,kb,Xb+c0,false,false,true,ld).gpu_seconds;
+    }else{
+        each(kb*c,[&](std::size_t q){std::size_t i=q/c,j=c0+q%c;Wb[i*ld+j]=exact_dot<N>(V+i,std::ptrdiff_t(n),Xb+j,std::ptrdiff_t(ld),mr);});
+        each(kb*c,[&](std::size_t q){std::size_t i=q/c,j=c0+q%c;
+            Yb[i*ld+j]=qt?exact_dot<N>(Tb+i,std::ptrdiff_t(nb),Wb+j,std::ptrdiff_t(ld),kb):exact_dot<N>(Tb+i*nb,1,Wb+j,std::ptrdiff_t(ld),kb);});
+        each(mr,[&](std::size_t r){for(std::size_t j=c0;j<c1;++j)Xb[r*ld+j]=exact_dot_add<N>(&Xb[r*ld+j],true,V+r*n,1,Yb+j,std::ptrdiff_t(ld),kb);});
+    }
+    return tm;
+}
+template<int N> void Linalg::Impl::qr_n(const Number<N>* A,std::size_t m,std::size_t n,detail::QRData& f){@autoreleasepool{
+    using T=Number<N>;auto start=Clock::now();QRInfo& info=f.info;info=QRInfo{};info.rank=n;const QROptions& fo=f.options;const std::size_t nb=f.nb;
+    Residency keep(*this);pool_workers();T* V=static_cast<T*>(f.v.p);T* Tm=static_cast<T*>(f.t.p);T* tau=static_cast<T*>(f.tau.p);
+    // Work matrix (m x n) and the W, Y scratch of the trailing updates (nb x n); resident (with V and T) when the GPU may be used.
+    const bool gpu=fo.gpu&&n>nb;std::vector<T> host;T *Wk,*Wb,*Yb;
+    if(gpu){id<MTLBuffer> w=buffer("qr_work",m*n*sizeof(T)),wb=buffer("qr_w",nb*n*sizeof(T)),yb=buffer("qr_y",nb*n*sizeof(T));
+        for(id<MTLBuffer> x:{w,wb,yb})resident.push_back(x);
+        for(detail::PageBlock* p:{&f.v,&f.t}){id<MTLBuffer> x=wrap(p->p,p->bytes);if(!x)throw std::runtime_error("Metal buffer wrap failed (qr)");resident.push_back(x);}
+        Wk=static_cast<T*>(w.contents);Wb=static_cast<T*>(wb.contents);Yb=static_cast<T*>(yb.contents);}
+    else{host.resize(m*n+2*nb*n);Wk=host.data();Wb=Wk+m*n;Yb=Wb+nb*n;}
+    each(m,[&](std::size_t i){std::memcpy(static_cast<void*>(Wk+i*n),A+i*n,n*sizeof(T));});
+    // Panel scratch: the panel's columns (Pt) and reflectors (Vt) contiguous per column (rows [k0, m)), panel W rows (Wp,
+    // nb x nb: Wp[i][c] = P(v_i, a_c) with a_c as at the block start), Gram column G and y.
+    std::vector<T> Pt(nb*m),Vt(nb*m),Wp(nb*nb),G(nb),y(nb);const T two=power2<N>(1),one=power2<N>(0);long top=LONG_MIN;
+    auto factor_panel=[&](std::size_t k0,std::size_t k1){auto t=Clock::now();++info.blocks;
+        const std::size_t kb=k1-k0,mr=m-k0;T* Tb=Tm+(k0/nb)*nb*nb;
+        each(kb,[&](std::size_t c){T* x=Pt.data()+c*mr;for(std::size_t r=0;r<mr;++r)x[r]=Wk[(k0+r)*n+k0+c];std::fill(Vt.data()+c*mr,Vt.data()+(c+1)*mr,zero<N>());});
+        for(std::size_t c=0;c<kb;++c){T* x=Pt.data()+c*mr;const std::size_t q=std::min(k0+c,info.rank)-k0;
+            // Column k0+c by the reflectors [k0, k0+q) of this block: y_i = P(T_b[0..i][i], w[0..i]); x = D(x; V_b, y).
+            if(q){for(std::size_t i=0;i<q;++i)y[i]=exact_dot<N>(Tb+i,std::ptrdiff_t(nb),Wp.data()+c,std::ptrdiff_t(nb),i+1);
+                each(mr,[&](std::size_t r){x[r]=exact_dot_add<N>(&x[r],true,Vt.data()+r,std::ptrdiff_t(mr),y.data(),1,q);});}
+            if(info.rank<n)continue;  // after a failing column: the remainder only
+            // Reflector j = k0+c from x[c..mr): s = P(x, x); beta = -sgn(x_0) sqrt(s); v0 = RN(x_0 - beta); v = 2^-e (v0, x_1, ...)
+            // with e = exponent(v0); tau = RN(2 / P(v, v)); r_jj = beta. Nothing below the diagonal: tau = 0, v = e_j, r_jj = x_0.
+            const std::size_t len=mr-c;T* xc=x+c;T s=exact_dot<N>(xc,1,xc,1,len);bool below=false;
+            for(std::size_t r=1;r<len&&!below;++r)below=xc[r].sign!=0;
+            int reason=s.status?QRInfo::status_column:(!xc[0].sign&&!below)?QRInfo::zero_column:QRInfo::full_rank;T beta=xc[0],v0=one;
+            if(!reason&&below){beta=sqrt(s);if(xc[0].sign>=0)beta=negate(beta);v0=sub(xc[0],beta);}
+            if(!reason&&fo.rank_bits>0&&top!=LONG_MIN&&long(beta.exponent)+fo.rank_bits<top)reason=QRInfo::small_column;
+            if(reason){info.rank=k0+c;info.reason=reason;info.status=s.status;continue;}
+            T* v=Vt.data()+c*mr+c;T tj=zero<N>();
+            if(below){const long e=v0.exponent;v[0]=scaled(v0,e);for(std::size_t r=1;r<len;++r)v[r]=scaled(xc[r],e);tj=div(two,exact_dot<N>(v,1,v,1,len));}
+            else v[0]=one;
+            xc[0]=beta;tau[k0+c]=tj;top=std::max(top,long(beta.exponent));
+            // Gram column G_i = P(v_i, v_j) (i < c) and panel W row c: Wp[c][c'] = P(v_j, a_c') for c' > c (not yet reduced by this block).
+            each(kb-1,[&](std::size_t u){if(u<c)G[u]=exact_dot<N>(Vt.data()+u*mr+c,1,v,1,len);else Wp[c*nb+u+1]=exact_dot<N>(v,1,Pt.data()+(u+1)*mr+c,1,len);});
+            // T_b column c: T_cc = tau_j, T_lc = -RN(tau_j * P(T_b[l][l..c), G[l..c))).
+            Tb[c*nb+c]=tj;for(std::size_t l=0;l<c;++l)Tb[l*nb+c]=negate(mul(tj,exact_dot<N>(Tb+l*nb+l,1,G.data()+l,1,c-l)));
+        }
+        each(kb,[&](std::size_t c){const T *x=Pt.data()+c*mr,*v=Vt.data()+c*mr;for(std::size_t r=0;r<mr;++r){Wk[(k0+r)*n+k0+c]=x[r];V[(k0+r)*n+k0+c]=v[r];}});
+        info.panel_seconds+=since(t);return std::min(k1,info.rank);};
+    auto update=[&](std::size_t b,std::size_t c0,std::size_t c1,bool& on_gpu){auto t=Clock::now();
+        Timing tm=qr_block<N>(f,b,Wk,n,c0,c1,true,Wb,Yb,fo.host_macs,gpu,on_gpu);tm.wall_seconds=since(t);return tm;};
+    auto account=[&](Timing tm,bool on_gpu){info.timing.gpu_seconds+=tm.gpu_seconds;info.update_seconds+=tm.wall_seconds;++(on_gpu?info.gpu_updates:info.host_updates);};
+    // Right-looking with one block of look-ahead (as cholesky_n): after panel b, block b updates the next panel's columns,
+    // then the rest of the trailing matrix on a second thread while this thread factors the next panel. After a failing
+    // column p in block b, block b (reflectors < p; the others are zero) is applied to the remaining columns and the loop stops.
+    std::size_t k0=0,k1=std::min(n,nb),p=n?factor_panel(0,k1):0;
+    while(k1<n){const std::size_t b=k0/nb;bool on_gpu=false;
+        if(p<k1){account(update(b,k1,n,on_gpu),on_gpu);break;}
+        const std::size_t k2=std::min(n,k1+nb);account(update(b,k1,k2,on_gpu),on_gpu);
+        if(k2<n){Timing rest{0,0};bool rest_gpu=false,async=gpu;std::thread side;std::exception_ptr failed;
+            if(async)side=std::thread([&]{@autoreleasepool{side_thread=true;try{rest=update(b,k2,n,rest_gpu);}catch(...){failed=std::current_exception();}side_thread=false;}});
+            try{p=factor_panel(k1,k2);}catch(...){if(async)side.join();throw;}
+            if(async){side.join();if(failed)std::rethrow_exception(failed);}else rest=update(b,k2,n,rest_gpu);
+            account(rest,rest_gpu);}
+        else p=factor_panel(k1,k2);
+        k0=k1;k1=k2;}
+    // R: the upper triangle; with rank p < n, rows i >= p keep the remainder in columns j >= p.
+    T* R=static_cast<T*>(f.r.p);const std::size_t rank=info.rank;
+    each(n,[&](std::size_t i){for(std::size_t j=0;j<n;++j)R[i*n+j]=j>=std::min(i,rank)?Wk[i*n+j]:zero<N>();});
+    info.timing.wall_seconds=since(start);
+}}
+// C (m x nrhs) <- Q^T C (qt: blocks in order) or Q C (blocks in reverse), over the blocks holding reflectors [0, rank).
+template<int N> Timing Linalg::Impl::qr_apply_n(const detail::QRData& f,Number<N>* C,std::size_t nrhs,bool qt){@autoreleasepool{
+    using T=Number<N>;Timing tm{0,0};auto start=Clock::now();const std::size_t m=f.m,nb=f.nb,blocks=nb?(f.info.rank+nb-1)/nb:0;
+    if(!blocks||!nrhs){tm.wall_seconds=since(start);return tm;}
+    Residency keep(*this);pool_workers();const bool gpu=f.options.gpu&&double(std::min(nb,f.n))*double(nrhs)*double(m)>=f.options.solve_host_macs;
+    std::vector<T> host;T *W=C,*Wb,*Yb;
+    if(gpu){id<MTLBuffer> x=wrap(C,m*nrhs*sizeof(T));if(!x){x=buffer("qr_rhs",m*nrhs*sizeof(T));W=static_cast<T*>(x.contents);std::memcpy(static_cast<void*>(W),C,m*nrhs*sizeof(T));}
+        id<MTLBuffer> wb=buffer("qr_w",nb*nrhs*sizeof(T)),yb=buffer("qr_y",nb*nrhs*sizeof(T));for(id<MTLBuffer> b:{x,wb,yb})resident.push_back(b);
+        for(const detail::PageBlock* p:{&f.v,&f.t}){id<MTLBuffer> b=wrap(p->p,p->bytes);if(!b)throw std::runtime_error("Metal buffer wrap failed (qr)");resident.push_back(b);}
+        Wb=static_cast<T*>(wb.contents);Yb=static_cast<T*>(yb.contents);}
+    else{host.resize(2*nb*nrhs);Wb=host.data();Yb=Wb+nb*nrhs;}
+    for(std::size_t q=0;q<blocks;++q){bool on_gpu;tm.gpu_seconds+=qr_block<N>(f,qt?q:blocks-1-q,W,nrhs,0,nrhs,qt,Wb,Yb,f.options.solve_host_macs,gpu,on_gpu).gpu_seconds;}
+    if(W!=C)std::memcpy(static_cast<void*>(C),W,m*nrhs*sizeof(T));
+    tm.wall_seconds=since(start);return tm;
+}}
+// X = R^-1 (Q^T B)[0, n): Q^T B by blocks, then the backward substitution of cholesky_solve with R (upper).
+template<int N> Timing Linalg::Impl::qr_solve_n(const detail::QRData& f,const Number<N>* B,std::size_t nrhs,Number<N>* X){
+    using T=Number<N>;auto start=Clock::now();Timing tm{0,0};const std::size_t m=f.m,n=f.n;if(!n||!nrhs)return tm;
+    if(f.info.rank<n){pool_workers();each(n,[&](std::size_t i){for(std::size_t c=0;c<nrhs;++c)X[i*nrhs+c]=zero<N>(invalid);});tm.wall_seconds=since(start);return tm;}
+    std::vector<T> C(B,B+m*nrhs);tm.gpu_seconds+=qr_apply_n<N>(f,C.data(),nrhs,true).gpu_seconds;
+    tm.gpu_seconds+=solve_n<N>(static_cast<const T*>(f.r.p),n,C.data(),nrhs,X,f.options,2,true).gpu_seconds;
+    tm.wall_seconds=since(start);return tm;
+}
 static void check_size(std::size_t n,std::size_t nrhs){if(n>=46341||n*nrhs>=(std::size_t(1)<<31))throw std::invalid_argument("matrix dimensions exceed 32-bit indexing");}
 CholeskyInfo Linalg::cholesky(int bits,const void* A,std::size_t n,void* L,const FactorOptions& o){
     check_bits(bits);check_size(n,1);if(n&&(!A||!L))throw std::invalid_argument("null matrix");
@@ -391,4 +522,36 @@ Timing Linalg::cholesky_solve(int bits,const void* L,std::size_t n,const void* B
     return by_words(bits/32,[&](auto w){constexpr int N=decltype(w)::value;
         return impl->solve_n<N>(static_cast<const Number<N>*>(L),n,static_cast<const Number<N>*>(B),nrhs,static_cast<Number<N>*>(X),o,3);});
 }
+QRFactor Linalg::factor_qr(int bits,const void* A,std::size_t m,std::size_t n,const QROptions& o){
+    check_bits(bits);if(m<n)throw std::invalid_argument("factor_qr: rows >= columns required");check_size(n,m);if(m*n&&!A)throw std::invalid_argument("null matrix");
+    if(o.rank_bits<0)throw std::invalid_argument("factor_qr: rank_bits >= 0");
+    QRFactor q;q.d=std::make_unique<detail::QRData>();auto& f=*q.d;f.owner=this;f.bits=bits;f.m=m;f.n=n;f.nb=o.block?std::min(o.block,n):n;f.options=o;
+    const std::size_t e=std::size_t(bits/8+12),blocks=f.nb?(n+f.nb-1)/f.nb:0;
+    f.v=detail::PageBlock(m*n*e);f.r=detail::PageBlock(n*n*e);f.t=detail::PageBlock(blocks*f.nb*f.nb*e);f.tau=detail::PageBlock(n*e);
+    by_words(bits/32,[&](auto w){constexpr int N=decltype(w)::value;impl->qr_n<N>(static_cast<const Number<N>*>(A),m,n,f);});
+    return q;
+}
+QRFactor Linalg::factor_qr_augmented(int bits,const void* J,std::size_t m,std::size_t n,const void* d,const QROptions& o){
+    check_bits(bits);check_size(n,m+n);if(n&&(!d||(m&&!J)))throw std::invalid_argument("null matrix");
+    const std::size_t e=std::size_t(bits/8+12);std::vector<unsigned char> S((m+n)*n*e,0);if(m*n)std::memcpy(S.data(),J,m*n*e);
+    for(std::size_t i=0;i<n;++i)std::memcpy(S.data()+((m+i)*n+i)*e,static_cast<const unsigned char*>(d)+i*e,e);
+    return factor_qr(bits,S.data(),m+n,n,o);
+}
+QRFactor::QRFactor()=default;QRFactor::~QRFactor()=default;QRFactor::QRFactor(QRFactor&&)noexcept=default;QRFactor& QRFactor::operator=(QRFactor&&)noexcept=default;
+static const detail::QRData& qr_data(const std::unique_ptr<detail::QRData>& d){if(!d)throw std::logic_error("empty QR factor");return *d;}
+bool QRFactor::empty()const{return !d;}
+int QRFactor::bits()const{return qr_data(d).bits;}
+std::size_t QRFactor::rows()const{return qr_data(d).m;}
+std::size_t QRFactor::cols()const{return qr_data(d).n;}
+std::size_t QRFactor::block()const{return qr_data(d).nb;}
+const QRInfo& QRFactor::info()const{return qr_data(d).info;}
+bool QRFactor::full_rank()const{return qr_data(d).info.rank==qr_data(d).n;}
+const void* QRFactor::r()const{return qr_data(d).r.p;}
+const void* QRFactor::v()const{return qr_data(d).v.p;}
+const void* QRFactor::tau()const{return qr_data(d).tau.p;}
+const void* QRFactor::t()const{return qr_data(d).t.p;}
+Timing QRFactor::solve(const void* B,std::size_t nrhs,void* X)const{const auto& f=qr_data(d);check_size(f.n,nrhs);check_size(1,f.m*nrhs);if(f.n&&nrhs&&(!B||!X))throw std::invalid_argument("null matrix");
+    return by_words(f.bits/32,[&](auto w){constexpr int N=decltype(w)::value;return f.owner->impl->qr_solve_n<N>(f,static_cast<const Number<N>*>(B),nrhs,static_cast<Number<N>*>(X));});}
+Timing QRFactor::apply_q(void* B,std::size_t nrhs,bool transpose)const{const auto& f=qr_data(d);check_size(f.n,nrhs);check_size(1,f.m*nrhs);if(f.m&&nrhs&&!B)throw std::invalid_argument("null matrix");
+    return by_words(f.bits/32,[&](auto w){constexpr int N=decltype(w)::value;return f.owner->impl->qr_apply_n<N>(f,static_cast<Number<N>*>(B),nrhs,transpose);});}
 }

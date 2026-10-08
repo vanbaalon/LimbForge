@@ -248,7 +248,7 @@ Each item: written contract → MPFR/MPC reference → CPU implementation in `co
     passes), or a cooperative (SIMD-group per row) GPU panel; the one-thread-per-row panel was slower
     (`benchmarks/experiments/cholesky_gpu_panel.patch`);
   - resident `Buffer` operands in a `CommandBatch` (design note in `numerics.md`), so that J, A and L stay on the GPU;
-  - QR (S5) and factor handles.
+  - QR (S5) and factor handles: done in round 31-S5 (`Linalg::factor_qr` / `QRFactor`, see S5).
 - **D7. Transcendentals at buffer level (tips #8)** — L, lowest priority: complex `exp`, `log`, integer `powi` with explicit
   accuracy contracts (faithful or correctly rounded via Ziv-style retry).
 
@@ -266,7 +266,7 @@ For BSolver (≈128 lanes × 600 steps) the GPU runs ~128 threads. Two complemen
 
 ---
 
-## Status summary (2026-10-07, after round 32)
+## Status summary (2026-10-08, after round 38)
 
 | Item | Status | Where |
 |---|---|---|
@@ -279,6 +279,7 @@ For BSolver (≈128 lanes × 600 steps) the GPU runs ~128 threads. Two complemen
 | D4 vector recurrence (+tangent, resident) | done (21, 24) | `vector_recurrence` |
 | D5 batched 4×4 LU/solve/inverse/det | done (29, resident 34) | `Engine::lu4`, `CommandBatch::lu4` |
 | D6 SYRK/GEMM, Cholesky, triangular solves | done (20-D6, 23-D6b), host-array | `linalg.hpp` |
+| S5 Householder QR factor object, least squares, apply Q (+ augmented LM) | done (31-S5), host-array, full rank | `Linalg::factor_qr`, `QRFactor` |
 | C1 broadcast operands | done (28) | `Broadcast` |
 | C7 pipeline prewarm | done (33) | `Engine::prewarm_async` |
 | S6 precision casts | done (38) | `Engine::cast`, `CommandBatch::cast` |
@@ -288,9 +289,9 @@ For BSolver (≈128 lanes × 600 steps) the GPU runs ~128 threads. Two complemen
 | S4 norms, scaled residual, status summaries | done (32-S4), host-array | `Numerics::norm_inf/norm_max/norm2/scaled_residual/summarize_status` |
 
 Next, by consumer value: qscmx/BSolver integration and end-to-end timing on an idle host (also the
-pending GitHub speed figures); resident
-`linalg`/`numerics` (S1/S4 `CommandBatch` versions, design note in `numerics.md`); S5 QR (in progress);
-G = 4/8 cooperative kernels under shader validation; fused `vector_recurrence` above 512 bits; D7 transcendentals (in progress).
+pending GitHub speed figures); resident `linalg`/`numerics` (design note in `numerics.md`); S5 pivoted/complex QR
+and a faster QR panel; G = 4/8 cooperative kernels under shader validation; fused `vector_recurrence` above
+512 bits; D7 transcendentals (in progress).
 
 ## 5. Order, tracks and dependencies
 
@@ -470,7 +471,18 @@ maximum absolute residuals and a separate scaled recurrence residual.
 ### S5. Reusable factorizations and accurate least squares — promote QR in D6
 
 *Status (round 23-D6b): factor/solve separation for D6 Cholesky done as host-array calls (`Linalg::cholesky` returns L
-and the first failing pivot; `cholesky_solve` / `trsm` take several right-hand sides). No factor handle or QR yet.*
+and the first failing pivot; `cholesky_solve` / `trsm` take several right-hand sides).*
+*Status (round 31-S5): full-rank Householder QR done as an owning factor object, host-array.* `Linalg::factor_qr(bits,
+A, m, n, QROptions)` returns `QRFactor` (V, R, tau and compact-WY T; per-factor rank/reason/status: first zero, status
+or optional `rank_bits`-small column; no caching by address); `solve(B, nrhs, X)` (least squares, refuses rank-deficient
+factors), `apply_q(B, nrhs, transpose)`, `r()`; `factor_qr_augmented` for `[J; diag(d)]` (stacked, no structure
+exploited). Blocked compact WY (block 32): host panel, trailing updates as three one-rounding residue products, one block
+of look-ahead; documented deterministic sequence (`docs/numerics.md`, "QR factorization and least squares"),
+bit-identical to an MPFR program of it. Accuracy: equal to the normal equations on QSC-like J, about kappa bits better
+when J has conditioning beyond its column scaling. Speed (loaded host): n = 1000, m = 2000, 256 bits factor 2.5 s, 9.5×
+the 18-thread MPFR Householder, but ~8× the SYRK + Cholesky normal equations; the host panel is the critical path.
+Next: a faster panel (fewer dependent host phases per column, or GPU), column pivoting with explicit rank decisions,
+complex QR (QSC `JCD` factors are real; BSolver needs complex), resident operands, LM comparison on real QSC points.
 
 Sketch: `factor_qr(A, workspace, options) -> QRFactor`, `factor.solve(B)`,
 `factor.apply_q(B, transpose)`, plus factor/solve separation for D5 LU and D6 Cholesky.

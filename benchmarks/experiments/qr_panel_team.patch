@@ -1,0 +1,91 @@
+--- a/src/linalg.mm
++++ b/src/linalg.mm
+@@ -401,6 +401,17 @@
+ // x * 2^-e exactly (an exponent outside the range gives exponent_overflow).
+ template<int N> Number<N> scaled(Number<N> x,long e){if(!x.sign)return x;long r=long(x.exponent)-e;if(r>1000000000L||r< -1000000000L)return zero<N>(x.status|exponent_overflow);x.exponent=int(r);return x;}
+ template<int N> Number<N> power2(int e){Number<N> x=zero<N>();x.limb[N-1]=0x80000000u;x.sign=1;x.exponent=e;return x;}
++// Spin barrier for a team of `size` threads (the panel team): the last arrival releases the others.
++struct Team {
++    std::atomic<unsigned> count{0},gen{0};const unsigned size;
++    explicit Team(unsigned n):size(n){}
++    void sync(){const unsigned g=gen.load(std::memory_order_acquire);
++        if(count.fetch_add(1,std::memory_order_acq_rel)+1==size){count.store(0,std::memory_order_relaxed);gen.fetch_add(1,std::memory_order_release);return;}
++        for(unsigned s=0;gen.load(std::memory_order_acquire)==g;)if(++s>256)std::this_thread::yield();}
++};
++// f(i) for i in [0, total), claimed in chunks from a shared counter.
++template<class F> void claim(std::atomic<std::size_t>& next,std::size_t total,std::size_t chunk,F f){
++    for(std::size_t i;(i=next.fetch_add(chunk))<total;)for(std::size_t e=std::min(total,i+chunk);i<e;++i)f(i);}
+ }
+ // Block b applied to columns [c0, c1) of X (rows [k0, m), row stride ld): W = P(V_b^T X), Y = P(T_b^T W) (qt: Q^T) or
+ // P(T_b W) (Q), X = D(X; V_b, Y). Wb and Yb (nb rows, stride ld) are scratch indexed by the column of X.
+@@ -435,32 +446,45 @@
+     // Panel scratch: the panel's columns (Pt) and reflectors (Vt) contiguous per column (rows [k0, m)), panel W rows (Wp,
+     // nb x nb: Wp[i][c] = P(v_i, a_c) with a_c as at the block start), Gram column G and y.
+     std::vector<T> Pt(nb*m),Vt(nb*m),Wp(nb*nb),G(nb),y(nb);const T two=power2<N>(1),one=power2<N>(0);long top=LONG_MIN;
++    // The panel runs as one team on the host workers (one pool dispatch per panel): parallel phases separated by spin
++    // barriers, serial steps on member 0, work inside a phase claimed dynamically. Order and values are as in the comments.
+     auto factor_panel=[&](std::size_t k0,std::size_t k1){auto t=Clock::now();++info.blocks;
+-        const std::size_t kb=k1-k0,mr=m-k0;T* Tb=Tm+(k0/nb)*nb*nb;
+-        each(kb,[&](std::size_t c){T* x=Pt.data()+c*mr;for(std::size_t r=0;r<mr;++r)x[r]=Wk[(k0+r)*n+k0+c];std::fill(Vt.data()+c*mr,Vt.data()+(c+1)*mr,zero<N>());});
+-        for(std::size_t c=0;c<kb;++c){T* x=Pt.data()+c*mr;const std::size_t q=std::min(k0+c,info.rank)-k0;
+-            // Column k0+c by the reflectors [k0, k0+q) of this block: y_i = P(T_b[0..i][i], w[0..i]); x = D(x; V_b, y).
+-            if(q){for(std::size_t i=0;i<q;++i)y[i]=exact_dot<N>(Tb+i,std::ptrdiff_t(nb),Wp.data()+c,std::ptrdiff_t(nb),i+1);
+-                each(mr,[&](std::size_t r){x[r]=exact_dot_add<N>(&x[r],true,Vt.data()+r,std::ptrdiff_t(mr),y.data(),1,q);});}
+-            if(info.rank<n)continue;  // after a failing column: the remainder only
+-            // Reflector j = k0+c from x[c..mr): s = P(x, x); beta = -sgn(x_0) sqrt(s); v0 = RN(x_0 - beta); v = 2^-e (v0, x_1, ...)
+-            // with e = exponent(v0); tau = RN(2 / P(v, v)); r_jj = beta. Nothing below the diagonal: tau = 0, v = e_j, r_jj = x_0.
+-            const std::size_t len=mr-c;T* xc=x+c;T s=exact_dot<N>(xc,1,xc,1,len);bool below=false;
+-            for(std::size_t r=1;r<len&&!below;++r)below=xc[r].sign!=0;
+-            int reason=s.status?QRInfo::status_column:(!xc[0].sign&&!below)?QRInfo::zero_column:QRInfo::full_rank;T beta=xc[0],v0=one;
+-            if(!reason&&below){beta=sqrt(s);if(xc[0].sign>=0)beta=negate(beta);v0=sub(xc[0],beta);}
+-            if(!reason&&fo.rank_bits>0&&top!=LONG_MIN&&long(beta.exponent)+fo.rank_bits<top)reason=QRInfo::small_column;
+-            if(reason){info.rank=k0+c;info.reason=reason;info.status=s.status;continue;}
+-            T* v=Vt.data()+c*mr+c;T tj=zero<N>();
+-            if(below){const long e=v0.exponent;v[0]=scaled(v0,e);for(std::size_t r=1;r<len;++r)v[r]=scaled(xc[r],e);tj=div(two,exact_dot<N>(v,1,v,1,len));}
+-            else v[0]=one;
+-            xc[0]=beta;tau[k0+c]=tj;top=std::max(top,long(beta.exponent));
+-            // Gram column G_i = P(v_i, v_j) (i < c) and panel W row c: Wp[c][c'] = P(v_j, a_c') for c' > c (not yet reduced by this block).
+-            each(kb-1,[&](std::size_t u){if(u<c)G[u]=exact_dot<N>(Vt.data()+u*mr+c,1,v,1,len);else Wp[c*nb+u+1]=exact_dot<N>(v,1,Pt.data()+(u+1)*mr+c,1,len);});
+-            // T_b column c: T_cc = tau_j, T_lc = -RN(tau_j * P(T_b[l][l..c), G[l..c))).
+-            Tb[c*nb+c]=tj;for(std::size_t l=0;l<c;++l)Tb[l*nb+c]=negate(mul(tj,exact_dot<N>(Tb+l*nb+l,1,G.data()+l,1,c-l)));
+-        }
+-        each(kb,[&](std::size_t c){const T *x=Pt.data()+c*mr,*v=Vt.data()+c*mr;for(std::size_t r=0;r<mr;++r){Wk[(k0+r)*n+k0+c]=x[r];V[(k0+r)*n+k0+c]=v[r];}});
++        const std::size_t kb=k1-k0,mr=m-k0;T* Tb=Tm+(k0/nb)*nb*nb;Pool& pool=pool_workers();Team team(pool.size());
++        std::atomic<std::size_t> in{0},out{0},rows{0},grams{0};bool made=false;
++        pool.run([&](unsigned id){
++            claim(in,kb,1,[&](std::size_t c){T* x=Pt.data()+c*mr;for(std::size_t r=0;r<mr;++r)x[r]=Wk[(k0+r)*n+k0+c];std::fill(Vt.data()+c*mr,Vt.data()+(c+1)*mr,zero<N>());});
++            team.sync();
++            for(std::size_t c=0;c<kb;++c){T* x=Pt.data()+c*mr;const std::size_t q=std::min(k0+c,info.rank)-k0;
++                // Column k0+c by the reflectors [k0, k0+q) of this block: x = D(x; V_b, y) (y from the previous serial step).
++                if(q)claim(rows,mr,16,[&](std::size_t r){x[r]=exact_dot_add<N>(&x[r],true,Vt.data()+r,std::ptrdiff_t(mr),y.data(),1,q);});
++                team.sync();
++                // Reflector j = k0+c from x[c..mr): s = P(x, x); beta = -sgn(x_0) sqrt(s); v0 = RN(x_0 - beta); v = 2^-e (v0, x_1, ...)
++                // with e = exponent(v0); tau = RN(2 / P(v, v)); r_jj = beta. Nothing below the diagonal: tau = 0, v = e_j, r_jj = x_0.
++                const std::size_t len=mr-c;T* v=Vt.data()+c*mr+c;
++                if(id==0){made=false;grams=0;
++                    if(info.rank==n){T* xc=x+c;T s=exact_dot<N>(xc,1,xc,1,len);bool below=false;
++                        for(std::size_t r=1;r<len&&!below;++r)below=xc[r].sign!=0;
++                        int reason=s.status?QRInfo::status_column:(!xc[0].sign&&!below)?QRInfo::zero_column:QRInfo::full_rank;T beta=xc[0],v0=one;
++                        if(!reason&&below){beta=sqrt(s);if(xc[0].sign>=0)beta=negate(beta);v0=sub(xc[0],beta);}
++                        if(!reason&&fo.rank_bits>0&&top!=LONG_MIN&&long(beta.exponent)+fo.rank_bits<top)reason=QRInfo::small_column;
++                        if(reason){info.rank=k0+c;info.reason=reason;info.status=s.status;}
++                        else{T tj=zero<N>();
++                            if(below){const long e=v0.exponent;v[0]=scaled(v0,e);for(std::size_t r=1;r<len;++r)v[r]=scaled(xc[r],e);tj=div(two,exact_dot<N>(v,1,v,1,len));}
++                            else v[0]=one;
++                            xc[0]=beta;tau[k0+c]=tj;top=std::max(top,long(beta.exponent));made=true;}}}
++                team.sync();
++                // Gram column G_i = P(v_i, v_j) (i < c) and panel W row c: Wp[c][c'] = P(v_j, a_c') for c' > c (not yet reduced by this block).
++                if(made)claim(grams,kb-1,1,[&](std::size_t u){if(u<c)G[u]=exact_dot<N>(Vt.data()+u*mr+c,1,v,1,len);else Wp[c*nb+u+1]=exact_dot<N>(v,1,Pt.data()+(u+1)*mr+c,1,len);});
++                team.sync();
++                // T_b column c: T_cc = tau_j, T_lc = -RN(tau_j * P(T_b[l][l..c), G[l..c))); then y for the next column:
++                // y_i = P(T_b[0..i][i], w[0..i]) over its reflectors [k0, k0+q').
++                if(id==0){rows=0;
++                    if(made){const T tj=tau[k0+c];Tb[c*nb+c]=tj;for(std::size_t l=0;l<c;++l)Tb[l*nb+c]=negate(mul(tj,exact_dot<N>(Tb+l*nb+l,1,G.data()+l,1,c-l)));}
++                    if(c+1<kb){const std::size_t qn=std::min(k0+c+1,info.rank)-k0;for(std::size_t i=0;i<qn;++i)y[i]=exact_dot<N>(Tb+i,std::ptrdiff_t(nb),Wp.data()+c+1,std::ptrdiff_t(nb),i+1);}}
++                team.sync();
++            }
++            claim(out,kb,1,[&](std::size_t c){const T *x=Pt.data()+c*mr,*v=Vt.data()+c*mr;for(std::size_t r=0;r<mr;++r){Wk[(k0+r)*n+k0+c]=x[r];V[(k0+r)*n+k0+c]=v[r];}});
++        });
+         info.panel_seconds+=since(t);return std::min(k1,info.rank);};
+     auto update=[&](std::size_t b,std::size_t c0,std::size_t c1,bool& on_gpu){auto t=Clock::now();
+         Timing tm=qr_block<N>(f,b,Wk,n,c0,c1,true,Wb,Yb,fo.host_macs,gpu,on_gpu);tm.wall_seconds=since(t);return tm;};

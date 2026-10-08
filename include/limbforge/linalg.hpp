@@ -4,7 +4,7 @@
 // int8) and rounded once, ties to even. Contract and algorithm: docs/numerics.md, "Dense products". Host arrays
 // only; element = Number<bits/32> (Float<bits>), matrices row-major. Statuses propagate: C[i][j] = zero(OR of the
 // statuses of row i of L and column j of R, and of the old C[i][j] for an update) when that OR is nonzero. Empty K
-// gives canonical zero (an update leaves C unchanged). Blocked Cholesky and triangular solves build on these updates.
+// gives canonical zero (an update leaves C unchanged). Blocked Cholesky, triangular solves and Householder QR build on these updates.
 #include "core.hpp"
 #include "engine.hpp"
 #include <algorithm>
@@ -51,6 +51,43 @@ struct CholeskyInfo {
     std::size_t blocks=0,gpu_updates=0,host_updates=0;
     double panel_seconds=0,update_seconds=0;  // host diagonal-block + panel work; trailing updates (GPU or host), wall
 };
+// Householder QR (docs/numerics.md, "QR factorization and least squares"): FactorOptions (block, GPU/host split; the
+// result depends on block only) and an optional rank test: rank_bits > 0 also stops at the first column whose |r_jj|
+// lies more than rank_bits binades below the largest earlier |r_kk| (exponent comparison, no rounding).
+struct QROptions : FactorOptions { int rank_bits=0; };
+// Per-factor outcome. rank = n for a full-rank factor; otherwise the first column p (in order) whose norm is zero
+// (zero_column), carries a status (status_column; status = its OR) or fails rank_bits (small_column). Reflectors
+// 0 .. p-1 are then final, and the factorization stops there (see QRFactor::r).
+struct QRInfo {
+    enum Reason {full_rank=0,zero_column=1,small_column=2,status_column=3};
+    std::size_t rank=0; int reason=full_rank; word status=0;
+    Timing timing{0,0};                       // gpu_seconds: summed command buffers; wall: whole call
+    std::size_t blocks=0,gpu_updates=0,host_updates=0; // trailing block updates (3 products each) by placement
+    double panel_seconds=0,update_seconds=0;  // host panels; trailing updates (GPU or host), wall
+};
+namespace detail { struct QRData; }
+class Linalg;
+// Owning QR factor of an m x n matrix (m >= n): Q = H_0 ... H_{n-1}, H_j = I - tau_j v_j v_j^T, and R. The factor copies
+// everything it needs and never refers to A again: when A changes, factor it again (no caching by address). It uses the
+// Linalg that made it (scratch buffers, GPU): that Linalg must outlive it, and calls follow the Linalg threading rule.
+class QRFactor {
+public:
+    QRFactor(); ~QRFactor(); QRFactor(QRFactor&&) noexcept; QRFactor& operator=(QRFactor&&) noexcept;
+    bool empty() const; int bits() const; std::size_t rows() const; std::size_t cols() const; std::size_t block() const;
+    const QRInfo& info() const; bool full_rank() const;
+    // Row-major Float<bits> arrays owned by the factor (valid while it lives): R (n x n, upper; with rank p < n, rows
+    // i >= p hold the unreduced remainder in columns j >= p), V (m x n: column j is v_j, zero above row j, v_j[j] =
+    // the scaled v0), tau (n) and T (blocks of nb x nb, the compact-WY upper triangles; block b at offset b*nb*nb).
+    const void* r() const; const void* v() const; const void* tau() const; const void* t() const;
+    // X (n x nrhs) = least-squares solution of min ||A x - b|| for each column b of B (m x nrhs): Q^T B, then R X = (Q^T B)[0:n).
+    // Full rank only: a rank-deficient factor writes zero with status invalid to every entry of X (no minimum-norm claim).
+    // X must not overlap B.
+    Timing solve(const void* B,std::size_t nrhs,void* X) const;
+    // B (m x nrhs) <- Q^T B (transpose) or Q B, in place.
+    Timing apply_q(void* B,std::size_t nrhs,bool transpose) const;
+private:
+    friend class Linalg; std::unique_ptr<detail::QRData> d;
+};
 // One Linalg per host thread (scratch buffers and compiled libraries are reused). C must not overlap A or B;
 // page-aligned A, B and C are used by the GPU in place. Calls return after the GPU has finished.
 class Linalg {
@@ -73,10 +110,15 @@ public:
     Timing trsm(int bits,bool transpose,const void* L,std::size_t n,const void* B,std::size_t nrhs,void* X,const FactorOptions& options={});
     // X solves (L L^T) X = B: trsm, then trsm with transpose.
     Timing cholesky_solve(int bits,const void* L,std::size_t n,const void* B,std::size_t nrhs,void* X,const FactorOptions& options={});
+    // Householder QR of A (m x n, row-major, m >= n); A is only read. info().rank reports rank deficiency.
+    QRFactor factor_qr(int bits,const void* A,std::size_t m,std::size_t n,const QROptions& options={});
+    // QR of the augmented Levenberg-Marquardt matrix [J; diag(d)] ((m+n) x n) for J (m x n) and the caller's diagonal d
+    // (n entries, e.g. sqrt(mu) D): the same factorization of the stacked matrix. Solve with B of m+n rows ([r; 0]).
+    QRFactor factor_qr_augmented(int bits,const void* J,std::size_t m,std::size_t n,const void* d,const QROptions& options={});
     const LinalgReport& report() const;
     const LinalgOptions& options() const;
 private:
-    struct Impl; std::unique_ptr<Impl> impl;
+    friend class QRFactor; struct Impl; std::unique_ptr<Impl> impl;
 };
 // ---- Exact dot product on the CPU: RN(sum_k a[k*sa]*b[k*sb]) with one rounding (the GPU fallback) ----
 namespace detail {

@@ -1,0 +1,41 @@
+Round 31-S5 (plan S5): Householder QR factor object, least squares and Q application (Linalg::factor_qr, QRFactor::solve,
+QRFactor::apply_q in include/limbforge/linalg.hpp). Apple M5 Max, macOS 26.6.2, Release build, base revision bc13d14 plus
+this round's working tree, 2026-10-07 23:42-23:54 EDT. Host loaded by other work (qscmx, Wolfram kernels): load average
+33-170 during the runs (18 CPU cores), rising during the timing run. Read ratios, not absolute times; differences below
+~15% are noise. Host-side work (QR panels, MPFR baselines) is slowed by the load; GPU command-buffer times much less.
+
+Commands (benchmarks/qr.mm, target qr_limbforge):
+  ./build/qr_limbforge --repeats 5 --serial-max 200 --nrhs 4                    > round31_qr.csv
+  ./build/qr_limbforge --accuracy --size 200 --nrhs 4                           > round31_qr_accuracy.csv
+  ./build/qr_limbforge --accuracy --size 400 --nrhs 4 (header dropped)        >> round31_qr_accuracy.csv
+  ./build/qr_limbforge --sweep --bits 256 --size 400 --repeats 3                > round31_qr_tuning.csv
+  ./build/qr_limbforge --sweep --bits 256 --size 1000 --repeats 3 (no header) >> round31_qr_tuning.csv
+
+Data: J (m = 2n rows, n columns) QSC-like Jacobian columns as rounds 20/23 (column scale 2^[-60,60], entries within
+2^-25..2^5 of it, 25% exact zeros, a 2^-150 outlier in every 17th column). B: m x nrhs random, exponents in [-20, 20].
+
+round31_qr.csv (QROptions defaults: block 32, host_macs 5e4, solve_host_macs 4e5):
+  qr_*: Linalg::factor_qr, median (and min) of 5 calls after one warm-up; gpu = summed command buffers (trailing updates,
+  3 residue products per block), panel = host panel time (critical path), update = summed trailing-update wall time
+  (overlaps the panel). gpu_updates / host_updates: block updates by placement. solve_*: QRFactor::solve with nrhs
+  right-hand sides (Q^T B by blocks, then the backward substitution). qr_e2e_ms: factor + solve in one sequence (median).
+  host_only_qr_ms: the same factorization with every update on the host (gpu=false), once; gpu_equals_host = 1: R, V and
+  tau bit-identical. ne_e2e_ms (min): normal equations end to end on the same J and B (Linalg::syrk, J^T B by Linalg::gemm,
+  Linalg::cholesky, cholesky_solve; no damping), median of 5; qr_over_ne = qr_e2e / ne_e2e.
+  mpfr_serial_qr_s: consumer-style MPFR Householder (qsccpp mx.hpp QR: unblocked, every mpfr operation rounded) on one thread,
+  measured at n = 200 (serial_measured_n) and scaled by (n/200)^3 above. mpfr_parallel_qr_s: the same with each column's
+  trailing update split over 18 worker threads, measured at every n. mpfr_solve_s: MPFR Q^T b and back substitution, serial.
+  speedup_vs_*: MPFR factorization time / LimbForge median factorization wall.
+round31_qr_tuning.csv: block size x host_macs sweep (factorization wall/gpu/panel/update, solve wall, nrhs 4), 256 bits.
+round31_qr_accuracy.csv: least-squares errors (log2, maximum over 4 right-hand sides) against x* from an MPFR Householder solve
+  at 3*bits + 2*kappa bits. kappa = -1: the QSC-like J above; kappa = 40, 100: J = G1 diag(2^(-kappa j/(n-1))) G2 with random
+  G1 (m x n), G2 (n x n) (Linalg::gemm, one rounding per entry) and the same QSC column scales. rhs random: b random
+  (large residual); consistent: b = RN(J x0). fwd_norm = max|x - x*| / max|x*|; fwd_comp = max_i |x_i - x*_i| / |x*_i|;
+  ne_bwd_comp = max_j |J^T r|_j / (|J|^T (|b| + |J||x|))_j with r = b - J x (componentwise normal-equation backward error);
+  rel_residual = ||b - J x|| / ||b||; opt_residual = ||b - J x*|| / ||b||; residual_excess = ||J (x - x*)|| / ||b - J x*||
+  (from ||r||^2 - ||r*||^2). Residuals at 3*bits + 2*kappa + 64 bits. Methods: limbforge_qr (block 32),
+  limbforge_normal_equations (as ne_e2e), mpfr_householder (consumer-style at bits).
+
+Correctness gate before these runs: ctest (15/15) passed; linalg_cpu, linalg_gpu, linalg_cholesky and linalg_qr also passed
+under MTL_SHADER_VALIDATION=1 (466 factorizations, 466 solves and 932 Q applications bit-identical to the MPFR reference
+sequence at 64/224/256/384 bits).

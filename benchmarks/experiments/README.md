@@ -45,6 +45,13 @@ GPU/MPFR validation and was removed from the installed implementation.
   while 352 and 416 bits (schoolbook square) and the engine's unary `square` kernel
   at 384 bits were exact. The library squares with `mul(a, a)` there (same exact
   square, same rounding). See ../../docs/gpu-codegen.md section 8.
+- `qr_panel_team.patch`: based on round 31-S5 (apply on top of that commit with
+  `git apply`). A measured rejection: the QR panel as one team per panel (one pool
+  dispatch, spin barriers between the per-column phases, serial steps on member 0)
+  instead of two pool dispatches per column. Bit-identical to the MPFR sequence, but
+  slower on the loaded host (n = 400, 256 bits, load about 40, interleaved: panel
+  250-740 ms against 185-455 ms), because spinning members are descheduled. A pool whose
+  workers poll before blocking was slower too and is not kept.
 - `sum_width_probe.mm` (diagnostic, not a patch; build as in its header): the exact
   two-term sum of the update kernels at every precision and both instantiated widths
   against MPFR. With argument 1 (no rounding of the workspace width) 8 of 62 widths

@@ -324,8 +324,9 @@ per line the modulus count is at its minimum: 33 at 256 bits for K = 2000 when e
 single exponent. A spread up to `G` within a band costs about `2*spread/16` extra moduli, and the
 widest line sets this for the whole product.
 
-**QR (later).** Plan item S5 prefers QR of `[J; sqrt(mu) D]` for difficult Levenberg–Marquardt
-points; the normal equations are solved by the blocked Cholesky below.
+**QR.** The normal equations are solved by the blocked Cholesky below; Householder QR (least
+squares, also of the augmented Levenberg–Marquardt matrix `[J; sqrt(mu) D]`) is in "QR factorization
+and least squares".
 
 **Resident buffers (later).** The host-array API owns its own device and queue. A resident version
 would take `Buffer<Float<bits>>` operands and encode the same pipeline into a `CommandBatch`. Band
@@ -600,3 +601,137 @@ indices from a workspace query, and `values`/`info` written to resident buffers.
 comparison (value against a caller's tolerance) fits in the final pass, so the host reads back only
 `info`. This needs the private `Buffer`/`CommandBatch` internals of `engine.hpp`, which this round
 did not modify.
+## QR factorization and least squares
+
+```cpp
+QROptions o;                                       // FactorOptions (block = 32, host_macs, solve_host_macs, gpu) + rank_bits
+QRFactor qr = la.factor_qr(bits, A, m, n, o);      // A (m x n, m >= n) = Q R; qr.info().rank == n when full rank
+qr.solve(B, nrhs, X);                              // X (n x nrhs) minimises ||A x - b|| for each column b of B (m x nrhs)
+qr.apply_q(B, nrhs, transpose);                    // B (m x nrhs) <- Q^T B (transpose) or Q B, in place
+qr.r(); qr.v(); qr.tau(); qr.t();                  // R (n x n), V (m x n), tau (n), T (nb x nb per block)
+QRFactor lm = la.factor_qr_augmented(bits, J, m, n, d, o); // [J; diag(d)], d = sqrt(mu) D supplied by the caller
+```
+
+Host arrays as for the products (row-major `Float<bits>`). `QRFactor` is an owning, move-only object:
+`factor_qr` copies A into its own work space and keeps only V, R, tau and T, so A may change or be
+freed afterwards. There is no caching by address: when A changes, the caller factors it again (a
+new generation is a new `QRFactor`). The factor refers to the `Linalg` that made it (scratch
+buffers and the GPU): that `Linalg` must outlive it, and its calls follow the one-thread-per-`Linalg`
+rule. `factor_qr_augmented` forms the `(m+n) x n` matrix `[J; diag(d)]` and factors it with the same
+code (the solve then takes `B` with `m+n` rows, e.g. `[r; 0]`); it does not exploit the diagonal.
+
+**Rounding sequence.** `P(x, y; S) = RN(sum_{k in S} x_k y_k)` and `D(c; x, y; S) = RN(c - sum_{k in S} x_k y_k)`
+are single roundings of exact values (the products of "Dense products" or `exact_dot` /
+`exact_dot_add` on the host; identical bits). Blocks are `B_b = [b nb, min(n, (b+1) nb))` with
+`nb = block` (0: one block), `k0 = b nb`, `c = j - k0`; `T_b` is the `nb x nb` upper triangular
+compact-WY matrix of block b, `V` holds the reflectors `v_j` (zero above row j). `p` is the rank
+(n until a column fails).
+
+```
+columns j = 0 .. n-1 in order; the reflectors [0, min(j, p)) act on column a_j in groups
+G = B_b ∩ [0, min(j, p)), b = 0, 1, ... (the last group is partial inside j's own block); for each group:
+  w_i  = P(v_i, a_j; rows [k0, m))                         i in G
+  y_i  = P(T_b[k0..i][i], w; [k0, i])
+  a_rj = D(a_rj; V[r][G], y; G)                            every row r >= k0 (one rounding per entry)
+if j < p, reflector j from x = (a_jj, ..., a_{m-1,j}):
+  s = P(x, x)
+  column j fails (p = j) if s has a status, x = 0, or rank_bits > 0 and exponent(r_jj) + rank_bits < max_{k<j} exponent(r_kk)
+  x_{j+1..m-1} all zero: tau_j = 0, v_j = e_j, r_jj = a_jj  (H_j = I)
+  otherwise: beta = -sgn(a_jj) sqrt(s) (sgn(0) = +1); v0 = RN(a_jj - beta); e = exponent(v0);
+             v_j = 2^-e (v0, x_{j+1}, ..., x_{m-1}) (exact); tau_j = div(2, P(v_j, v_j)); r_jj = beta
+  T_b: g_l = P(v_{k0+l}, v_j) (l < c); T_cc = tau_j; T_lc = -RN(tau_j * P(T_b[l][l..c), g[l..c)))   l = 0 .. c-1
+Q^T C (apply_q with transpose, and solve): blocks b = 0, 1, ... over [0, p); per column of C:
+  w = P(V_b^T c), y_i = P(T_b[k0..i][i], w), c_r = D(c_r; V[r][B_b], y) for r >= k0
+Q C (apply_q): blocks in reverse order with y_i = P(T_b[i][i..], w[i..])
+solve: c = Q^T b, then R x = c[0, n) by the backward substitution of "Cholesky" with row i of R in place of
+column i of L (blocks nb): x_i = div(D(c_i; R[i], x; ...), r_ii)
+```
+
+`H_j = I - tau_j v_j v_j^T` and `Q = H_0 ... H_{n-1}`; block b is `I - V_b T_b V_b^T`. The power of two
+`2^-e` makes `v0` lie in `[1, 2)` and every `|v_ij| < 2` without a rounding (LAPACK divides by `v0`
+instead); `tau_j` is then in `(1/4, 2]`, and every row of `V_b` and column of `Y` keep the exponent
+range of the data, which keeps the residue GEMM to few bands. Since `tau_j` is computed from the
+stored `v_j`, `H_j` is orthogonal up to the two roundings of `P(v, v)` and the division.
+
+Each step is correctly rounded; the factorization as a whole is **not**. An entry of column j is
+rounded once per group (block) that reaches its row; the correction it receives carries the
+roundings of its `w` (one) and `y` (one, over the exact combination of the rounded `w`). The
+trailing update of a block applies all of its reflectors at once; inside the panel, column j uses
+the partial group `[k0, j)`. A trailing column receiving the whole block gives the same bits as the
+group formula because `T_b` is upper triangular and `V_b` is zero above its diagonal, and zero
+terms do not change an exact sum. After a failing column the reflectors `[0, p)` still reach every
+later column, so rows `< p` of R are final; rows `>= p` of R hold the unreduced remainder in
+columns `>= p` (zero elsewhere), and V, tau and T are zero from column p.
+
+**Status and rank.** `info().rank = p` and `info().reason`: `zero_column` (the reduced column is
+exactly zero), `status_column` (a status in the column; `info().status` is the OR), or
+`small_column` (the optional exponent test above, off by default). Exactly dependent columns are
+not exactly zero after rounding: they pass with `rank_bits = 0` and fail with a test such as
+`rank_bits = bits/2`. A rank-deficient factor still applies Q (its first p reflectors), but `solve`
+writes zero with status `invalid` to every entry of X: least squares needs full rank, and no
+minimum-norm solution is claimed (column pivoting and a complete orthogonal factorization are later
+work, plan S5). Statuses in B reach X through the dot products, as in the Cholesky solves.
+
+**Determinism.** The result depends only on the inputs, `bits` and `block`: not on GPU/host
+placement (`host_macs`, `solve_host_macs`, `gpu`), host threads, page alignment or the look-ahead
+overlap. `block` is part of the result.
+
+**Execution.** The work matrix is a resident GPU buffer; V and T live in page-aligned factor
+storage that the GPU uses in place. For block b:
+
+1. Panel on the host (columns contiguous in a scratch copy): for each column, its `y` and the update
+   by the earlier reflectors of the block (exact dots over at most nb terms, rows in parallel), the
+   reflector, then the Gram column `g` and row c of the panel's W (`P(v_j, a_c')` for the later
+   panel columns, unreduced by this block, in parallel), then column c of `T_b`.
+2. The next panel's columns are updated by block b: `W = P(V_b^T A)`, `Y = P(T_b^T W)`,
+   `A = D(A; V_b, Y)`: three products of "Dense products" (`gemm`-style views of the resident
+   buffers, the last with `subtract`), or exact host dots below `host_macs` multiply-adds.
+3. A second host thread updates the rest of the trailing matrix the same way while this thread
+   factors the next panel (one block of look-ahead, as in the Cholesky).
+
+The solves apply the blocks to a copy of B the same way (GPU above `solve_host_macs`), then call
+the backward substitution. The independent reference (`tests/test_qr.cpp`) is a left-looking,
+column-by-column MPFR program of the sequence above (`reference::dot`, `reference::dot_sub`,
+`mpfr_sqrt`, `mpfr_sub`, `mpfr_div`, `mpfr_mul`, `mpfr_mul_2si`).
+
+### QR accuracy
+
+Least squares `min ||J x - b||` with J of 2n × n (`benchmarks/qr.mm --accuracy`,
+`benchmarks/results/round31_qr_accuracy.csv`), four right-hand sides, against `x*` from an MPFR
+Householder solve at `3*bits + 2 kappa` bits of the same exact J and b. "QSC" is the QSC-like
+Jacobian of the Cholesky benchmark (column scales 2^±60, 25% zeros, outliers); `kappa = 40, 100`
+is `J = G1 diag(2^(-kappa j/(n-1))) G2` (random G1, G2, one rounding per entry) with the same column
+scales, so its singular values spread over about `kappa` more binades. "random" b has a residual of
+the size of b; "consistent" b = RN(J x0) has a residual at the rounding level of b. Methods at the
+same precision: LimbForge QR (block 32), the normal equations (LimbForge SYRK, `J^T b` by `gemm`,
+blocked Cholesky and `cholesky_solve`, round 23), and the consumer-style MPFR Householder
+(qsccpp `mx.hpp` `QR`: unblocked, every operation rounded). Errors are log2, maximum over the
+right-hand sides: forward normwise `max|x - x*| / max|x*|`, and the residual excess
+`||J (x - x*)|| / ||b - J x*||` (how far the residual is above the optimum). n = 400:
+
+| bits | J | b | fwd QR | fwd normal eq. | fwd MPFR Householder | excess QR | excess normal eq. |
+|---:|---|---|---:|---:|---:|---:|---:|
+| 224 | QSC | random | −222.4 | −220.8 | −218.1 | −222.2 | −222.1 |
+| 224 | QSC | consistent | −106.5 | −105.7 | −103.5 | 3.3 | 3.5 |
+| 224 | kappa 40 | random | −181.8 | −138.4 | −176.5 | −184.5 | −143.4 |
+| 224 | kappa 40 | consistent | −69.0 | −24.9 | −65.9 | 2.9 | 43.5 |
+| 224 | kappa 100 | random | −119.2 | −15.9 | −115.8 | −123.9 | −20.4 |
+| 224 | kappa 100 | consistent | −9.4 | +98.4 | −5.0 | 2.5 | 104.4 |
+| 256 | QSC | random | −254.3 | −253.5 | −250.6 | −254.3 | −254.1 |
+| 256 | QSC | consistent | −138.7 | −138.4 | −135.4 | 3.6 | 4.3 |
+| 256 | kappa 40 | random | −210.2 | −166.1 | −207.8 | −213.0 | −169.0 |
+| 256 | kappa 40 | consistent | −101.2 | −50.3 | −95.9 | 2.8 | 46.5 |
+| 256 | kappa 100 | random | −150.3 | −43.3 | −145.8 | −152.1 | −46.8 |
+| 256 | kappa 100 | consistent | −41.4 | +71.6 | −36.2 | 2.4 | 107.0 |
+
+n = 200 gives the same picture within 4 bits. On the QSC-like J (badly scaled columns but otherwise
+well conditioned) QR and the normal equations agree within 2 bits, and both are 3–4 bits more
+accurate than the consumer MPFR Householder. The large errors for consistent b there come from
+the 2^120 column-scale ratio, equally for every method. With conditioning beyond the column scaling
+the normal equations lose about `kappa` more bits than QR, as `kappa(J)^2` against `kappa(J)`
+predicts: 43–44 bits at `kappa = 40` and 101–107 bits at `kappa = 100`. At `kappa = 100` the
+normal-equation solution has no correct bits for consistent b (relative error 2^72–2^98), while QR
+keeps 9–41 bits, 4–5 bits more than the MPFR Householder. QR's residual stays within a factor of 2^2–2^4 of
+the optimum in every case; the normal equations' residual exceeds it by up to 2^107. The componentwise
+normal-equation backward error `max_j |J^T r|_j / (|J|^T (|b| + |J| |x|))_j` (in the CSV) is about
+`2^-bits` for all three methods, so it does not separate them.
