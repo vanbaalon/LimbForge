@@ -1,6 +1,7 @@
 #pragma once
 #include "core.hpp"
 #include <cstddef>
+#include <cstdint>
 #include <memory>
 #include <string>
 #include <future>
@@ -64,6 +65,8 @@ void transfer(const std::shared_ptr<BufferStorage>&,void*,std::size_t,bool);
 template<class T> struct Format;
 template<int N> struct Format<Number<N>> {static_assert(N>=2&&N<=32,"unsupported precision");static constexpr int bits=32*N;static constexpr bool complex=false;};
 template<int N> struct Format<Complex<N>> {static_assert(N>=2&&N<=32,"unsupported precision");static constexpr int bits=32*N;static constexpr bool complex=true;};
+// Status words (e.g. batched 4x4 pivot statuses); not an arithmetic format.
+template<> struct Format<std::uint32_t> {static constexpr int bits=0;static constexpr bool complex=false;};
 }
 template<class T> class Buffer {
     std::shared_ptr<detail::BufferStorage> storage_;std::size_t count_=0;
@@ -96,6 +99,7 @@ class CommandBatch {
                 const std::shared_ptr<detail::BufferStorage>&,const std::shared_ptr<detail::BufferStorage>&,std::size_t,Broadcast={},Broadcast={});
     void encode_vector(int,const VectorRecurrence&,const std::shared_ptr<detail::BufferStorage>* in,const std::size_t* sizes,
                        const std::shared_ptr<detail::BufferStorage>& out,std::size_t out_size);
+    void encode_lu4(int,const Batched4&,const std::shared_ptr<detail::BufferStorage>* in,const std::size_t* sizes);
     void encode_dot(int,bool,const SegmentedDot&,const std::shared_ptr<detail::BufferStorage>&,std::size_t,const std::shared_ptr<detail::BufferStorage>&,std::size_t,
                     const std::shared_ptr<detail::BufferStorage>&,std::size_t);
     void encode_tree_sum(int,bool,const std::shared_ptr<detail::BufferStorage>&,
@@ -146,6 +150,13 @@ public:
         const std::size_t sizes[7]={start.size(),p.size(),q.size(),r.size(),base.size(),dp.size(),dq.size()};
         encode_vector(detail::Format<T>::bits,shape,in,sizes,out.storage_,out.size());
     }
+    // Resident Engine::lu4: unused buffers (B for an inverse, det without determinant) may be empty.
+    template<class T> void lu4(const Batched4& shape,const Buffer<T>& A,const Buffer<T>& B,Buffer<T>& X,Buffer<T>& det,Buffer<std::uint32_t>& status){
+        static_assert(detail::Format<T>::complex,"batched 4x4 systems use complex buffers");
+        const std::shared_ptr<detail::BufferStorage> in[5]={A.storage_,B.storage_,X.storage_,det.storage_,status.storage_};
+        const std::size_t sizes[5]={A.size(),B.size(),X.size(),det.size(),status.size()};
+        encode_lu4(detail::Format<T>::bits,shape,in,sizes);
+    }
     template<class T> void segmented_dot(const SegmentedDot& shape,const Buffer<T>& a,const Buffer<T>& b,Buffer<T>& out){
         encode_dot(detail::Format<T>::bits,detail::Format<T>::complex,shape,a.storage_,a.size(),b.storage_,b.size(),out.storage_,out.size());
     }
@@ -163,7 +174,7 @@ public:
     std::future<void> prewarm_async(Prewarm request);
     PipelineInfo pipeline_info(int bits,Operation op);
     template<class T> Buffer<T> make_buffer(std::size_t count){
-        static_assert(sizeof(T)==std::size_t(detail::Format<T>::bits/8+12)*(detail::Format<T>::complex?2:1),"buffer layout mismatch");
+        static_assert(!detail::Format<T>::bits||sizeof(T)==std::size_t(detail::Format<T>::bits/8+12)*(detail::Format<T>::complex?2:1),"buffer layout mismatch");
         if(count>std::size_t(-1)/sizeof(T))throw std::invalid_argument("buffer size overflow");
         return Buffer<T>(allocate(count*sizeof(T)),count);
     }

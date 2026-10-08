@@ -48,6 +48,13 @@ std::array<std::size_t,3> dot_elements(int bits,const SegmentedDot& s){
     if(s.segments>std::numeric_limits<std::uint32_t>::max()||s.length>std::numeric_limits<std::uint32_t>::max())throw std::invalid_argument("segmented dot exceeds 32-bit indexing");
     return {checked_size(s.segments,s.length),s.shared_right?s.length:checked_size(s.segments,s.length),s.segments};
 }
+// Element counts of A, B, X, det and status for batched 4x4 systems.
+std::array<std::size_t,5> lu4_elements(int bits,const Batched4& s){
+    validate(bits,s.count);if(s.count>std::numeric_limits<std::uint32_t>::max()/16)throw std::invalid_argument("batched 4x4 exceeds 32-bit indexing");
+    if(s.inverse&&s.rhs)throw std::invalid_argument("inverse uses no right-hand sides");
+    unsigned R=s.inverse?4:s.rhs;return {s.count*16,checked_size(s.count*4,s.rhs),checked_size(s.count*4,R),s.determinant?s.count:0,s.count};
+}
+unsigned lu4_flags(const Batched4& s){return (s.fused?1:0)|(s.determinant?2:0)|(s.inverse?4:0);}
 unsigned vector_flags(const VectorRecurrence& s){return (s.affine?1:0)|(s.matrix?2:0)|(s.all_steps?4:0)|(s.reverse?8:0)|(s.tangent?16:0)|(s.fused?32:0);}
 }
 namespace detail {
@@ -145,7 +152,7 @@ struct Engine::Impl {
             for(auto& v:r.vector_shapes){if(v.matrix&&v.tangent)throw std::invalid_argument("tangent mode requires the rank-one form");pipeline(bits,200+int(vector_flags(v)));}
             for(auto& d:r.real_dots)pipeline(bits,300+(d.shared_right?1:0));
             for(auto& d:r.complex_dots)pipeline(bits,302+(d.shared_right?1:0));
-            for(auto& b:r.lu4)pipeline(bits,400+int((b.fused?1:0)|(b.determinant?2:0)|(b.inverse?4:0)));
+            for(auto& b:r.lu4)pipeline(bits,400+int(lu4_flags(b)));
         }
     }
     std::shared_ptr<detail::BufferStorage> allocate(std::size_t bytes){
@@ -323,6 +330,20 @@ void CommandBatch::encode_vector(int bits,const VectorRecurrence& s,const std::s
     [encoder setBytes:params length:sizeof(params) atIndex:3];
     [encoder dispatchThreads:MTLSizeMake(s.lanes,1,1) threadsPerThreadgroup:MTLSizeMake(impl_->engine->group_size(state,bits,operation),1,1)];
 }
+void CommandBatch::encode_lu4(int bits,const Batched4& s,const std::shared_ptr<detail::BufferStorage>* in,const std::size_t* sizes){
+    if(!impl_||impl_->submitted)throw std::logic_error("batch already submitted or moved");
+    auto n=lu4_elements(bits,s);
+    for(int i=0;i<5;++i){if(n[i]&&(!in[i]||sizes[i]<n[i]))throw std::invalid_argument("batched 4x4 buffer too small or missing");if(in[i])impl_->retain(in[i]);}
+    if(!s.count)return;
+    int operation=400+int(lu4_flags(s));auto state=impl_->engine->pipeline(bits,operation);
+    if(!impl_->encoder){impl_->encoder=[impl_->command computeCommandEncoder];if(!impl_->encoder)throw std::runtime_error("Metal encoder allocation failed");}
+    else [impl_->encoder memoryBarrierWithScope:MTLBarrierScopeBuffers];
+    auto encoder=impl_->encoder;[encoder setComputePipelineState:state];
+    // Unused outputs/inputs are bound to A; the kernel neither reads nor writes them.
+    const unsigned slot[5]={0,1,2,4,5};for(int i=0;i<5;++i)[encoder setBuffer:(in[i]&&n[i]?in[i]:in[0])->buffer offset:0 atIndex:slot[i]];
+    std::uint32_t params[2]={std::uint32_t(s.count),s.rhs};[encoder setBytes:params length:sizeof(params) atIndex:3];
+    [encoder dispatchThreads:MTLSizeMake(s.count,1,1) threadsPerThreadgroup:MTLSizeMake(impl_->engine->group_size(state,bits,operation),1,1)];
+}
 void CommandBatch::encode_dot(int bits,bool complex,const SegmentedDot& s,const std::shared_ptr<detail::BufferStorage>& a,std::size_t a_size,
                               const std::shared_ptr<detail::BufferStorage>& b,std::size_t b_size,const std::shared_ptr<detail::BufferStorage>& out,std::size_t out_size){
     if(!impl_||impl_->submitted)throw std::logic_error("batch already submitted or moved");
@@ -431,13 +452,10 @@ Timing Engine::segmented_dot(int bits,bool complex,const SegmentedDot& s,const v
     return impl->dot_dispatch(bits,300+(complex?2:0)+(s.shared_right?1:0),s,a,checked_size(n[0],stride),b,checked_size(n[1],stride),out,checked_size(n[2],stride));
 }
 Timing Engine::lu4(int bits,const Batched4& s,const void* A,const void* B,void* X,void* det,std::uint32_t* status){
-    validate(bits,s.count);if(s.count>std::numeric_limits<std::uint32_t>::max()/16)throw std::invalid_argument("batched 4x4 exceeds 32-bit indexing");
-    if(s.inverse&&s.rhs)throw std::invalid_argument("inverse uses no right-hand sides");
-    unsigned R=s.inverse?4:s.rhs;if(!s.count)return {0,0};
+    lu4_elements(bits,s);unsigned R=s.inverse?4:s.rhs;if(!s.count)return {0,0};
     if(!A||(s.rhs&&!B)||(R&&!X)||(s.determinant&&!det))throw std::invalid_argument("null batched 4x4 buffer");
     std::size_t stride=2*(bits/8+12);
-    unsigned flags=(s.fused?1:0)|(s.determinant?2:0)|(s.inverse?4:0);
-    return impl->lu4_dispatch(bits,400+int(flags),s,A,checked_size(s.count*16,stride),B,checked_size(checked_size(s.count*4,s.rhs),stride),
+    return impl->lu4_dispatch(bits,400+int(lu4_flags(s)),s,A,checked_size(s.count*16,stride),B,checked_size(checked_size(s.count*4,s.rhs),stride),
                               X,checked_size(checked_size(s.count*4,R),stride),det,s.determinant?checked_size(s.count,stride):0,status);
 }
 void Engine::prewarm(const Prewarm& r){impl->prewarm(r);}

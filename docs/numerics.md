@@ -153,7 +153,9 @@ substitution with `y_i ← y_i − l_it·y_t` (t ascending) and back substitutio
 `y_i ← cdiv(y_i − Σ_{t>i} u_it·y_t, u_ii)` (t ascending). The determinant is the ordered product of
 the pivots, negated for an odd number of row swaps. Each multiply-subtract is composed
 (`csub(c, cmul(a, b))`) or, with `shape.fused`, one rounding per component via `cfms`. The reference in
-`tests/test_batched4.cpp` replays this sequence with MPFR.
+`tests/test_batched4.cpp` replays this sequence with MPFR. `CommandBatch::lu4(shape, A, B, X, det, status)` encodes
+the same operation on resident buffers (`Buffer<std::uint32_t>` holds statuses; unused buffers may be
+empty), so inverses can feed later operations in the same batch.
 
 ## Segmented dot products
 

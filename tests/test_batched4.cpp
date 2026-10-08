@@ -49,5 +49,22 @@ template<int Bits> void run(Engine& e,bool fused){
     }
     std::cout<<Bits<<" bits ("<<(fused?"fused":"composed")<<"): batched 4x4 solve, inverse and determinant match MPFR"<<std::endl;
 }
-int main(){try{Engine e;for(bool f:{false,true}){run<224>(e,f);run<256>(e,f);run<384>(e,f);run<64>(e,f);run<1024>(e,f);}std::cout<<"All batched 4x4 checks passed."<<std::endl;return 0;}
+// Resident: inverse + determinant, then a dependent complex_mul of the inverse in the same batch.
+template<int Bits> void resident(Engine& e){
+    using C=Complex<Bits/32>;std::mt19937_64 rng(Bits+77);const std::size_t M=64;
+    std::vector<C> A(M*16),X(M*16),det(M),R(M*16),Xr(M*16),detr(M),Rr(M*16);std::vector<std::uint32_t> st(M),str(M);
+    for(auto& z:A)z={reference::random_number<Bits>(rng,4),reference::random_number<Bits>(rng,4)};for(int r=0;r<4;++r)A[16+r*4]={zero<Bits/32>(),zero<Bits/32>()};
+    Batched4 s;s.count=M;s.inverse=true;s.determinant=true;e.lu4(Bits,s,A.data(),nullptr,X.data(),det.data(),st.data());
+    e.run(Bits,Operation::complex_mul,X.data(),A.data(),R.data(),M*16);
+    auto bA=e.make_buffer<C>(M*16),bX=e.make_buffer<C>(M*16),bd=e.make_buffer<C>(M),bR=e.make_buffer<C>(M*16);auto bs=e.make_buffer<std::uint32_t>(M);Buffer<C> none;
+    bA.upload(A.data(),A.size());auto batch=e.batch();batch.lu4(s,bA,none,bX,bd,bs);batch.run(Operation::complex_mul,bX,bA,bR);batch.submit().wait();
+    bX.download(Xr.data(),Xr.size());bd.download(detr.data(),M);bR.download(Rr.data(),Rr.size());bs.download(str.data(),M);
+    for(std::size_t i=0;i<M;++i){require(st[i]==str[i],"resident status");require(reference::equal_complex<Bits>(det[i],detr[i]),"resident determinant");}
+    for(std::size_t i=0;i<M*16;++i){require(reference::equal_complex<Bits>(X[i],Xr[i]),"resident inverse");require(reference::equal_complex<Bits>(R[i],Rr[i]),"dependent op after resident inverse");}
+    require(str[1]==1,"resident singular status");
+    bool rejected=false;try{auto small=e.make_buffer<std::uint32_t>(M-1);auto b2=e.batch();b2.lu4(s,bA,none,bX,bd,small);}catch(const std::invalid_argument&){rejected=true;}
+    require(rejected,"undersized resident status accepted");
+    std::cout<<Bits<<" bits: resident batched 4x4 matches the host path"<<std::endl;
+}
+int main(){try{Engine e;resident<256>(e);resident<224>(e);for(bool f:{false,true}){run<224>(e,f);run<256>(e,f);run<384>(e,f);run<64>(e,f);run<1024>(e,f);}std::cout<<"All batched 4x4 checks passed."<<std::endl;return 0;}
 catch(const std::exception& ex){std::cerr<<ex.what()<<'\n';return 1;}}
