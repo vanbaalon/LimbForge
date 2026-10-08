@@ -17,6 +17,9 @@ struct Timing { double gpu_seconds, wall_seconds; };
 // for small counts (bit-identical; docs/experiments.md).
 struct EngineOptions { unsigned threads_per_threadgroup=0; bool cooperative_reductions=true; bool cooperative_recurrence=true; };
 struct PipelineInfo { unsigned simd_width,max_threads,threads_per_threadgroup; };
+// Segmented dot products: out[i] = sum_{k<length} a[i*length+k] * b[i*length+k] (or b[k] when
+// shared_right), as a sequential fma/cfma chain from k = 0 (docs/numerics.md).
+struct SegmentedDot { std::size_t segments=0,length=0; bool shared_right=false; };
 // Shape and options of Engine::vector_recurrence (docs/numerics.md, "Vector recurrences").
 // Complex arrays are component-major: element j of lane i is at [j*lanes + i].
 struct VectorRecurrence {
@@ -69,6 +72,8 @@ class CommandBatch {
                 const std::shared_ptr<detail::BufferStorage>&,const std::shared_ptr<detail::BufferStorage>&,std::size_t);
     void encode_vector(int,const VectorRecurrence&,const std::shared_ptr<detail::BufferStorage>* in,const std::size_t* sizes,
                        const std::shared_ptr<detail::BufferStorage>& out,std::size_t out_size);
+    void encode_dot(int,bool,const SegmentedDot&,const std::shared_ptr<detail::BufferStorage>&,std::size_t,const std::shared_ptr<detail::BufferStorage>&,std::size_t,
+                    const std::shared_ptr<detail::BufferStorage>&,std::size_t);
     void encode_tree_sum(int,bool,const std::shared_ptr<detail::BufferStorage>&,
                          const std::shared_ptr<detail::BufferStorage>&,std::size_t);
     friend class Engine;
@@ -105,6 +110,9 @@ public:
         const std::size_t sizes[7]={start.size(),p.size(),q.size(),r.size(),base.size(),dp.size(),dq.size()};
         encode_vector(detail::Format<T>::bits,shape,in,sizes,out.storage_,out.size());
     }
+    template<class T> void segmented_dot(const SegmentedDot& shape,const Buffer<T>& a,const Buffer<T>& b,Buffer<T>& out){
+        encode_dot(detail::Format<T>::bits,detail::Format<T>::complex,shape,a.storage_,a.size(),b.storage_,b.size(),out.storage_,out.size());
+    }
     Submission submit(); // Single use; explicit barriers order dependent dispatches.
 };
 // One Engine per host thread. Buffers and specialized pipelines are reused.
@@ -124,6 +132,7 @@ public:
     Timing run(int bits,Operation op,const void* a,const void* b,void* out,std::size_t count);
     Timing run_unary(int bits,Operation op,const void* a,void* out,std::size_t count);
     Timing run_ternary(int bits,Operation op,const void* a,const void* b,const void* c,void* out,std::size_t count);
+    Timing segmented_dot(int bits,bool complex,const SegmentedDot& shape,const void* a,const void* b,void* out);
     // Four seeds / instance. Adjacent states_per_weight instances share weights;
     // count must be divisible by states_per_weight. Layout is seeds[j*count+i],
     // weights[(step*4+j)*(count/states_per_weight)+i/states_per_weight].

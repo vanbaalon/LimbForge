@@ -132,6 +132,17 @@ tree in shared memory, then reduce their roots. Padding a final block with
 canonical zero preserves the valid-input result and error behavior. Group size
 changes scheduling and storage without changing the mathematical tree.
 
+## Segmented dot products
+
+`Engine::segmented_dot(bits, complex, shape, a, b, out)` and `CommandBatch::segmented_dot` compute
+`out[i] = Σ_{k<K} a[i·K+k]·b[i·K+k]`, or with `shape.shared_right` one table `b[k]` for every
+segment, real or complex. The order is fixed and sequential: `s = fma(a₀, b₀, 0)`, then
+`s = fma(a_k, b_k, s)` for k = 1 … K−1 (`cfma` for complex, one rounding per component per step), so
+results are bitwise reproducible independently of the launch configuration. `K = 0` gives zero;
+statuses propagate. One GPU thread per segment (suited to K ≈ 10–120). Reference: the same chain with
+`mpfr_fma` / exact products plus `mpfr_sum` (`tests/test_segmented_dot.cpp`). For one rounding of the
+whole dot product, use the dense products in `linalg.hpp`.
+
 ## Vector recurrences
 
 `Engine::vector_recurrence(bits, shape, start, p, q, r, out, base, dp, dq)` advances many

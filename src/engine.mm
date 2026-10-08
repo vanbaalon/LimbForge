@@ -40,6 +40,12 @@ std::array<std::size_t,8> vector_elements(int bits,const VectorRecurrence& s){
             s.tangent&&steps?checked_size((steps+1)*4,s.lanes/s.lanes_per_base):0,s.tangent&&steps?checked_size(steps*4,s.lanes/s.lanes_per_tangent):0,
             s.tangent&&steps?checked_size(steps*4,s.lanes/s.lanes_per_tangent):0,checked_size(s.all_steps?(steps+1)*4:4,s.lanes)};
 }
+// Element counts of a, b and out for a segmented dot product.
+std::array<std::size_t,3> dot_elements(int bits,const SegmentedDot& s){
+    validate(bits,s.segments);
+    if(s.segments>std::numeric_limits<std::uint32_t>::max()||s.length>std::numeric_limits<std::uint32_t>::max())throw std::invalid_argument("segmented dot exceeds 32-bit indexing");
+    return {checked_size(s.segments,s.length),s.shared_right?s.length:checked_size(s.segments,s.length),s.segments};
+}
 unsigned vector_flags(const VectorRecurrence& s){return (s.affine?1:0)|(s.matrix?2:0)|(s.all_steps?4:0)|(s.reverse?8:0)|(s.tangent?16:0)|(s.fused?32:0);}
 }
 namespace detail {
@@ -84,7 +90,12 @@ struct Engine::Impl {
             libraries[bits]=library;
         }
         NSError* error=nil;id<MTLFunction> function;
-        if(operation>=200){
+        if(operation>=300){
+            MTLFunctionConstantValues* constants=[MTLFunctionConstantValues new];
+            std::uint32_t flags=(operation-300)&1;[constants setConstantValue:&flags type:MTLDataTypeUInt atIndex:3];
+            function=[libraries[bits] newFunctionWithName:(operation-300)&2?@"segmented_dot_complex":@"segmented_dot_real" constantValues:constants error:&error];
+        }
+        else if(operation>=200){
             MTLFunctionConstantValues* constants=[MTLFunctionConstantValues new];
             std::uint32_t flags=operation-200;[constants setConstantValue:&flags type:MTLDataTypeUInt atIndex:2];
             function=[libraries[bits] newFunctionWithName:@"vector_recurrence" constantValues:constants error:&error];
@@ -148,6 +159,22 @@ struct Engine::Impl {
             [encoder endEncoding];[command commit];[command waitUntilCompleted];
             if(command.status==MTLCommandBufferStatusError)throw std::runtime_error("Metal execution: "+error_message(command.error));
             std::memcpy(out,vector_buffers[7].contents,out_bytes);
+            return {command.GPUEndTime-command.GPUStartTime,std::chrono::duration<double>(std::chrono::steady_clock::now()-start).count()};
+        }
+    }
+    Timing dot_dispatch(int bits,int operation,const SegmentedDot& s,const void* a,std::size_t a_bytes,const void* b,std::size_t b_bytes,void* out,std::size_t out_bytes){
+        @autoreleasepool {
+            auto state=pipeline(bits,operation);auto start=std::chrono::steady_clock::now();
+            reserve(0,std::max<std::size_t>(a_bytes,1));reserve(1,std::max<std::size_t>(b_bytes,1));reserve(2,out_bytes);
+            if(a_bytes)std::memcpy(buffers[0].contents,a,a_bytes);if(b_bytes)std::memcpy(buffers[1].contents,b,b_bytes);
+            id<MTLCommandBuffer> command=[queue commandBuffer];id<MTLComputeCommandEncoder> encoder=[command computeCommandEncoder];
+            if(!command||!encoder)throw std::runtime_error("Metal command allocation failed");
+            [encoder setComputePipelineState:state];for(unsigned i=0;i<3;++i)[encoder setBuffer:buffers[i] offset:0 atIndex:i];
+            std::uint32_t params[2]={std::uint32_t(s.segments),std::uint32_t(s.length)};[encoder setBytes:params length:sizeof(params) atIndex:3];
+            [encoder dispatchThreads:MTLSizeMake(s.segments,1,1) threadsPerThreadgroup:MTLSizeMake(group_size(state,bits,operation),1,1)];
+            [encoder endEncoding];[command commit];[command waitUntilCompleted];
+            if(command.status==MTLCommandBufferStatusError)throw std::runtime_error("Metal execution: "+error_message(command.error));
+            std::memcpy(out,buffers[2].contents,out_bytes);
             return {command.GPUEndTime-command.GPUStartTime,std::chrono::duration<double>(std::chrono::steady_clock::now()-start).count()};
         }
     }
@@ -244,6 +271,19 @@ void CommandBatch::encode_vector(int bits,const VectorRecurrence& s,const std::s
     [encoder setBytes:params length:sizeof(params) atIndex:3];
     [encoder dispatchThreads:MTLSizeMake(s.lanes,1,1) threadsPerThreadgroup:MTLSizeMake(impl_->engine->group_size(state,bits,operation),1,1)];
 }
+void CommandBatch::encode_dot(int bits,bool complex,const SegmentedDot& s,const std::shared_ptr<detail::BufferStorage>& a,std::size_t a_size,
+                              const std::shared_ptr<detail::BufferStorage>& b,std::size_t b_size,const std::shared_ptr<detail::BufferStorage>& out,std::size_t out_size){
+    if(!impl_||impl_->submitted)throw std::logic_error("batch already submitted or moved");
+    auto n=dot_elements(bits,s);if(a_size<n[0]||b_size<n[1]||out_size<n[2])throw std::invalid_argument("segmented dot buffer too small");
+    impl_->retain(a);impl_->retain(b);impl_->retain(out);if(!s.segments)return;
+    int operation=300+(complex?2:0)+(s.shared_right?1:0);auto state=impl_->engine->pipeline(bits,operation);
+    if(!impl_->encoder){impl_->encoder=[impl_->command computeCommandEncoder];if(!impl_->encoder)throw std::runtime_error("Metal encoder allocation failed");}
+    else [impl_->encoder memoryBarrierWithScope:MTLBarrierScopeBuffers];
+    auto encoder=impl_->encoder;[encoder setComputePipelineState:state];
+    [encoder setBuffer:a->buffer offset:0 atIndex:0];[encoder setBuffer:b->buffer offset:0 atIndex:1];[encoder setBuffer:out->buffer offset:0 atIndex:2];
+    std::uint32_t params[2]={std::uint32_t(s.segments),std::uint32_t(s.length)};[encoder setBytes:params length:sizeof(params) atIndex:3];
+    [encoder dispatchThreads:MTLSizeMake(s.segments,1,1) threadsPerThreadgroup:MTLSizeMake(impl_->engine->group_size(state,bits,operation),1,1)];
+}
 void CommandBatch::encode_tree_sum(int bits,bool complex,const std::shared_ptr<detail::BufferStorage>& input,
                                    const std::shared_ptr<detail::BufferStorage>& out,std::size_t count){
     if(!impl_||impl_->submitted)throw std::logic_error("batch already submitted or moved");
@@ -330,6 +370,12 @@ Timing Engine::vector_recurrence(int bits,const VectorRecurrence& s,const void* 
     if(!out)throw std::invalid_argument("null vector recurrence buffer");
     std::size_t stride=2*(bits/8+12);std::array<std::size_t,7> bytes;for(int i=0;i<7;++i)bytes[i]=checked_size(n[i],stride);
     return impl->vector_dispatch(bits,200+int(vector_flags(s)),s,{start,p,q,r,base,dp,dq},bytes,out,checked_size(n[7],stride));
+}
+Timing Engine::segmented_dot(int bits,bool complex,const SegmentedDot& s,const void* a,const void* b,void* out){
+    auto n=dot_elements(bits,s);if(!s.segments)return {0,0};
+    if((n[0]&&!a)||(n[1]&&!b)||!out)throw std::invalid_argument("null segmented dot buffer");
+    std::size_t stride=(bits/8+12)*(complex?2:1);
+    return impl->dot_dispatch(bits,300+(complex?2:0)+(s.shared_right?1:0),s,a,checked_size(n[0],stride),b,checked_size(n[1],stride),out,checked_size(n[2],stride));
 }
 Timing Engine::recurrence(int bits,const void* seeds,const void* weights,void* out,std::size_t count,unsigned steps,unsigned states_per_weight) {
     validate(bits,count);

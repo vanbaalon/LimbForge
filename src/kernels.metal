@@ -158,3 +158,22 @@ kernel void vector_recurrence(device const Complex<N>* start [[buffer(0)]],devic
     }
     if(!vr_all)for(uint j=0;j<4;++j)out[j*L+lane]=v[j];
 }
+
+// Segmented dot products (plan D3): out[i] = sum_k a[i*K+k] * b[...] as a sequential fused chain,
+// s = fma(a_0,b_0,0), s = fma(a_k,b_k,s) for k = 1..K-1 (cfma for complex), so results are bitwise
+// reproducible. b is per segment ([i*K+k]) or one shared table ([k]).
+constant uint sd_flags [[function_constant(3)]];
+constant bool sd_shared=(sd_flags&1)!=0;
+struct DotParams { uint segments,length; };
+kernel void segmented_dot_real(device const Number<N>* a [[buffer(0)]],device const Number<N>* b [[buffer(1)]],device Number<N>* out [[buffer(2)]],
+                               constant DotParams& p [[buffer(3)]],uint i [[thread_position_in_grid]]) {
+    if(i>=p.segments)return;Number<N> s=zero<N>();ulong base=ulong(i)*p.length;
+    _Pragma("clang loop unroll(disable)") for(uint k=0;k<p.length;++k){Number<N> x=a[base+k],y=b[sd_shared?k:base+k];s=limbforge::fma(x,y,s);}
+    out[i]=s;
+}
+kernel void segmented_dot_complex(device const Complex<N>* a [[buffer(0)]],device const Complex<N>* b [[buffer(1)]],device Complex<N>* out [[buffer(2)]],
+                                  constant DotParams& p [[buffer(3)]],uint i [[thread_position_in_grid]]) {
+    if(i>=p.segments)return;Complex<N> s={zero<N>(),zero<N>()};ulong base=ulong(i)*p.length;
+    _Pragma("clang loop unroll(disable)") for(uint k=0;k<p.length;++k){Complex<N> x=a[base+k],y=b[sd_shared?k:base+k];s=cfma(x,y,s);}
+    out[i]=s;
+}

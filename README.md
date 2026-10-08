@@ -52,6 +52,7 @@ measurements.
 - Correctly rounded real addition, subtraction, multiplication, division, square, and square root.
 - Complex addition, multiplication, and division composed from rounded real primitives.
 - Fused real `fma`/`fms` and complex `complex_fma`/`complex_fms`, each component rounded once.
+- Segmented real/complex dot products with a fixed, reproducible fused order and optional shared table.
 - Dense real `syrk` (AᵀA) and `gemm` with one rounding of each exact dot product (`linalg.hpp`): exact
   integer GEMMs over exponent bands on TensorOps int8 residues, with an exact host fallback.
 - Typed resident buffers, asynchronous submissions, and dependent operations in one command batch.

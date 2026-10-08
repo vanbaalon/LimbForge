@@ -205,6 +205,7 @@ Each item: written contract → MPFR/MPC reference → CPU implementation in `co
   + `mpfr_sum`. If the exact 3-term sum is too costly, fall back to the documented contract `RN(RN(fmma)+c)` with
   `mpfr_fmma` — decide by measurement, document either way. Ops: `Operation::fma, fms, complex_fma, complex_fms` (ternary
   `run` overload, works with C1 operand descriptors and in-place).
+- **D3 status (round 27):** sequential-fused `segmented_dot` (separate/shared table, real/complex, host and resident). Pairwise order and SIMD-group-per-segment variants remain; batched GEMV/GEMM is covered by `linalg.hpp`.
 - **D3. Segmented dot products and batched GEMV (tips #3)** — M. `segmented_dot(a,b,K,out)`,
   `segmented_dot_shared(T,x,K,out)` (shared table broadcast via C1), real and complex. **Fixed order contract:**
   `s₀=RN(a₀b₀)`, `s_k=fma(a_k,b_k,s_{k−1})` sequentially (bitwise reproducible regardless of thread configuration); optional
