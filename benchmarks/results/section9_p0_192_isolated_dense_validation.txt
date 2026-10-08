@@ -1,0 +1,9 @@
+2026-10-08 16:53:45.532 test_limbforge_section9_audit[17332:188830432] Metal GPU Validation Enabled
+Auditing 192 bits (dense repeats)
+192 bits: complex GEMM tile tails/broadcast/strides, triple product, negative power moments
+192 bits: resident normal equations, three damping trials, solves, async wait, exact fallback repair
+192 bits: real 4x4 GEMM odd batch/broadcast and empty dots
+192 bits: runtime bridge and inline MPC staging
+192 bits: on-device Horner recurrence, reverse/all_steps, sharing tails, composed/fused
+192 bits: expanded reference cases passed
+Section 9 reference run passed; selected width, dense repeats.

@@ -1,0 +1,31 @@
+Auditing 64 bits (dense repeats)
+64 bits: complex GEMM tile tails/broadcast/strides, triple product, negative power moments
+64 bits: resident normal equations, three damping trials, solves, async wait, exact fallback repair
+64 bits: real 4x4 GEMM odd batch/broadcast and empty dots
+64 bits: runtime bridge and inline MPC staging
+64 bits: on-device Horner recurrence, reverse/all_steps, sharing tails, composed/fused
+64 bits: expanded reference cases passed
+Auditing 96 bits (dense repeats)
+96 bits: complex GEMM tile tails/broadcast/strides, triple product, negative power moments
+96 bits: resident normal equations, three damping trials, solves, async wait, exact fallback repair
+96 bits: real 4x4 GEMM odd batch/broadcast and empty dots
+96 bits: runtime bridge and inline MPC staging
+96 bits: on-device Horner recurrence, reverse/all_steps, sharing tails, composed/fused
+96 bits: expanded reference cases passed
+Auditing 128 bits (dense repeats)
+128 bits: complex GEMM tile tails/broadcast/strides, triple product, negative power moments
+128 bits: resident normal equations, three damping trials, solves, async wait, exact fallback repair
+128 bits: real 4x4 GEMM odd batch/broadcast and empty dots
+128 bits: runtime bridge and inline MPC staging
+128 bits: on-device Horner recurrence, reverse/all_steps, sharing tails, composed/fused
+128 bits: expanded reference cases passed
+Auditing 160 bits (dense repeats)
+160 bits: complex GEMM tile tails/broadcast/strides, triple product, negative power moments
+160 bits: resident normal equations, three damping trials, solves, async wait, exact fallback repair
+160 bits: real 4x4 GEMM odd batch/broadcast and empty dots
+160 bits: runtime bridge and inline MPC staging
+160 bits: on-device Horner recurrence, reverse/all_steps, sharing tails, composed/fused
+complex GEMM tiled fused=1 accumulate=1 index 6336
+GPU: re{sign=-1 exponent=17 status=0 limbs=95091109 0 cf282cff e2d54a61 d741f858 } im{sign=1 exponent=12 status=0 limbs=82f163f5 94e67400 4804d921 d41d31bd c338023e }
+MPFR: re{sign=-1 exponent=17 status=0 limbs=95091109 89eab819 cf282cff e2d54a61 d741f858 } im{sign=1 exponent=12 status=0 limbs=82f163f5 94e67400 4804d921 d41d31bd c338023e }
+Section 9 audit: complex GEMM tiled fused=1 accumulate=1 index 6336

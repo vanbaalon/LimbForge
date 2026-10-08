@@ -1,0 +1,51 @@
+--- a/src/batched_linalg.metal
++++ b/src/batched_linalg.metal
+@@ -132,3 +132,18 @@
+     }
+     if(!(p.flags&1))for(uint a=0;a<4;++a)out[ulong(a)*p.lanes+lane]=v[a];
+ }
++
++// One real component per thread: no complex private accumulator or temporary.
++kernel void batch_component_complex(device const Complex<N>* A [[buffer(0)]],device const Complex<N>* B [[buffer(1)]],device Number<N>* C [[buffer(2)]],constant BatchParams& p [[buffer(3)]],uint2 index [[thread_position_in_grid]]){
++    ulong entry=index.x,part=index.y,t=entry/(p.m*p.n),cell=entry%(p.m*p.n),row=cell/p.n,col=cell%p.n;
++    if(t>=p.count)return;ulong o=2*(t*p.sc+cell)+part;
++    Number<N> sum=(p.flags&1)?C[o]:zero<N>();
++    _Pragma("clang loop unroll(disable)") for(ulong k=0;k<p.k;++k){
++        Number<N> ar=A[t*p.sa+row*p.k+k].re,ai=A[t*p.sa+row*p.k+k].im;
++        Number<N> br=part?B[t*p.sb+k*p.n+col].im:B[t*p.sb+k*p.n+col].re;
++        Number<N> bi=part?B[t*p.sb+k*p.n+col].re:B[t*p.sb+k*p.n+col].im;
++        if(batch_fused)sum=dot2_add(ar,br,part?ai:negate(ai),bi,sum);
++        else {Number<N> x=mul<N,true>(ar,br),y=mul<N,true>(ai,bi);sum=add(part?add(x,y):sub(x,y),sum);}
++    }
++    C[o]=(p.flags&2)?negate(sum):sum;
++}
+--- a/src/batched_linalg.mm
++++ b/src/batched_linalg.mm
+@@ -33,7 +33,7 @@
+         if(!f)throw std::runtime_error("batched algebra Metal function: "+message(error));auto p=[device newComputePipelineStateWithFunction:f error:&error];
+         if(!p)throw std::runtime_error("batched algebra Metal pipeline: "+message(error));pipelines.emplace(key,p);return p;}
+     }
+-    void pass(CommandBatch& b,int bits,const char* name,const Params& p,std::initializer_list<std::pair<unsigned,S>> buffers,std::size_t count,bool fused=false,bool tiled=false){
++    void pass(CommandBatch& b,int bits,const char* name,const Params& p,std::initializer_list<std::pair<unsigned,S>> buffers,std::size_t count,bool fused=false,bool tiled=false,bool components=false){
+         if(!count)return;if(I::device(b)!=device)throw std::invalid_argument("batched algebra: foreign batch device");
+         auto state=pipeline(bits,name,fused);I::keep(b,state);auto encoder=I::compute(b);[encoder setComputePipelineState:state];
+         for(auto& bind:buffers)[encoder setBuffer:bind.second->buffer offset:0 atIndex:bind.first];[encoder setBytes:&p length:sizeof p atIndex:3];
+@@ -41,7 +41,7 @@
+             auto grid=p.m==4&&p.n==4&&p.k==4?MTLSizeMake((p.count+1)/2,1,1):MTLSizeMake((p.n+3)/4,(p.m+7)/8,p.count);
+             [encoder dispatchThreadgroups:grid threadsPerThreadgroup:MTLSizeMake(32,1,1)];}
+         else{NSUInteger tg=std::min<NSUInteger>(state.threadExecutionWidth,state.maxTotalThreadsPerThreadgroup);
+-            [encoder dispatchThreads:MTLSizeMake(count,1,1) threadsPerThreadgroup:MTLSizeMake(tg,1,1)];}
++            [encoder dispatchThreads:MTLSizeMake(count,components?2:1,1) threadsPerThreadgroup:MTLSizeMake(tg,1,1)];}
+     }
+ };
+ BatchedLinalg::BatchedLinalg(Engine& e):engine_(&e),impl_(std::make_unique<Impl>(e)){}
+@@ -73,7 +73,8 @@
+     auto a=retain(b,A,extent(s.count,s.stride_a,as)),bb=retain(b,B,extent(s.count,s.stride_b,bs)),c=retain(b,C,extent(s.count,s.stride_c,cs),true);
+     Params p{s.count,s.m,s.n,s.k,s.stride_a,s.stride_b,s.stride_c,0,std::uint32_t(s.accumulate)|(std::uint32_t(s.negative)<<1)};
+     const bool small=s.m==4&&s.n==4&&s.k==4;
+-    impl_->pass(b,bits,small?(complex?"batch_gemm4_complex":"batch_gemm4_real"):(complex?"batch_gemm_complex":"batch_gemm_real"),p,{{0,a},{1,bb},{2,c}},s.count*cs,s.fused,true);
++    if(complex)impl_->pass(b,bits,"batch_component_complex",p,{{0,a},{1,bb},{2,c}},s.count*cs,s.fused,false,true);
++    else impl_->pass(b,bits,small?"batch_gemm4_real":"batch_gemm_real",p,{{0,a},{1,bb},{2,c}},s.count*cs,s.fused,true);
+ }
+ void BatchedLinalg::encode_power(CommandBatch& b,int bits,bool complex,const PowerMoments& s,O E,O y,O W,O out){
+     bits_ok(bits);auto rows=std::size_t(s.nmax)+1,ek=mul_size(s.count,s.steps),wk=mul_size(ek,s.ncols),pk=mul_size(ek,rows);

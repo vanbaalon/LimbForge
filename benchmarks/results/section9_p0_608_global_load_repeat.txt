@@ -1,0 +1,10 @@
+Auditing 608 bits (dense repeats)
+608 bits: complex GEMM tile tails/broadcast/strides, triple product, negative power moments
+608 bits: resident normal equations, three damping trials, solves, async wait, exact fallback repair
+608 bits: real 4x4 GEMM odd batch/broadcast and empty dots
+608 bits: runtime bridge and inline MPC staging
+608 bits: on-device Horner recurrence, reverse/all_steps, sharing tails, composed/fused
+complex GEMM tiled fused=0 accumulate=1 index 2260
+GPU: re{sign=-1 exponent=16 status=0 limbs=b25aba90 5e7e11ea 848c7c5a 97bae6a9 1aebf9c4 4382df2d e0d2dc20 1cae5fd8 7f84c995 3d6a69f2 a1c69626 5e8ab268 e9e68f1 31b37f99 7a07710c 8fdba105 59812c0a e5b87f23 431ea01d } im{sign=-1 exponent=15 status=0 limbs=ddba2332 deed3438 611ee218 4801a216 d7e0ade7 62bf1004 f471d170 8a716f1f 61827f34 9f847343 9846ac72 56b1d524 f53c3074 6488e7d3 f9c072e5 7160072b 7ccb0cd9 47f0ec25 7c51616a }
+MPFR: re{sign=-1 exponent=16 status=0 limbs=b25aba90 5e7e11ea 848c7c5a 97bae6a9 1aebf9c4 4382df2d e0d2dc20 1cae5fd8 7f84c995 3d6a69f2 a1c69626 5e8ab268 e9e68f1 31b37f99 7a07710c 8fdba105 59812c0a e5b87f23 431ea01d } im{sign=-1 exponent=15 status=0 limbs=db2023e4 deed3438 611ee218 4801a216 d7e0ade7 62bf1004 f471d170 8a716f1f 61827f34 9f847343 9846ac72 56b1d524 f53c3074 6488e7d3 f9c072e5 7160072b 7ccb0cd9 47f0ec25 7c51616a }
+Section 9 audit: complex GEMM tiled fused=0 accumulate=1 index 2260

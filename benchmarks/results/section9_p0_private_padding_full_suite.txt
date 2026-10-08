@@ -1,0 +1,57 @@
+Test project /private/tmp/limbforge-section9-audit/build
+      Start  1: version_cpu
+ 1/26 Test  #1: version_cpu ......................   Passed    0.32 sec
+      Start  2: package_version_cpu
+ 2/26 Test  #2: package_version_cpu ..............   Passed    1.60 sec
+      Start  3: arithmetic_cpu
+ 3/26 Test  #3: arithmetic_cpu ...................   Passed    1.62 sec
+      Start  4: bridge_cpu
+ 4/26 Test  #4: bridge_cpu .......................   Passed    5.16 sec
+      Start  5: fused_cpu
+ 5/26 Test  #5: fused_cpu ........................   Passed    0.63 sec
+      Start  6: fused_gpu
+ 6/26 Test  #6: fused_gpu ........................   Passed  354.66 sec
+      Start  7: transcendental_cpu
+ 7/26 Test  #7: transcendental_cpu ...............   Passed   57.32 sec
+      Start  8: linalg_cpu
+ 8/26 Test  #8: linalg_cpu .......................   Passed    0.86 sec
+      Start  9: linalg_gpu
+ 9/26 Test  #9: linalg_gpu .......................   Passed   22.83 sec
+      Start 10: linalg_cholesky
+10/26 Test #10: linalg_cholesky ..................   Passed   16.10 sec
+      Start 11: linalg_qr
+11/26 Test #11: linalg_qr ........................   Passed   45.63 sec
+      Start 12: linalg_qr_complex
+12/26 Test #12: linalg_qr_complex ................   Passed  112.75 sec
+      Start 13: arithmetic_gpu
+13/26 Test #13: arithmetic_gpu ...................   Passed   23.87 sec
+      Start 14: broadcast_gpu
+14/26 Test #14: broadcast_gpu ....................   Passed   32.54 sec
+      Start 15: batched4_gpu
+15/26 Test #15: batched4_gpu .....................   Passed  288.09 sec
+      Start 16: section9_smoke
+16/26 Test #16: section9_smoke ...................   Passed    0.62 sec
+      Start 17: threshold_gpu
+17/26 Test #17: threshold_gpu ....................   Passed    3.63 sec
+      Start 18: cast_gpu
+18/26 Test #18: cast_gpu .........................   Passed    2.00 sec
+      Start 19: segmented_dot_gpu
+19/26 Test #19: segmented_dot_gpu ................   Passed   38.51 sec
+      Start 20: vector_recurrence_gpu
+20/26 Test #20: vector_recurrence_gpu ............   Passed   85.29 sec
+      Start 21: numerics_gpu
+21/26 Test #21: numerics_gpu .....................   Passed    5.50 sec
+      Start 22: resident_units_gpu
+22/26 Test #22: resident_units_gpu ...............   Passed  120.89 sec
+      Start 23: resident_linalg_gpu
+23/26 Test #23: resident_linalg_gpu ..............   Passed   13.61 sec
+      Start 24: resident_buffers
+24/26 Test #24: resident_buffers .................   Passed    4.74 sec
+      Start 25: transcendental_gpu
+25/26 Test #25: transcendental_gpu ...............   Passed  125.66 sec
+      Start 26: tree_reduction
+26/26 Test #26: tree_reduction ...................   Passed   17.79 sec
+
+100% tests passed out of 26
+
+Total Test time (real) = 1382.20 sec

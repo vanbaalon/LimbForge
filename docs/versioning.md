@@ -29,25 +29,25 @@ numerical validation coverage and measured performance remain documented separat
 
 ## Pin a production dependency
 
-Use the immutable `v1.0.0` tag, or its commit, rather than a moving main branch:
+Use the immutable `v1.0.1` tag, or its commit, rather than a moving main branch:
 
 ```sh
-git clone --branch v1.0.0 --depth 1 https://github.com/vanbaalon/LimbForge.git
+git clone --branch v1.0.1 --depth 1 https://github.com/vanbaalon/LimbForge.git
 ```
 
 With an installed package, require exactly the validated release:
 
 ```cmake
-find_package(LimbForge 1.0.0 EXACT CONFIG REQUIRED)
+find_package(LimbForge 1.0.1 EXACT CONFIG REQUIRED)
 target_link_libraries(my_application PRIVATE LimbForge::limbforge)
 ```
 
 If a project deliberately allows compatible upgrades, use
-`find_package(LimbForge 1.0.0...<2.0.0 CONFIG REQUIRED)` or a minimum of `1.0.0`.
+`find_package(LimbForge 1.0.1...<2.0.0 CONFIG REQUIRED)` or a minimum of `1.0.1`.
 The generated package version file only accepts the same major and a sufficient version.
 The config exposes `LimbForge_VERSION` and `LimbForge_API_VERSION` (the major).
 Consumers previously requesting the unversioned development baseline with `0.1` should
-update that requirement to `1.0.0`; source names and signatures are unchanged by this release.
+update that requirement to `1.0.1`; source names and signatures are unchanged by this release.
 
 For `add_subdirectory`/FetchContent, pin the same Git tag or commit. The checked-in
 `version.hpp` is the single version source: CMake reads its three numeric macros, so installed,
@@ -58,8 +58,8 @@ source-tree and header-only consumers see the same release number.
 ```cpp
 #include <limbforge/version.hpp>
 
-#if LIMBFORGE_API_VERSION != 1 || !LIMBFORGE_VERSION_AT_LEAST(1,0,0)
-#error This application requires LimbForge API 1, release 1.0.0 or newer
+#if LIMBFORGE_API_VERSION != 1 || !LIMBFORGE_VERSION_AT_LEAST(1,0,1)
+#error This application requires LimbForge API 1, release 1.0.1 or newer
 #endif
 
 int main() {
@@ -73,7 +73,7 @@ int main() {
 `header_version` is a constexpr `Version`; `library_version()` and
 `library_version_string()` report the version compiled into the linked archive.
 `version_at_least` orders versions by components, and `version_compatible` additionally
-requires equal majors. `require_library_version({1,0,0})` checks a compatible minimum;
+requires equal majors. `require_library_version({1,0,1})` checks a compatible minimum;
 pass `true` as the second argument to require an exact match. It throws `std::runtime_error`
 with actual and requested numbers when the check fails. These calls create no Metal device.
 The original `LIMBFORGE_RESIDENT_API` capability macro retains its meaning.

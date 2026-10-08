@@ -1,0 +1,10 @@
+Auditing 192 bits (dense repeats)
+192 bits: complex GEMM tile tails/broadcast/strides, triple product, negative power moments
+192 bits: resident normal equations, three damping trials, solves, async wait, exact fallback repair
+192 bits: real 4x4 GEMM odd batch/broadcast and empty dots
+192 bits: runtime bridge and inline MPC staging
+192 bits: on-device Horner recurrence, reverse/all_steps, sharing tails, composed/fused
+complex GEMM tiled fused=1 accumulate=0 index 284
+GPU: re{sign=1 exponent=16 status=0 limbs=ae3313c7 917e8ace 90ee4086 6ff6c688 5a5a79b7 96fd9897 } im{sign=-1 exponent=14 status=0 limbs=b8cbee69 f73fc3d0 bb65a383 162e17c3 64fbaf89 bd5bc534 }
+MPFR: re{sign=1 exponent=16 status=0 limbs=ad266035 ef56f805 bac323c7 6add91f4 5f2b27e8 8f6156e8 } im{sign=-1 exponent=14 status=0 limbs=b8cbee69 f73fc3d0 bb65a383 162e17c3 64fbaf89 bd5bc534 }
+Section 9 audit: complex GEMM tiled fused=1 accumulate=0 index 284

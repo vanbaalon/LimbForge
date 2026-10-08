@@ -304,12 +304,13 @@ For BSolver (≈128 lanes × 600 steps) the GPU runs ~128 threads. Two complemen
 | D7 transcendentals (exp, expm1, log, log1p, sin, cos, atan2, complex exp/log, powi) | done (35-D7); L2-style certified rounding with compacted retries; resident passes (39); GPU retry rungs ≤ 35 words, resident outputs final in the batch (44) | `transcendental.hpp` |
 | Resident unit hook | done (39) | `src/engine_internal.hpp`; `docs/execution.md`, "Resident units" |
 | Resident linalg: `syrk`/`gemm` in a `CommandBatch` (GPU band analysis and plan, indirect dispatch, host fallback at `wait()`); synchronous `Buffer` forms of Cholesky/solves/QR | done (42-resident-linalg) | `Linalg(Engine&)`, `LinalgTicket`; `docs/numerics.md`, "Resident products" |
-| Section 9 batched products, polynomial sources, damping trials and infrastructure | implemented (`65c4373`); light reference coverage, full audit pending | `batched_linalg.hpp`, `docs/section9.md` |
-| Section 9 P0 verification harness | all 31 widths selectable; dense GEMM repeats opt-in; full runs pending | `test_limbforge_section9_audit`, `docs/section9-next.md` |
-| Production API versioning | baseline 1.0.0 (`ed41426`), immutable tag `v1.0.0` | `version.hpp`, `docs/versioning.md` |
+| Section 9 batched products, polynomial sources, damping trials and infrastructure | implemented (`65c4373`); all-width/dense checks pass after 1.0.1 correction; solver integration pending | `batched_linalg.hpp`, `docs/section9.md` |
+| Section 9 P0 verification harness | all 31 widths, dense/wide-exponent and shader checks pass; 26/26 + 19/19 library suites | `test_limbforge_section9_audit`, `docs/section9-next.md` |
+| Production API versioning | baseline 1.0.0 (`ed41426`); current patch 1.0.1; immutable release tags | `version.hpp`, `docs/versioning.md` |
 
 For section 9, finish the correctness gates in `docs/section9-next.md` P0 before accepting P1 performance changes.
-Full-width, dense and shader-validation runs remain pending; a selectable harness is not evidence that they pass.
+The 1.0.1 all-width/dense and shader-validation checks pass with retained logs.
+Solver-size factors, fresh performance calibration and end-to-end histories remain follow-up work.
 Other priorities: qscmx/BSolver integration and end-to-end timing on an idle host (also the
 pending GitHub speed figures); transcendental retry rungs above 35 words (W ≥ 36 miscompile, round 44); a cheaper next-panel QR update
 (the panel and that update are the critical path, 45-lookahead), pivoted W rows off the host, a reconstruction-bound trailing

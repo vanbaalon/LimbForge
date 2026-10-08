@@ -14,8 +14,9 @@ steps of 32. Real arithmetic uses round-to-nearest, ties-to-even.
 
 **Author: Nikolay Gromov.**
 
-> **Versioned API 1.x:** the current compatibility baseline is **1.0.0**. Production
-> consumers can pin `v1.0.0`; see [versioning and compatibility](docs/versioning.md).
+> **Versioned API 1.x:** the compatibility baseline is **1.0.0**; the current release is
+> **1.0.1**, correcting dense batched complex GEMM. Production consumers can pin `v1.0.1`;
+> see [versioning and compatibility](docs/versioning.md).
 > CPU and physical GPU validation use independent MPFR operations, with device validation
 > currently covering an Apple M5 Max. See the [numerical contract](docs/numerics.md).
 
@@ -59,7 +60,7 @@ measurements.
 - Segmented real/complex dot products with a fixed, reproducible fused order and optional shared table.
 - Strided real/complex batched GEMM, device-generated power moments, matrix triple products,
   polynomial-source recurrences, and resident damping trials/solves (`batched_linalg.hpp`).
-  See [contracts, usage and light-audit scope](docs/section9.md); large-workload timings are pending.
+  See [contracts, usage and audit coverage](docs/section9.md); large-workload timings are pending.
 - Dense real `syrk` (AᵀA) and `gemm` with one rounding of each exact dot product (`linalg.hpp`): exact
   integer GEMMs over exponent bands on TensorOps int8 residues, with an exact host fallback; updates
   `C - op(A) B` rounded once, and a blocked Cholesky factorization with multiple-right-hand-side

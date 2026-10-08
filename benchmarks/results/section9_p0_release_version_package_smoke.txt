@@ -1,0 +1,11 @@
+Test project /private/tmp/limbforge-section9-audit/build
+    Start  1: version_cpu
+1/3 Test  #1: version_cpu ......................   Passed    0.38 sec
+    Start  2: package_version_cpu
+2/3 Test  #2: package_version_cpu ..............   Passed    2.91 sec
+    Start 16: section9_smoke
+3/3 Test #16: section9_smoke ...................   Passed    6.75 sec
+
+100% tests passed out of 3
+
+Total Test time (real) =  10.04 sec

@@ -1,0 +1,3 @@
+Auditing 544 bits
+544 bits: wide-exponent/cancellation products passed
+Section 9 reference run passed; selected width; dense stress not run.

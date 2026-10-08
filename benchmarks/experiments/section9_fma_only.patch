@@ -1,0 +1,15 @@
+diff --git a/src/batched_linalg.metal b/src/batched_linalg.metal
+index 97c5ba6..3a4cc76 100644
+--- a/src/batched_linalg.metal
++++ b/src/batched_linalg.metal
+@@ -14,7 +14,9 @@ inline Complex<N> bn(Complex<N> x){return {negate(x.re),negate(x.im)};}
+ inline Number<N> bi(Number<N> x){return div(bone(x),x);}
+ inline Complex<N> bi(Complex<N> x){return cdiv(bone(x),x);}
+ inline Number<N> ba(Number<N> a,Number<N> b,Number<N> c){return batch_fused?limbforge::fma(a,b,c):add(mul(a,b),c);}
+-inline Complex<N> ba(Complex<N> a,Complex<N> b,Complex<N> c){return batch_fused?cfma_rolled(a,b,c):cadd(cmul(a,b),c);}
++// Isolate the exact fused workspace from the tile loader's live values.
++__attribute__((noinline)) Complex<N> batch_cfma(Complex<N> a,Complex<N> b,Complex<N> c){return cfma_rolled(a,b,c);}
++inline Complex<N> ba(Complex<N> a,Complex<N> b,Complex<N> c){return batch_fused?batch_cfma(a,b,c):cadd(cmul(a,b),c);}
+ template<class T> T bp(T x,int exponent){
+     T r=bone(x);long e=exponent;bool inv=e<0;ulong k=inv?ulong(-e):ulong(e);
+     while(k){if(k&1)r=bm(r,x);k>>=1;if(k)x=bm(x,x);}return inv?bi(r):r;

@@ -1,0 +1,13 @@
+{
+  "source_version_during_numerical_runs": "1.0.0",
+  "release": "1.0.1",
+  "metadata_only_bump": true,
+  "generated_shader_sources_unchanged": true,
+  "sha256": {
+    "linalg_source.hpp": "c0c0495721f99936e716a6dc60fdc9209cae319ac1e43c4fb67c8f4d71907bc9",
+    "numerics_source.hpp": "50e57ad281379e9b9126c5f99cb2bc21f5a30ec848cbcd2e2adefbf4aa993600",
+    "batched_linalg_source.hpp": "eccbbd3870274c1d6391625d16b10e29cef55bbd2d695e13292fbe7ab82174a4",
+    "shader_source.hpp": "2915154eae1de2dc3deab4cdf0ad9afe120e79efab7c90a71ca343b11bd5480f",
+    "transcendental_source.hpp": "37013f65974417108792707403196121b1f880a688caf225bb206d63b7a11cdc"
+  }
+}

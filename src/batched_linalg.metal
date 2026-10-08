@@ -132,3 +132,27 @@ kernel void batch_polynomial_recurrence(device const Complex<N>* start [[buffer(
     }
     if(!(p.flags&1))for(uint a=0;a<4;++a)out[ulong(a)*p.lanes+lane]=v[a];
 }
+
+// Padded local significands avoid runtime-indexed register arrays. Public buffers stay packed.
+using PrivateNumber=limbforge_batched_private::Number<N>;
+inline PrivateNumber batch_private_load(device const Number<N>& x){
+    PrivateNumber r=limbforge_batched_private::zero<N>();
+    for(int j=0;j<N;++j)r.limb[j]=x.limb[j];r.exponent=x.exponent;r.sign=x.sign;r.status=x.status;return r;
+}
+inline void batch_private_store(device Number<N>& out,thread const PrivateNumber& x){
+    for(int j=0;j<N;++j)out.limb[j]=x.limb[j];out.exponent=x.exponent;out.sign=x.sign;out.status=x.status;
+}
+kernel void batch_private_complex(device const Complex<N>* A [[buffer(0)]],device const Complex<N>* B [[buffer(1)]],device Number<N>* C [[buffer(2)]],constant BatchParams& p [[buffer(3)]],uint2 index [[thread_position_in_grid]]){
+    ulong entry=index.x,part=index.y,t=entry/(p.m*p.n),cell=entry%(p.m*p.n),row=cell/p.n,col=cell%p.n;
+    if(t>=p.count)return;ulong o=2*(t*p.sc+cell)+part;
+    PrivateNumber sum=(p.flags&1)?batch_private_load(C[o]):limbforge_batched_private::zero<N>();
+    _Pragma("clang loop unroll(disable)") for(ulong k=0;k<p.k;++k){
+        PrivateNumber ar=batch_private_load(A[t*p.sa+row*p.k+k].re),ai=batch_private_load(A[t*p.sa+row*p.k+k].im);
+        PrivateNumber br=batch_private_load(part?B[t*p.sb+k*p.n+col].im:B[t*p.sb+k*p.n+col].re);
+        PrivateNumber bi=batch_private_load(part?B[t*p.sb+k*p.n+col].re:B[t*p.sb+k*p.n+col].im);
+        if(batch_fused)sum=limbforge_batched_private::dot2_add_rolled(ar,br,part?ai:limbforge_batched_private::negate(ai),bi,sum);
+        else {PrivateNumber x=limbforge_batched_private::mul<N,true>(ar,br),y=limbforge_batched_private::mul<N,true>(ai,bi);
+            sum=limbforge_batched_private::add(part?limbforge_batched_private::add(x,y):limbforge_batched_private::sub(x,y),sum);}
+    }
+    if(p.flags&2)sum=limbforge_batched_private::negate(sum);batch_private_store(C[o],sum);
+}

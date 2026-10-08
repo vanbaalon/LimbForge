@@ -33,6 +33,9 @@ These are general numerical APIs; solver-specific integration remains in the con
 
 ## Measurements at QSC shapes (lead agent, 2026-10-08)
 
+**Historical, pre-1.0.1 measurements:** these describe the original backend, which later
+failed dense correctness checks. Remeasure the corrected backend before using these ratios.
+
 Apple M5 Max, 352 bits, host load average 25–37 (CPU ratios optimistic for the GPU; recheck on an idle host).
 `section9_limbforge` checks every GPU output against an independent MPFR sequence.
 
@@ -65,7 +68,16 @@ a row in `docs/optimizations.md`, rejected attempts kept under `benchmarks/exper
 
 **P0.1: All-width verification of the §9 kernels.**
 - **Harness prepared:** `test_limbforge_section9_audit --all-widths` selects every width. `--bits B` selects one width; `--dense` repeats larger real/complex GEMM batches three times. The target is excluded from default builds and CTest to keep routine checks light; build and run it explicitly (see `docs/section9.md`). Preparation and focused runs do not complete P0.1; full-width, dense, shader-validation and large-factor checks remain required.
-- **Focused checks, 2026-10-08:** `section9_smoke` and expanded reference cases at 352 and 1024 bits passed on the M5 Max. Logs: `benchmarks/results/section9_p0_*`. No full sweep, dense stress, shader validation or new benchmark was run.
+- **Full baseline audit:** 26/26 CTest suites, 19/19 shader-validation GPU suites,
+  and all 31 small-shape widths pass. The serialized dense sweep fails complex GEMM
+  at 11 widths. **Correction accepted in 1.0.1:** all 31 dense GEMM/wide-exponent widths
+  pass normally and under validation; the full expanded audit passes in both modes.
+  Rebuilt 26/26 library suites and 19/19 shader-validation GPU suites pass. Additional
+  valid/status normal-equation and negative-power sweeps also pass at all widths.
+  This completes the recorded dense/all-width checks; solver-size factors and consumer
+  histories still need their P1/P3 checks.
+  [Diagnostic record](../benchmarks/experiments/section9_gemm_dense.md).
+- **Earlier focused checks, 2026-10-08:** `section9_smoke` and expanded reference cases at 352 and 1024 bits passed on the M5 Max. Logs: `benchmarks/results/section9_p0_*`. No full sweep, dense stress, shader validation or new benchmark was run.
 - **Kernels:** MPFR (or MPC) replays of each documented sequence at all 31 widths (64–1024) for:
   - `gemm`, real and complex: the tiled path and the 4×4 path, tails, broadcast, padding, accumulate, negate, composed and fused;
   - `product3`;
@@ -79,7 +91,8 @@ a row in `docs/optimizations.md`, rejected attempts kept under `benchmarks/exper
 - **Why widths matter:** several GPU-only miscompiles in this library appeared only at particular widths (`gpu-codegen.md` §3, §6–§12), and the new kernels instantiate `cfma_rolled`, `fma`, `cdiv` and Horner loops in new contexts.
 
 **P0.2: Records.**
-- **Prepared:** section 9 implementation/P0 rows are in `docs/optimizations.md`, the plan status table is updated, and the contracts now live in `docs/numerics.md` and `docs/execution.md`; `docs/section9.md` links to them as a usage guide. Record full-audit outcomes when P0.1 is run.
+- **Recorded:** section 9 implementation/P0 rows are in `docs/optimizations.md`, the plan status table is updated, and the contracts now live in `docs/numerics.md` and `docs/execution.md`; `docs/section9.md` links to them as a usage guide. The full-width outcomes,
+  dense correction and rejected patches are now recorded with the 1.0.1 release; no new performance claim is accepted by this round.
 - Add a round row to `docs/optimizations.md` and update the status table in `docs/optimization-plan.md`.
 - Fold the contracts in `docs/section9.md` into `docs/numerics.md` (sequences) and `docs/execution.md` (resident and async rules), keeping a single source of truth.
 

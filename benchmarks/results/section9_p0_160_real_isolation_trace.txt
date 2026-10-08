@@ -1,0 +1,3 @@
+Auditing 160 bits (dense repeats)
+160 bits: selected GEMM references passed
+Section 9 reference run passed; selected width, dense repeats.

@@ -33,7 +33,7 @@ struct BatchedLinalg::Impl {
         if(!f)throw std::runtime_error("batched algebra Metal function: "+message(error));auto p=[device newComputePipelineStateWithFunction:f error:&error];
         if(!p)throw std::runtime_error("batched algebra Metal pipeline: "+message(error));pipelines.emplace(key,p);return p;}
     }
-    void pass(CommandBatch& b,int bits,const char* name,const Params& p,std::initializer_list<std::pair<unsigned,S>> buffers,std::size_t count,bool fused=false,bool tiled=false){
+    void pass(CommandBatch& b,int bits,const char* name,const Params& p,std::initializer_list<std::pair<unsigned,S>> buffers,std::size_t count,bool fused=false,bool tiled=false,bool components=false){
         if(!count)return;if(I::device(b)!=device)throw std::invalid_argument("batched algebra: foreign batch device");
         auto state=pipeline(bits,name,fused);I::keep(b,state);auto encoder=I::compute(b);[encoder setComputePipelineState:state];
         for(auto& bind:buffers)[encoder setBuffer:bind.second->buffer offset:0 atIndex:bind.first];[encoder setBytes:&p length:sizeof p atIndex:3];
@@ -41,7 +41,7 @@ struct BatchedLinalg::Impl {
             auto grid=p.m==4&&p.n==4&&p.k==4?MTLSizeMake((p.count+1)/2,1,1):MTLSizeMake((p.n+3)/4,(p.m+7)/8,p.count);
             [encoder dispatchThreadgroups:grid threadsPerThreadgroup:MTLSizeMake(32,1,1)];}
         else{NSUInteger tg=std::min<NSUInteger>(state.threadExecutionWidth,state.maxTotalThreadsPerThreadgroup);
-            [encoder dispatchThreads:MTLSizeMake(count,1,1) threadsPerThreadgroup:MTLSizeMake(tg,1,1)];}
+            [encoder dispatchThreads:MTLSizeMake(count,components?2:1,1) threadsPerThreadgroup:MTLSizeMake(tg,1,1)];}
     }
 };
 BatchedLinalg::BatchedLinalg(Engine& e):engine_(&e),impl_(std::make_unique<Impl>(e)){}
@@ -73,7 +73,8 @@ void BatchedLinalg::encode_gemm(CommandBatch& b,int bits,bool complex,const Stri
     auto a=retain(b,A,extent(s.count,s.stride_a,as)),bb=retain(b,B,extent(s.count,s.stride_b,bs)),c=retain(b,C,extent(s.count,s.stride_c,cs),true);
     Params p{s.count,s.m,s.n,s.k,s.stride_a,s.stride_b,s.stride_c,0,std::uint32_t(s.accumulate)|(std::uint32_t(s.negative)<<1)};
     const bool small=s.m==4&&s.n==4&&s.k==4;
-    impl_->pass(b,bits,small?(complex?"batch_gemm4_complex":"batch_gemm4_real"):(complex?"batch_gemm_complex":"batch_gemm_real"),p,{{0,a},{1,bb},{2,c}},s.count*cs,s.fused,true);
+    if(complex)impl_->pass(b,bits,"batch_private_complex",p,{{0,a},{1,bb},{2,c}},s.count*cs,s.fused,false,true);
+    else impl_->pass(b,bits,small?"batch_gemm4_real":"batch_gemm_real",p,{{0,a},{1,bb},{2,c}},s.count*cs,s.fused,true);
 }
 void BatchedLinalg::encode_power(CommandBatch& b,int bits,bool complex,const PowerMoments& s,O E,O y,O W,O out){
     bits_ok(bits);auto rows=std::size_t(s.nmax)+1,ek=mul_size(s.count,s.steps),wk=mul_size(ek,s.ncols),pk=mul_size(ek,rows);

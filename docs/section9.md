@@ -147,11 +147,12 @@ build and CTest so `section9_smoke` remains light. It reuses the smoke reference
 real/complex tiled and 4×4 GEMM in both modes, cancellation/status inputs, padding and
 broadcasts; real/complex triple products and accumulated empty dots; real/complex powers
 at positive, zero and negative n0 across a row-tile boundary, with both modes and accumulation;
-fused normal equations with statuses; late/zero/error Cholesky pivots and multiple RHS;
+composed/fused normal equations with valid inputs and statuses; late/zero/error Cholesky pivots and multiple RHS;
 polynomial modes, shared coefficients, sharing tails, empty terms/steps and statuses;
 inline MPC full-width significands, NaN/Inf, zero and exponent boundaries.
-Every width from 64 to 1024 bits in steps of 32 is compiled into the runner. This does not
-establish that every width has passed on the GPU.
+Every width from 64 to 1024 bits in steps of 32 is compiled into the runner.
+The subsequent 1.0.1 audit results are recorded below; the earlier harness preparation
+and light checks alone did not establish all-width correctness.
 
 ```sh
 cmake --build build --target test_limbforge_section9_audit -j4
@@ -162,9 +163,31 @@ MTL_SHADER_VALIDATION=1 ./build/test_limbforge_section9_audit --all-widths --den
 ```
 
 `--dense` adds repeated GEMM runs with 4,097 small matrices (65,552 output entries per run)
-and 257 tiled matrices. It does not stress large Cholesky factors or dense recurrence/import
-batches; those and consumer integration checks remain part of the later audit.
+and 257 tiled matrices. It also adds 65x65 dense damping trials with three RHS,
+513-lane polynomial recurrences and 65,537 inline complex imports. Solver-size factors
+and consumer integration still require their separate checks.
+
+`--spread-only` checks broad exponent gaps and cancellation. `--gemm-only` isolates
+products. `--normal-only` and `--power-only` isolate those contracts. `--keep-going` reports failed widths and returns nonzero if any fail.
+`LIMBFORGE_AUDIT_TRACE=1` diagnoses a failing dot with separate engine and CPU
+primitive replays; MPFR remains the acceptance oracle and the mismatch is rethrown.
 
 Follow-up light validation on 2026-10-08: the unchanged smoke test and expanded cases at
 352 and 1024 bits passed on the M5 Max. Logs are `benchmarks/results/section9_p0_*`.
 No full sweep, dense stress, shader-validation or performance runs were made in that round.
+
+
+The subsequent full baseline audit passed 26/26 CTest suites, 19/19 GPU suites
+under shader validation and all 31 small-shape widths. The serialized dense sweep
+nevertheless exposed complex GEMM errors at 11 widths. See
+[the diagnostic record](../benchmarks/experiments/section9_gemm_dense.md) and
+[the private-storage correction](gpu-codegen.md#13-dense-section-9-complex-gemm-and-private-significands).
+Release **1.0.1** corrects the dense complex GEMM issue. The rebuilt library passes
+26/26 CTest suites and 19/19 GPU suites under shader validation. All 31 widths pass
+the complete expanded dense audit and broad-exponent GEMM checks, normally and
+under shader validation. Separate sweeps cover valid/status normal-equation RHS
+and valid negative powers (three batches, one fully valid), multi-panel shapes and
+a four-row tail. Raw logs and run settings are in `benchmarks/results/section9_p0_*`.
+The power shapes are rows/steps/columns 10/5/3, 33/17/17 and 12/4/4.
+Solver-size factorization, performance recalibration and end-to-end integration remain pending.
+No new speed claim is made by this correctness release.

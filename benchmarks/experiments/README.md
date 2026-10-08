@@ -104,3 +104,15 @@ metadata/test logs in ../results.
 To investigate a patch, create a separate checkout at its stated base revision,
 apply it with `git apply`, build in Release mode, and run the full CPU and physical
 GPU tests before measuring it. Never overwrite accepted result files.
+
+- `section9_fma_only.patch` (base `10eb888`): rejected partial isolation of exact complex FMA in
+  batched GEMM; the dense audit still found a composed 352-bit mismatch. Context and logs:
+  [section9_gemm_dense.md](section9_gemm_dense.md).
+- `section9_reference_abi.patch`, `section9_global_load.patch`, and
+  `section9_real_isolation.patch` (base `10eb888`): rejected attempts to isolate
+  dense complex GEMM failures. Selected widths passed, subsequent widths failed;
+  see `section9_gemm_dense.md` and `../results/section9_p0_*`.
+- `section9_component_parity.patch` / `section9_component_grid.patch` (base
+  `10eb888`): separate real and imaginary GEMM outputs. The alternating-component
+  variant fails at 960 bits; the uniform-component sweep was interrupted and
+  establishes no acceptance. Padded local-storage follow-up is still experimental.

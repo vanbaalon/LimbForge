@@ -1,0 +1,129 @@
+Auditing 64 bits (dense repeats)
+64 bits: complex GEMM tile tails/broadcast/strides, triple product, negative power moments
+64 bits: resident normal equations, three damping trials, solves, async wait, exact fallback repair
+64 bits: real 4x4 GEMM odd batch/broadcast and empty dots
+64 bits: runtime bridge and inline MPC staging
+64 bits: on-device Horner recurrence, reverse/all_steps, sharing tails, composed/fused
+64 bits: expanded reference cases passed
+Auditing 96 bits (dense repeats)
+96 bits: complex GEMM tile tails/broadcast/strides, triple product, negative power moments
+96 bits: resident normal equations, three damping trials, solves, async wait, exact fallback repair
+96 bits: real 4x4 GEMM odd batch/broadcast and empty dots
+96 bits: runtime bridge and inline MPC staging
+96 bits: on-device Horner recurrence, reverse/all_steps, sharing tails, composed/fused
+96 bits: expanded reference cases passed
+Auditing 128 bits (dense repeats)
+128 bits: complex GEMM tile tails/broadcast/strides, triple product, negative power moments
+128 bits: resident normal equations, three damping trials, solves, async wait, exact fallback repair
+128 bits: real 4x4 GEMM odd batch/broadcast and empty dots
+128 bits: runtime bridge and inline MPC staging
+128 bits: on-device Horner recurrence, reverse/all_steps, sharing tails, composed/fused
+128 bits: expanded reference cases passed
+Auditing 160 bits (dense repeats)
+160 bits: complex GEMM tile tails/broadcast/strides, triple product, negative power moments
+160 bits: resident normal equations, three damping trials, solves, async wait, exact fallback repair
+160 bits: real 4x4 GEMM odd batch/broadcast and empty dots
+160 bits: runtime bridge and inline MPC staging
+160 bits: on-device Horner recurrence, reverse/all_steps, sharing tails, composed/fused
+160 bits: expanded reference cases passed
+Auditing 192 bits (dense repeats)
+192 bits: complex GEMM tile tails/broadcast/strides, triple product, negative power moments
+192 bits: resident normal equations, three damping trials, solves, async wait, exact fallback repair
+192 bits: real 4x4 GEMM odd batch/broadcast and empty dots
+192 bits: runtime bridge and inline MPC staging
+192 bits: on-device Horner recurrence, reverse/all_steps, sharing tails, composed/fused
+192 bits: expanded reference cases passed
+Auditing 224 bits (dense repeats)
+224 bits: complex GEMM tile tails/broadcast/strides, triple product, negative power moments
+224 bits: resident normal equations, three damping trials, solves, async wait, exact fallback repair
+224 bits: real 4x4 GEMM odd batch/broadcast and empty dots
+224 bits: runtime bridge and inline MPC staging
+224 bits: on-device Horner recurrence, reverse/all_steps, sharing tails, composed/fused
+224 bits: expanded reference cases passed
+Auditing 256 bits (dense repeats)
+256 bits: complex GEMM tile tails/broadcast/strides, triple product, negative power moments
+256 bits: resident normal equations, three damping trials, solves, async wait, exact fallback repair
+256 bits: real 4x4 GEMM odd batch/broadcast and empty dots
+256 bits: runtime bridge and inline MPC staging
+256 bits: on-device Horner recurrence, reverse/all_steps, sharing tails, composed/fused
+256 bits: expanded reference cases passed
+Auditing 288 bits (dense repeats)
+288 bits: complex GEMM tile tails/broadcast/strides, triple product, negative power moments
+288 bits: resident normal equations, three damping trials, solves, async wait, exact fallback repair
+288 bits: real 4x4 GEMM odd batch/broadcast and empty dots
+288 bits: runtime bridge and inline MPC staging
+288 bits: on-device Horner recurrence, reverse/all_steps, sharing tails, composed/fused
+288 bits: expanded reference cases passed
+Auditing 320 bits (dense repeats)
+320 bits: complex GEMM tile tails/broadcast/strides, triple product, negative power moments
+320 bits: resident normal equations, three damping trials, solves, async wait, exact fallback repair
+320 bits: real 4x4 GEMM odd batch/broadcast and empty dots
+320 bits: runtime bridge and inline MPC staging
+320 bits: on-device Horner recurrence, reverse/all_steps, sharing tails, composed/fused
+320 bits: expanded reference cases passed
+Auditing 352 bits (dense repeats)
+352 bits: complex GEMM tile tails/broadcast/strides, triple product, negative power moments
+352 bits: resident normal equations, three damping trials, solves, async wait, exact fallback repair
+352 bits: real 4x4 GEMM odd batch/broadcast and empty dots
+352 bits: runtime bridge and inline MPC staging
+352 bits: on-device Horner recurrence, reverse/all_steps, sharing tails, composed/fused
+352 bits: expanded reference cases passed
+Auditing 384 bits (dense repeats)
+384 bits: complex GEMM tile tails/broadcast/strides, triple product, negative power moments
+384 bits: resident normal equations, three damping trials, solves, async wait, exact fallback repair
+384 bits: real 4x4 GEMM odd batch/broadcast and empty dots
+384 bits: runtime bridge and inline MPC staging
+384 bits: on-device Horner recurrence, reverse/all_steps, sharing tails, composed/fused
+384 bits: expanded reference cases passed
+Auditing 416 bits (dense repeats)
+416 bits: complex GEMM tile tails/broadcast/strides, triple product, negative power moments
+416 bits: resident normal equations, three damping trials, solves, async wait, exact fallback repair
+416 bits: real 4x4 GEMM odd batch/broadcast and empty dots
+416 bits: runtime bridge and inline MPC staging
+416 bits: on-device Horner recurrence, reverse/all_steps, sharing tails, composed/fused
+416 bits: expanded reference cases passed
+Auditing 448 bits (dense repeats)
+448 bits: complex GEMM tile tails/broadcast/strides, triple product, negative power moments
+448 bits: resident normal equations, three damping trials, solves, async wait, exact fallback repair
+448 bits: real 4x4 GEMM odd batch/broadcast and empty dots
+448 bits: runtime bridge and inline MPC staging
+448 bits: on-device Horner recurrence, reverse/all_steps, sharing tails, composed/fused
+448 bits: expanded reference cases passed
+Auditing 480 bits (dense repeats)
+480 bits: complex GEMM tile tails/broadcast/strides, triple product, negative power moments
+480 bits: resident normal equations, three damping trials, solves, async wait, exact fallback repair
+480 bits: real 4x4 GEMM odd batch/broadcast and empty dots
+480 bits: runtime bridge and inline MPC staging
+480 bits: on-device Horner recurrence, reverse/all_steps, sharing tails, composed/fused
+480 bits: expanded reference cases passed
+Auditing 512 bits (dense repeats)
+512 bits: complex GEMM tile tails/broadcast/strides, triple product, negative power moments
+512 bits: resident normal equations, three damping trials, solves, async wait, exact fallback repair
+512 bits: real 4x4 GEMM odd batch/broadcast and empty dots
+512 bits: runtime bridge and inline MPC staging
+512 bits: on-device Horner recurrence, reverse/all_steps, sharing tails, composed/fused
+512 bits: expanded reference cases passed
+Auditing 544 bits (dense repeats)
+544 bits: complex GEMM tile tails/broadcast/strides, triple product, negative power moments
+544 bits: resident normal equations, three damping trials, solves, async wait, exact fallback repair
+544 bits: real 4x4 GEMM odd batch/broadcast and empty dots
+544 bits: runtime bridge and inline MPC staging
+544 bits: on-device Horner recurrence, reverse/all_steps, sharing tails, composed/fused
+544 bits: expanded reference cases passed
+Auditing 576 bits (dense repeats)
+576 bits: complex GEMM tile tails/broadcast/strides, triple product, negative power moments
+576 bits: resident normal equations, three damping trials, solves, async wait, exact fallback repair
+576 bits: real 4x4 GEMM odd batch/broadcast and empty dots
+576 bits: runtime bridge and inline MPC staging
+576 bits: on-device Horner recurrence, reverse/all_steps, sharing tails, composed/fused
+576 bits: expanded reference cases passed
+Auditing 608 bits (dense repeats)
+608 bits: complex GEMM tile tails/broadcast/strides, triple product, negative power moments
+608 bits: resident normal equations, three damping trials, solves, async wait, exact fallback repair
+608 bits: real 4x4 GEMM odd batch/broadcast and empty dots
+608 bits: runtime bridge and inline MPC staging
+608 bits: on-device Horner recurrence, reverse/all_steps, sharing tails, composed/fused
+complex GEMM tiled fused=0 accumulate=0 index 2108
+GPU: re{sign=1 exponent=14 status=0 limbs=b6a3adeb 85d367a4 da41e3d6 76c57db4 cdadcf3b 9e8170f3 b495947c 696a0252 b6ca59a2 e321a5dd 78b1c045 e49173d0 59e89653 c28d54 c8591e2c 27b95ba5 b901da5e 7eb26582 951c7788 } im{sign=-1 exponent=10 status=0 limbs=aa0933db 4f2ae7cd 5fd850cd 456b582a 2d550935 1c47c5e4 700d812b 5aa75a95 325eb641 2cf8a8c4 a0f46d51 29ea14cd 9aa6707f 3f01546f f44ea33f 862ef417 b3c3bcc4 45286cc4 668bb36 }
+MPFR: re{sign=1 exponent=14 status=0 limbs=b6a3adeb 85d367a4 da41e3d6 76c57db4 cdadcf3b 9e8170f3 b495947c 696a0252 b6ca59a2 e321a5dd 78b1c045 e49173d0 59e89653 c28d54 c8591e2c 27b95ba5 b901da5e 7eb26582 951c7788 } im{sign=-1 exponent=10 status=0 limbs=a96c8613 4f2ae7cd 5fd850cd 456b582a 2d550935 1c47c5e4 700d812b 5aa75a95 325eb641 2cf8a8c4 a0f46d51 29ea14cd 9aa6707f 3f01546f f44ea33f 862ef417 b3c3bcc4 45286cc4 668bb36 }
+Section 9 audit: complex GEMM tiled fused=0 accumulate=0 index 2108

@@ -1,0 +1,38 @@
+Section 9 P0 expanded correctness audit — 2026-10-08
+Source base: 10eb888; API 1.0.0 during numerical runs
+Machine: Apple M5 Max; macOS 26.6.2; AppleClang 21.0.0.21000101
+Release; MPFR/MPC enabled; no performance timing accepted in this record
+
+Baseline:
+  ctest --test-dir build --output-on-failure: 26/26 passed
+  MTL_SHADER_VALIDATION=1 ctest --test-dir build -R '(gpu|linalg_cholesky|linalg_qr|resident_buffers|tree_reduction|section9_smoke)' --output-on-failure: 19/19 passed
+  standalone audit --all-widths (small shapes): 31/31 passed
+  serialized --all-widths --dense --keep-going: 11 widths failed complex GEMM
+  Failed widths: 192 224 256 288 352 416 608 896 928 960 1024
+  At failing 192-bit dot: all 17 CPU and separately dispatched engine primitives match MPFR
+  Numerical baseline failures persist without concurrent GPU test jobs
+
+Candidate:
+  Generated private arithmetic namespace, logical precision N unchanged,
+  significand storage 33 words; explicit original packed buffer loads/stores;
+  one real component per thread, uniform component within each SIMD group
+  --all-widths --dense --gemm-only --keep-going: 31/31 passed
+  --all-widths --spread-only --keep-going: 31/31 passed
+  MTL_SHADER_VALIDATION=1 with each command above: 31/31 passed each
+  --all-widths --dense --keep-going (complete expanded cases): 31/31 passed
+  Complete expanded shader validation: 31/31 passed
+  Rebuilt CTest: 26/26 passed
+  Rebuilt shader-validation GPU subset: 19/19 passed
+  Valid/status composed/fused normal-equation A and RHS: 31/31, normal and validation
+  Valid negative powers, three batches and three multi-panel/tail shapes: 31/31, normal and validation
+  Release 1.0.1 is a metadata-only bump after these numerical runs; shader-source hashes
+  and focused matching-header/archive version/package checks are recorded separately.
+
+Expanded dense cases:
+  257 tiled / 4097 small matrices; three repetitions; both arithmetic modes
+  Broadcast/strides/accumulation/negation; cancellation, broad exponent gaps, statuses
+  65x65 damping factors, failure payloads and three RHS
+  513 polynomial-recurrence lanes and sharing tails
+  65537 inline MPC imports
+Solver-size factor/performance and consumer integration are separate pending tasks.
+Rejected/incomplete candidates and exact failure logs: ../experiments/section9_gemm_dense.md

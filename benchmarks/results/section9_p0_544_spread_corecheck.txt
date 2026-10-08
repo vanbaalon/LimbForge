@@ -1,0 +1,5 @@
+Auditing 544 bits
+complex GEMM tiled fused=1 accumulate=0 index 0
+GPU: re{sign=1 exponent=-543 status=0 limbs=cd8478a2 16c9128 dbc77a06 1065dc4a cc63f645 65f95e83 b8c0cdc7 2a45b913 99ca8050 b6efec91 996246e0 3c47f38c e869a98a f8c65371 105ab8ea 5aa710da e47f5156 } im{sign=1 exponent=780 status=0 limbs=c6ebd98b 9e74449e a8b087f2 65ec4f62 e045dd87 22f3f6a8 9d5c104 15ec6dc5 1a837e9a 5d7420a7 59ea4bee 1d320631 18a9fbcd d888fa71 1242341a 53c22b64 d8c5ec8e }
+MPFR: re{sign=-1 exponent=1603 status=0 limbs=d9450809 e513c1ab c70e8c17 eedcf267 6224c0f6 3ec62fcc 5a8f44b1 2fe6837 ca8661cc 6010900d 4bb454a4 af7feea2 b0c45f59 c2e01ee9 26145635 5f9b4fb8 e1d1bef } im{sign=-1 exponent=1813 status=0 limbs=bab094fc 949dad4a dc3fb931 58799705 dd548624 3a995b42 f8092a93 23990824 3319ea17 cb16122a 339a3fb5 3d8467fa 668d8483 f814ece 9919d843 50be5c0 2756ea8a }
+Section 9 audit: complex GEMM tiled fused=1 accumulate=0 index 0

@@ -1,0 +1,66 @@
+Auditing 64 bits (dense repeats)
+64 bits: selected GEMM references passed
+Auditing 96 bits (dense repeats)
+96 bits: selected GEMM references passed
+Auditing 128 bits (dense repeats)
+128 bits: selected GEMM references passed
+Auditing 160 bits (dense repeats)
+160 bits: selected GEMM references passed
+Auditing 192 bits (dense repeats)
+192 bits: selected GEMM references passed
+Auditing 224 bits (dense repeats)
+224 bits: selected GEMM references passed
+Auditing 256 bits (dense repeats)
+256 bits: selected GEMM references passed
+Auditing 288 bits (dense repeats)
+288 bits: selected GEMM references passed
+Auditing 320 bits (dense repeats)
+320 bits: selected GEMM references passed
+Auditing 352 bits (dense repeats)
+352 bits: selected GEMM references passed
+Auditing 384 bits (dense repeats)
+384 bits: selected GEMM references passed
+Auditing 416 bits (dense repeats)
+416 bits: selected GEMM references passed
+Auditing 448 bits (dense repeats)
+448 bits: selected GEMM references passed
+Auditing 480 bits (dense repeats)
+480 bits: selected GEMM references passed
+Auditing 512 bits (dense repeats)
+512 bits: selected GEMM references passed
+Auditing 544 bits (dense repeats)
+544 bits: selected GEMM references passed
+Auditing 576 bits (dense repeats)
+576 bits: selected GEMM references passed
+Auditing 608 bits (dense repeats)
+608 bits: selected GEMM references passed
+Auditing 640 bits (dense repeats)
+640 bits: selected GEMM references passed
+Auditing 672 bits (dense repeats)
+672 bits: selected GEMM references passed
+Auditing 704 bits (dense repeats)
+704 bits: selected GEMM references passed
+Auditing 736 bits (dense repeats)
+736 bits: selected GEMM references passed
+Auditing 768 bits (dense repeats)
+768 bits: selected GEMM references passed
+Auditing 800 bits (dense repeats)
+800 bits: selected GEMM references passed
+Auditing 832 bits (dense repeats)
+832 bits: selected GEMM references passed
+Auditing 864 bits (dense repeats)
+864 bits: selected GEMM references passed
+Auditing 896 bits (dense repeats)
+896 bits: selected GEMM references passed
+Auditing 928 bits (dense repeats)
+928 bits: selected GEMM references passed
+Auditing 960 bits (dense repeats)
+complex GEMM 4x4 fused=0 accumulate=0 index 59907
+GPU: re{sign=-1 exponent=12 status=0 limbs=c4b98951 4231c299 53e5a891 84c5aacd 6ce51be3 821110d9 d121b56b a6798bf8 e3b08896 c8bb32bb 71cf1ef8 b29cc02 90b847db dec75b85 d18e8490 307b4432 4c4f6de4 261dda72 c5cf7c7d 64db7d88 ad667a3a 29382a25 1862265 2802177e f40bfab 5b6980b6 789d4925 a202f8eb e2fbe223 233f959e } im{sign=1 exponent=11 status=0 limbs=9d04fab0 27a715e9 d7636870 8ab3a6ff 534e4926 da40e7a ccf3a938 891ee9e4 140e1fa4 b9b5be0e e1a4f39a f7e68f15 9e828c8f 3d06cfe5 206ca8e7 3df6e67a eb834a52 89f19e3e 388cfaa2 ede19e92 f172f9a9 3dba7dbd dc14fc4c 47ac1cdf fa0693ea 6bcc86a3 ad23dda7 8722adf3 31c22029 357c51f4 }
+MPFR: re{sign=-1 exponent=12 status=0 limbs=c4b98951 4231c299 f8cd054f dbd30f84 6ce51be3 821110d9 d121b56b a6798bf8 e3b08896 c8bb32bb 71cf1ef8 b29cc02 90b847db dec75b85 d18e8490 307b4432 4c4f6de4 261dda72 c5cf7c7d 64db7d88 ad667a3a 29382a25 1862265 2802177e f40bfab 5b6980b6 789d4925 a202f8eb e2fbe223 233f959e } im{sign=1 exponent=11 status=0 limbs=9d04fab0 27a715e9 68e131c1 d33b87d0 534e4926 da40e7a ccf3a938 891ee9e4 140e1fa4 b9b5be0e e1a4f39a f7e68f15 9e828c8f 3d06cfe5 206ca8e7 3df6e67a eb834a52 89f19e3e 388cfaa2 ede19e92 f172f9a9 3dba7dbd dc14fc4c 47ac1cdf fa0693ea 6bcc86a3 ad23dda7 8722adf3 31c22029 357c51f4 }
+960 bits FAILED: complex GEMM 4x4 fused=0 accumulate=0 index 59907
+Auditing 992 bits (dense repeats)
+992 bits: selected GEMM references passed
+Auditing 1024 bits (dense repeats)
+1024 bits: selected GEMM references passed
+1 selected width(s) failed

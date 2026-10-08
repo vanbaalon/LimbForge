@@ -38,13 +38,13 @@ template<int Bits> void run(const Options& o){
     StridedGemm shape{o.count,o.m,o.n,o.k,o.m*o.k,o.k*o.n,o.m*o.n};
     PowerMoments powers{o.count,unsigned(o.k),unsigned(o.m-1),unsigned(o.n),0};
     auto gpu=[&]{return o.operation=="gemm"?la.gemm(Bits,true,shape,A.data(),B.data(),out.data()):la.power_moments(Bits,true,powers,E.data(),Y.data(),B.data(),out.data());};
-    gpu();cpu(); // shader compilation, CPU pool start and page faults excluded
-    for(std::size_t i=0;i<outputs;++i){C want{from_mpfr<Bits>(result[2*i]),from_mpfr<Bits>(result[2*i+1])};
-        if(!reference::equal_complex<Bits>(out[i],want))throw std::runtime_error("CPU/GPU mismatch at "+std::to_string(i));}
+    auto verify=[&]{for(std::size_t i=0;i<outputs;++i){C want{from_mpfr<Bits>(result[2*i]),from_mpfr<Bits>(result[2*i+1])};
+        if(!reference::equal_complex<Bits>(out[i],want))throw std::runtime_error("CPU/GPU mismatch at "+std::to_string(i));}};
+    gpu();cpu();verify(); // shader compilation, CPU pool start and page faults excluded
     std::vector<double> ct,gt,device;
-    for(unsigned r=0;r<o.repeats;++r){auto begin=Clock::now();cpu();ct.push_back(std::chrono::duration<double>(Clock::now()-begin).count());auto t=gpu();gt.push_back(t.wall_seconds);device.push_back(t.gpu_seconds);}
+    for(unsigned r=0;r<o.repeats;++r){auto begin=Clock::now();cpu();ct.push_back(std::chrono::duration<double>(Clock::now()-begin).count());auto t=gpu();gt.push_back(t.wall_seconds);device.push_back(t.gpu_seconds);verify();}
     DispatchKey key{o.operation=="gemm"?"gemm_complex":"power_moments_complex",Bits,o.count,o.m,o.n,o.k,o.workers,false};
-    key.profile=e.device_name()+" / section9-v1 / "+LIMBFORGE_CALIBRATION_BUILD_TYPE;
+    key.profile=e.device_name()+" / section9-verified-samples / " LIMBFORGE_VERSION_STRING " / "+LIMBFORGE_CALIBRATION_BUILD_TYPE;
     DispatchSample sample{quantile(ct,.5),quantile(gt,.5)};BreakEvenTable table;table.record(key,sample);
     auto rec=table.recommend(key);
     std::cerr<<"Device: "<<e.device_name()<<"; deterministic composed complex arithmetic; n0=0; checked "<<outputs<<" outputs\n";

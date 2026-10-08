@@ -19,7 +19,9 @@ template<int B> C<B> cm(C<B> a,C<B> b){return reference::complex<B>(Operation::c
 template<int B> C<B> ca(C<B> a,C<B> b){return reference::complex<B>(Operation::complex_add,a,b);}
 template<int B> bool same(F<B> a,F<B> b){return reference::equal<B>(a,b);}
 template<int B> bool same(C<B> a,C<B> b){return reference::equal_complex<B>(a,b);}
-template<int B,class T> void check(const std::vector<T>& a,const std::vector<T>& b,const char* label){require(a.size()==b.size(),"size");for(std::size_t i=0;i<a.size();++i)if(!same<B>(a[i],b[i]))throw std::runtime_error(std::string(label)+" index "+std::to_string(i));}
+template<int B> void dump(F<B> v){std::cerr<<"sign="<<v.sign<<" exponent="<<v.exponent<<" status="<<v.status<<" limbs=";for(int i=B/32;i-->0;)std::cerr<<std::hex<<v.limb[i]<<' ';std::cerr<<std::dec;}
+template<int B> void dump(C<B> v){std::cerr<<"re{";dump<B>(v.re);std::cerr<<"} im{";dump<B>(v.im);std::cerr<<'}';}
+template<int B,class T> void check(const std::vector<T>& a,const std::vector<T>& b,const char* label){require(a.size()==b.size(),"size");for(std::size_t i=0;i<a.size();++i)if(!same<B>(a[i],b[i])){std::cerr<<label<<" index "<<i<<"\nGPU: ";dump<B>(a[i]);std::cerr<<"\nMPFR: ";dump<B>(b[i]);std::cerr<<'\n';throw std::runtime_error(std::string(label)+" index "+std::to_string(i));}}
 template<int B> void products(Engine& e,BatchedLinalg& la){
     std::mt19937_64 rng(B);auto random=[&]{return C<B>{reference::random_number<B>(rng,4),reference::random_number<B>(rng,4)};};
     StridedGemm s{2,9,5,17,9*17,0,9*5+3};std::vector<C<B>> A(2*s.stride_a),M(17*5),initial(2*s.stride_c),expected=initial;

@@ -1,0 +1,10 @@
+Auditing 544 bits (dense repeats)
+544 bits: complex GEMM tile tails/broadcast/strides, triple product, negative power moments
+544 bits: resident normal equations, three damping trials, solves, async wait, exact fallback repair
+544 bits: real 4x4 GEMM odd batch/broadcast and empty dots
+544 bits: runtime bridge and inline MPC staging
+544 bits: on-device Horner recurrence, reverse/all_steps, sharing tails, composed/fused
+complex GEMM tiled fused=0 accumulate=0 index 5904
+GPU: re{sign=1 exponent=17 status=0 limbs=c1f94b8c 69467c5b c2a6fb19 3fadf348 86800a99 d44ca6f7 3b68a9e6 b14d8b44 c6049960 4a990c8f 9d7980af 15c54106 550c7424 fdfff47b dfa09dcd cb5a791d 3b3f1b91 } im{sign=-1 exponent=15 status=0 limbs=9adc6707 416935ac 9556b61b 7e8e48d6 c5bd7e17 327a5bf9 de845854 46d5a589 99fa0678 16523dbf 64b41678 9c7a93e9 b4d934a6 d6794bff 8c1240f9 82b161d6 d5ca4877 }
+MPFR: re{sign=1 exponent=16 status=0 limbs=bae3867e 465f7dee 56d44f2f 7210ec12 3bbc802e 97ab454f 2c149ac 211891f8 79648d5d b956c87a cc13a2a2 be09bbae edc5400c 70a5580 b56a9428 7ab6f30b 206b5ee2 } im{sign=-1 exponent=14 status=0 limbs=8c7efc92 faeabe6f 2f9a0403 4d9ca76c cdc4366f dcbd55ed 92793ace 802cce3b 2157794f 70fa4d61 8b6377a4 9bb10730 1b82c803 2304b1fa fe78248 d53cc0a c91728e8 }
+Section 9 audit: complex GEMM tiled fused=0 accumulate=0 index 5904

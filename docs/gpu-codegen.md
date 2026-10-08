@@ -239,3 +239,34 @@ shared `dot2_add` (complex fused, segmented dot, LU, numerics, transcendentals),
 11. When a kernel needs an exact fused routine (`fma`, `dot2_add`, `cfma`) at several places, call it from one
     place: a rolled loop that selects the operands (or a non-inlined function). Measure cold compile time of
     every specialisation at 512–1024 bits with `vr_compile_probe` (section 12).
+
+## 13. Dense section 9 complex GEMM and private significands
+
+The expanded audit of `10eb888` passed all 31 widths at small shapes, but the
+serialized dense sweep failed at 11 widths (192, 224, 256, 288, 352, 416, 608,
+896, 928, 960 and 1024 bits). First failing positions change with identical
+inputs. Errors can affect a few limbs or just a component's sign. The ordinary
+26-suite checks and 19 GPU suites under shader validation all passed, so they
+were insufficient to detect this problem.
+
+At a failing 192-bit fused tiled dot, every one of its 17 primitives agrees with
+MPFR when dispatched separately through Engine; the CPU replay also agrees.
+Isolating complex or real helpers, changing their argument/return forms, direct
+device loads, and alternating one-component threads were insufficient. Logs and
+rejected patches: `benchmarks/experiments/section9_gemm_dense.md`.
+
+The 1.0.1 correction uses one component per thread, uniform component selection
+within a SIMD group, and private significands with 33 storage words. CMake derives
+a private arithmetic namespace from the shared core, changing only the local
+limb array and its zero initialization. **The logical precision remains N words**;
+all arithmetic loops and rounding still use N. Public buffers retain their original
+packed `Number<N>`/`Complex<N>` layout; explicit field loads/stores bridge the two.
+This also makes every private Number occupy 144 bytes. It does not instantiate
+arithmetic at 33-word precision.
+
+This correction passed all 31 dense GEMM and wide-exponent widths normally and
+under shader validation, and the complete expanded audit in both modes. The rebuilt
+library passes 26/26 CTest suites and 19/19 GPU suites under shader validation.
+Additional valid/status normal-equation and negative-power sweeps pass at all widths.
+The exact compiler defect and the necessity of each part of the workaround have not
+been isolated. Do not infer correctness of another kernel from this result.

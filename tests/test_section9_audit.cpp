@@ -10,7 +10,7 @@ template<int B> F<B> negative(F<B> a){return negate(a);}
 template<int B> C<B> negative(C<B> a){return {negate(a.re),negate(a.im)};}
 template<int B,class T> T zvalue(){if constexpr(std::is_same_v<T,F<B>>)return zero<B/32>();else return {zero<B/32>(),zero<B/32>()};}
 template<int B,class T> T onevalue(){if constexpr(std::is_same_v<T,F<B>>)return from_decimal<B>("1");else return {from_decimal<B>("1"),zero<B/32>()};}
-template<int B,class T> T randomvalue(std::mt19937_64& rng){if constexpr(std::is_same_v<T,F<B>>)return reference::random_number<B>(rng,8);else return {reference::random_number<B>(rng,8),reference::random_number<B>(rng,8)};}
+template<int B,class T> T randomvalue(std::mt19937_64& rng,int span=8){if constexpr(std::is_same_v<T,F<B>>)return reference::random_number<B>(rng,span);else return {reference::random_number<B>(rng,span),reference::random_number<B>(rng,span)};}
 template<int B,class T> T errorvalue(){if constexpr(std::is_same_v<T,F<B>>)return zero<B/32>(invalid);else return {zero<B/32>(),zero<B/32>(invalid)};}
 template<int B,class T> T power_reference(T x,int exponent){
     T r=onevalue<B,T>();long long e=exponent;bool inv=e<0;unsigned long long k=inv?-e:e;
@@ -26,7 +26,26 @@ template<int B,class T> std::vector<T> gemm_reference(const StridedGemm& s,const
         out[t*s.stride_c+i*s.n+j]=s.negative?negative<B>(z):z;
     }return out;
 }
-template<int B,class T> void gemm_variants(Engine& e,BatchedLinalg& la,bool dense){
+// Diagnostic replay after a mismatch uses independent engine dispatches per primitive.
+// This cannot make the audit pass: the original mismatch is still rethrown.
+template<int B,class T> void trace_gemm(Engine& e,const StridedGemm& s,const std::vector<T>& a,const std::vector<T>& b,const std::vector<T>& initial,const std::vector<T>& got,const std::vector<T>& expected){
+    if(!std::getenv("LIMBFORGE_AUDIT_TRACE"))return;
+    for(std::size_t o=0;o<got.size();++o)if(!same<B>(got[o],expected[o])){
+        if(o%s.stride_c>=s.m*s.n){std::cerr<<"output padding changed\n";return;}
+        const auto t=o/s.stride_c,i=(o%s.stride_c)/s.n,j=(o%s.stride_c)%s.n;
+        T z=s.accumulate?initial[o]:zvalue<B,T>(),ref=z,core=z;
+        for(std::size_t k=0;k<s.k;++k){T x=a[t*s.stride_a+i*s.k+k],y=b[t*s.stride_b+k*s.n+j],next,product;
+            if(s.fused){e.run_ternary(B,std::is_same_v<T,F<B>>?Operation::fma:Operation::complex_fma,&x,&y,&z,&next,1);
+                if constexpr(std::is_same_v<T,F<B>>)core=limbforge::fma(x,y,core);else core=cfma(x,y,core);}
+            else {e.run(B,std::is_same_v<T,F<B>>?Operation::mul:Operation::complex_mul,&x,&y,&product,1);e.run(B,std::is_same_v<T,F<B>>?Operation::add:Operation::complex_add,&product,&z,&next,1);
+                if constexpr(std::is_same_v<T,F<B>>)core=add(mul(x,y),core);else core=cadd(cmul(x,y),core);}
+            ref=mac<B>(x,y,ref,s.fused);z=next;
+            std::cerr<<"term "<<k<<" engine="<<same<B>(z,ref)<<" CPU="<<same<B>(core,ref)<<'\n';
+        }
+        std::cerr<<"primitive replay final: ";dump<B>(z);std::cerr<<'\n';break;
+    }
+}
+template<int B,class T> void gemm_variants(Engine& e,BatchedLinalg& la,bool dense,int span=8){
     std::mt19937_64 rng(B+sizeof(T));
     for(bool small:{false,true})for(bool fused:{false,true})for(bool accumulate:{false,true}){
         StridedGemm s;s.count=dense?(small?4097:257):3;s.m=small?4:9;s.n=small?4:5;s.k=small?4:17;
@@ -34,45 +53,58 @@ template<int B,class T> void gemm_variants(Engine& e,BatchedLinalg& la,bool dens
         s.fused=fused;s.accumulate=accumulate;s.negative=accumulate;
         const auto label=std::string(std::is_same_v<T,F<B>>?"real":"complex")+" GEMM "+(small?"4x4":"tiled")+" fused="+std::to_string(fused)+" accumulate="+std::to_string(accumulate);
         std::vector<T> a(s.stride_a?(s.count-1)*s.stride_a+s.m*s.k:s.m*s.k),b(s.stride_b?(s.count-1)*s.stride_b+s.k*s.n:s.k*s.n),initial(s.count*s.stride_c);
-        for(auto* v:{&a,&b,&initial})for(auto& z:*v)z=randomvalue<B,T>(rng);
+        for(auto* v:{&a,&b,&initial})for(auto& z:*v)z=randomvalue<B,T>(rng,span);
         // The first row contains exact cancelling pairs; later rows retain full-width random limbs.
         a[1]=negative<B>(a[0]);for(std::size_t j=0;j<s.n;++j)b[s.n+j]=b[j];
         a[s.k+2]=errorvalue<B,T>();
         auto expected=gemm_reference<B>(s,a,b,initial);auto ab=put(e,a),bb=put(e,b),out=put(e,initial);
-        for(int repeat=0;repeat<(dense?3:1);++repeat){out.upload(initial.data(),initial.size());auto batch=e.batch();la.gemm(batch,s,ab,bb,out);batch.submit().wait();check<B>(get(out),expected,label.c_str());}
+        if(fused&&span>8){auto core=initial;
+            for(std::size_t t=0;t<s.count;++t)for(std::size_t i=0;i<s.m;++i)for(std::size_t j=0;j<s.n;++j){auto z=s.accumulate?initial[t*s.stride_c+i*s.n+j]:zvalue<B,T>();
+                for(std::size_t k=0;k<s.k;++k){auto x=a[t*s.stride_a+i*s.k+k],y=b[t*s.stride_b+k*s.n+j];if constexpr(std::is_same_v<T,F<B>>)z=limbforge::fma(x,y,z);else z=cfma(x,y,z);}
+                core[t*s.stride_c+i*s.n+j]=s.negative?negative<B>(z):z;}
+            check<B>(core,expected,"CPU wide-exponent fused sequence vs independent MPFR");}
+        for(int repeat=0;repeat<(dense?3:1);++repeat){out.upload(initial.data(),initial.size());auto batch=e.batch();la.gemm(batch,s,ab,bb,out);batch.submit().wait();auto got=get(out);try{check<B>(got,expected,label.c_str());}catch(...){trace_gemm<B>(e,s,a,b,initial,got,expected);throw;}}
     }
     StridedGemm s{3,4,4,4,16,0,16};std::vector<T> a(48),b(16),d(16),initial(48);
-    for(auto* v:{&a,&b,&d})for(auto& z:*v)z=randomvalue<B,T>(rng);
+    for(auto* v:{&a,&b,&d})for(auto& z:*v)z=randomvalue<B,T>(rng,span);
     auto ab=put(e,a),bb=put(e,b),db=put(e,d),out=put(e,initial);
     for(bool fused:{false,true}){s.fused=fused;auto second=s;second.stride_a=16;second.negative=true;
         auto tmp=gemm_reference<B>(s,a,b,initial),expected=gemm_reference<B>(second,tmp,d,initial);
         auto batch=e.batch();la.product3(batch,s,second,ab,bb,db,out,true);batch.submit().wait();check<B>(get(out),expected,"product3 variant");}
     // Empty dots must preserve accumulation and padding, even with negation/fusion selected.
-    for(auto& z:initial)z=randomvalue<B,T>(rng);
+    for(auto& z:initial)z=randomvalue<B,T>(rng,span);
     s.k=0;s.accumulate=true;s.negative=true;s.fused=true;Buffer<T> unused;auto expected=gemm_reference<B>(s,initial,initial,initial);
     out.upload(initial.data(),initial.size());auto batch=e.batch();la.gemm(batch,s,unused,unused,out);batch.submit().wait();check<B>(get(out),expected,"empty accumulated dot");
 }
 template<int B,class T> void power_variants(Engine& e,BatchedLinalg& la){
-    std::mt19937_64 rng(B+19);PowerMoments s{2,5,9,3,0};
-    std::vector<T> E(10),Y(10),W(30),initial(60);for(auto* v:{&E,&Y,&W,&initial})for(auto& z:*v)z=randomvalue<B,T>(rng);
-    Y[0]=zvalue<B,T>();E[9]=errorvalue<B,T>();auto eb=put(e,E),yb=put(e,Y),wb=put(e,W),out=put(e,initial);
+    std::mt19937_64 rng(B+19);
+    for(unsigned steps:{5u,17u,4u}){PowerMoments s{3,steps,steps==5?9u:steps==4?11u:32u,steps==5?3u:steps==4?4u:17u,0};auto rows=std::size_t(s.nmax)+1;
+    std::vector<T> E(s.count*s.steps),Y(E.size()),W(E.size()*s.ncols),initial(s.count*rows*s.ncols);
+    for(auto* v:{&E,&Y,&W,&initial})for(auto& z:*v)z=randomvalue<B,T>(rng);
+    Y[0]=zvalue<B,T>();E.back()=errorvalue<B,T>();auto eb=put(e,E),yb=put(e,Y),wb=put(e,W),out=put(e,initial);
     for(int n0:{-3,0,3})for(bool fused:{false,true})for(bool accumulate:{false,true}){
-        s.n0=n0;s.fused=fused;s.accumulate=accumulate;auto expected=initial;std::vector<T> table(100);
-        for(int t=0;t<2;++t)for(int k=0;k<5;++k){auto pw=power_reference<B>(Y[t*5+k],n0);
-            for(int n=0;n<10;++n){table[(t*10+n)*5+k]=times<B>(E[t*5+k],pw);if(n+1<10)pw=times<B>(pw,Y[t*5+k]);}}
-        for(int t=0;t<2;++t)for(int n=0;n<10;++n)for(int j=0;j<3;++j){auto z=accumulate?initial[(t*10+n)*3+j]:zvalue<B,T>();
-            for(int k=0;k<5;++k)z=mac<B>(table[(t*10+n)*5+k],W[(t*5+k)*3+j],z,fused);expected[(t*10+n)*3+j]=z;}
-        const auto label=std::string(std::is_same_v<T,F<B>>?"real":"complex")+" powers n0="+std::to_string(n0)+" fused="+std::to_string(fused)+" accumulate="+std::to_string(accumulate);
+        s.n0=n0;s.fused=fused;s.accumulate=accumulate;auto expected=initial;std::vector<T> table(E.size()*rows);
+        for(std::size_t t=0;t<s.count;++t)for(std::size_t k=0;k<s.steps;++k){auto pw=power_reference<B>(Y[t*s.steps+k],n0);
+            for(std::size_t n=0;n<rows;++n){table[(t*rows+n)*s.steps+k]=times<B>(E[t*s.steps+k],pw);if(n+1<rows)pw=times<B>(pw,Y[t*s.steps+k]);}}
+        for(std::size_t t=0;t<s.count;++t)for(std::size_t n=0;n<rows;++n)for(std::size_t j=0;j<s.ncols;++j){auto z=accumulate?initial[(t*rows+n)*s.ncols+j]:zvalue<B,T>();
+            for(std::size_t k=0;k<s.steps;++k)z=mac<B>(table[(t*rows+n)*s.steps+k],W[(t*s.steps+k)*s.ncols+j],z,fused);expected[(t*rows+n)*s.ncols+j]=z;}
+        const auto label=std::string(std::is_same_v<T,F<B>>?"real":"complex")+" powers rows="+std::to_string(rows)+" steps="+std::to_string(s.steps)+" n0="+std::to_string(n0)+" fused="+std::to_string(fused)+" accumulate="+std::to_string(accumulate);
         out.upload(initial.data(),initial.size());auto batch=e.batch();la.power_moments(batch,s,eb,yb,wb,out);batch.submit().wait();check<B>(get(out),expected,label.c_str());
-    }
+    }}
 }
 template<int B> void fused_normal(Engine& e,BatchedLinalg& la){
     std::mt19937_64 rng(B+23);constexpr int m=17,n=5;std::vector<F<B>> J(m*n),g(m),A(n*n),rhs(n);
     for(auto* v:{&J,&g})for(auto& x:*v)x=reference::random_number<B>(rng,8);
-    J[2*n+3]=zero<B/32>(invalid);g[7]=zero<B/32>(division_by_zero);
-    for(int i=0;i<n;++i){for(int j=0;j<n;++j){auto z=zero<B/32>();for(int k=0;k<m;++k)z=mac<B>(J[k*n+i],J[k*n+j],z,true);A[i*n+j]=z;}
-        auto z=zero<B/32>();for(int k=0;k<m;++k)z=mac<B>(J[k*n+i],g[k],z,true);rhs[i]=z;}
-    auto jb=put(e,J),gb=put(e,g),ab=e.make_buffer<F<B>>(A.size()),rb=e.make_buffer<F<B>>(rhs.size());auto batch=e.batch();la.normal_equations(batch,jb,gb,m,n,ab,rb,true);batch.submit().wait();check<B>(get(ab),A,"fused normal/status");check<B>(get(rb),rhs,"fused rhs/status");
+    for(bool statuses:{false,true}){if(statuses){J[2*n+3]=zero<B/32>(invalid);g[7]=zero<B/32>(division_by_zero);}
+        for(bool fused:{false,true}){
+            for(int i=0;i<n;++i){for(int j=0;j<n;++j){auto z=zero<B/32>();for(int k=0;k<m;++k)z=mac<B>(J[k*n+i],J[k*n+j],z,fused);A[i*n+j]=z;}
+                auto z=zero<B/32>();for(int k=0;k<m;++k)z=mac<B>(J[k*n+i],g[k],z,fused);rhs[i]=z;}
+            auto jb=put(e,J),gb=put(e,g),ab=e.make_buffer<F<B>>(A.size()),rb=e.make_buffer<F<B>>(rhs.size());
+            std::vector<F<B>> poison_A(A.size(),zero<B/32>(invalid)),poison_rhs(rhs.size(),zero<B/32>(invalid));ab.upload(poison_A.data(),poison_A.size());rb.upload(poison_rhs.data(),poison_rhs.size());
+            auto batch=e.batch();la.normal_equations(batch,jb,gb,m,n,ab,rb,fused);batch.submit().wait();
+            check<B>(get(ab),A,fused?"fused normal/valid and status":"composed normal/valid and status");check<B>(get(rb),rhs,fused?"fused rhs/valid and status":"composed rhs/valid and status");
+        }
+    }
 }
 template<int B> void trial_edges(Engine& e,BatchedLinalg& la){
     constexpr int n=3,count=4,nrhs=2;auto z=zero<B/32>();auto one=from_decimal<B>("1");
@@ -84,8 +116,8 @@ template<int B> void trial_edges(Engine& e,BatchedLinalg& la){
     for(int i=0;i<n;++i)for(int j=0;j<nrhs;++j)require(same<B>(sol[i*nrhs+j],from_decimal<B>(i==1?"0.25":"1")),"multiple RHS solve");
     for(int i=n*nrhs;i<count*n*nrhs;++i)require(same<B>(sol[i],zero<B/32>(invalid)),"failed solve payload");
 }
-template<int B> void polynomial_variants(Engine& e,BatchedLinalg& la){
-    constexpr int lanes=5,groups=3,maxsteps=3;std::mt19937_64 rng(B+31);
+template<int B> void polynomial_variants(Engine& e,BatchedLinalg& la,bool dense=false){
+    const int lanes=dense?513:5,groups=(lanes+1)/2,maxsteps=3;std::mt19937_64 rng(B+31);
     for(bool shared:{false,true})for(unsigned terms:{0u,3u}){
         PolynomialRecurrence s;s.lanes=lanes;s.lanes_per_weight=2;s.coefficient_sets=shared?1:groups;s.terms=terms;
         std::vector<C<B>> start(4*lanes),cp(s.coefficient_sets*4*terms),cq(cp.size()),Y(maxsteps*groups),Ep(maxsteps*4*groups),Eq(Ep.size());
@@ -121,15 +153,50 @@ template<int B> void inline_edges(Engine& e,BatchedLinalg& la){
     (void)e;(void)la;std::cout<<"inline MPC edge cases unavailable (built without MPC)\n";
 #endif
 }
-template<int B> void audit(Engine& e,BatchedLinalg& la,bool dense){
+template<int B> void larger_trials(Engine& e,BatchedLinalg& la){
+    constexpr int n=65,count=4,nrhs=3;std::mt19937_64 rng(B+43);auto z=zero<B/32>();
+    std::vector<F<B>> A(n*n,z),D(n,z),mu{from_decimal<B>("0.125"),from_decimal<B>("0.5"),from_decimal<B>("-2"),zero<B/32>(invalid)},rhs(n*nrhs),expected(count*n*n,z),want(count*n*nrhs,z);
+    for(int i=0;i<n;++i){for(int j=0;j<i;++j)A[i*n+j]=reference::random_number<B>(rng,1);A[i*n+i]=ra<B>(from_decimal<B>("520"),reference::random_number<B>(rng,1));for(int j=i+1;j<n;++j)A[i*n+j]=zero<B/32>(invalid);}
+    D.back()=from_decimal<B>("520");for(auto& v:rhs)v=reference::random_number<B>(rng,4);std::vector<std::uint32_t> statuses(count);
+    for(int t=0;t<count;++t){auto R=A;for(int i=0;i<n;++i){R[i*n+i]=ra<B>(R[i*n+i],rm<B>(mu[t],D[i]));for(int j=i+1;j<n;++j)R[i*n+j]=z;}
+        for(int k=0;k<n;++k){auto pivot=R[k*n+k];if(pivot.status||pivot.sign<=0){statuses[t]=k+1;break;}R[k*n+k]=reference::real<B>(Operation::sqrt,pivot,z);
+            for(int i=k+1;i<n;++i)R[i*n+k]=reference::real<B>(Operation::div,R[i*n+k],R[k*n+k]);
+            for(int i=k+1;i<n;++i)for(int j=k+1;j<=i;++j)R[i*n+j]=reference::real<B>(Operation::sub,R[i*n+j],rm<B>(R[i*n+k],R[j*n+k]));}
+        if(statuses[t])for(int i=0;i<n;++i)for(int j=statuses[t]-1;j<=i;++j)R[i*n+j]=zero<B/32>(invalid);
+        std::copy(R.begin(),R.end(),expected.begin()+t*n*n);
+        if(statuses[t]){std::fill(want.begin()+t*n*nrhs,want.begin()+(t+1)*n*nrhs,zero<B/32>(invalid));continue;}
+        auto x=rhs;for(int c=0;c<nrhs;++c){for(int i=0;i<n;++i){for(int j=0;j<i;++j)x[i*nrhs+c]=reference::real<B>(Operation::sub,x[i*nrhs+c],rm<B>(R[i*n+j],x[j*nrhs+c]));x[i*nrhs+c]=reference::real<B>(Operation::div,x[i*nrhs+c],R[i*n+i]);}
+            for(int i=n;i-->0;){for(int j=i+1;j<n;++j)x[i*nrhs+c]=reference::real<B>(Operation::sub,x[i*nrhs+c],rm<B>(R[j*n+i],x[j*nrhs+c]));x[i*nrhs+c]=reference::real<B>(Operation::div,x[i*nrhs+c],R[i*n+i]);}}
+        std::copy(x.begin(),x.end(),want.begin()+t*n*nrhs);}
+    require(statuses==std::vector<std::uint32_t>({0,0,n,1}),"larger trial reference setup");
+    auto a=put(e,A),d=put(e,D),m=put(e,mu),b=put(e,rhs),l=e.make_buffer<F<B>>(expected.size()),x=e.make_buffer<F<B>>(want.size());auto st=e.make_buffer<std::uint32_t>(count);
+    auto batch=e.batch();la.cholesky_trials(batch,{n,count},a,d,m,l,st);la.cholesky_solve(batch,l,st,count,n,b,nrhs,x);batch.submit().wait();require(get(st)==statuses,"larger factor statuses");check<B>(get(l),expected,"65x65 factor/ignored upper triangle");check<B>(get(x),want,"65x65 solve/late failure");
+}
+template<int B> void dense_inline(Engine& e,BatchedLinalg& la){
+#ifdef LIMBFORGE_HAS_MPC
+    constexpr std::size_t count=65537;std::size_t page=getpagesize(),bytes=((count*256+page-1)/page)*page;void* storage=nullptr;if(posix_memalign(&storage,page,bytes))throw std::bad_alloc();std::unique_ptr<void,decltype(&std::free)> owned(storage,&std::free);
+    std::unique_ptr<mpc_t[]> values(new mpc_t[count]);std::vector<mpc_srcptr> pointers(count);std::vector<C<B>> want(count);std::mt19937_64 rng(B+47);
+    for(std::size_t i=0;i<count;++i){auto v=values[i];pointers[i]=v;mpfr_custom_init_set(mpc_realref(v),MPFR_ZERO_KIND,0,B,static_cast<char*>(storage)+i*256);mpfr_custom_init_set(mpc_imagref(v),MPFR_ZERO_KIND,0,B,static_cast<char*>(storage)+i*256+128);
+        want[i]=randomvalue<B,C<B>>(rng);to_mpfr<B>(mpc_realref(v),want[i].re);to_mpfr<B>(mpc_imagref(v),want[i].im);}
+    auto records=describe_inline_mpc(B,storage,bytes,pointers.data(),count);auto out=e.make_buffer<C<B>>(count);auto batch=e.batch();la.import_inline_complex(batch,storage,bytes,records.data(),count,out);batch.submit().wait();check<B>(get(out),want,"dense inline import");
+#else
+    (void)e;(void)la;
+#endif
+}
+template<int B> void audit(Engine& e,BatchedLinalg& la,bool dense,bool spread_only,bool gemm_only,bool normal_only,bool power_only){
     std::cout<<"Auditing "<<B<<" bits"<<(dense?" (dense repeats)":"")<<std::endl;
+    if(power_only){power_variants<B,F<B>>(e,la);power_variants<B,C<B>>(e,la);std::cout<<B<<" bits: power references passed\n";return;}
+    if(normal_only){fused_normal<B>(e,la);std::cout<<B<<" bits: normal-equation references passed\n";return;}
+    if(spread_only||gemm_only){gemm_variants<B,F<B>>(e,la,dense,spread_only?1000:8);gemm_variants<B,C<B>>(e,la,dense,spread_only?1000:8);
+        std::cout<<B<<" bits: selected GEMM references passed\n";return;}
     products<B>(e,la);normal<B>(e,la);real_products<B>(e,la);bridge<B>(e,la);polynomial<B>(e,la);
     gemm_variants<B,F<B>>(e,la,dense);gemm_variants<B,C<B>>(e,la,dense);power_variants<B,F<B>>(e,la);power_variants<B,C<B>>(e,la);
-    fused_normal<B>(e,la);trial_edges<B>(e,la);polynomial_variants<B>(e,la);inline_edges<B>(e,la);
+    fused_normal<B>(e,la);trial_edges<B>(e,la);polynomial_variants<B>(e,la,dense);inline_edges<B>(e,la);
+    if(dense){larger_trials<B>(e,la);dense_inline<B>(e,la);}
     std::cout<<B<<" bits: expanded reference cases passed\n";
 }
-void dispatch(int bits,Engine& e,BatchedLinalg& la,bool dense){switch(bits){
-#define LF_WIDTH(B) case B:audit<B>(e,la,dense);break;
+void dispatch(int bits,Engine& e,BatchedLinalg& la,bool dense,bool spread_only,bool gemm_only,bool normal_only,bool power_only){switch(bits){
+#define LF_WIDTH(B) case B:audit<B>(e,la,dense,spread_only,gemm_only,normal_only,power_only);break;
     LF_WIDTH(64) LF_WIDTH(96) LF_WIDTH(128) LF_WIDTH(160) LF_WIDTH(192) LF_WIDTH(224) LF_WIDTH(256) LF_WIDTH(288)
     LF_WIDTH(320) LF_WIDTH(352) LF_WIDTH(384) LF_WIDTH(416) LF_WIDTH(448) LF_WIDTH(480) LF_WIDTH(512) LF_WIDTH(544)
     LF_WIDTH(576) LF_WIDTH(608) LF_WIDTH(640) LF_WIDTH(672) LF_WIDTH(704) LF_WIDTH(736) LF_WIDTH(768) LF_WIDTH(800)
@@ -137,10 +204,13 @@ void dispatch(int bits,Engine& e,BatchedLinalg& la,bool dense){switch(bits){
 #undef LF_WIDTH
     default:throw std::invalid_argument("bits must be a multiple of 32 in [64,1024]");}}
 int main(int argc,char** argv){try{
-    int bits=352;bool all=false,dense=false,bits_given=false;
-    for(int i=1;i<argc;++i){std::string arg=argv[i];if(arg=="--all-widths")all=true;else if(arg=="--dense")dense=true;else if(arg=="--bits"&&i+1<argc){bits_given=true;std::string value=argv[++i];std::size_t used;bits=std::stoi(value,&used);if(used!=value.size()||bits<64||bits>1024||bits%32)throw std::invalid_argument("invalid --bits");}
-        else if(arg=="--help"){std::cout<<"Usage: test_limbforge_section9_audit [--bits B | --all-widths] [--dense]\nDefault: focused 352-bit cases. --dense repeats larger GEMM batches three times.\nUse MTL_SHADER_VALIDATION=1 for the validation pass.\n";return 0;}else throw std::invalid_argument("unknown/incomplete option: "+arg);}
+    int bits=352;bool all=false,dense=false,bits_given=false,spread_only=false,gemm_only=false,keep_going=false,normal_only=false,power_only=false;
+    for(int i=1;i<argc;++i){std::string arg=argv[i];if(arg=="--power-only")power_only=true;else if(arg=="--normal-only")normal_only=true;else if(arg=="--keep-going")keep_going=true;else if(arg=="--gemm-only")gemm_only=true;else if(arg=="--spread-only")spread_only=true;else if(arg=="--all-widths")all=true;else if(arg=="--dense")dense=true;else if(arg=="--bits"&&i+1<argc){bits_given=true;std::string value=argv[++i];std::size_t used;bits=std::stoi(value,&used);if(used!=value.size()||bits<64||bits>1024||bits%32)throw std::invalid_argument("invalid --bits");}
+        else if(arg=="--help"){std::cout<<"Usage: test_limbforge_section9_audit [--bits B | --all-widths] [--dense] [--spread-only] [--gemm-only] [--keep-going] [--normal-only] [--power-only]\nDefault: focused 352-bit cases. --dense repeats larger GEMM batches three times.\nUse MTL_SHADER_VALIDATION=1 for the validation pass.\n";return 0;}else throw std::invalid_argument("unknown/incomplete option: "+arg);}
     if(all&&bits_given)throw std::invalid_argument("choose --bits or --all-widths, not both");
-    Engine e;BatchedLinalg la(e);if(all)for(int b=64;b<=1024;b+=32)dispatch(b,e,la,dense);else dispatch(bits,e,la,dense);policy();
+    Engine e;BatchedLinalg la(e);int failures=0;
+    auto run=[&](int b){try{dispatch(b,e,la,dense,spread_only,gemm_only,normal_only,power_only);}catch(const std::exception& error){if(!keep_going)throw;std::cerr<<b<<" bits FAILED: "<<error.what()<<'\n';++failures;}};
+    if(all)for(int b=64;b<=1024;b+=32)run(b);else run(bits);policy();
+    if(failures){std::cerr<<failures<<" selected width(s) failed\n";return 1;}
     std::cout<<"Section 9 reference run passed; "<<(all?"all 31 widths":"selected width")<<(dense?", dense repeats":"; dense stress not run")<<".\n";return 0;
 }catch(const std::exception& e){std::cerr<<"Section 9 audit: "<<e.what()<<'\n';return 1;}}

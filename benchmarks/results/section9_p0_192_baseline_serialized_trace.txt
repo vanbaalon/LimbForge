@@ -1,0 +1,23 @@
+Auditing 192 bits (dense repeats)
+complex GEMM tiled fused=1 accumulate=0 index 4224
+GPU: re{sign=-1 exponent=11 status=0 limbs=a13e3b4c d4e1686d f4591565 864aae24 e1aa7e7e b4f6e8b9 } im{sign=-1 exponent=13 status=0 limbs=b9f9d46a 7beb1de5 12215f61 f59b3419 7e4f9ed6 e22647b6 }
+MPFR: re{sign=-1 exponent=12 status=0 limbs=9ee29d2a ec9e3081 9c883c08 3d5b3ee5 a81d360b 6f50e32e } im{sign=-1 exponent=13 status=0 limbs=b9f9d46a 7beb1de5 12215f61 f59b3419 7e4f9ed6 e22647b6 }
+term 0 engine=1 CPU=1
+term 1 engine=1 CPU=1
+term 2 engine=1 CPU=1
+term 3 engine=1 CPU=1
+term 4 engine=1 CPU=1
+term 5 engine=1 CPU=1
+term 6 engine=1 CPU=1
+term 7 engine=1 CPU=1
+term 8 engine=1 CPU=1
+term 9 engine=1 CPU=1
+term 10 engine=1 CPU=1
+term 11 engine=1 CPU=1
+term 12 engine=1 CPU=1
+term 13 engine=1 CPU=1
+term 14 engine=1 CPU=1
+term 15 engine=1 CPU=1
+term 16 engine=1 CPU=1
+primitive replay final: re{sign=-1 exponent=12 status=0 limbs=9ee29d2a ec9e3081 9c883c08 3d5b3ee5 a81d360b 6f50e32e } im{sign=-1 exponent=13 status=0 limbs=b9f9d46a 7beb1de5 12215f61 f59b3419 7e4f9ed6 e22647b6 }
+Section 9 audit: complex GEMM tiled fused=1 accumulate=0 index 4224
