@@ -29,6 +29,11 @@ constexpr std::uint32_t no_index=0xffffffffu;
 // has a failing entry, no_index for norm2, summarize_status and empty segments.
 struct NormInfo { std::uint32_t status=0,failing=0,first_failing=no_index,index=no_index; };
 namespace detail { template<> struct Format<NormInfo> {static constexpr int bits=0;static constexpr bool complex=false;}; } // Buffer<NormInfo>
+// Acceptance check: entry i passes when it carries no status and values[i] <= threshold (exact comparison, no rounding).
+// failing: entries that do not pass; first_failing: lowest such index (no_index if none); status: OR of the entry statuses
+// and the threshold's (a threshold with a status fails every entry); compared: number of entries.
+struct ThresholdInfo { std::uint32_t failing=0,first_failing=no_index,status=0,compared=0; };
+namespace detail { template<> struct Format<ThresholdInfo> {static constexpr int bits=0;static constexpr bool complex=false;}; } // Buffer<ThresholdInfo>
 // One Numerics per host thread (compiled libraries, pipelines and scratch buffers are reused). Calls return after
 // the GPU has finished. Page-aligned inputs and outputs are used by the GPU in place; others are copied.
 class Numerics {
@@ -53,6 +58,8 @@ public:
     Timing scaled_residual(int bits,const Segments& segments,const void* r,const void* scale,void* values,NormInfo* info=nullptr);
     // Status summary only (info.index = no_index).
     Timing summarize_status(int bits,const Segments& segments,const void* x,NormInfo* info);
+    // Compare count real values (e.g. norms or scaled residuals) with one real threshold on the GPU; only info returns.
+    Timing check_threshold(int bits,std::size_t count,const void* values,const void* threshold,ThresholdInfo* info);
 
     // ---- Resident versions (docs/execution.md, "Resident units") ----
     // Encode the same pipelines into an Engine's CommandBatch on Buffer operands of that engine (ownership, barriers and
@@ -76,6 +83,10 @@ public:
     template<class T> void scaled_residual(CommandBatch& b,const Segments& s,const Buffer<T>& r,const Buffer<Real<T>>& scale,Buffer<Real<T>>& values){norm(b,5,s,r,scale,&values,nullptr);}
     template<class T> void scaled_residual(CommandBatch& b,const Segments& s,const Buffer<T>& r,const Buffer<Real<T>>& scale,Buffer<Real<T>>& values,Buffer<NormInfo>& info){
         norm(b,5,s,r,scale,&values,&info);}
+    // Resident acceptance check: values[0..count) against threshold[0]; info[0] receives the summary (16 bytes to read back).
+    template<class F> void check_threshold(CommandBatch& b,const Buffer<F>& values,std::size_t count,const Buffer<F>& threshold,Buffer<ThresholdInfo>& info){
+        static_assert(detail::Format<F>::bits&&!detail::Format<F>::complex,"thresholds compare real buffers");
+        encode_threshold(b,detail::Format<F>::bits,count,detail::Access::operand(values),detail::Access::operand(threshold),detail::Access::operand(info));}
     template<class T> void summarize_status(CommandBatch& b,const Segments& s,const Buffer<T>& x,Buffer<NormInfo>& info){norm(b,0,s,x,Buffer<Real<T>>(),static_cast<Buffer<Real<T>>*>(nullptr),&info);}
 private:
     template<class T> void norm(CommandBatch& b,int kind,const Segments& s,const Buffer<T>& x,const Buffer<Real<T>>& scale,Buffer<Real<T>>* values,Buffer<NormInfo>* info){
@@ -83,6 +94,7 @@ private:
         encode_norm(b,detail::Format<T>::bits,detail::Format<T>::complex,kind,s,detail::Access::operand(x),detail::Access::operand(scale),v,i);}
     void encode_poly(CommandBatch&,int bits,bool complex,const Polynomial&,unsigned order,const detail::Operand& coeffs,const detail::Operand& points,const detail::Operand& out);
     void encode_norm(CommandBatch&,int bits,bool complex,int kind,const Segments&,const detail::Operand& x,const detail::Operand& scale,const detail::Operand& values,const detail::Operand& info);
+    void encode_threshold(CommandBatch&,int bits,std::size_t count,const detail::Operand& values,const detail::Operand& threshold,const detail::Operand& info);
     struct Impl; std::unique_ptr<Impl> impl;
 };
 }

@@ -146,3 +146,15 @@ kernel void norm_finish(device const Number<N>* keys [[buffer(0)]],device const 
     if(nm_kind!=0)values[s]=v;
     info[4*s]=st;info[4*s+1]=fail;info[4*s+2]=first;info[4*s+3]=index;
 }
+
+// ---- Acceptance check (plan S4): entry i passes when it has no status and values[i] <= threshold (exact) ----
+inline int real_compare(Number<N> a,Number<N> b){
+    if(a.sign!=b.sign)return a.sign<b.sign?-1:1;int m=magnitude_compare(a,b);return a.sign>=0?m:-m;}
+// out = {failing, first_failing, status, compared}, initialised to {0, NO_INDEX, 0, count} before this pass.
+kernel void threshold_check(device const Number<N>* values [[buffer(0)]],device const Number<N>* threshold [[buffer(1)]],
+                            device atomic_uint* out [[buffer(2)]],constant uint& count [[buffer(3)]],uint i [[thread_position_in_grid]]){
+    if(i>=count)return;Number<N> x=values[i],t=threshold[0];uint st=x.status|t.status;
+    bool pass=!st&&real_compare(x,t)<=0;
+    if(st)atomic_fetch_or_explicit(&out[2],st,memory_order_relaxed);
+    if(!pass){atomic_fetch_add_explicit(&out[0],1u,memory_order_relaxed);atomic_fetch_min_explicit(&out[1],i,memory_order_relaxed);}
+}

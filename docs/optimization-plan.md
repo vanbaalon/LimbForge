@@ -299,7 +299,7 @@ For BSolver (≈128 lanes × 600 steps) the GPU runs ~128 threads. Two complemen
 | Resident linalg: `syrk`/`gemm` in a `CommandBatch` (GPU band analysis and plan, indirect dispatch, host fallback at `wait()`); synchronous `Buffer` forms of Cholesky/solves/QR | done (42-resident-linalg) | `Linalg(Engine&)`, `LinalgTicket`; `docs/numerics.md`, "Resident products" |
 
 Next, by consumer value: qscmx/BSolver integration and end-to-end timing on an idle host (also the
-pending GitHub speed figures); GPU-side transcendental retries, the on-device norm threshold; deeper QR look-ahead
+pending GitHub speed figures); GPU-side transcendental retries; deeper QR look-ahead
 (and complex column pivoting, a reconstruction-bound trailing update); G = 4/8 cooperative shapes with ≥ 3 limbs per lane
 (validation-only failures, 41-L4b); fused `vector_recurrence` above 512 bits.
 

@@ -184,6 +184,26 @@ Timing Numerics::Impl::norm(int bits,Kind kind,const Segments& s,const void* x,c
     if(info){auto u=static_cast<const std::uint32_t*>(inf.contents);for(std::size_t i=0;i<S;++i)info[i]={u[4*i],u[4*i+1],u[4*i+2],u[4*i+3]};}
     return {cb.GPUEndTime-cb.GPUStartTime,since(start)};
 }}
+namespace {
+void encode_threshold_pass(id<MTLComputeCommandEncoder> enc,id<MTLComputePipelineState> p,id<MTLBuffer> V,id<MTLBuffer> T,id<MTLBuffer> out,std::uint32_t count){
+    [enc setComputePipelineState:p];[enc setBuffer:V offset:0 atIndex:0];[enc setBuffer:T offset:0 atIndex:1];[enc setBuffer:out offset:0 atIndex:2];
+    [enc setBytes:&count length:sizeof count atIndex:3];
+    [enc dispatchThreads:MTLSizeMake(count,1,1) threadsPerThreadgroup:MTLSizeMake(std::min<NSUInteger>(256,p.maxTotalThreadsPerThreadgroup),1,1)];
+}
+void init_threshold(id<MTLBuffer> out,std::size_t count){auto u=static_cast<std::uint32_t*>(out.contents);u[0]=0;u[1]=no_index;u[2]=0;u[3]=std::uint32_t(count);}
+void check_count(std::size_t count){if(count>=std::size_t(1)<<31)throw std::invalid_argument("check_threshold: count exceeds 32-bit indexing");}
+}
+Timing Numerics::check_threshold(int bits,std::size_t count,const void* values,const void* threshold,ThresholdInfo* info){@autoreleasepool{
+    auto start=Clock::now();check_bits(bits);check_count(count);if(!info)throw std::invalid_argument("check_threshold: missing info");
+    if(!count){*info=ThresholdInfo{};return {0,since(start)};}
+    if(!values||!threshold)throw std::invalid_argument("check_threshold: missing values or threshold");
+    const std::size_t real=bits/8+12;auto p=impl->pipeline(bits,"threshold_check",0,0);
+    id<MTLBuffer> V=impl->input("values",values,count*real),T=impl->input("threshold",threshold,real),out=impl->buffer("threshold_out",16);init_threshold(out,count);
+    id<MTLCommandBuffer> cb=[impl->queue commandBuffer];id<MTLComputeCommandEncoder> enc=[cb computeCommandEncoder];
+    encode_threshold_pass(enc,p,V,T,out,std::uint32_t(count));[enc endEncoding];[cb commit];[cb waitUntilCompleted];
+    if(cb.status!=MTLCommandBufferStatusCompleted)throw std::runtime_error("check_threshold: command buffer failed: "+message(cb.error));
+    auto u=static_cast<const std::uint32_t*>(out.contents);*info={u[0],u[1],u[2],u[3]};return {cb.GPUEndTime-cb.GPUStartTime,since(start)};
+}}
 // ---- Resident versions: the same dispatch sequences on the batch's encoder (a buffer barrier before each dispatch) ----
 namespace {
 void check_device(id<MTLDevice> unit,CommandBatch& batch){
@@ -218,5 +238,15 @@ void Numerics::encode_norm(CommandBatch& batch,int bits,bool complex,int k,const
     impl->encode_norm_passes(bits,kind,s,x.storage->buffer,kind==ratio_kind?scale.storage->buffer:x.storage->buffer,summary,emax,
                              values.storage?values.storage->buffer:nil,inf,
                              [&](id<MTLComputePipelineState> p){auto e=Internal::compute(batch);Internal::keep(batch,p);[e setComputePipelineState:p];return e;},scratch);
+}}
+void Numerics::encode_threshold(CommandBatch& batch,int bits,std::size_t count,const detail::Operand& values,const detail::Operand& threshold,const detail::Operand& info){@autoreleasepool{
+    check_device(impl->device,batch);check_bits(bits);check_count(count);using detail::Internal;
+    need(values,count,"check_threshold values");need(threshold,1,"check_threshold threshold");need(info,1,"check_threshold info");
+    Internal::retain(batch,values.storage);Internal::retain(batch,threshold.storage);Internal::retain(batch,info.storage,true);
+    // The summary is initialised in fresh scratch here and copied into info in the batch (as the norm summaries are).
+    auto scratch=Internal::scratch(batch,16);init_threshold(scratch->buffer,count);
+    if(count){auto p=impl->pipeline(bits,"threshold_check",0,0);Internal::keep(batch,p);
+        encode_threshold_pass(Internal::compute(batch),p,values.storage->buffer,threshold.storage->buffer,scratch->buffer,std::uint32_t(count));}
+    Internal::copy(batch,scratch,info.storage,16);
 }}
 }

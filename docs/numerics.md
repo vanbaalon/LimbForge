@@ -165,6 +165,16 @@ the pivots, negated for an odd number of row swaps. Each multiply-subtract is co
 the same operation on resident buffers (`Buffer<std::uint32_t>` holds statuses; unused buffers may be
 empty), so inverses can feed later operations in the same batch.
 
+## Acceptance checks
+
+`Numerics::check_threshold(bits, count, values, threshold, info)` and the resident
+`check_threshold(batch, values, count, threshold, info)` compare real values (typically norms or scaled residuals)
+with one real threshold on the GPU. Entry `i` passes when it carries no status and `values[i] ≤ threshold` by
+exact comparison (no rounding). `ThresholdInfo` reports the number of failing entries, the lowest failing index
+(`no_index` if none), the OR of the entry statuses and the threshold's (a threshold with a status fails every entry),
+and the number compared. The resident form leaves only these 16 bytes for the host's acceptance decision, after norms
+or residuals computed in the same batch.
+
 ## Transcendental functions
 
 `Transcendentals::run(bits, f, a, out, count, b)` (`transcendental.hpp`, plan D7) evaluates element-wise
