@@ -272,6 +272,9 @@ template<int N,int W,int A,int B> inline Exact<W> exact_add(LIMBFORGE_THREAD con
     if(exact_msb(x)>=exact_msb(y))return exact_add_ordered<N,W,A,B>(x,y);
     return exact_add_ordered<N,W,B,A>(y,x);
 }
+// Exact sum workspaces are rounded up to a multiple of 4 words: some odd widths of exact_add gave
+// wrong GPU results (docs/gpu-codegen.md section 7), multiples of 4 never did.
+constexpr int exact_sum_words(int w){return (w+3)&~3;}
 template<int N> constexpr int product_words(){return scratch(2*N+1);}
 template<int N,int P=product_words<N>()> inline Exact<P> exact_product(LIMBFORGE_THREAD const Number<N>& a,LIMBFORGE_THREAD const Number<N>& b){
     Exact<P> r;for(int i=0;i<P;++i)r.w[i]=0;
@@ -314,10 +317,10 @@ template<int N> inline Number<N> fma(LIMBFORGE_THREAD const Number<N>& a,LIMBFOR
     word status=a.status|b.status|c.status;if(status)return zero<N>(status);
     // Measured layout (round 19): an unpadded product is fastest below 512 bits; from 512 bits the
     // 16-32-word addend must be padded, or the GPU returns wrong results (docs/gpu-codegen.md).
-    constexpr int P=2*N+1,C=N>=16?scratch(N):N,FMA_W=scratch(exact_words(N,P,C));
+    constexpr int P=2*N+1,C=N>=16?scratch(N):N,FMA_W=exact_sum_words(scratch(exact_words(N,P,C)));
     auto p=exact_product<N,P>(a,b);auto q=exact_number<C>(c);
     Exact<1> none;none.sign=0;none.scale=0;none.w[0]=0;
-    {Number<N> r;if(window_sum<N,scratch(3*N+4)>(p,q,none,r))return r;}
+    {Number<N> r;if(window_sum<N,exact_sum_words(scratch(3*N+4))>(p,q,none,r))return r;}
     return round_exact<N>(exact_add<N,FMA_W>(p,q));
 }
 template<int N> inline Number<N> fms(LIMBFORGE_THREAD const Number<N>& a,LIMBFORGE_THREAD const Number<N>& b,LIMBFORGE_THREAD const Number<N>& c){
@@ -330,10 +333,10 @@ template<int N> inline Number<N> fms(LIMBFORGE_THREAD const Number<N>& a,LIMBFOR
 template<int N> inline Number<N> dot2_add(LIMBFORGE_THREAD const Number<N>& a,LIMBFORGE_THREAD const Number<N>& b,LIMBFORGE_THREAD const Number<N>& c,
                                           LIMBFORGE_THREAD const Number<N>& d,LIMBFORGE_THREAD const Number<N>& e){
     word status=a.status|b.status|c.status|d.status|e.status;if(status)return zero<N>(status);
-    constexpr int P=product_words<N>(),W1=exact_words(N,P,P),W2=exact_words(N,P,W1);
+    constexpr int P=product_words<N>(),W1=exact_sum_words(exact_words(N,P,P)),W2=exact_sum_words(exact_words(N,P,W1));
     Exact<P> t[3]={exact_product(a,b),exact_product(c,d),exact_number<P>(e)};
     // Fast path: every nonzero term fits one exact two's-complement window (see window_sum).
-    {Number<N> r;if(window_sum<N,scratch(3*N+4)>(t[0],t[1],t[2],r))return r;}
+    {Number<N> r;if(window_sum<N,exact_sum_words(scratch(3*N+4))>(t[0],t[1],t[2],r))return r;}
     exponent_type key[3];for(int i=0;i<3;++i)key[i]=t[i].sign?exact_msb(t[i]):-(exponent_type(1)<<62);
     // Three named terms ordered by msb, largest first.
     int i1=key[0]>=key[1]?(key[0]>=key[2]?0:2):(key[1]>=key[2]?1:2);
