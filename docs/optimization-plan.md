@@ -167,6 +167,7 @@ Effort: S ≤ 1 day, M 2–4 days, L ≥ 1 week of agent work. Payoff estimates 
 
 ### Phase C — Runtime, memory layout, host overhead — Track T2 (can run in parallel with B)
 
+- **C1 status (round 28):** stride/period broadcast for `b`/`c` done; offsets and gather lists remain.
 - **C1. Operand descriptors / broadcast & gather (tips #4)** — S/M. Every `run` operand becomes
   `{buffer, offset, index_mode: plain | i/stride | i%period}`; pass in `Params`; generalises `states_per_weight`.
   Do this early: D-phase kernels reuse it.

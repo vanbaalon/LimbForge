@@ -2,7 +2,9 @@ using namespace metal;
 using namespace limbforge;
 constant int N=MP_BITS/32;
 constant uint selected_operation [[function_constant(0)]];
-struct Params { uint count,operation,steps,weight_count,states_per_weight; };
+struct Params { uint count,operation,steps,weight_count,states_per_weight,b_stride,b_period,c_stride,c_period; };
+// Broadcast operand index (i / stride) % period; stride 0/1 and period 0 leave i unchanged.
+inline uint operand(uint i,uint stride,uint period){uint j=stride>1?i/stride:i;return period?j%period:j;}
 kernel void arithmetic(device const Number<N>* a [[buffer(0)]],
                        device const Number<N>* b [[buffer(1)]],
                        device Number<N>* out [[buffer(2)]],
@@ -11,7 +13,7 @@ kernel void arithmetic(device const Number<N>* a [[buffer(0)]],
     Number<N> x=a[i],z;
     if(selected_operation==7)z=square(x);
     else if(selected_operation==8)z=limbforge::sqrt(x);
-    else {Number<N> y=b[i];switch(selected_operation){case 0:z=add(x,y);break;case 1:z=sub(x,y);break;case 2:z=mul(x,y);break;default:z=div(x,y);}}
+    else {Number<N> y=b[operand(i,p.b_stride,p.b_period)];switch(selected_operation){case 0:z=add(x,y);break;case 1:z=sub(x,y);break;case 2:z=mul(x,y);break;default:z=div(x,y);}}
     out[i]=z;
 }
 kernel void complex_arithmetic(device const Complex<N>* a [[buffer(0)]],
@@ -19,7 +21,7 @@ kernel void complex_arithmetic(device const Complex<N>* a [[buffer(0)]],
                                device Complex<N>* out [[buffer(2)]],
                                constant Params& p [[buffer(3)]],uint i [[thread_position_in_grid]]) {
     if(i>=p.count)return;
-    Complex<N> x=a[i],y=b[i],z;
+    Complex<N> x=a[i],y=b[operand(i,p.b_stride,p.b_period)],z;
     switch(selected_operation){case 4:z=cadd(x,y);break;case 5:z=cmul(x,y);break;default:z=cdiv(x,y);}
     out[i]=z;
 }
@@ -27,12 +29,12 @@ kernel void complex_arithmetic(device const Complex<N>* a [[buffer(0)]],
 kernel void fused_arithmetic(device const Number<N>* a [[buffer(0)]],device const Number<N>* b [[buffer(1)]],device Number<N>* out [[buffer(2)]],
                              constant Params& p [[buffer(3)]],device const Number<N>* c [[buffer(4)]],uint i [[thread_position_in_grid]]) {
     if(i>=p.count)return;
-    Number<N> x=a[i],y=b[i],z=c[i];out[i]=selected_operation==10?limbforge::fms(x,y,z):limbforge::fma(x,y,z);
+    Number<N> x=a[i],y=b[operand(i,p.b_stride,p.b_period)],z=c[operand(i,p.c_stride,p.c_period)];out[i]=selected_operation==10?limbforge::fms(x,y,z):limbforge::fma(x,y,z);
 }
 kernel void complex_fused(device const Complex<N>* a [[buffer(0)]],device const Complex<N>* b [[buffer(1)]],device Complex<N>* out [[buffer(2)]],
                           constant Params& p [[buffer(3)]],device const Complex<N>* c [[buffer(4)]],uint i [[thread_position_in_grid]]) {
     if(i>=p.count)return;
-    Complex<N> x=a[i],y=b[i],z=c[i];out[i]=selected_operation==12?cfms(x,y,z):cfma(x,y,z);
+    Complex<N> x=a[i],y=b[operand(i,p.b_stride,p.b_period)],z=c[operand(i,p.c_stride,p.c_period)];out[i]=selected_operation==12?cfms(x,y,z):cfma(x,y,z);
 }
 kernel void recurrence(device const Complex<N>* seeds [[buffer(0)]],
                        device const Complex<N>* weights [[buffer(1)]],

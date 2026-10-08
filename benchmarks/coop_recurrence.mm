@@ -208,7 +208,7 @@ COOP_KERNELS(8)
 COOP_KERNELS(16)
 COOP_KERNELS(32)
 )METAL";
-struct Params {std::uint32_t count,operation,steps,weight_count,states_per_weight;};
+struct Params {std::uint32_t count,operation,steps,weight_count,states_per_weight,b_stride=0,b_period=0,c_stride=0,c_period=0;}; // matches kernels.metal
 struct Options {std::vector<int> bits={256,384,1024};std::vector<unsigned> lanes={32,128,512,2048,8192},groups={4,8,16,32};
     unsigned steps=64,tg=32;int samples=9;double warm=0.2;bool time=true,check=true,keep_going=false;std::size_t failed=0,count=4096;};
 Options opt;id<MTLDevice> device;id<MTLCommandQueue> queue;

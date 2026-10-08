@@ -13,6 +13,13 @@ inline bool operation_is_unary(Operation op){return op==Operation::square||op==O
 inline bool operation_is_ternary(Operation op){return int(op)>=9&&int(op)<=12;}
 inline bool operation_is_valid(Operation op){return int(op)>=0&&int(op)<=12;}
 struct Timing { double gpu_seconds, wall_seconds; };
+// Broadcast read of an operand: element i uses index (i / stride) % period (period 0: no wrap).
+// stride = k shares each value across k adjacent outputs; period = m cycles a table of m values.
+struct Broadcast { std::size_t stride=1,period=0; };
+inline std::size_t broadcast_elements(std::size_t count,Broadcast b){
+    if(!b.stride)throw std::invalid_argument("broadcast stride must be positive");
+    std::size_t n=count/b.stride+(count%b.stride!=0);return b.period&&b.period<n?b.period:n;
+}
 // 0 selects the default policy. cooperative_recurrence spreads each trajectory over 16/32 SIMD lanes
 // for small counts (bit-identical; docs/experiments.md).
 struct EngineOptions { unsigned threads_per_threadgroup=0; bool cooperative_reductions=true; bool cooperative_recurrence=true; };
@@ -69,7 +76,7 @@ class CommandBatch {
     struct Impl;std::unique_ptr<Impl> impl_;
     explicit CommandBatch(std::unique_ptr<Impl> impl);
     void encode(int,bool,Operation,const std::shared_ptr<detail::BufferStorage>&,const std::shared_ptr<detail::BufferStorage>&,
-                const std::shared_ptr<detail::BufferStorage>&,const std::shared_ptr<detail::BufferStorage>&,std::size_t);
+                const std::shared_ptr<detail::BufferStorage>&,const std::shared_ptr<detail::BufferStorage>&,std::size_t,Broadcast={},Broadcast={});
     void encode_vector(int,const VectorRecurrence&,const std::shared_ptr<detail::BufferStorage>* in,const std::size_t* sizes,
                        const std::shared_ptr<detail::BufferStorage>& out,std::size_t out_size);
     void encode_dot(int,bool,const SegmentedDot&,const std::shared_ptr<detail::BufferStorage>&,std::size_t,const std::shared_ptr<detail::BufferStorage>&,std::size_t,
@@ -83,6 +90,18 @@ public:
         if(operation_is_unary(op)||operation_is_ternary(op))throw std::invalid_argument("operation requires a different number of inputs");
         if(a.size()!=b.size()||a.size()!=out.size())throw std::invalid_argument("buffer counts must match");
         encode(detail::Format<T>::bits,detail::Format<T>::complex,op,a.storage_,b.storage_,a.storage_,out.storage_,a.size());
+    }
+    // Binary operation with b read through a broadcast index (b may be shorter than a and out).
+    template<class T> void run(Operation op,const Buffer<T>& a,const Buffer<T>& b,Buffer<T>& out,Broadcast b_index){
+        if(operation_is_unary(op)||operation_is_ternary(op))throw std::invalid_argument("operation requires a different number of inputs");
+        if(a.size()!=out.size()||b.size()<broadcast_elements(a.size(),b_index))throw std::invalid_argument("buffer counts do not match the broadcast");
+        encode(detail::Format<T>::bits,detail::Format<T>::complex,op,a.storage_,b.storage_,a.storage_,out.storage_,a.size(),b_index);
+    }
+    // Fused operation with broadcast b and c.
+    template<class T> void run(Operation op,const Buffer<T>& a,const Buffer<T>& b,const Buffer<T>& c,Buffer<T>& out,Broadcast b_index,Broadcast c_index){
+        if(!operation_is_ternary(op))throw std::invalid_argument("operation does not take three inputs");
+        if(a.size()!=out.size()||b.size()<broadcast_elements(a.size(),b_index)||c.size()<broadcast_elements(a.size(),c_index))throw std::invalid_argument("buffer counts do not match the broadcast");
+        encode(detail::Format<T>::bits,detail::Format<T>::complex,op,a.storage_,b.storage_,c.storage_,out.storage_,a.size(),b_index,c_index);
     }
     // fma/fms/complex_fma/complex_fms: out = a*b +/- c. Any operand may alias out.
     template<class T> void run(Operation op,const Buffer<T>& a,const Buffer<T>& b,const Buffer<T>& c,Buffer<T>& out){
@@ -129,9 +148,10 @@ public:
     }
     CommandBatch batch();
     // Bits must be a multiple of 32 in [64,1024]. Binary struct layouts above.
-    Timing run(int bits,Operation op,const void* a,const void* b,void* out,std::size_t count);
+    // b_index: broadcast read of b (b then holds broadcast_elements(count, b_index) values).
+    Timing run(int bits,Operation op,const void* a,const void* b,void* out,std::size_t count,Broadcast b_index={});
     Timing run_unary(int bits,Operation op,const void* a,void* out,std::size_t count);
-    Timing run_ternary(int bits,Operation op,const void* a,const void* b,const void* c,void* out,std::size_t count);
+    Timing run_ternary(int bits,Operation op,const void* a,const void* b,const void* c,void* out,std::size_t count,Broadcast b_index={},Broadcast c_index={});
     Timing segmented_dot(int bits,bool complex,const SegmentedDot& shape,const void* a,const void* b,void* out);
     // Four seeds / instance. Adjacent states_per_weight instances share weights;
     // count must be divisible by states_per_weight. Layout is seeds[j*count+i],

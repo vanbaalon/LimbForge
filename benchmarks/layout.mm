@@ -42,7 +42,7 @@ template<int Bits> void cases(id<MTLDevice> device,id<MTLCommandQueue> queue,std
             int v=(repeat+2+k)%2;auto start=std::chrono::steady_clock::now();auto state=pipelines[v];
             id<MTLCommandBuffer> command=[queue commandBuffer];id<MTLComputeCommandEncoder> encoder=[command computeCommandEncoder];[encoder setComputePipelineState:state];
             for(int j=0;j<3;++j)[encoder setBuffer:buffers[v][j] offset:0 atIndex:j];
-            word params[]={word(count),word(op),0,word(count),1};[encoder setBytes:params length:sizeof(params) atIndex:3];
+            word params[]={word(count),word(op),0,word(count),1,0,0,0,0};[encoder setBytes:params length:sizeof(params) atIndex:3];
             NSUInteger width=state.threadExecutionWidth,group=std::min(NSUInteger(128),state.maxTotalThreadsPerThreadgroup);group-=group%width;
             [encoder dispatchThreads:MTLSizeMake(count,1,1) threadsPerThreadgroup:MTLSizeMake(group,1,1)];[encoder endEncoding];[command commit];[command waitUntilCompleted];
             check(command.status!=MTLCommandBufferStatusError,"layout execution failed");double elapsed=std::chrono::duration<double>(std::chrono::steady_clock::now()-start).count();

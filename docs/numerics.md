@@ -132,6 +132,15 @@ tree in shared memory, then reduce their roots. Padding a final block with
 canonical zero preserves the valid-input result and error behavior. Group size
 changes scheduling and storage without changing the mathematical tree.
 
+## Broadcast operands
+
+Binary and fused element-wise operations can read `b` (and `c`) through `Broadcast{stride, period}`:
+element `i` uses index `(i / stride) % period` (`period = 0`: no wrap). `stride = k` shares each value
+across `k` adjacent outputs; `period = m` cycles a table of `m` values. The operand then holds
+`broadcast_elements(count, broadcast)` values. Available as `Engine::run(…, b_index)`,
+`Engine::run_ternary(…, b_index, c_index)` and the matching `CommandBatch::run` overloads; rounding is
+unchanged. The `a` operand and the output keep one element per index.
+
 ## Segmented dot products
 
 `Engine::segmented_dot(bits, complex, shape, a, b, out)` and `CommandBatch::segmented_dot` compute
