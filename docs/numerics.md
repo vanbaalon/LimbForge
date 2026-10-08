@@ -137,7 +137,7 @@ changes scheduling and storage without changing the mathematical tree.
 `Engine::vector_recurrence(bits, shape, start, p, q, r, out, base, dp, dq)` advances many
 independent four-component complex vectors (one GPU thread each; plan D4). Each multiply-add `mac(a, b, c)` is either composed, `cadd(c, cmul(a, b))` (default; the rounding of
 the existing complex operations), or fused with `shape.fused = true`, `cfma(a, b, c)` with one rounding
-per component (see "Fused multiply-add"; currently ~30× slower). With
+per component (see "Fused multiply-add"; ~3–4× slower than composed after round 25). With
 `dot(a, v) = mac(a3, v3, mac(a2, v2, mac(a1, v1, mac(a0, v0, 0))))`, one step with coefficient index
 `k` is (writing `cfma` for `mac`):
 
