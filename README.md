@@ -14,9 +14,10 @@ steps of 32. Real arithmetic uses round-to-nearest, ties-to-even.
 
 **Author: Nikolay Gromov.**
 
-> **Development preview:** CPU and physical GPU validation use independent MPFR
-> operations. The API is evolving, and device validation currently covers an
-> Apple M5 Max. See the [numerical contract](docs/numerics.md).
+> **Versioned API 1.x:** the current compatibility baseline is **1.0.0**. Production
+> consumers can pin `v1.0.0`; see [versioning and compatibility](docs/versioning.md).
+> CPU and physical GPU validation use independent MPFR operations, with device validation
+> currently covering an Apple M5 Max. See the [numerical contract](docs/numerics.md).
 
 ## GPU versus CPU
 

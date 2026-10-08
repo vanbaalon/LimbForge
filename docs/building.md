@@ -61,13 +61,17 @@ cmake --install build --prefix /path/to/limbforge-install
 A consumer can then use:
 
 ```cmake
-find_package(LimbForge 0.1 CONFIG REQUIRED)
+find_package(LimbForge 1.0.0 EXACT CONFIG REQUIRED)
 target_link_libraries(my_application PRIVATE LimbForge::limbforge)
 ```
 
 Set `CMAKE_PREFIX_PATH=/path/to/limbforge-install` when configuring the consumer.
 The installed library embeds its shader source and does not depend on source
 files being present at runtime.
+
+This pins the installed release. Use `1.0.0...<2.0.0` instead of `1.0.0 EXACT` to allow
+compatible releases deliberately. For source embedding, pin the `v1.0.0` Git tag or a commit.
+See [version checks and the compatibility policy](versioning.md).
 
 ## CMake options
 

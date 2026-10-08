@@ -1,6 +1,16 @@
 cmake_minimum_required(VERSION 3.20)
 set(CMAKE_OSX_DEPLOYMENT_TARGET "15.0" CACHE STRING "Minimum supported macOS version")
-project(LimbForge VERSION 0.1.0 LANGUAGES CXX OBJCXX)
+# The installed header is also usable without CMake; keep it the single version source.
+file(STRINGS "${CMAKE_CURRENT_LIST_DIR}/include/limbforge/version.hpp" LF_VERSION_DEFINITIONS
+  REGEX "^#define LIMBFORGE_VERSION_(MAJOR|MINOR|PATCH) [0-9]+$")
+foreach(component MAJOR MINOR PATCH)
+  string(REGEX MATCH "#define LIMBFORGE_VERSION_${component} ([0-9]+)" definition "${LF_VERSION_DEFINITIONS}")
+  if(NOT definition)
+    message(FATAL_ERROR "Missing LIMBFORGE_VERSION_${component} in version.hpp")
+  endif()
+  set(LF_VERSION_${component} "${CMAKE_MATCH_1}")
+endforeach()
+project(LimbForge VERSION "${LF_VERSION_MAJOR}.${LF_VERSION_MINOR}.${LF_VERSION_PATCH}" LANGUAGES CXX OBJCXX)
 if(NOT APPLE)
   message(FATAL_ERROR "LimbForge's GPU backend requires macOS and Metal")
 endif()
@@ -23,13 +33,14 @@ file(READ src/transcendental_core.hpp TRANSCENDENTAL_CORE_SOURCE)
 string(REPLACE "#pragma once" "" TRANSCENDENTAL_CORE_SOURCE "${TRANSCENDENTAL_CORE_SOURCE}")
 file(READ src/transcendental.metal TRANSCENDENTAL_SOURCE)
 configure_file(src/transcendental_source.hpp.in generated/transcendental_source.hpp @ONLY)
-set_property(DIRECTORY APPEND PROPERTY CMAKE_CONFIGURE_DEPENDS include/limbforge/core.hpp src/kernels.metal src/cooperative.metal src/linalg.metal src/batched_linalg.metal
+set_property(DIRECTORY APPEND PROPERTY CMAKE_CONFIGURE_DEPENDS include/limbforge/version.hpp include/limbforge/core.hpp src/kernels.metal src/cooperative.metal src/linalg.metal src/batched_linalg.metal
   src/numerics.metal src/transcendental_core.hpp src/transcendental.metal)
-add_library(limbforge src/engine.mm src/linalg.mm src/linalg_complex.mm src/batched_linalg.mm src/numerics.mm src/transcendental.mm)
+add_library(limbforge src/version.cpp src/engine.mm src/linalg.mm src/linalg_complex.mm src/batched_linalg.mm src/numerics.mm src/transcendental.mm)
 add_library(LimbForge::limbforge ALIAS limbforge)
+set_target_properties(limbforge PROPERTIES VERSION "${PROJECT_VERSION}")
 target_compile_features(limbforge PUBLIC cxx_std_17)
 target_include_directories(limbforge PUBLIC $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include> $<INSTALL_INTERFACE:include> PRIVATE "${CMAKE_CURRENT_BINARY_DIR}/generated")
-target_compile_options(limbforge PRIVATE -fobjc-arc -Wall -Wextra)
+target_compile_options(limbforge PRIVATE $<$<COMPILE_LANGUAGE:OBJCXX>:-fobjc-arc> -Wall -Wextra)
 target_link_libraries(limbforge PUBLIC "-framework Metal" "-framework Foundation")
 include(GNUInstallDirs)
 install(TARGETS limbforge EXPORT LimbForgeTargets ARCHIVE DESTINATION ${CMAKE_INSTALL_LIBDIR})
@@ -85,6 +96,16 @@ if(LIMBFORGE_BUILD_BAXTER_EXAMPLE)
   endif()
 endif()
 if(BUILD_TESTING)
+  add_executable(test_limbforge_version tests/test_version.cpp)
+  target_link_libraries(test_limbforge_version PRIVATE limbforge)
+  add_test(NAME version_cpu COMMAND test_limbforge_version)
+  add_test(NAME package_version_cpu COMMAND "${CMAKE_COMMAND}"
+    "-DLF_SOURCE_DIR=${CMAKE_CURRENT_SOURCE_DIR}" "-DLF_BINARY_DIR=${CMAKE_CURRENT_BINARY_DIR}"
+    "-DLF_VERSION=${PROJECT_VERSION}" "-DLF_MAJOR=${PROJECT_VERSION_MAJOR}"
+    "-DLF_MINOR=${PROJECT_VERSION_MINOR}" "-DLF_PATCH=${PROJECT_VERSION_PATCH}"
+    "-DLF_LIBDIR=${CMAKE_INSTALL_LIBDIR}" "-DLF_CONFIG=$<CONFIG>"
+    -P "${CMAKE_CURRENT_SOURCE_DIR}/tests/test_install_package.cmake")
+  set_tests_properties(package_version_cpu PROPERTIES DEPENDS version_cpu)
   add_executable(test_limbforge tests/test_arithmetic.cpp)
   target_link_libraries(test_limbforge PRIVATE limbforge_reference)
   add_test(NAME arithmetic_cpu COMMAND test_limbforge --cpu-only)

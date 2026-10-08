@@ -5,6 +5,7 @@
 #include <metal_stdlib>
 #else
 #include <cstdint>
+#include "version.hpp"
 #endif
 namespace limbforge {
 #ifdef __METAL_VERSION__
