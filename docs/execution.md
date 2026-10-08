@@ -116,3 +116,25 @@ and waiting, but excludes pipeline compilation. Use resident execution to amorti
 copies and command submission across a chain of arithmetic operations.
 `run_unary(bits,op,a,out,count)` provides the corresponding synchronous interface
 for square and square root.
+
+## Compiling pipelines ahead of use
+
+Each precision compiles one shader library (about 1 s) and each operation/mode its own pipeline on
+first use. Most pipelines take milliseconds, but fused vector recurrences and other kernels that inline
+the exact complex `fma` several times can take tens of seconds for a new width. The OS shader cache
+normally makes later runs fast. To keep this latency out of a solver's first iteration, request the
+pipelines up front:
+
+```cpp
+Prewarm request;
+request.bits = {224, 256};
+request.operations = {Operation::complex_mul, Operation::complex_fma};
+request.vector_shapes = {shape};          // VectorRecurrence options that matter: matrix/affine/all_steps/reverse/tangent/fused
+request.complex_dots = {SegmentedDot{0, 0, true}};
+auto ready = gpu.prewarm_async(request);  // compile on a background thread
+// ... CPU-side preparation; the Engine stays usable ...
+ready.get();                              // rethrows compilation or request errors
+```
+
+`Engine::prewarm` does the same in the calling thread. The pipeline cache is thread-safe; compilation
+runs outside its lock, so concurrent work on the same Engine is not blocked.

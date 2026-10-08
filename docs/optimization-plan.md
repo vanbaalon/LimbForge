@@ -280,11 +280,12 @@ For BSolver (≈128 lanes × 600 steps) the GPU runs ~128 threads. Two complemen
 | D5 batched 4×4 LU/solve/inverse/det | done (29), host-array | `Engine::lu4` |
 | D6 SYRK/GEMM, Cholesky, triangular solves | done (20-D6, 23-D6b), host-array | `linalg.hpp` |
 | C1 broadcast operands | done (28) | `Broadcast` |
+| C7 pipeline prewarm | done (33) | `Engine::prewarm_async` |
 | E1 cooperative recurrence | done for G = 16/32 (17, 22) | `cooperative.metal` |
 | L1 residue GEMM | done (16, 18, 20) | `linalg.hpp` |
 
 Next, by consumer value: qscmx/BSolver integration and end-to-end timing on an idle host (also the
-pending GitHub speed figures); C7 pipeline prewarm (first-use compilation can take minutes); resident
+pending GitHub speed figures); resident
 `lu4`/`linalg`; S1 polynomial jets, S4 norms/status summaries, S5 QR; G = 4/8 cooperative kernels under
 shader validation; ≥ 1024-bit `vector_recurrence`; D7 transcendentals.
 

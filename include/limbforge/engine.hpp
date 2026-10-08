@@ -3,6 +3,8 @@
 #include <cstddef>
 #include <memory>
 #include <string>
+#include <future>
+#include <vector>
 #include <stdexcept>
 #define LIMBFORGE_RESIDENT_API 1
 namespace limbforge {
@@ -43,6 +45,17 @@ struct VectorRecurrence {
     bool tangent=false;           // v is a tangent: v <- v + p(q.v) + dp(q.b) + p(dq.b), b = base state
     unsigned lanes_per_base=1,lanes_per_tangent=1; // lanes sharing a base trajectory / dp,dq
     bool fused=false;             // multiply-adds: cfma (one rounding per component) or cadd(c, cmul(a,b))
+};
+// Pipelines to compile ahead of use (Engine::prewarm). A new width or mode otherwise compiles during
+// its first encode; fused vector recurrences can take tens of seconds. The OS shader cache usually
+// makes later runs fast.
+struct Prewarm {
+    std::vector<int> bits;                 // widths to prepare (each compiles one shader library)
+    std::vector<Operation> operations;     // element-wise operations
+    bool recurrence=false,reductions=false;// scalar recurrence (all kernels) / tree sums
+    std::vector<VectorRecurrence> vector_shapes;
+    std::vector<SegmentedDot> real_dots,complex_dots;
+    std::vector<Batched4> lu4;
 };
 namespace detail {
 struct BufferStorage;
@@ -144,6 +157,10 @@ public:
     explicit Engine(EngineOptions options={}); ~Engine();
     Engine(const Engine&)=delete; Engine& operator=(const Engine&)=delete;
     std::string device_name() const;
+    // Compile the requested pipelines now; prewarm_async does it on a background thread while this
+    // Engine stays usable (the pipeline cache is thread-safe). Errors surface from the future.
+    void prewarm(const Prewarm& request);
+    std::future<void> prewarm_async(Prewarm request);
     PipelineInfo pipeline_info(int bits,Operation op);
     template<class T> Buffer<T> make_buffer(std::size_t count){
         static_assert(sizeof(T)==std::size_t(detail::Format<T>::bits/8+12)*(detail::Format<T>::complex?2:1),"buffer layout mismatch");

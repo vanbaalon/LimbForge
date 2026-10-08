@@ -1,4 +1,5 @@
 #include "reference.hpp"
+#include <chrono>
 #include <stdexcept>
 using namespace limbforge;
 void require(bool test,const char* message){if(!test)throw std::runtime_error(message);}
@@ -37,5 +38,21 @@ template<int Bits> void run(Engine& e){
     auto empty=e.make_buffer<F>(0);auto next=e.batch();next.run(Operation::add,empty,empty,empty);next.submit().wait();
     std::cout<<Bits<<"-bit resident API passed\n";
 }
-int main(){try{rejects([]{Engine bad({31});});rejects([]{Engine bad({2048});});Engine e;
+// Pipelines compile on a background thread while the same Engine keeps working; afterwards the
+// prewarmed shapes need no compilation, and request errors surface from the future.
+void prewarm(Engine& e){
+    using C=Complex<9>;VectorRecurrence shape;shape.lanes=8;shape.steps=1;shape.fused=true;
+    Prewarm request;request.bits={288};request.operations={Operation::mul,Operation::complex_fma};request.vector_shapes={shape};request.recurrence=true;
+    auto pending=e.prewarm_async(request);
+    std::mt19937_64 rng(5);std::vector<Float<128>> a(64),b(64),out(64);for(auto& x:a)x=reference::random_number<128>(rng,5);for(auto& x:b)x=reference::random_number<128>(rng,5);
+    for(int r=0;r<20;++r){e.run(128,Operation::mul,a.data(),b.data(),out.data(),64);
+        for(std::size_t i=0;i<64;++i)require(reference::equal<128>(out[i],reference::real<128>(Operation::mul,a[i],b[i])),"engine use during prewarm");}
+    pending.get();
+    std::vector<C> x(4*8);auto t=std::chrono::steady_clock::now();e.vector_recurrence(288,shape,x.data(),x.data(),x.data(),nullptr,x.data());
+    double seconds=std::chrono::duration<double>(std::chrono::steady_clock::now()-t).count();
+    require(seconds<2.0,"prewarmed vector recurrence still compiled on first use");
+    Prewarm bad;bad.bits={80};bool rejected=false;try{e.prewarm_async(bad).get();}catch(const std::invalid_argument&){rejected=true;}require(rejected,"invalid prewarm width accepted");
+    std::cout<<"prewarm: background compilation, concurrent use and first call ("<<seconds<<" s) passed\n";
+}
+int main(){try{rejects([]{Engine bad({31});});rejects([]{Engine bad({2048});});Engine e;prewarm(e);
     auto info=e.pipeline_info(384,Operation::mul);require(info.threads_per_threadgroup<=info.max_threads&&info.threads_per_threadgroup%info.simd_width==0,"invalid pipeline group size");run<128>(e);run<384>(e);run<1024>(e);return 0;}catch(const std::exception& error){std::cerr<<error.what()<<'\n';return 1;}}

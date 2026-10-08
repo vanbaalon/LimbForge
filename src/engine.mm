@@ -9,6 +9,7 @@
 #include <stdexcept>
 #include <atomic>
 #include <mutex>
+#include <thread>
 #include <vector>
 #include <algorithm>
 #include <array>
@@ -78,48 +79,55 @@ struct Engine::Impl {
         if(!device)throw std::runtime_error("no Metal GPU available");
         queue=[device newCommandQueue];if(!queue)throw std::runtime_error("cannot create Metal command queue");
     }
+    // The caches are shared with prewarm threads: lookups hold the lock, compilation does not. Two
+    // threads compiling the same key both succeed; the first stored object is kept.
+    std::mutex cache_mutex;
+    id<MTLLibrary> library(int bits){
+        {std::lock_guard<std::mutex> lock(cache_mutex);auto it=libraries.find(bits);if(it!=libraries.end())return it->second;}
+        NSString* source=[NSString stringWithFormat:@"#define MP_BITS %d\n%s",bits,limbforge_shader_source];
+        MTLCompileOptions* options=[MTLCompileOptions new];
+        options.mathMode=MTLMathModeSafe;options.languageVersion=MTLLanguageVersion3_1;
+        NSError* error=nil;
+        id<MTLLibrary> compiled=[device newLibraryWithSource:source options:options error:&error];
+        if(!compiled)throw std::runtime_error("Metal compilation: "+error_message(error));
+        std::lock_guard<std::mutex> lock(cache_mutex);return libraries.emplace(bits,compiled).first->second;
+    }
     id<MTLComputePipelineState> pipeline(int bits,int operation) {
         auto key=std::make_pair(bits,operation);
-        auto existing=pipelines.find(key);if(existing!=pipelines.end())return existing->second;
-        if(!libraries.count(bits)) {
-            NSString* source=[NSString stringWithFormat:@"#define MP_BITS %d\n%s",bits,limbforge_shader_source];
-            MTLCompileOptions* options=[MTLCompileOptions new];
-            options.mathMode=MTLMathModeSafe;options.languageVersion=MTLLanguageVersion3_1;
-            NSError* error=nil;
-            id<MTLLibrary> library=[device newLibraryWithSource:source options:options error:&error];
-            if(!library)throw std::runtime_error("Metal compilation: "+error_message(error));
-            libraries[bits]=library;
-        }
+        {std::lock_guard<std::mutex> lock(cache_mutex);auto existing=pipelines.find(key);if(existing!=pipelines.end())return existing->second;}
+        @autoreleasepool {
+        id<MTLLibrary> lib=library(bits);
         NSError* error=nil;id<MTLFunction> function;
         if(operation>=400){
             MTLFunctionConstantValues* constants=[MTLFunctionConstantValues new];
             std::uint32_t flags=operation-400;[constants setConstantValue:&flags type:MTLDataTypeUInt atIndex:4];
-            function=[libraries[bits] newFunctionWithName:@"batched4" constantValues:constants error:&error];
+            function=[lib newFunctionWithName:@"batched4" constantValues:constants error:&error];
         }
         else if(operation>=300){
             MTLFunctionConstantValues* constants=[MTLFunctionConstantValues new];
             std::uint32_t flags=(operation-300)&1;[constants setConstantValue:&flags type:MTLDataTypeUInt atIndex:3];
-            function=[libraries[bits] newFunctionWithName:(operation-300)&2?@"segmented_dot_complex":@"segmented_dot_real" constantValues:constants error:&error];
+            function=[lib newFunctionWithName:(operation-300)&2?@"segmented_dot_complex":@"segmented_dot_real" constantValues:constants error:&error];
         }
         else if(operation>=200){
             MTLFunctionConstantValues* constants=[MTLFunctionConstantValues new];
             std::uint32_t flags=operation-200;[constants setConstantValue:&flags type:MTLDataTypeUInt atIndex:2];
-            function=[libraries[bits] newFunctionWithName:@"vector_recurrence" constantValues:constants error:&error];
+            function=[lib newFunctionWithName:@"vector_recurrence" constantValues:constants error:&error];
         }
         else if(operation>=100){
             NSString* names[]={@"recurrence",@"tree_sum_real",@"tree_sum_complex",@"global_tree_sum_real",@"global_tree_sum_complex",@"recurrence_coop16",@"recurrence_coop32"};
-            function=[libraries[bits] newFunctionWithName:names[operation-100]];
+            function=[lib newFunctionWithName:names[operation-100]];
         }
         else {
             MTLFunctionConstantValues* constants=[MTLFunctionConstantValues new];
             std::uint32_t op=operation==7&&bits!=384?2:operation;[constants setConstantValue:&op type:MTLDataTypeUInt atIndex:0];
             NSString* name=operation>=4&&operation<=6?@"complex_arithmetic":operation==9||operation==10?@"fused_arithmetic":operation>=11?@"complex_fused":@"arithmetic";
-            function=[libraries[bits] newFunctionWithName:name constantValues:constants error:&error];
+            function=[lib newFunctionWithName:name constantValues:constants error:&error];
         }
         if(!function)throw std::runtime_error("Metal specialization: "+error_message(error));
         id<MTLComputePipelineState> state=[device newComputePipelineStateWithFunction:function error:&error];
         if(!state)throw std::runtime_error("Metal pipeline: "+error_message(error));
-        pipelines[key]=state;return state;
+        std::lock_guard<std::mutex> lock(cache_mutex);return pipelines.emplace(key,state).first->second;
+        }
     }
     unsigned group_size(id<MTLComputePipelineState> state,int bits,int operation)const{
         NSUInteger width=state.threadExecutionWidth,maximum=state.maxTotalThreadsPerThreadgroup;
@@ -128,6 +136,17 @@ struct Engine::Impl {
         NSUInteger result=std::min(preferred,maximum);result-=result%width;
         if(!result)throw std::runtime_error("pipeline cannot fit one SIMD group");
         return unsigned(result);
+    }
+    void prewarm(const Prewarm& r){
+        for(int bits:r.bits){validate(bits,0);library(bits);
+            for(auto op:r.operations){if(!operation_is_valid(op))throw std::invalid_argument("unknown arithmetic operation");pipeline(bits,int(op));}
+            if(r.recurrence)for(int op:{100,105,106})pipeline(bits,op);
+            if(r.reductions)for(int op:{101,102,103,104})pipeline(bits,op);
+            for(auto& v:r.vector_shapes){if(v.matrix&&v.tangent)throw std::invalid_argument("tangent mode requires the rank-one form");pipeline(bits,200+int(vector_flags(v)));}
+            for(auto& d:r.real_dots)pipeline(bits,300+(d.shared_right?1:0));
+            for(auto& d:r.complex_dots)pipeline(bits,302+(d.shared_right?1:0));
+            for(auto& b:r.lu4)pipeline(bits,400+int((b.fused?1:0)|(b.determinant?2:0)|(b.inverse?4:0)));
+        }
     }
     std::shared_ptr<detail::BufferStorage> allocate(std::size_t bytes){
         if(bytes>device.maxBufferLength)throw std::invalid_argument("buffer exceeds device maximum");
@@ -421,6 +440,8 @@ Timing Engine::lu4(int bits,const Batched4& s,const void* A,const void* B,void* 
     return impl->lu4_dispatch(bits,400+int(flags),s,A,checked_size(s.count*16,stride),B,checked_size(checked_size(s.count*4,s.rhs),stride),
                               X,checked_size(checked_size(s.count*4,R),stride),det,s.determinant?checked_size(s.count,stride):0,status);
 }
+void Engine::prewarm(const Prewarm& r){impl->prewarm(r);}
+std::future<void> Engine::prewarm_async(Prewarm r){auto keep=impl;return std::async(std::launch::async,[keep,r=std::move(r)]{keep->prewarm(r);});}
 Timing Engine::recurrence(int bits,const void* seeds,const void* weights,void* out,std::size_t count,unsigned steps,unsigned states_per_weight) {
     validate(bits,count);
     if(!states_per_weight||count%states_per_weight)throw std::invalid_argument("count must be divisible by states_per_weight");
