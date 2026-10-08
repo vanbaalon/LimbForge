@@ -1,0 +1,55 @@
+# Round 46-fused-wide, Release build, Apple M5 Max, macOS 26 (shared host, load 25-46).
+# Full suite (tail):
+      Start 10: linalg_qr_complex
+10/22 Test #10: linalg_qr_complex ................   Passed   59.08 sec
+      Start 11: arithmetic_gpu
+11/22 Test #11: arithmetic_gpu ...................   Passed   28.09 sec
+      Start 12: broadcast_gpu
+12/22 Test #12: broadcast_gpu ....................   Passed   30.13 sec
+      Start 13: batched4_gpu
+13/22 Test #13: batched4_gpu .....................   Passed  279.77 sec
+      Start 14: cast_gpu
+14/22 Test #14: cast_gpu .........................   Passed    1.15 sec
+      Start 15: segmented_dot_gpu
+15/22 Test #15: segmented_dot_gpu ................   Passed   39.09 sec
+      Start 16: vector_recurrence_gpu
+16/22 Test #16: vector_recurrence_gpu ............   Passed   80.84 sec
+      Start 17: numerics_gpu
+17/22 Test #17: numerics_gpu .....................   Passed    6.47 sec
+      Start 18: resident_units_gpu
+18/22 Test #18: resident_units_gpu ...............   Passed   42.29 sec
+      Start 19: resident_linalg_gpu
+19/22 Test #19: resident_linalg_gpu ..............   Passed   17.87 sec
+      Start 20: resident_buffers
+20/22 Test #20: resident_buffers .................   Passed    4.06 sec
+      Start 21: transcendental_gpu
+21/22 Test #21: transcendental_gpu ...............   Passed   93.50 sec
+      Start 22: tree_reduction
+22/22 Test #22: tree_reduction ...................   Passed   11.37 sec
+
+100% tests passed out of 22
+
+Total Test time (real) = 1158.06 sec
+
+[exited with code 0]
+
+# MTL_SHADER_VALIDATION=1:
+Test project /Users/k0959535/Dropbox/IntegrabilityProjects/2026 4d SoV/LimbForge/.claude/worktrees/agent-a9d1edf2700dbf3c8/build
+    Start  4: fused_gpu
+1/5 Test  #4: fused_gpu ........................   Passed  362.02 sec
+    Start 13: batched4_gpu
+2/5 Test #13: batched4_gpu .....................   Passed  335.81 sec
+    Start 15: segmented_dot_gpu
+3/5 Test #15: segmented_dot_gpu ................   Passed   50.08 sec
+    Start 16: vector_recurrence_gpu
+4/5 Test #16: vector_recurrence_gpu ............   Passed  109.10 sec
+    Start 17: numerics_gpu
+5/5 Test #17: numerics_gpu .....................   Passed  125.95 sec
+
+100% tests passed out of 5
+
+Total Test time (real) = 982.96 sec
+
+[exited with code 0]
+
+# Fault injection in dot2_add_rolled (reverted): skipping the third term on the near general path -> 'GPU vector recurrence vs MPFR hard cfma cases fused bits=64 index=392'; skipping the largest term on the far path -> '... bits=64 index=195'. Both caught only by the hard cases; the random runs passed.

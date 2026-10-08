@@ -212,7 +212,7 @@ Each item: written contract → MPFR/MPC reference → CPU implementation in `co
   `s₀=RN(a₀b₀)`, `s_k=fma(a_k,b_k,s_{k−1})` sequentially (bitwise reproducible regardless of thread configuration); optional
   `pairwise` mode with a fixed adjacent-pair tree (reuse round-10/11 tree code) for long segments. One thread per segment
   for K ≤ ~128; SIMD-group-per-segment variant for low segment counts. Fourier transforms = batched GEMM → D6 kernel.
-- **D4 status (round 21):** implemented as `Engine::vector_recurrence` (host-array API; composed default, fused option; tangent from a stored base chain). Resident version done (round 24). Next: faster fused three-term sum; ≥ 1024-bit compile; qscmx integration.
+- **D4 status (round 21):** implemented as `Engine::vector_recurrence` (host-array API; composed default, fused option; tangent from a stored base chain). Resident version done (round 24). Fused mode at every width to 1024 bits with 0.3–4 s cold compiles (round 46-fused-wide). Next: qscmx integration.
 - **D4. Vector recurrence (tips #1, highest consumer value)** — L, needs D2 (and C1 for sharing).
   `vector_recurrence(bits, v0, p, q, r, out, lanes, steps, lanes_per_weight, flags)`; per step
   `s=q_k·v` (fixed order via D2/D3), `v_i ← cfma(p_{k,i}, s, v_i) (+ r_{k,i})`. Flags: affine source `r`; general 4×4
@@ -284,7 +284,7 @@ For BSolver (≈128 lanes × 600 steps) the GPU runs ~128 threads. Two complemen
 | D1 MPFR/MPC bridge | done (13-D1) | `mpfr_bridge.hpp` |
 | D2 fused fma / complex fma | done (15, 19, 25, 26) | `Operation::fma…complex_fms` |
 | D3 segmented dots | done (27) | `segmented_dot` |
-| D4 vector recurrence (+tangent, resident) | done (21, 24) | `vector_recurrence` |
+| D4 vector recurrence (+tangent, resident) | done (21, 24); fused to 1024 bits (46) | `vector_recurrence` |
 | D5 batched 4×4 LU/solve/inverse/det | done (29, resident 34) | `Engine::lu4`, `CommandBatch::lu4` |
 | D6 SYRK/GEMM, Cholesky, triangular solves | done (20-D6, 23-D6b); resident SYRK/GEMM, Buffer-form factorizations (42) | `linalg.hpp` |
 | S5 Householder QR factor object, least squares, apply Q (+ augmented LM) | done (31-S5), host-array, full rank | `Linalg::factor_qr`, `QRFactor` |
@@ -306,8 +306,7 @@ For BSolver (≈128 lanes × 600 steps) the GPU runs ~128 threads. Two complemen
 Next, by consumer value: qscmx/BSolver integration and end-to-end timing on an idle host (also the
 pending GitHub speed figures); transcendental retry rungs above 35 words (W ≥ 36 miscompile, round 44); a cheaper next-panel QR update
 (the panel and that update are the critical path, 45-lookahead), pivoted W rows off the host, a reconstruction-bound trailing
-update; G = 4/8 cooperative shapes with ≥ 3 limbs per lane
-(validation-only failures, 41-L4b); fused `vector_recurrence` above 512 bits.
+update; G = 4/8 cooperative shapes with ≥ 3 limbs per lane (validation-only failures, 41-L4b).
 
 ## 5. Order, tracks and dependencies
 

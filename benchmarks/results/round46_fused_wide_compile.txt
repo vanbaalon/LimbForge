@@ -1,0 +1,128 @@
+# Round 46-fused-wide: cold pipeline compile (benchmarks/experiments/vr_compile_probe.mm, new nonce per run),
+# Apple M5 Max, macOS 26, host load 25-46 (shared). Flags: 32 rank-one, 34 matrix, 48 tangent (+32 = fused).
+# main 5dc412c (watchdog 300 s):
+bits=512 kernel=complex_fused const=0:11 library_s=0.519705 specialise_s=0.100645 pipeline_s=5.01187 regs_max_threads=1024
+bits=512 kernel=vector_recurrence const=2:32 library_s=0.500043 specialise_s=0.112 pipeline_s=18.5429 regs_max_threads=1024
+bits=512 kernel=vector_recurrence const=2:34 library_s=0.546486 specialise_s=0.122661 pipeline_s=6.71957 regs_max_threads=1024
+bits=512 kernel=vector_recurrence const=2:48 library_s=0.821625 specialise_s=0.255337 pipeline_s=206.94 regs_max_threads=1024
+bits=768 kernel=complex_fused const=0:11 library_s=0.985914 specialise_s=0.180135 pipeline_s=7.60171 regs_max_threads=1024
+bits=768 kernel=vector_recurrence const=2:32 library_s=1.00845 specialise_s=0.229895 pipeline_s=30.591 regs_max_threads=1024
+bits=768 kernel=vector_recurrence const=2:34 library_s=1.21845 specialise_s=0.244655 pipeline_s=10.9448 regs_max_threads=1024
+TIMEOUT
+exit 3 bits=768 flags=48
+bits=1024 kernel=complex_fused const=0:11 library_s=0.593858 specialise_s=0.110427 pipeline_s=5.55942 regs_max_threads=1024
+bits=1024 kernel=vector_recurrence const=2:32 library_s=0.571035 specialise_s=0.117106 pipeline_s=21.7853 regs_max_threads=1024
+bits=1024 kernel=vector_recurrence const=2:34 library_s=0.870744 specialise_s=0.196014 pipeline_s=10.9216 regs_max_threads=1024
+TIMEOUT
+exit 3 bits=1024 flags=48
+# rolled fused step (this round):
+bits=512 kernel=vector_recurrence const=2:32 library_s=0.419144 specialise_s=0.197981 pipeline_s=0.330003 regs_max_threads=1024
+bits=512 kernel=vector_recurrence const=2:34 library_s=0.420168 specialise_s=0.192491 pipeline_s=0.346052 regs_max_threads=1024
+bits=512 kernel=vector_recurrence const=2:48 library_s=0.412488 specialise_s=0.226243 pipeline_s=0.641541 regs_max_threads=1024
+bits=768 kernel=vector_recurrence const=2:32 library_s=0.545227 specialise_s=0.17052 pipeline_s=0.50293 regs_max_threads=1024
+bits=768 kernel=vector_recurrence const=2:34 library_s=0.583804 specialise_s=0.173863 pipeline_s=0.532817 regs_max_threads=1024
+bits=768 kernel=vector_recurrence const=2:48 library_s=0.568402 specialise_s=0.230058 pipeline_s=1.15821 regs_max_threads=1024
+bits=1024 kernel=vector_recurrence const=2:32 library_s=0.686925 specialise_s=0.165865 pipeline_s=0.674032 regs_max_threads=1024
+bits=1024 kernel=vector_recurrence const=2:34 library_s=0.660106 specialise_s=0.156733 pipeline_s=0.708119 regs_max_threads=1024
+bits=1024 kernel=vector_recurrence const=2:48 library_s=0.68017 specialise_s=0.208418 pipeline_s=1.4589 regs_max_threads=1024
+# rolled, all 24 fused flag combinations (32..63 without matrix+tangent) at 256/512/768/1024 bits:
+bits=256 kernel=vector_recurrence const=2:32 library_s=0.928449 specialise_s=0.275448 pipeline_s=0.479155 regs_max_threads=1024
+bits=256 kernel=vector_recurrence const=2:33 library_s=0.751448 specialise_s=0.282825 pipeline_s=0.602985 regs_max_threads=1024
+bits=256 kernel=vector_recurrence const=2:34 library_s=0.409657 specialise_s=0.276423 pipeline_s=0.503975 regs_max_threads=1024
+bits=256 kernel=vector_recurrence const=2:35 library_s=0.94173 specialise_s=0.397334 pipeline_s=1.00338 regs_max_threads=1024
+bits=256 kernel=vector_recurrence const=2:36 library_s=0.701739 specialise_s=0.28991 pipeline_s=0.515093 regs_max_threads=1024
+bits=256 kernel=vector_recurrence const=2:37 library_s=0.586229 specialise_s=0.287693 pipeline_s=0.761494 regs_max_threads=1024
+bits=256 kernel=vector_recurrence const=2:38 library_s=0.454915 specialise_s=0.199464 pipeline_s=0.346426 regs_max_threads=1024
+bits=256 kernel=vector_recurrence const=2:39 library_s=0.455439 specialise_s=0.235502 pipeline_s=0.678331 regs_max_threads=1024
+bits=256 kernel=vector_recurrence const=2:40 library_s=0.535261 specialise_s=0.254008 pipeline_s=0.421087 regs_max_threads=1024
+bits=256 kernel=vector_recurrence const=2:41 library_s=0.566716 specialise_s=0.291214 pipeline_s=0.803872 regs_max_threads=1024
+bits=256 kernel=vector_recurrence const=2:42 library_s=0.607881 specialise_s=0.277531 pipeline_s=0.475972 regs_max_threads=1024
+bits=256 kernel=vector_recurrence const=2:43 library_s=0.615928 specialise_s=0.295929 pipeline_s=0.781467 regs_max_threads=1024
+bits=256 kernel=vector_recurrence const=2:44 library_s=0.551183 specialise_s=0.236551 pipeline_s=0.43101 regs_max_threads=1024
+bits=256 kernel=vector_recurrence const=2:45 library_s=0.570406 specialise_s=0.293674 pipeline_s=0.730002 regs_max_threads=1024
+bits=256 kernel=vector_recurrence const=2:46 library_s=0.481509 specialise_s=0.214756 pipeline_s=0.377724 regs_max_threads=1024
+bits=256 kernel=vector_recurrence const=2:47 library_s=0.466584 specialise_s=0.250389 pipeline_s=0.822367 regs_max_threads=1024
+bits=256 kernel=vector_recurrence const=2:48 library_s=0.569286 specialise_s=0.292828 pipeline_s=0.765275 regs_max_threads=1024
+bits=256 kernel=vector_recurrence const=2:49 library_s=0.561493 specialise_s=0.308104 pipeline_s=0.612374 regs_max_threads=1024
+bits=256 kernel=vector_recurrence const=2:52 library_s=0.564863 specialise_s=0.277564 pipeline_s=0.682661 regs_max_threads=1024
+bits=256 kernel=vector_recurrence const=2:53 library_s=0.449298 specialise_s=0.237805 pipeline_s=0.512862 regs_max_threads=1024
+bits=256 kernel=vector_recurrence const=2:56 library_s=0.445687 specialise_s=0.235186 pipeline_s=0.619696 regs_max_threads=1024
+bits=256 kernel=vector_recurrence const=2:57 library_s=0.417628 specialise_s=0.22644 pipeline_s=0.466709 regs_max_threads=1024
+bits=256 kernel=vector_recurrence const=2:60 library_s=0.4804 specialise_s=0.25602 pipeline_s=0.771793 regs_max_threads=1024
+bits=256 kernel=vector_recurrence const=2:61 library_s=0.538733 specialise_s=0.287055 pipeline_s=0.602436 regs_max_threads=1024
+bits=512 kernel=vector_recurrence const=2:32 library_s=0.558 specialise_s=0.258433 pipeline_s=0.484267 regs_max_threads=1024
+bits=512 kernel=vector_recurrence const=2:33 library_s=0.65894 specialise_s=0.377312 pipeline_s=1.09073 regs_max_threads=1024
+bits=512 kernel=vector_recurrence const=2:34 library_s=0.701239 specialise_s=0.332772 pipeline_s=0.614723 regs_max_threads=1024
+bits=512 kernel=vector_recurrence const=2:35 library_s=0.743329 specialise_s=0.393422 pipeline_s=1.20524 regs_max_threads=1024
+bits=512 kernel=vector_recurrence const=2:36 library_s=0.672182 specialise_s=0.284255 pipeline_s=0.46655 regs_max_threads=1024
+bits=512 kernel=vector_recurrence const=2:37 library_s=0.645397 specialise_s=0.41834 pipeline_s=1.29451 regs_max_threads=1024
+bits=512 kernel=vector_recurrence const=2:38 library_s=0.887121 specialise_s=0.356328 pipeline_s=0.647213 regs_max_threads=1024
+bits=512 kernel=vector_recurrence const=2:39 library_s=0.778984 specialise_s=0.364219 pipeline_s=1.14197 regs_max_threads=1024
+bits=512 kernel=vector_recurrence const=2:40 library_s=0.998642 specialise_s=0.371014 pipeline_s=0.667405 regs_max_threads=1024
+bits=512 kernel=vector_recurrence const=2:41 library_s=0.698748 specialise_s=0.344283 pipeline_s=1.05146 regs_max_threads=1024
+bits=512 kernel=vector_recurrence const=2:42 library_s=0.780573 specialise_s=0.375517 pipeline_s=0.711921 regs_max_threads=1024
+bits=512 kernel=vector_recurrence const=2:43 library_s=0.958846 specialise_s=0.441376 pipeline_s=1.26927 regs_max_threads=1024
+bits=512 kernel=vector_recurrence const=2:44 library_s=0.740685 specialise_s=0.290618 pipeline_s=0.508509 regs_max_threads=1024
+bits=512 kernel=vector_recurrence const=2:45 library_s=0.600409 specialise_s=0.298788 pipeline_s=0.881685 regs_max_threads=1024
+bits=512 kernel=vector_recurrence const=2:46 library_s=0.533234 specialise_s=0.24053 pipeline_s=0.4768 regs_max_threads=1024
+bits=512 kernel=vector_recurrence const=2:47 library_s=0.517475 specialise_s=0.262806 pipeline_s=0.811872 regs_max_threads=1024
+bits=512 kernel=vector_recurrence const=2:48 library_s=0.505456 specialise_s=0.257197 pipeline_s=0.792588 regs_max_threads=1024
+bits=512 kernel=vector_recurrence const=2:49 library_s=0.582048 specialise_s=0.31926 pipeline_s=1.55587 regs_max_threads=1024
+bits=512 kernel=vector_recurrence const=2:52 library_s=0.616287 specialise_s=0.387806 pipeline_s=1.39776 regs_max_threads=1024
+bits=512 kernel=vector_recurrence const=2:53 library_s=0.992951 specialise_s=0.593583 pipeline_s=2.93205 regs_max_threads=1024
+bits=512 kernel=vector_recurrence const=2:56 library_s=0.951615 specialise_s=0.430896 pipeline_s=1.70073 regs_max_threads=1024
+bits=512 kernel=vector_recurrence const=2:57 library_s=1.10643 specialise_s=0.446069 pipeline_s=1.77069 regs_max_threads=1024
+bits=512 kernel=vector_recurrence const=2:60 library_s=1.30082 specialise_s=0.621624 pipeline_s=1.95928 regs_max_threads=1024
+bits=512 kernel=vector_recurrence const=2:61 library_s=0.944031 specialise_s=0.403349 pipeline_s=1.7363 regs_max_threads=1024
+bits=768 kernel=vector_recurrence const=2:32 library_s=0.843647 specialise_s=0.267922 pipeline_s=0.895999 regs_max_threads=1024
+bits=768 kernel=vector_recurrence const=2:33 library_s=1.15592 specialise_s=0.356057 pipeline_s=1.94426 regs_max_threads=1024
+bits=768 kernel=vector_recurrence const=2:34 library_s=1.24071 specialise_s=0.327811 pipeline_s=1.00901 regs_max_threads=1024
+bits=768 kernel=vector_recurrence const=2:35 library_s=1.26795 specialise_s=0.405503 pipeline_s=1.56637 regs_max_threads=1024
+bits=768 kernel=vector_recurrence const=2:36 library_s=1.17428 specialise_s=0.309548 pipeline_s=0.987285 regs_max_threads=1024
+bits=768 kernel=vector_recurrence const=2:37 library_s=1.18444 specialise_s=0.372155 pipeline_s=1.70305 regs_max_threads=1024
+bits=768 kernel=vector_recurrence const=2:38 library_s=0.715311 specialise_s=0.275656 pipeline_s=1.01483 regs_max_threads=1024
+bits=768 kernel=vector_recurrence const=2:39 library_s=1.25895 specialise_s=0.398003 pipeline_s=2.1634 regs_max_threads=1024
+bits=768 kernel=vector_recurrence const=2:40 library_s=1.41663 specialise_s=0.47868 pipeline_s=1.34081 regs_max_threads=1024
+bits=768 kernel=vector_recurrence const=2:41 library_s=1.77207 specialise_s=0.486111 pipeline_s=1.98316 regs_max_threads=1024
+bits=768 kernel=vector_recurrence const=2:42 library_s=0.926603 specialise_s=0.28391 pipeline_s=0.917597 regs_max_threads=1024
+bits=768 kernel=vector_recurrence const=2:43 library_s=1.06508 specialise_s=0.370998 pipeline_s=2.00835 regs_max_threads=1024
+bits=768 kernel=vector_recurrence const=2:44 library_s=1.07214 specialise_s=0.309363 pipeline_s=0.925617 regs_max_threads=1024
+bits=768 kernel=vector_recurrence const=2:45 library_s=0.962442 specialise_s=0.342455 pipeline_s=1.71422 regs_max_threads=1024
+bits=768 kernel=vector_recurrence const=2:46 library_s=0.838617 specialise_s=0.204043 pipeline_s=0.631349 regs_max_threads=1024
+bits=768 kernel=vector_recurrence const=2:47 library_s=0.695306 specialise_s=0.345154 pipeline_s=1.98823 regs_max_threads=1024
+bits=768 kernel=vector_recurrence const=2:48 library_s=1.04336 specialise_s=0.373249 pipeline_s=1.90941 regs_max_threads=1024
+bits=768 kernel=vector_recurrence const=2:49 library_s=1.0365 specialise_s=0.369326 pipeline_s=2.41942 regs_max_threads=1024
+bits=768 kernel=vector_recurrence const=2:52 library_s=1.19546 specialise_s=0.40361 pipeline_s=2.03827 regs_max_threads=1024
+bits=768 kernel=vector_recurrence const=2:53 library_s=0.739773 specialise_s=0.256824 pipeline_s=1.96479 regs_max_threads=1024
+bits=768 kernel=vector_recurrence const=2:56 library_s=0.629687 specialise_s=0.273282 pipeline_s=1.31565 regs_max_threads=1024
+bits=768 kernel=vector_recurrence const=2:57 library_s=0.813522 specialise_s=0.394977 pipeline_s=2.66654 regs_max_threads=1024
+bits=768 kernel=vector_recurrence const=2:60 library_s=1.11175 specialise_s=0.368221 pipeline_s=1.95254 regs_max_threads=1024
+bits=768 kernel=vector_recurrence const=2:61 library_s=0.847194 specialise_s=0.253642 pipeline_s=2.27679 regs_max_threads=1024
+bits=1024 kernel=vector_recurrence const=2:32 library_s=0.82042 specialise_s=0.240206 pipeline_s=1.10308 regs_max_threads=1024
+bits=1024 kernel=vector_recurrence const=2:33 library_s=1.0919 specialise_s=0.328486 pipeline_s=2.25495 regs_max_threads=1024
+bits=1024 kernel=vector_recurrence const=2:34 library_s=1.20922 specialise_s=0.252173 pipeline_s=1.10851 regs_max_threads=1024
+bits=1024 kernel=vector_recurrence const=2:35 library_s=0.759024 specialise_s=0.206953 pipeline_s=1.52787 regs_max_threads=1024
+bits=1024 kernel=vector_recurrence const=2:36 library_s=0.833833 specialise_s=0.243714 pipeline_s=1.10626 regs_max_threads=1024
+bits=1024 kernel=vector_recurrence const=2:37 library_s=1.07229 specialise_s=0.310503 pipeline_s=2.16041 regs_max_threads=1024
+bits=1024 kernel=vector_recurrence const=2:38 library_s=1.32767 specialise_s=0.219204 pipeline_s=0.782678 regs_max_threads=1024
+bits=1024 kernel=vector_recurrence const=2:39 library_s=0.714858 specialise_s=0.224817 pipeline_s=1.45591 regs_max_threads=1024
+bits=1024 kernel=vector_recurrence const=2:40 library_s=0.696632 specialise_s=0.162363 pipeline_s=0.707739 regs_max_threads=1024
+bits=1024 kernel=vector_recurrence const=2:41 library_s=0.875634 specialise_s=0.269035 pipeline_s=1.9452 regs_max_threads=1024
+bits=1024 kernel=vector_recurrence const=2:42 library_s=0.978862 specialise_s=0.223084 pipeline_s=0.995731 regs_max_threads=1024
+bits=1024 kernel=vector_recurrence const=2:43 library_s=0.950789 specialise_s=0.272399 pipeline_s=1.95059 regs_max_threads=1024
+bits=1024 kernel=vector_recurrence const=2:44 library_s=0.942843 specialise_s=0.223783 pipeline_s=0.980457 regs_max_threads=1024
+bits=1024 kernel=vector_recurrence const=2:45 library_s=0.945917 specialise_s=0.267062 pipeline_s=1.60468 regs_max_threads=1024
+bits=1024 kernel=vector_recurrence const=2:46 library_s=1.14669 specialise_s=0.265157 pipeline_s=1.22582 regs_max_threads=1024
+bits=1024 kernel=vector_recurrence const=2:47 library_s=1.11862 specialise_s=0.333426 pipeline_s=2.36543 regs_max_threads=1024
+bits=1024 kernel=vector_recurrence const=2:48 library_s=1.26051 specialise_s=0.321499 pipeline_s=2.18474 regs_max_threads=1024
+bits=1024 kernel=vector_recurrence const=2:49 library_s=1.37217 specialise_s=0.37349 pipeline_s=4.01864 regs_max_threads=1024
+bits=1024 kernel=vector_recurrence const=2:52 library_s=1.09611 specialise_s=0.296969 pipeline_s=2.00032 regs_max_threads=1024
+bits=1024 kernel=vector_recurrence const=2:53 library_s=0.918506 specialise_s=0.279308 pipeline_s=3.05362 regs_max_threads=1024
+bits=1024 kernel=vector_recurrence const=2:56 library_s=0.903998 specialise_s=0.267999 pipeline_s=1.95024 regs_max_threads=1024
+bits=1024 kernel=vector_recurrence const=2:57 library_s=0.873946 specialise_s=0.283615 pipeline_s=3.27255 regs_max_threads=1024
+bits=1024 kernel=vector_recurrence const=2:60 library_s=0.89369 specialise_s=0.252647 pipeline_s=1.84587 regs_max_threads=1024
+bits=1024 kernel=vector_recurrence const=2:61 library_s=0.840252 specialise_s=0.270258 pipeline_s=3.13342 regs_max_threads=1024
+# experiment, not adopted: __attribute__((noinline)) on the original dot2_add, 512 bits:
+bits=512 kernel=vector_recurrence const=2:32 pipeline_s=1.40563 (main: 16.4-18.5)
+bits=512 kernel=vector_recurrence const=2:48 pipeline_s=2.23038 (main: 117-207)
+# rolled plus noinline on cfma_rolled, 1024 bits: flags 32 0.77 s (inline 0.78), flags 48 1.78 s (inline 1.72)

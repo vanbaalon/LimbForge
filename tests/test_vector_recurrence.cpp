@@ -58,6 +58,37 @@ template<int Bits> void run(Engine& e,unsigned steps,bool fused){
     VectorRecurrence z=s;z.steps=0;z.all_steps=false;check<Bits>(e,z,start,none,none,none,none,none,none,"zero steps");
     std::cout<<Bits<<" bits: vector recurrence ("<<steps<<" steps, "<<(fused?"fused":"composed")<<") matches MPFR in all modes"<<std::endl;
 }
+// Hard cfma cases through the fused kernel (its exact complex fma, cfma_rolled, exists only there). One rank-one
+// step with q = (1, 0, 0, 0) gives s = v0 = b exactly, so v_i' = cfma(p_i, b, v_i): three chosen triples per lane
+// (as in test_fused: exact and near cancellation, a tiny product exposed, far-apart products and addends, ties,
+// zeros) plus cfma(p_0, b, b). Run at every width; the MPFR chain of check() is the reference.
+template<int N> Number<N> half_ulp(const Number<N>& x,int sign){Number<N> h=zero<N>();h.limb[N-1]=0x80000000u;h.sign=sign;h.exponent=x.exponent-32*N;return h;}
+template<int Bits> void hard(Engine& e){
+    using C=Complex<Bits/32>;constexpr int N=Bits/32;std::mt19937_64 rng(1009+Bits);const std::size_t L=192;
+    VectorRecurrence s;s.lanes=L;s.steps=1;s.fused=true;
+    C one={from_decimal<Bits>("1"),zero<N>()},nil={zero<N>(),zero<N>()};
+    std::vector<C> start(4*L),p(4*L),q(4*L,nil),none(1);
+    for(std::size_t lane=0;lane<L;++lane){
+        C b={reference::random_number<Bits>(rng,30),reference::random_number<Bits>(rng,30)};start[lane]=b;q[lane]=one;p[lane]=random_c<Bits>(rng,30);
+        for(std::size_t i=1;i<4;++i){
+            C a={reference::random_number<Bits>(rng,30),reference::random_number<Bits>(rng,30)},c={reference::random_number<Bits>(rng,60),reference::random_number<Bits>(rng,60)};
+            switch((3*lane+i)%12){
+            case 0:a={b.im,b.re};break;                                      // re: b.im*b.re - b.re*b.im = 0 exactly
+            case 1:a={b.im,b.re};a.re.limb[0]^=1;break;                      // near-total cancellation
+            case 2:a.re=from_decimal<Bits>("1");c.re=negate(b.re);a.im.exponent=b.im.exponent-3*Bits;break; // tiny product exposed
+            case 3:{C m=cmul(a,b);c={negate(m.re),negate(m.im)};break;}       // addend cancels the rounded product
+            case 4:a.im.exponent-=int(rng()%(4*Bits));break;                 // products far apart
+            case 5:c.re.exponent-=int(rng()%(4*Bits));c.im.exponent+=int(rng()%(4*Bits));break; // addend far below / above
+            case 6:a.im=zero<N>();break;case 7:c=nil;break;
+            case 8:a=one;c.re=half_ulp(b.re,-1);break;                       // tie
+            case 9:a=one;c.re=half_ulp(b.re,1);c.re.limb[0]|=1;break;        // just past a tie
+            case 10:a.re.exponent=b.im.exponent+5*Bits;c.re.exponent=a.re.exponent+b.re.exponent+int(rng()%(2*Bits))-Bits;break; // spread over three windows
+            default:break;}
+            p[i*L+lane]=a;start[i*L+lane]=c;}
+    }
+    check<Bits>(e,s,start,p,q,none,none,none,none,"hard cfma cases");
+}
+template<int Bits> void hard_all(Engine& e){hard<Bits>(e);if constexpr(Bits<1024)hard_all<Bits+32>(e);}
 // Resident: base (all steps) then tangent reading that chain in one batch; in-place rank-one run.
 template<int Bits> void resident(Engine& e,bool fused){
     using C=Complex<Bits/32>;std::mt19937_64 rng(77+Bits);const std::size_t L=32,B=L/4;const unsigned steps=40;
@@ -78,10 +109,9 @@ template<int Bits> void resident(Engine& e,bool fused){
     require(rejected,"undersized resident output accepted");
     std::cout<<Bits<<" bits: resident base + tangent batch matches the host path ("<<(fused?"fused":"composed")<<")"<<std::endl;
 }
-int main(){try{Engine e;resident<256>(e,false);resident<224>(e,false);resident<256>(e,true);for(bool f:{false,true}){run<224>(e,150,f);run<256>(e,150,f);run<384>(e,60,f);run<64>(e,40,f);run<512>(e,12,f);if(!f)run<1024>(e,6,f);}
+int main(){try{Engine e;resident<256>(e,false);resident<224>(e,false);resident<256>(e,true);for(bool f:{false,true}){run<224>(e,150,f);run<256>(e,150,f);run<384>(e,60,f);run<64>(e,40,f);run<512>(e,12,f);run<768>(e,8,f);run<1024>(e,6,f);}
+    hard_all<64>(e);std::cout<<"hard fused cases match MPFR at all 31 precisions"<<std::endl;
     bool rejected=false;try{VectorRecurrence s;s.lanes=6;s.lanes_per_weight=4;std::vector<Complex<2>> x(24);e.vector_recurrence(64,s,x.data(),x.data(),x.data(),nullptr,x.data());}
     catch(const std::invalid_argument&){rejected=true;}require(rejected,"indivisible lanes_per_weight accepted");
-    rejected=false;try{VectorRecurrence s;s.lanes=1;s.steps=1;s.fused=true;std::vector<Complex<32>> x(4);e.vector_recurrence(1024,s,x.data(),x.data(),x.data(),nullptr,x.data());}
-    catch(const std::invalid_argument&){rejected=true;}require(rejected,"fused vector recurrence above 512 bits accepted");
     std::cout<<"All vector recurrence checks passed."<<std::endl;return 0;}
 catch(const std::exception& e){std::cerr<<e.what()<<'\n';return 1;}}

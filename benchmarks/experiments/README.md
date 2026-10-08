@@ -91,6 +91,11 @@ GPU/MPFR validation and was removed from the installed implementation.
   LimbForge-independent shuffle kernel that did not reproduce them. See
   ../../docs/experiments.md (41-L4b) and ../../docs/gpu-codegen.md section 10.
 
+- `vr_compile_probe.mm` (diagnostic, built by hand; see its header): cold pipeline compile time of one
+  kernel specialisation from given `core.hpp`/`kernels.metal` files, with a nonce that defeats the OS shader
+  cache and a watchdog. Round 46 used it for the fused `vector_recurrence` compile table
+  (../results/round46_fused_wide_compile.txt) and the `noinline` experiment (../../docs/gpu-codegen.md section 11).
+
 The cause of these GPU mismatches is unresolved. Do not treat the rejected
 measurements as validated performance results. The accepted library uses exact
 schoolbook multiplication and a restricted, separately validated unary square. See ../../docs/optimizations.md and the `round5_*`

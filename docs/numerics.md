@@ -347,7 +347,7 @@ whole dot product, use the dense products in `linalg.hpp`.
 `Engine::vector_recurrence(bits, shape, start, p, q, r, out, base, dp, dq)` advances many
 independent four-component complex vectors (one GPU thread each; plan D4). Each multiply-add `mac(a, b, c)` is either composed, `cadd(c, cmul(a, b))` (default; the rounding of
 the existing complex operations), or fused with `shape.fused = true`, `cfma(a, b, c)` with one rounding
-per component (see "Fused multiply-add"; ~3–4× slower than composed after round 25). With
+per component (see "Fused multiply-add"; about 3× the composed time at 256 bits and 1.8× at 1024 bits, round 46). With
 `dot(a, v) = mac(a3, v3, mac(a2, v2, mac(a1, v1, mac(a0, v0, 0))))`, one step with coefficient index
 `k` is (writing `cfma` for `mac`):
 
@@ -373,10 +373,15 @@ on resident buffers (unused inputs may be empty buffers; `out` may alias `start`
 `all_steps` and the tangent pass reading its output can share one batch, so the base chain never
 leaves the GPU; buffer sizes are checked against the shape before encoding.
 
-Current limits: shapes are validated before submission. Composed mode is tested at every width
-through 1024 bits. Fused mode is limited to 512 bits and rejected above (a fused 1024-bit
-specialisation crashed the Metal compiler; 768/1024-bit rank-one variants compiled in 23–34 s). Pipeline compilation for a new
-width/flag combination can take minutes on first use, so warm the pipelines before timing.
+Current limits: shapes are validated before submission. Both modes run at every width through 1024 bits.
+Composed mode is tested against MPFR at 64/224/256/384/512/768/1024 bits; fused mode at the same widths in all
+forms and, with hard cases (exact and near cancellation, a tiny product exposed, far-apart terms, ties), at all
+31 widths. In fused mode every multiply-add of a step is one iteration of a rolled loop around a single exact
+complex fma (`cfma_rolled` in `core.hpp`, the same contract and results as `cfma`), which keeps the kernel small:
+a cold pipeline compiles in 0.3–4 s for every flag combination at 256–1024 bits (round 46; before, 7–31 s for
+the rank-one and matrix forms, 117–207 s for the tangent form at 512 bits and over 300 s above, and once a
+compiler crash at 1024 bits).
+Pipelines are still compiled on first use, so warm them before timing.
 
 ## Recurrences
 

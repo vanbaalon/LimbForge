@@ -60,7 +60,10 @@ template<int Bits> void test_complex(){
         if(gpu)gpu->run_ternary(Bits,subtract?Operation::complex_fms:Operation::complex_fma,as.data(),bs.data(),cs.data(),out.data(),n);
         for(std::size_t i=0;i<n;++i){auto expected=reference::complex_fused<Bits>(as[i],bs[i],cs[i],subtract);auto host=subtract?cfms(as[i],bs[i],cs[i]):cfma(as[i],bs[i],cs[i]);
             std::string label=std::string(subtract?"cfms":"cfma")+" vs MPFR bits="+std::to_string(Bits)+" case="+std::to_string(i);
-            require(reference::equal_complex<Bits>(host,expected),"CPU "+label);if(gpu)require(reference::equal_complex<Bits>(out[i],expected),"GPU "+label);}
+            require(reference::equal_complex<Bits>(host,expected),"CPU "+label);
+            // The rolled form (vector_recurrence; on the GPU it is checked there) equals the same reference.
+            C negated={negate(cs[i].re),negate(cs[i].im)};
+            require(reference::equal_complex<Bits>(cfma_rolled(as[i],bs[i],subtract?negated:cs[i]),expected),"CPU rolled "+label);if(gpu)require(reference::equal_complex<Bits>(out[i],expected),"GPU "+label);}
     }
 }
 // Resident chain: x <- x*y + x in place (out aliases an input), then x*y - z; one command buffer.

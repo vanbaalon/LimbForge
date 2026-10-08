@@ -115,18 +115,40 @@ kernel void tree_sum_complex(device const Complex<N>* input [[buffer(0)]],
 // (docs/numerics.md): dot(a,v) = cfma chain over components 0..3 starting from cfma(a0,v0,0);
 // rank-1 step v_i <- cfma(p_i, dot(q,v), v_i); matrix step v_i <- dot(M_i,v); the affine source is
 // added last with cadd. Loops stay rolled so each exact cfma is instantiated once: fully inlined
-// copies made shader compilation take tens of minutes.
+// copies made shader compilation take tens of minutes. Fused mode goes further (round 46): every
+// multiply-add of a step is one iteration of a rolled loop around a single cfma_rolled call, which
+// selects its operands by role (fused_step); each separate copy of the exact complex fma cost seconds
+// of pipeline compilation, and four to twelve copies crashed the Metal compiler at 1024 bits.
 constant uint vr_flags [[function_constant(2)]];
 constant bool vr_affine=(vr_flags&1)!=0,vr_matrix=(vr_flags&2)!=0,vr_all=(vr_flags&4)!=0,vr_reverse=(vr_flags&8)!=0,vr_tangent=(vr_flags&16)!=0,vr_fused=(vr_flags&32)!=0;
 struct VectorParams { uint lanes,steps,lanes_per_weight,lanes_per_base,lanes_per_tangent; };
 inline Complex<N> czero(){return {zero<N>(),zero<N>()};}
-// c + a*b: fused (one rounding per component) or composed (cadd(c, cmul(a,b))).
-inline Complex<N> mac(Complex<N> a,Complex<N> b,Complex<N> c){return vr_fused?cfma(a,b,c):cadd(c,cmul(a,b));}
+// c + a*b in composed mode: cadd(c, cmul(a,b)). Fused mode uses fused_step.
+inline Complex<N> mac(Complex<N> a,Complex<N> b,Complex<N> c){return cadd(c,cmul(a,b));}
 // sum_j a[j*stride] * v[j] as a cfma chain; v is a 4-element private array.
 inline Complex<N> dot4(device const Complex<N>* a,ulong stride,thread const Complex<N> (&v)[4]){
     Complex<N> s=czero();
     _Pragma("clang loop unroll(disable)") for(uint j=0;j<4;++j){Complex<N> x=a[j*stride],y=v[j];s=mac(x,y,s);}
     return s;
+}
+// One step in fused mode, the same sequence as the composed code below with mac = cfma. Register file
+// R: 0-3 v, 4-7 new state (matrix) or base state (tangent), 8 s, 9 sb, 10 tq, 11 x, 12 e, 13 zero.
+// Each multiply-add m is R[d] = cfma(a, R[b], R[c]) with a read from a coefficient table.
+inline void fused_step(thread Complex<N> (&R)[14],ulong k,ulong G,ulong g,ulong T,ulong h,device const Complex<N>* pw,
+                       device const Complex<N>* qw,device const Complex<N>* dp,device const Complex<N>* dq){
+    const uint count=vr_matrix?16:vr_tangent?24:8;
+    _Pragma("clang loop unroll(disable)") for(uint m=0;m<count;++m){
+        device const Complex<N>* a;uint b,c,d;
+        if(vr_matrix){uint i=m/4,j=m%4;a=pw+(k*16+m)*G+g;b=j;c=j?4+i:13;d=4+i;}       // n_i = dot(M_i, v)
+        else if(m<4){a=qw+(k*4+m)*G+g;b=m;c=m?8:13;d=8;}                            // s = dot(q, v)
+        else if(!vr_tangent){uint i=m-4;a=pw+(k*4+i)*G+g;b=8;c=i;d=i;}              // v_i = cfma(p_i, s, v_i)
+        else if(m<12){uint j=m%4;bool q=m<8;a=q?qw+(k*4+j)*G+g:dq+(k*4+j)*T+h;b=4+j;c=j?(q?9:10):13;d=q?9:10;} // sb, tq
+        else{uint i=(m-12)/3,r=(m-12)%3;
+            a=r==1?dp+(k*4+i)*T+h:pw+(k*4+i)*G+g;b=8+r;c=r==0?i:r==1?13:12;d=r==0?11:12;} // x, e, cfma(p_i, tq, e)
+        Complex<N> x=*a,y=R[b],z=R[c];R[d]=cfma_rolled(x,y,z);
+        if(vr_tangent&&m>=12&&(m-12)%3==2)R[(m-12)/3]=cadd(R[11],R[12]);
+    }
+    if(vr_matrix)for(uint i=0;i<4;++i)R[i]=R[4+i];
 }
 kernel void vector_recurrence(device const Complex<N>* start [[buffer(0)]],device const Complex<N>* pw [[buffer(1)]],device Complex<N>* out [[buffer(2)]],
                               constant VectorParams& p [[buffer(3)]],device const Complex<N>* qw [[buffer(4)]],device const Complex<N>* r [[buffer(5)]],
@@ -139,7 +161,12 @@ kernel void vector_recurrence(device const Complex<N>* start [[buffer(0)]],devic
     for(uint j=0;j<4;++j){v[j]=start[j*L+lane];if(vr_all)out[j*L+lane]=v[j];}
     _Pragma("clang loop unroll(disable)") for(uint t=0;t<p.steps;++t){
         ulong k=vr_reverse?p.steps-1-t:t;
-        if(vr_matrix){
+        if(vr_fused){
+            Complex<N> R[14];for(uint j=0;j<4;++j)R[j]=v[j];R[13]=czero();
+            if(vr_tangent)for(uint j=0;j<4;++j)R[4+j]=base[(ulong(t)*4+j)*B+b];
+            fused_step(R,k,G,g,T,h,pw,qw,dp,dq);
+            for(uint j=0;j<4;++j)v[j]=R[j];
+        }else if(vr_matrix){
             _Pragma("clang loop unroll(disable)") for(uint i=0;i<4;++i)n[i]=dot4(pw+(k*16+i*4)*G+g,G,v);
             for(uint i=0;i<4;++i)v[i]=n[i];
         }else{

@@ -48,7 +48,7 @@ struct VectorRecurrence {
     bool fused=false;             // multiply-adds: cfma (one rounding per component) or cadd(c, cmul(a,b))
 };
 // Pipelines to compile ahead of use (Engine::prewarm). A new width or mode otherwise compiles during
-// its first encode; fused vector recurrences can take tens of seconds. The OS shader cache usually
+// its first encode; heavy kernels (complex fused, transcendentals) take seconds. The OS shader cache usually
 // makes later runs fast.
 struct Prewarm {
     std::vector<int> bits;                 // widths to prepare (each compiles one shader library)

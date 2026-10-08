@@ -234,7 +234,7 @@ for square and square root.
 
 Each precision compiles one shader library (about 1 s) and each operation/mode its own pipeline on
 first use. Most pipelines take milliseconds, but fused vector recurrences and other kernels that inline
-the exact complex `fma` several times can take tens of seconds for a new width. The OS shader cache
+the exact complex `fma` can take several seconds for a new width (fused vector recurrences 0.3–4 s since round 46). The OS shader cache
 normally makes later runs fast. To keep this latency out of a solver's first iteration, request the
 pipelines up front:
 

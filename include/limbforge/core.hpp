@@ -355,6 +355,61 @@ template<int N> inline Complex<N> cfma(Complex<N> a,Complex<N> b,Complex<N> c){
 template<int N> inline Complex<N> cfms(Complex<N> a,Complex<N> b,Complex<N> c){
     Complex<N> d={negate(c.re),negate(c.im)};return cfma(a,b,d);
 }
+// ---- Rolled exact complex fma (round 46): the contract of dot2_add/cfma with one copy of each part ----
+// dot2_add inlines two products, three window accumulations and eight ordered exact additions; cfma doubles
+// that. Kernels that need cfma at several places (vector_recurrence) compiled for tens of seconds per
+// specialisation and crashed the Metal compiler at 1024 bits. These forms loop over the terms, the components
+// and the two pairwise steps instead, with one exact_add_ordered instance of the general path's widest
+// workspace; each component is still one rounding of its exact value, so results equal cfma bit for bit.
+template<int N,int W> inline Exact<W> exact_add_rolled(Exact<W> x,Exact<W> y){
+    if(!y.sign)return x;if(!x.sign)return y;
+    if(exact_msb(x)<exact_msb(y)){Exact<W> t=x;x=y;y=t;}
+    return exact_add_ordered<N,W,W,W>(x,y);
+}
+// RN(a*b + c*d + e), as dot2_add.
+template<int N> inline Number<N> dot2_add_rolled(LIMBFORGE_THREAD const Number<N>& a,LIMBFORGE_THREAD const Number<N>& b,LIMBFORGE_THREAD const Number<N>& c,
+                                                 LIMBFORGE_THREAD const Number<N>& d,LIMBFORGE_THREAD const Number<N>& e){
+    word status=a.status|b.status|c.status|d.status|e.status;if(status)return zero<N>(status);
+    // W: dot2_add's second-step workspace (the larger), sized from the true product width. The runtime-indexed
+    // term array is kept above 32 words (P >= 11) outside the register band; extra words stay zero.
+    constexpr int P0=product_words<N>(),P=P0<11?11:P0,W=exact_sum_words(exact_words(N,P0,exact_sum_words(exact_words(N,P0,P0)))),
+                  F=exact_sum_words(scratch(3*N+4));
+    Exact<P> t[3];
+    _Pragma("clang loop unroll(disable)") for(int k=0;k<2;++k)t[k]=exact_product<N,P>(k?c:a,k?d:b);
+    t[2]=exact_number<P>(e);
+    // Window fast path (window_sum): every nonzero term within one F-word two's-complement window.
+    exponent_type lo=0,hi=0,key[3];bool any=false;
+    for(int k=0;k<3;++k){key[k]=-(exponent_type(1)<<62);if(!t[k].sign)continue;exponent_type l=t[k].scale,h=exact_msb(t[k]);key[k]=h;
+        if(!any||l<lo)lo=l;if(!any||h>hi)hi=h;any=true;}
+    if(!any)return zero<N>();
+    if(hi+3-lo<exponent_type(32*F)){
+        word acc[F];for(int k=0;k<F;++k)acc[k]=0;
+        _Pragma("clang loop unroll(disable)") for(int k=0;k<3;++k)window_accumulate(acc,t[k],lo);
+        int sign=1;if(acc[F-1]>>31){sign=-1;dword c=1;for(int k=0;k<F;++k){dword v=dword(~acc[k])+c;acc[k]=word(v);c=v>>32;}}
+        bool nonzero=false;for(int k=0;k<F;++k)nonzero|=acc[k]!=0;
+        return nonzero?pack<N>(acc,lo,sign,ok):zero<N>();
+    }
+    // General path of dot2_add: terms ordered by msb; either the two smaller ones are summed first (both far
+    // below the largest) or the largest two are, then the remaining term is added.
+    int i1=key[0]>=key[1]?(key[0]>=key[2]?0:2):(key[1]>=key[2]?1:2);
+    int i3=key[0]<key[1]?(key[0]<key[2]?0:2):(key[1]<key[2]?1:2);if(i3==i1)i3=(i1+1)%3;
+    int i2=3-i1-i3;
+    exponent_type low=key[i1]-(32*N+33);if(t[i1].scale<low)low=t[i1].scale;
+    bool far=!t[i2].sign||key[i2]<low-1;
+    int order[3]={far?i2:i1,far?i3:i2,far?i1:i3};
+    Exact<W> s=exact_copy<W>(t[order[0]]);
+    _Pragma("clang loop unroll(disable)") for(int k=1;k<3;++k)s=exact_add_rolled<N,W>(s,exact_copy<W>(t[order[k]]));
+    return round_exact<N>(s);
+}
+template<int N> inline Complex<N> cfma_rolled(Complex<N> a,Complex<N> b,Complex<N> c){
+    Complex<N> r;
+    _Pragma("clang loop unroll(disable)") for(int k=0;k<2;++k){
+        // re = a.re*b.re + (-a.im)*b.im + c.re, im = a.re*b.im + a.im*b.re + c.im
+        Number<N> x=k?a.im:negate(a.im),y=k?b.im:b.re,z=k?b.re:b.im,w=k?c.im:c.re;
+        Number<N> v=dot2_add_rolled(a.re,y,x,z,w);if(k)r.im=v;else r.re=v;
+    }
+    return r;
+}
 template<int N> inline Complex<N> cadd(Complex<N> a,Complex<N> b){return {add(a.re,b.re),add(a.im,b.im)};}
 template<int N> inline Complex<N> cmul(Complex<N> a,Complex<N> b){return {sub(mul<N,false>(a.re,b.re),mul<N,false>(a.im,b.im)),add(mul<N,false>(a.re,b.im),mul<N,false>(a.im,b.re))};}
 template<int N> inline Complex<N> cdiv(Complex<N> a,Complex<N> b){

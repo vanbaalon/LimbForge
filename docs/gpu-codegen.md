@@ -192,6 +192,24 @@ The rung widths are therefore the smallest validated width ≥ N+4, 2N+4, 4N+8 (
 35 words; a rung whose capped width is not above the previous level runs on the host (`rung_table` in
 `src/transcendental.mm`). A capped rung still decides most retries (35 words exceed the cubic-term need of 3N words up
 to 320 bits); correctness never depends on the width, only on `certify`.
+## 12. Compile time grows with inlined copies of the exact fma (round 46)
+
+Metal inlines every call, so each call site of `cfma` (two `dot2_add`, each with two products, three window
+accumulations and eight inlined `exact_add_ordered` on 132–200-word workspaces at 1024 bits) adds its full body
+to the kernel, and the backend compile time grew faster than the number of copies. Cold pipeline compilation
+(`benchmarks/experiments/vr_compile_probe.mm`, which injects a nonce so the OS shader cache cannot answer; a
+repeated identical source compiles in milliseconds): `complex_fused` (one `cfma`) 5–8 s; fused
+`vector_recurrence` matrix form (one rolled `cfma` site) 7–11 s, rank-one (two sites) 16–31 s, tangent (six
+sites) 117–207 s at 512 bits and more than 300 s at 768/1024 bits; one 1024-bit specialisation crashed the
+compiler service (round 36). With the fused step as one rolled loop around a single `cfma_rolled` (operands
+selected by role; the terms, components and both pairwise exact additions also in rolled loops, one
+`exact_add_ordered` instance) every one of the 24 fused flag combinations compiles in 0.3–4 s at 256–1024 bits.
+Runtime was unchanged or better at 256/384 bits (0.78–1.00×) and 6–8% slower at 1024 bits.
+
+`__attribute__((noinline))` is honoured: on the unchanged `dot2_add` it cut the 512-bit rank-one compile from
+16 s to 1.4 s and the tangent compile from 117 s to 2.2 s, with runtime within ±15% of the rolled form
+(`benchmarks/results/round46_fused_wide_*`). It was not adopted because it changes the code of every caller of the
+shared `dot2_add` (complex fused, segmented dot, LU, numerics, transcendentals), which would all need revalidation.
 
 ## Rules for kernel code
 
@@ -218,3 +236,6 @@ to 320 bits); correctness never depends on the width, only on `certify`.
    passes that test.
 10. Do not instantiate the core arithmetic at more than 35 words in a Metal kernel (section 11); probe any wider use with
     `benchmarks/experiments/transcendental_wide_probe.mm` first.
+11. When a kernel needs an exact fused routine (`fma`, `dot2_add`, `cfma`) at several places, call it from one
+    place: a rolled loop that selects the operands (or a non-inlined function). Measure cold compile time of
+    every specialisation at 512–1024 bits with `vr_compile_probe` (section 12).
