@@ -14,6 +14,7 @@
 #include <string>
 #include <system_error>
 #include <thread>
+#include <type_traits>
 #include <vector>
 namespace limbforge {
 namespace detail {
@@ -141,6 +142,40 @@ template<int Bits> inline void from_mpc_array(const mpc_t* in,Complex<Bits/32>* 
 template<int Bits> inline void to_mpc_array(mpc_t* out,const Complex<Bits/32>* in,std::size_t n,unsigned threads=0) {
     detail::parallel_chunks(n,threads,(std::size_t(1)<<21)/Bits,[&](std::size_t b,std::size_t e,detail::Range r){for(std::size_t i=b;i<e;++i)detail::to_mpc_fast<Bits>(out[i],in[i],r);});
 }
+#endif
+// Runtime-width bridge. Buffers contain the same Float<bits>/Complex<bits/32> structs as the typed API;
+// caller-provided byte storage needs bridge_element_bytes(bits, complex)*count bytes. No alignment required.
+inline std::size_t bridge_element_bytes(int bits,bool complex=false){
+    if(bits<64||bits>1024||bits%32)throw std::invalid_argument("bridge bits must be a multiple of 32 in [64,1024]");
+    return std::size_t(bits/8+12)*(complex?2:1);
+}
+namespace detail {
+template<int Bits=64,class F> inline void bridge_width(int bits,F&& f){
+    if(bits==Bits){f(std::integral_constant<int,Bits>{});return;}
+    if constexpr(Bits<1024)bridge_width<Bits+32>(bits,f);
+}
+}
+namespace detail {
+template<class T> inline void bridge_store(void* out,const T& value){std::memcpy(out,&value,sizeof(T));}
+template<class T> inline T bridge_load(const void* input){T value;std::memcpy(&value,input,sizeof(T));return value;}
+}
+inline void from_mpfr(int bits,mpfr_srcptr input,void* out){bridge_element_bytes(bits);if(!input||!out)throw std::invalid_argument("null bridge operand");
+    detail::bridge_width(bits,[&](auto b){detail::bridge_store(out,from_mpfr<b.value>(input));});}
+inline void to_mpfr(int bits,mpfr_ptr out,const void* input){bridge_element_bytes(bits);if(!input||!out)throw std::invalid_argument("null bridge operand");
+    detail::bridge_width(bits,[&](auto b){to_mpfr<b.value>(out,detail::bridge_load<Float<b.value>>(input));});}
+inline void from_mpfr_array(int bits,const mpfr_t* input,void* out,std::size_t count,unsigned threads=0){auto bytes=bridge_element_bytes(bits);if(count&&(!input||!out))throw std::invalid_argument("null bridge array");if(count>std::size_t(-1)/bytes)throw std::invalid_argument("bridge array size overflow");
+    detail::bridge_width(bits,[&](auto b){detail::parallel_chunks(count,threads,(std::size_t(1)<<22)/b.value,[&](std::size_t begin,std::size_t end,detail::Range range){for(auto i=begin;i<end;++i)detail::bridge_store(static_cast<char*>(out)+i*bytes,detail::from_mpfr_fast<b.value>(input[i],range));});});}
+inline void to_mpfr_array(int bits,mpfr_t* out,const void* input,std::size_t count,unsigned threads=0){auto bytes=bridge_element_bytes(bits);if(count&&(!input||!out))throw std::invalid_argument("null bridge array");if(count>std::size_t(-1)/bytes)throw std::invalid_argument("bridge array size overflow");
+    detail::bridge_width(bits,[&](auto b){detail::parallel_chunks(count,threads,(std::size_t(1)<<22)/b.value,[&](std::size_t begin,std::size_t end,detail::Range range){for(auto i=begin;i<end;++i)detail::to_mpfr_fast<b.value>(out[i],detail::bridge_load<Float<b.value>>(static_cast<const char*>(input)+i*bytes),range);});});}
+#ifdef LIMBFORGE_HAS_MPC
+inline void from_mpc(int bits,mpc_srcptr input,void* out){bridge_element_bytes(bits,true);if(!input||!out)throw std::invalid_argument("null bridge operand");
+    detail::bridge_width(bits,[&](auto b){detail::bridge_store(out,from_mpc<b.value>(input));});}
+inline void to_mpc(int bits,mpc_ptr out,const void* input){bridge_element_bytes(bits,true);if(!input||!out)throw std::invalid_argument("null bridge operand");
+    detail::bridge_width(bits,[&](auto b){to_mpc<b.value>(out,detail::bridge_load<Complex<b.value/32>>(input));});}
+inline void from_mpc_array(int bits,const mpc_t* input,void* out,std::size_t count,unsigned threads=0){auto bytes=bridge_element_bytes(bits,true);if(count&&(!input||!out))throw std::invalid_argument("null bridge array");if(count>std::size_t(-1)/bytes)throw std::invalid_argument("bridge array size overflow");
+    detail::bridge_width(bits,[&](auto b){detail::parallel_chunks(count,threads,(std::size_t(1)<<21)/b.value,[&](std::size_t begin,std::size_t end,detail::Range range){for(auto i=begin;i<end;++i){Complex<b.value/32> value{detail::from_mpfr_fast<b.value>(mpc_realref(input[i]),range),detail::from_mpfr_fast<b.value>(mpc_imagref(input[i]),range)};detail::bridge_store(static_cast<char*>(out)+i*bytes,value);}});});}
+inline void to_mpc_array(int bits,mpc_t* out,const void* input,std::size_t count,unsigned threads=0){auto bytes=bridge_element_bytes(bits,true);if(count&&(!input||!out))throw std::invalid_argument("null bridge array");if(count>std::size_t(-1)/bytes)throw std::invalid_argument("bridge array size overflow");
+    detail::bridge_width(bits,[&](auto b){detail::parallel_chunks(count,threads,(std::size_t(1)<<21)/b.value,[&](std::size_t begin,std::size_t end,detail::Range range){for(auto i=begin;i<end;++i)detail::to_mpc_fast<b.value>(out[i],detail::bridge_load<Complex<b.value/32>>(static_cast<const char*>(input)+i*bytes),range);});});}
 #endif
 template<int Bits> inline Float<Bits> from_decimal(const std::string& text) {
     mpfr_t x;mpfr_init2(x,Bits);

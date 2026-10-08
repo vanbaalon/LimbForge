@@ -1,0 +1,30 @@
+UpdateCTestConfiguration  from :/private/tmp/limbforge-section9/build/DartConfiguration.tcl
+Parse Config file:/private/tmp/limbforge-section9/build/DartConfiguration.tcl
+Test project /private/tmp/limbforge-section9/build
+Constructing a list of tests
+Done constructing a list of tests
+Updating test list for fixtures
+Added 0 tests to meet fixture requirements
+Checking test dependency graph...
+Checking test dependency graph end
+test 14
+    Start 14: section9_smoke
+
+14: Test command: /private/tmp/limbforge-section9/build/test_limbforge_section9
+14: Working Directory: /private/tmp/limbforge-section9/build
+14: Test timeout computed to be: 1500
+14: 352 bits: complex GEMM tile tails/broadcast/strides, triple product, negative power moments
+14: 352 bits: resident normal equations, three damping trials, solves, async wait, exact fallback repair
+14: 352 bits: real 4x4 GEMM odd batch/broadcast and empty dots
+14: 224 bits: runtime bridge and inline MPC staging
+14: 352 bits: on-device Horner recurrence, reverse/all_steps, sharing tails, composed/fused
+14: 704 bits: on-device Horner recurrence, reverse/all_steps, sharing tails, composed/fused
+14: Section 9 light smoke passed (not a full audit).
+1/1 Test #14: section9_smoke ...................   Passed    0.59 sec
+
+The following tests passed:
+	section9_smoke
+
+100% tests passed out of 1
+
+Total Test time (real) =   0.59 sec

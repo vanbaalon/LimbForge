@@ -1,0 +1,63 @@
+{
+  "utc": "2026-10-08T19:09:59.492665+00:00",
+  "os": "macOS-26.6.2-arm64-arm-64bit-Mach-O",
+  "machine": "arm64",
+  "cpu": "Apple M5 Max\n18",
+  "compiler": "Apple clang version 21.0.0 (clang-2100.1.1.101)\nTarget: arm64-apple-darwin25.6.0\nThread model: posix\nInstalledDir: /Library/Developer/CommandLineTools/usr/bin",
+  "base_commit": "3d0eb0c78b6531e718be8be89f74c1c7e98a0a8a",
+  "build": "Release",
+  "commands": [
+    [
+      "./build/section9_limbforge",
+      "--operation",
+      "gemm",
+      "--bits",
+      "352",
+      "--count",
+      "32",
+      "--m",
+      "4",
+      "--n",
+      "4",
+      "--k",
+      "4",
+      "--workers",
+      "18",
+      "--repeats",
+      "3"
+    ],
+    [
+      "./build/section9_limbforge",
+      "--operation",
+      "power",
+      "--bits",
+      "352",
+      "--count",
+      "2",
+      "--m",
+      "4",
+      "--n",
+      "4",
+      "--k",
+      "7",
+      "--workers",
+      "18",
+      "--repeats",
+      "3"
+    ]
+  ],
+  "reports": [
+    "Device: Apple M5 Max; deterministic composed complex arithmetic; n0=0; checked 512 outputs",
+    "Device: Apple M5 Max; deterministic composed complex arithmetic; n0=0; checked 32 outputs"
+  ],
+  "source_sha256": {
+    "include/limbforge/core.hpp": "9b950735b6425f11eb878113f025d905d24b4056cfa899c222d7f4ef2ff6a867",
+    "include/limbforge/batched_linalg.hpp": "c01ec3dc6b8f5be4e0b1b50ab71bbd9e4fef00d3693034dc922b777bbdda4f35",
+    "include/limbforge/mpfr_bridge.hpp": "3bc86e3f54344c23f4b2c22a02484c5fe26a17f5cfbe69bed829ae87366a35e7",
+    "include/limbforge/dispatch_policy.hpp": "092292e4103c0c0429a9b40f9221cc5b3a66f77b612f2b2c05ec16c856ace612",
+    "src/batched_linalg.mm": "f34e6bd4148cfe915909b99f6e4981404d1673b33909e1e24998bef35420b643",
+    "src/batched_linalg.metal": "ca3172c27391b3012d7708aabea3b1140bc26e205faaae318396a46fd433546b",
+    "benchmarks/section9.cpp": "f2d6e3279a3b428cc79cbae02caa0b8a7c1b4779325e9da4dca8be9ed1495051"
+  },
+  "scope": "Small smoke calibration only; no thermal-control study; no large workloads or width sweep."
+}

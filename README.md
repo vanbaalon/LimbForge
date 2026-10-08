@@ -56,6 +56,9 @@ measurements.
 - Broadcast (stride/period) operands for element-wise operations, so shared coefficients need no copies.
 - Batched 4×4 complex LU with deterministic pivoting: solve, inverse and determinant per matrix.
 - Segmented real/complex dot products with a fixed, reproducible fused order and optional shared table.
+- Strided real/complex batched GEMM, device-generated power moments, matrix triple products,
+  polynomial-source recurrences, and resident damping trials/solves (`batched_linalg.hpp`).
+  See [contracts, usage and light-audit scope](docs/section9.md); large-workload timings are pending.
 - Dense real `syrk` (AᵀA) and `gemm` with one rounding of each exact dot product (`linalg.hpp`): exact
   integer GEMMs over exponent bands on TensorOps int8 residues, with an exact host fallback; updates
   `C - op(A) B` rounded once, and a blocked Cholesky factorization with multiple-right-hand-side
@@ -75,6 +78,8 @@ measurements.
 - Configurable threadgroup sizes and per-pipeline limits for measured tuning.
 - A generic four-state complex recurrence primitive (with cooperative multi-lane execution for small batches), and a batched four-component vector recurrence (rank-one, matrix, affine, tangent and all-steps forms).
 - Optional MPFR/MPC conversion through decimal strings or direct limb copies, with multithreaded `mpfr_t[]` / `mpc_t[]` array versions.
+- Runtime-width bridges, GPU import from external inline MPC significands, asynchronous multi-submission
+  waiting, and an offline measured CPU/GPU dispatch table.
 - Reproducible benchmarks against both serial and multicore MPFR.
 
 The GPU library depends on Metal and Foundation. MPFR/GMP are needed for the

@@ -1,0 +1,2 @@
+operation,bits,count,m,n,k,cpu_workers,fused,repeats,cpu_wall,gpu_wall,gpu_device,recommendation,profile,resident
+power_moments_complex,352,2,4,4,7,18,0,3,8.8583e-05,0.002510292,0.00197733333,cpu,Apple M5 Max / section9-v1 / Release,0

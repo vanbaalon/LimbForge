@@ -1,0 +1,2 @@
+operation,bits,count,m,n,k,cpu_workers,fused,repeats,cpu_wall,gpu_wall,gpu_device,recommendation,profile,resident
+gemm_complex,352,32,4,4,4,18,0,3,0.000400334,0.001062375,0.000732666696,cpu,Apple M5 Max / section9-v1 / Release,0

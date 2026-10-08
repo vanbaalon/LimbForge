@@ -30,6 +30,8 @@ struct Internal {
     // Ownership as for engine operations (CommandBatch::Impl::retain): rejects empty, foreign and busy buffers; written
     // buffers must not hold provisional results of this batch; reading one sets its ProvisionalFlag.
     static void retain(CommandBatch&,const std::shared_ptr<BufferStorage>&,bool written=false);
+    // Reject an input whose final value needs host completion. For passes without a repair path.
+    static void require_final(CommandBatch&,const std::shared_ptr<BufferStorage>&);
     // Fresh shared storage of the batch's engine (>= 1 byte), retained until the submission is waited. The host may write it
     // before submission (the GPU has not seen it yet).
     static std::shared_ptr<BufferStorage> scratch(CommandBatch&,std::size_t bytes);

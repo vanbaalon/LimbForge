@@ -1,0 +1,6 @@
+#pragma once
+static const char* limbforge_batched_linalg_source=R"LIMBFORGE(
+#include <metal_stdlib>
+@CORE_SOURCE@
+@BATCHED_LINALG_SOURCE@
+)LIMBFORGE";

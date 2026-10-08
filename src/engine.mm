@@ -457,6 +457,10 @@ void Internal::copy(CommandBatch& b,const std::shared_ptr<BufferStorage>& from,c
     [batch.blit copyFromBuffer:from->buffer sourceOffset:0 toBuffer:to->buffer destinationOffset:0 size:bytes];
 }
 void Internal::retain(CommandBatch& b,const std::shared_ptr<BufferStorage>& r,bool written){LF_OPEN(b);batch.retain(r,written);}
+void Internal::require_final(CommandBatch& b,const std::shared_ptr<BufferStorage>& r){
+    LF_OPEN(b);for(auto& p:batch.provisional)if(p.first==r)
+        throw std::logic_error("input needs host completion; wait on its submission before a dependent resident pass");
+}
 std::shared_ptr<BufferStorage> Internal::scratch(CommandBatch& b,std::size_t bytes){LF_OPEN(b);auto r=batch.engine->allocate(bytes);batch.retain(r,true);return r;}
 void Internal::keep(CommandBatch& b,id object){LF_OPEN(b);if(object)batch.objects.push_back(object);}
 ProvisionalFlag Internal::provisional(CommandBatch& b,const std::shared_ptr<BufferStorage>& r){
