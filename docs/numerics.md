@@ -941,3 +941,191 @@ Column-pivoted QR (`round40_qr_accuracy.csv`, n = 200, same J and b; the unpivot
 identical to round 31's) is within 1.5 bits of unpivoted QR in every case, forward error and residual
 excess alike (e.g. 256 bits, `kappa = 100`, consistent b: −43.5 against −43.4; QSC-like random b:
 −252.5 against −253.5). These J have full numerical rank, so pivoting buys rank decisions, not accuracy.
+
+## Complex QR factorization and least squares
+
+```cpp
+QROptions o;                                          // as for factor_qr: block, host_macs, solve_host_macs, gpu, rank_bits
+ComplexQRFactor qr = la.factor_qr_complex(bits, A, m, n, o); // A: m x n Complex<bits/32>, row-major, m >= n; A = Q R
+qr.solve(B, nrhs, X);                                 // X (n x nrhs) minimises ||A x - b|| for each complex column b of B (m x nrhs)
+qr.apply_q(B, nrhs, adjoint);                         // B (m x nrhs) <- Q^H B (adjoint) or Q B, in place
+qr.r(); qr.v(); qr.tau(); qr.t();                     // complex R (real diagonal), V, tau, T (nb x nb per block)
+qr.info();                                            // QRInfo: rank, reason, status, timings
+```
+
+Ownership, threading, options, rank and status rules, and the refusal to solve a rank-deficient factor
+are those of `QRFactor` ("QR factorization and least squares"). Column pivoting is not supported:
+`QROptions::pivot` throws `std::invalid_argument` (see "Open" below). Implementation:
+`src/linalg_complex.mm`; it reaches the real QR's block update and triangular solve through the private
+hooks of `src/linalg_internal.hpp`.
+
+**Convention (LAPACK `zgeqrf` / `zlarfg`).** `H_j = I - tau_j v_j v_j^H` with complex `tau_j`, and
+`Q = H_0 H_1 ... H_{n-1}`, so `Q^H A = R`. The reflector of the reduced column `(alpha; x)` satisfies
+`H_j^H (alpha; x) = (beta; 0)` with **real** `beta = -sgn(Re alpha) ||(alpha; x)||` (`sgn(0) = +1`).
+R therefore has a real diagonal, `r_jj = beta_j`. `H_j` is unitary but not Hermitian. With
+`v = (alpha - beta, x)`, `tau = 1 / (beta (beta - conj(alpha)))`, so `1/tau = -beta conj(v0)`. Its real
+part is `v^H v / 2` (the unitarity condition); its imaginary part `beta Im v0` fixes the phase.
+This convention is preferred over the Hermitian reflector (`beta = -phase(alpha) ||x||`, real
+`tau = 2 / v^H v`, as in qsccpp's `mx.hpp` `QR`) for these reasons:
+
+- `beta` needs only the real column norm, exactly as in the real QR, and `v0 = (RN(Re alpha - beta), Im alpha)`
+  needs one rounding (its imaginary part is exact). The Hermitian form needs `alpha / |alpha|` (a square root
+  and two divisions) and gives a complex diagonal.
+- A real diagonal makes the solve divide each component by a real number and lets the `rank_bits` test
+  compare real exponents.
+- For a real A (zero imaginary parts) the sequence below *is* the real QR's sequence. R, V, tau, T, solutions
+  and Q applications equal `Linalg::factor_qr`'s bit for bit in the real parts, with zero imaginary parts
+  (tested).
+- It is the convention of LAPACK's complex QR (V is scaled differently, see below).
+
+**Complex dot products.** For complex vectors u, w over an index set S:
+
+- `P(u^H w) = (RN(sum u_re w_re + u_im w_im), RN(sum u_re w_im - u_im w_re))`;
+- `P(u w) = (RN(sum u_re w_re - u_im w_im), RN(sum u_re w_im + u_im w_re))` (no conjugate);
+- `D(c; u, w) = (RN(c_re - sum (u_re w_re - u_im w_im)), RN(c_im - sum (u_re w_im + u_im w_re)))`.
+
+Each component is **one rounding** of its exact value: 2|S| exact products, plus the old component for D.
+The operations are `exact_dot` / `exact_dot_add` or the residue products of "Dense products". Statuses:
+a component's result is zero with the OR of the statuses of both components of every operand pair (and,
+for D, of its own old component).
+
+**Rounding sequence.** Notation as in the real QR (blocks `B_b`, `k0 = b nb`, `c = j - k0`, rank p):
+
+```
+columns j = 0 .. n-1; the reflectors [0, min(j, p)) act on column a_j in groups G = B_b ∩ [0, min(j, p)):
+  w_i  = P(v_i^H a_j; rows [k0, m))                            i in G
+  y_i  = P(T_b[k0..i][i]^H w; [k0, i])                         (conjugated column of T_b)
+  a_rj = D(a_rj; V[r][G], y)                                   every row r >= k0, one rounding per component
+if j < p, reflector j from (alpha; x) = (a_jj; a_{j+1,j}, ..., a_{m-1,j}):
+  s = P((alpha; x)^H (alpha; x))                               (real: the squares of both components)
+  column j fails (p = j) if s has a status, alpha = 0 and x = 0, or
+    rank_bits > 0 and exponent(beta) + rank_bits < max_{k<j} exponent(r_kk)
+  x = 0 and Im alpha = 0: tau_j = 0, v_j = e_j, r_jj = alpha  (H_j = I)
+  otherwise: beta = -sgn(Re alpha) sqrt(s); v0 = (RN(Re alpha - beta), Im alpha); e = exponent(Re v0);
+             v_j = 2^-e (v0, x) (exact); sigma = P(v_j^H v_j); a = sigma / 2 (exact);
+             Im v_j0 = 0 (no status): tau_j = (RN(2 / sigma), 0)                       (the real QR's tau)
+             otherwise: b = RN(2^-e beta * Im v_j0); d = RN(a^2 + b^2); tau_j = (RN(a / d), -RN(b / d))
+             r_jj = (beta, 0)
+  T_b: g_l = P(v_{k0+l}^H v_j) (l < c); T_cc = tau_j; T_lc = -RN(tau_j * P(T_b[l][l..c) g[l..c)))   l = 0 .. c-1
+       (the complex product rounded once per component of its exact value, as complex_fma with a zero addend)
+Q^H C (apply_q with adjoint, and solve): blocks b = 0, 1, ... over [0, p); per column of C:
+  w = P(V_b^H c), y_i = P(T_b[k0..i][i]^H w), c_r = D(c_r; V[r][B_b], y) for r >= k0
+Q C (apply_q): blocks in reverse order with y_i = P(T_b[i][i..] w[i..])
+solve: c = Q^H b, then R x = c[0, n) backward in blocks nb: u_i = D(...; R[i], x) for one later block at a
+  time, then for the rest of i's block; Im x_i = RN(u_im / r_ii) first; the real component's in-block D
+  also carries the zero term (-Im r_ii) Im x_i (it can only add a status); Re x_i = RN(u_re / r_ii)
+```
+
+`e` makes `Re v0` lie in `[1, 2)`. Since `|Re v0| = |Re alpha| + |beta| >= |beta| >= |alpha|, ||x||`, every
+component of `v_j` is below 2 in magnitude without a rounding. `H_j` is unitary up to the roundings of
+`sigma`, `d` and the divisions (the imaginary part of `1/tau` does not enter the unitarity condition). Each
+step is correctly rounded; the factorization as a whole is not. The real QR's remarks also apply
+unchanged: groups, trailing columns receiving whole blocks, rank-deficient remainders, `block` being part of
+the result, and placement independence.
+
+**Execution: real embeddings.** The trailing updates and Q applications reuse the real QR's three block
+products on real embeddings. In these, every complex output component is one real exact dot of the same
+nonzero terms (only zero terms differ, and zero terms do not change an exact sum):
+
+- V and each `T_b` become real matrices of 2×2 blocks `[[re, -im], [im, re]]` (V: 2m × 2n, `T_b`: 2nb × 2nb),
+  so the real `V^T` is the embedding of `V^H`;
+- the work matrix and right-hand sides are "row split": row 2r holds the real parts of row r and row 2r+1
+  the imaginary parts (a 2m × n real matrix), so a contiguous run of rows is a run of [re; im] pairs.
+
+`W = P(V_b^T X)`, `Y = P(T_b^T W)` (or `P(T_b W)` for Q) and `X = D(X; V_b, Y)` on the embeddings are then
+`P(V_b^H X)`, `P(T_b^H W)` and `D(X; V_b, Y)` in row-split form, each component rounded once. They run on the
+GPU residue products or the host `exact_dot` (identical bits).
+
+The solve is the real blocked backward substitution of `QRFactor::solve` on the 2n × 2n embedding of R, with
+blocks of 2nb. Its diagonal blocks are `diag(r_ii, r_ii)` because `Im r_ii = 0`, which gives the
+componentwise division above; its order (row 2i+1 before 2i) gives the coupling-term rule.
+
+The host panel stores complex columns contiguously. They are interleaved real sequences
+`(re_0, im_0, re_1, ...)`: `Re P(u^H w)` is the real exact dot of the sequences of u and w, `Im P(u^H w)` that
+of `i u` and w, and the column update uses `conj(y)` and `i conj(y)`. As in the real panel:
+
+- each row block sums its part of `s` exactly into a window while updating the column;
+- `sigma = RN(2^-2e (Re(v0)^2 + S - Re(alpha)^2))` comes from the same exact `S`
+  (`|v0|^2 - |alpha|^2 = Re(v0)^2 - Re(alpha)^2`);
+- the Gram/W dots go to per-thread exact windows anchored at the product of the operands' exponent ranges;
+- `exact_dot` is used when a window would exceed 128 words or v would leave the exponent range.
+
+There is one block of look-ahead, as in the real QR.
+
+**Memory.** Besides the complex V (m × n), R (n × n), T and tau, the factor keeps the embeddings of V
+(4mn reals), T and R (4n² reals). For example, at 256 bits (44-byte reals) with m = 2000 and n = 1000: V
+takes 176 MB, its embedding 352 MB, and R's embedding 176 MB. During the factorization the row-split work
+matrix takes 2mn reals.
+
+**Reference.** `tests/test_qr_complex.cpp` replays the sequence left-looking, column by column, on complex
+entries, and never forms an embedding:
+
+- every P and D is two `mpfr_sum` calls over the exact component products (`reference::dot` / `dot_sub`
+  on explicit term lists);
+- the reflector uses `mpfr_sqrt`, `mpfr_sub`, `mpfr_mul_2si`, `mpfr_div` and `reference::dot2_add`;
+- `T` uses `reference::complex_fused`.
+
+**Open.** Column pivoting is not implemented. The real pivoted path computes a W row of every trailing
+column per step on the host; a complex version would follow it, with `nu_k` downdated by `|r_jk|^2`. Also
+open: an augmented `[J; diag(d)]` entry point (for now, stack the rows and call `factor_qr_complex`), and
+storing V only once (the complex V is kept for `v()`; the embedding alone would suffice for the products).
+
+### Complex QR accuracy and speed
+
+Least squares `min ||J x - b||` with complex J of 2n × n (`benchmarks/qr_complex.mm --accuracy`,
+`benchmarks/results/round43_qr_complex_accuracy.csv`), four right-hand sides. The reference `x*` is an MPC
+Householder solve at `3*bits + 2 kappa` bits (at least twice the working precision) of the same exact J
+and b. "QSC" is the QSC-like J of the real benchmark with independent real and imaginary parts.
+`kappa = 40, 100` is `J = G1 diag(2^(-kappa j/(n-1))) G2` with complex random G1, G2 and the same column scales.
+The methods, all at the same precision, are:
+
+- LimbForge complex QR (block 32);
+- the LimbForge real QR of the 2m × 2n real embedding `[[Re J, -Im J], [Im J, Re J]]` with `[Re b; Im b]`;
+- the normal equations of that embedding (real SYRK, `gemm`, Cholesky: the complex normal equations in real form);
+- the consumer-style MPC Householder (qsccpp `mx.hpp` `QR`: Hermitian reflectors, every operation rounded).
+
+The table gives log2 errors at n = 400, as the maximum over the right-hand sides of the forward normwise
+error `max|x - x*| / max|x*|` (complex moduli) and of the residual excess `||J (x - x*)|| / ||b - J x*||`.
+n = 200 gives the same picture within 2 bits.
+
+| bits | J | b | fwd complex QR | fwd real QR (embedding) | fwd normal eq. | fwd MPC Householder | excess complex QR | excess normal eq. | excess MPC |
+|---:|---|---|---:|---:|---:|---:|---:|---:|---:|
+| 224 | QSC | random | −221.0 | −221.5 | −220.7 | −218.8 | −222.3 | −221.9 | −219.2 |
+| 224 | QSC | consistent | −107.8 | −108.0 | −106.8 | −104.4 | 3.2 | 4.7 | 5.9 |
+| 224 | kappa 40 | consistent | −70.6 | −69.5 | −26.0 | −65.2 | 2.5 | 43.2 | 5.8 |
+| 224 | kappa 100 | random | −123.2 | −122.8 | −22.7 | −118.9 | −126.0 | −26.8 | −122.6 |
+| 224 | kappa 100 | consistent | −11.0 | −11.0 | +93.7 | −7.1 | 2.8 | 102.2 | 5.8 |
+| 256 | QSC | random | −253.4 | −253.6 | −252.6 | −250.3 | −254.3 | −253.8 | −251.1 |
+| 256 | QSC | consistent | −139.0 | −138.5 | −138.5 | −135.8 | 3.6 | 3.8 | 6.1 |
+| 256 | kappa 40 | consistent | −100.4 | −101.2 | −53.4 | −96.8 | 2.6 | 45.1 | 5.9 |
+| 256 | kappa 100 | random | −152.1 | −153.9 | −52.4 | −148.0 | −157.6 | −57.7 | −153.7 |
+| 256 | kappa 100 | consistent | −42.4 | −43.4 | +62.7 | −39.4 | 2.5 | 103.0 | 5.6 |
+
+The complex QR and the real QR of the embedding agree within 2 bits in every case (the embedding is not
+more accurate for doing twice the work). Both are 3–5 bits more accurate than the consumer MPC
+Householder, whose residual is 2^5–2^6 above the optimum against 2^2.5–2^3.6 for the complex QR. On the
+QSC-like J the normal equations of the embedding are within 1–2 bits of QR. With conditioning beyond the
+column scaling they lose about `kappa` bits more (40–45 at `kappa = 40`, about 100 at `kappa = 100`, no
+correct bits for consistent b), as for real J.
+
+**Speed** (`benchmarks/results/round43_qr_complex.csv`; metadata `round43_qr_complex_metadata.txt`). The
+setting is QSC-like complex J with m = 2n and four right-hand sides; times are factor + solve, as medians
+of interleaved repeats (complex QR and the real QR of the embedding alternate). The host load was 20–43, so
+differences under ~15% are noise:
+
+| bits | n | complex QR | real QR of the embedding | embedding / complex | MPC 18 threads (factor + solve) | MPC serial |
+|---:|---:|---:|---:|---:|---:|---:|
+| 224 | 200 | 0.17 s | 0.27 s | 1.58× | 0.64 s (3.7×) | 3.2 s (19×) |
+| 256 | 200 | 0.08 s | 0.11 s | 1.46× | 0.71 s (9.4×) | 3.4 s (45×) |
+| 224 | 400 | 0.25 s | 0.35 s | 1.38× | 4.7 s (19×) | 27 s* (107×) |
+| 256 | 400 | 0.26 s | 0.34 s | 1.32× | 4.7 s (18×) | 26 s* (100×) |
+| 224 | 1000 | 1.27 s | 3.12 s | 2.47× | — | 424 s* (335×) |
+| 256 | 1000 | 1.67 s (5 repeats; 2.41 s in a 3-repeat run with load up to 45) | 4.00 s | 2.39× | 75 s (45×) | 674 s* (400×) |
+
+`*` marks serial MPC extrapolated from n = 200 by n^3. Complex arithmetic does about half the real
+operations of the 2m × 2n embedding's QR, but only in the trailing updates. The panel's exact dots (four
+real products per complex product, over half as many columns) cost the same, and the panel is the critical
+path: at n = 1000 and 224 bits it takes 0.96 s of the 1.12 s factorization, while the trailing updates
+(0.68 s wall, 0.38 s GPU) run behind it on the look-ahead thread. The ratio to the embedding therefore
+grows with n, from 1.3–1.6× at n ≤ 400 to 2.4× at n = 1000. The trailing updates use the same residue
+products as the real QR. A host-only factorization gives the same bits (checked in the n ≤ 400 timing rows and in the tests).

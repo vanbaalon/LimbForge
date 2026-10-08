@@ -1,0 +1,29 @@
+Round 43-complex-QR (plan S5): complex Householder QR and least squares (Linalg::factor_qr_complex, ComplexQRFactor).
+Apple M5 Max (6 P + 12 E cores, 128 GB), macOS 26.6, Release build, base revision 6da4ea9 plus this round's working tree,
+2026-10-08 10:45-11:20 EDT. Host loaded by other work (other agents' builds/tests, qscmx): load average 20-45 during the
+runs (recorded per row in load_before / load_after); differences below ~15% are noise.
+
+Commands (benchmarks/qr_complex.mm, target qr_complex_limbforge):
+  round43_qr_complex.csv: timing, QSC-like complex J (m = 2n), 4 complex right-hand sides, block 32. Each repeat runs
+    complex factor + solve and real factor_qr + solve of the 2m x 2n real embedding [[Re J, -Im J], [Im J, Re J]] with
+    [Re B; Im B], alternating which goes first; medians and minima over the repeats.
+      qr_complex_limbforge --bits B --size n --repeats 5 --serial-max 200 --parallel-max 400      (n = 200, 400)
+      qr_complex_limbforge --bits 224 --size 1000 --repeats 3 --serial-max 200 --parallel-max 0 --no-host-only
+      qr_complex_limbforge --bits 256 --size 1000 --repeats 3 --serial-max 200 --parallel-max 1000 --no-host-only
+      qr_complex_limbforge --bits 256 --size 1000 --repeats 5 --serial-max 0 --parallel-max 0 --no-host-only (last row)
+    mpc_serial_s: consumer-style MPC Householder (qsccpp mx.hpp QR) on one thread, measured at n = 200 and scaled by n^3;
+    mpc_parallel_s: the same with trailing columns over 18 threads, measured (n = 1000 at 256 bits only), plus mpc_solve_s.
+    host_only_equal: a host-only factorization and solve give identical bits (n <= 400 rows; at n = 1000 not rerun).
+  round43_qr_complex_accuracy.csv: qr_complex_limbforge --accuracy --size n --nrhs 4 for n = 200 and 400 (kappa -1 =
+    QSC-like, 40, 100), errors against an MPC Householder solve at 3*bits + 2*kappa bits: complex QR, real QR of the
+    embedding, normal equations of the embedding (SYRK, gemm, Cholesky), consumer MPC Householder at the working precision.
+  round43_qr_complex_tests_validation.txt: correctness gate.
+
+Summary (factor + solve, medians of interleaved repeats):
+  n = 200: complex 172 ms (224) / 76 ms (256); embedding 1.58x / 1.46x slower; 18-thread MPC 3.7x / 9.4x slower.
+  n = 400: complex 250 / 259 ms; embedding 1.38x / 1.32x slower; 18-thread MPC 18.7x / 18.2x slower.
+  n = 1000: complex 1.27 s (224) and 1.67 s (256, 5 repeats; the 3-repeat run gave 2.41 s median, 1.42 s minimum, load
+    rising to 45); embedding 2.47x / 2.39x slower; 18-thread MPC 75 s at 256 bits (45x); serial MPC (extrapolated) 424 /
+    674 s. Panel 0.96 s of the 1.12 s factorization at n = 1000, 224 bits (the critical path).
+  Accuracy: complex QR within 2 bits of the embedding's real QR, 3-5 bits better than the MPC Householder; the
+    embedding's normal equations lose ~kappa bits (no correct bits for consistent b at kappa = 100).

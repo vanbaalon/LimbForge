@@ -285,7 +285,8 @@ For BSolver (≈128 lanes × 600 steps) the GPU runs ~128 threads. Two complemen
 | D5 batched 4×4 LU/solve/inverse/det | done (29, resident 34) | `Engine::lu4`, `CommandBatch::lu4` |
 | D6 SYRK/GEMM, Cholesky, triangular solves | done (20-D6, 23-D6b), host-array | `linalg.hpp` |
 | S5 Householder QR factor object, least squares, apply Q (+ augmented LM) | done (31-S5), host-array, full rank | `Linalg::factor_qr`, `QRFactor` |
-| S5b faster QR panel and products; column-pivoted QR (basic solutions) | done (40-S5b), host-array; complex QR open | `QROptions::pivot`, `QRFactor::permutation` |
+| S5b faster QR panel and products; column-pivoted QR (basic solutions) | done (40-S5b), host-array | `QROptions::pivot`, `QRFactor::permutation` |
+| S5c complex Householder QR, least squares, apply Q / Q^H (zgeqrf convention, real diagonal) | done (43-complex-QR), host-array, unpivoted | `Linalg::factor_qr_complex`, `ComplexQRFactor` |
 | C1 broadcast operands | done (28) | `Broadcast` |
 | C7 pipeline prewarm | done (33) | `Engine::prewarm_async` |
 | S6 precision casts | done (38) | `Engine::cast`, `CommandBatch::cast` |
@@ -298,8 +299,8 @@ For BSolver (≈128 lanes × 600 steps) the GPU runs ~128 threads. Two complemen
 
 Next, by consumer value: qscmx/BSolver integration and end-to-end timing on an idle host (also the
 pending GitHub speed figures); resident `linalg` (`CommandBatch` versions through `src/engine_internal.hpp`; numerics and
-transcendentals done in round 39), GPU-side transcendental retries, the on-device norm threshold; S5 complex QR
-(and deeper QR look-ahead, a reconstruction-bound trailing update); G = 4/8 cooperative shapes with ≥ 3 limbs per lane
+transcendentals done in round 39), GPU-side transcendental retries, the on-device norm threshold; deeper QR look-ahead
+(and complex column pivoting, a reconstruction-bound trailing update); G = 4/8 cooperative shapes with ≥ 3 limbs per lane
 (validation-only failures, 41-L4b); fused `vector_recurrence` above 512 bits.
 
 ## 5. Order, tracks and dependencies
@@ -500,8 +501,15 @@ form the three int8 products of a tile in registers (no int32 planes). QSC-like 
 shared GPU: factor + solve 5.1 -> 2.0 s median, 2.0 -> 0.60 s best (panel 2.2 -> 0.64 s). `QROptions::pivot`: xGEQP3-style
 pivoting on downdated squared norms with exact comparisons, ties to the lowest original index, LAPACK's recomputation rule,
 `rank_bits` as the rank tolerance, basic (not minimum-norm) solutions; equal to its own MPFR replay and to the unpivoted
-sequence of `A P`. Costs 1.2x at n = 400 and 2.6x at n = 1000 (host BLAS-2 rows). Open: complex QR, deeper look-ahead
+sequence of `A P`. Costs 1.2x at n = 400 and 2.6x at n = 1000 (host BLAS-2 rows). Open: deeper look-ahead
 (the trailing updates are now often the critical path on a shared GPU), the reconstruction-bound `RN(X - V Y)` update.
+*Status (round 43-complex-QR): complex QR done, unpivoted.* `Linalg::factor_qr_complex(bits, A, m, n, QROptions)` returns
+`ComplexQRFactor` (`solve`, `apply_q(B, nrhs, adjoint)`, `r()`, `v()`, `tau()`, `t()`, `info()`; QRFactor's rank/status rules). LAPACK `zgeqrf`
+convention (complex tau, real beta, real diagonal of R; a real A gives the real QR's bits). Each complex dot or update is rounded once per
+real component; trailing updates are the real block products on 2x2-block real embeddings of V and T and a row-split work matrix
+(`src/linalg_complex.mm`, hooks in `src/linalg_internal.hpp`). Bit-identical to an MPFR replay at 64/224/256/384 bits and all 31 widths,
+also under shader validation. Accuracy equals the real QR of the 2m x 2n embedding (within 2 bits); 1.3-2.4x faster than that embedding,
+18-45x the 18-thread MPC Householder. Open: complex pivoting, augmented entry point, a single copy of V.
 
 Sketch: `factor_qr(A, workspace, options) -> QRFactor`, `factor.solve(B)`,
 `factor.apply_q(B, transpose)`, plus factor/solve separation for D5 LU and D6 Cholesky.

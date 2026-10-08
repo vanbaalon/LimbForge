@@ -4,6 +4,7 @@
 #import <Foundation/Foundation.h>
 #import <Metal/Metal.h>
 #include "limbforge/linalg.hpp"
+#include "linalg_internal.hpp"
 #include "linalg_source.hpp"
 #include <atomic>
 #include <chrono>
@@ -744,4 +745,24 @@ Timing QRFactor::solve(const void* B,std::size_t nrhs,void* X)const{const auto& 
     return by_words(f.bits/32,[&](auto w){constexpr int N=decltype(w)::value;return f.owner->impl->qr_solve_n<N>(f,static_cast<const Number<N>*>(B),nrhs,static_cast<Number<N>*>(X));});}
 Timing QRFactor::apply_q(void* B,std::size_t nrhs,bool transpose)const{const auto& f=qr_data(d);check_size(f.n,nrhs);check_size(1,f.m*nrhs);if(f.m&&nrhs&&!B)throw std::invalid_argument("null matrix");
     return by_words(f.bits/32,[&](auto w){constexpr int N=decltype(w)::value;return f.owner->impl->qr_apply_n<N>(f,static_cast<Number<N>*>(B),nrhs,transpose);});}
+// ---- Hooks for the complex QR (src/linalg_internal.hpp, src/linalg_complex.mm) ----
+namespace detail {
+std::size_t LinalgHooks::enter(Linalg& la){la.impl->pool_workers();return la.impl->resident.size();}
+void LinalgHooks::leave(Linalg& la,std::size_t mark){la.impl->resident.resize(mark);}
+void* LinalgHooks::scratch(Linalg& la,const char* role,std::size_t bytes){id<MTLBuffer> b=la.impl->buffer(role,bytes);la.impl->resident.push_back(b);return b.contents;}
+void LinalgHooks::resident(Linalg& la,void* p,std::size_t bytes){id<MTLBuffer> b=la.impl->wrap(p,bytes);if(!b)throw std::runtime_error("Metal buffer wrap failed (complex qr)");la.impl->resident.push_back(b);}
+unsigned LinalgHooks::lanes(Linalg& la){return la.impl->pool_workers().size();}
+void LinalgHooks::each(Linalg& la,std::size_t n,const std::function<void(std::size_t)>& f){la.impl->each(n,f);}
+void LinalgHooks::run(Linalg& la,std::size_t n,const std::function<void(std::size_t,unsigned)>& f){la.impl->pool_workers().run(n,f);}
+void LinalgHooks::side(bool on){side_thread=on;}
+Timing LinalgHooks::qr_block(Linalg& la,int bits,std::size_t m,std::size_t n,std::size_t nb,const void* V,const void* T,std::size_t b,void* X,std::size_t ld,
+                             std::size_t c0,std::size_t c1,bool qt,void* Wb,void* Yb,double threshold,bool gpu,bool& on_gpu){
+    QRData f;f.m=m;f.n=n;f.nb=nb;f.v.p=const_cast<void*>(V);f.t.p=const_cast<void*>(T);  // borrowed: released below, never freed here
+    struct Borrow {QRData& f;~Borrow(){f.v.p=nullptr;f.t.p=nullptr;}} borrow{f};
+    return by_words(bits/32,[&](auto w){constexpr int N=decltype(w)::value;
+        return la.impl->qr_block<N>(f,b,static_cast<Number<N>*>(X),ld,c0,c1,qt,static_cast<Number<N>*>(Wb),static_cast<Number<N>*>(Yb),threshold,gpu,on_gpu);});}
+Timing LinalgHooks::solve_upper(Linalg& la,int bits,const void* R,std::size_t n,const void* B,std::size_t nrhs,void* X,const FactorOptions& fo){
+    return by_words(bits/32,[&](auto w){constexpr int N=decltype(w)::value;
+        return la.impl->solve_n<N>(static_cast<const Number<N>*>(R),n,static_cast<const Number<N>*>(B),nrhs,static_cast<Number<N>*>(X),fo,2,true);});}
+}
 }

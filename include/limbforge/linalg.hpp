@@ -72,6 +72,7 @@ struct QRInfo {
     std::size_t norm_recomputations=0;        // pivoting: downdated norms recomputed from the reduced column
 };
 namespace detail { struct QRData; }
+namespace detail { struct LinalgHooks; } class ComplexQRFactor; // complex QR (end of this header, src/linalg_complex.mm)
 class Linalg;
 // Owning QR factor of an m x n matrix (m >= n): Q = H_0 ... H_{n-1}, H_j = I - tau_j v_j v_j^T, and R. The factor copies
 // everything it needs and never refers to A again: when A changes, factor it again (no caching by address). It uses the
@@ -125,10 +126,12 @@ public:
     // QR of the augmented Levenberg-Marquardt matrix [J; diag(d)] ((m+n) x n) for J (m x n) and the caller's diagonal d
     // (n entries, e.g. sqrt(mu) D): the same factorization of the stacked matrix. Solve with B of m+n rows ([r; 0]).
     QRFactor factor_qr_augmented(int bits,const void* J,std::size_t m,std::size_t n,const void* d,const QROptions& options={});
+    // Complex Householder QR of A (m x n, row-major Complex<bits/32>, m >= n); see ComplexQRFactor below.
+    ComplexQRFactor factor_qr_complex(int bits,const void* A,std::size_t m,std::size_t n,const QROptions& options={});
     const LinalgReport& report() const;
     const LinalgOptions& options() const;
 private:
-    friend class QRFactor; struct Impl; std::unique_ptr<Impl> impl;
+    friend class QRFactor; friend struct detail::LinalgHooks; struct Impl; std::unique_ptr<Impl> impl;
 };
 // ---- Exact dot product on the CPU: RN(sum_k a[k*sa]*b[k*sb]) with one rounding (the GPU fallback) ----
 namespace detail {
@@ -233,4 +236,28 @@ template<int N> Number<N> exact_dot_add(const Number<N>* c,bool subtract,const N
 // RN(sum_k a[k*sa]*b[k*sb]) with one rounding (the GPU fallback); empty K and exact cancellation give canonical zero.
 template<int N> Number<N> exact_dot(const Number<N>* a,std::ptrdiff_t sa,const Number<N>* b,std::ptrdiff_t sb,std::size_t K){
     return exact_dot_add<N>(nullptr,false,a,sa,b,sb,K);}
+// ---- Complex Householder QR (round 43; docs/numerics.md, "Complex QR factorization and least squares") ----
+namespace detail { struct ComplexQRData; }
+// Owning QR factor of a complex m x n matrix A (m >= n), from Linalg::factor_qr_complex: A = Q R with Q = H_0 ... H_{n-1},
+// H_j = I - tau_j v_j v_j^H and complex tau_j (the LAPACK zgeqrf convention), so H_j^H maps the reduced column (alpha; x) to
+// (beta_j; 0) with real beta_j = -sgn(Re alpha) ||(alpha; x)|| (sgn(0) = +1): R is upper triangular with a real diagonal.
+// Options, rank and status rules, ownership and threading are those of QRFactor (block, rank_bits, GPU/host split, which never
+// changes a bit). Column pivoting is not supported (QROptions::pivot throws std::invalid_argument).
+class ComplexQRFactor {
+public:
+    ComplexQRFactor(); ~ComplexQRFactor(); ComplexQRFactor(ComplexQRFactor&&) noexcept; ComplexQRFactor& operator=(ComplexQRFactor&&) noexcept;
+    bool empty() const; int bits() const; std::size_t rows() const; std::size_t cols() const; std::size_t block() const;
+    const QRInfo& info() const; bool full_rank() const;
+    // Row-major Complex<bits/32> arrays owned by the factor: R (n x n, upper, real diagonal; with rank p < n, rows i >= p hold
+    // the unreduced remainder in columns j >= p), V (m x n: column j is v_j, zero above row j, v_j[j] = the scaled v0), tau (n)
+    // and T (blocks of nb x nb, the compact-WY upper triangles: H_k0 ... H_k1-1 = I - V_b T_b V_b^H; block b at offset b*nb*nb).
+    const void* r() const; const void* v() const; const void* tau() const; const void* t() const;
+    // X (n x nrhs, complex) = least-squares solution of min ||A x - b|| for each column b of B (m x nrhs): Q^H B, then
+    // R X = (Q^H B)[0:n). A rank-deficient factor writes zero with status invalid to every entry of X. X must not overlap B.
+    Timing solve(const void* B,std::size_t nrhs,void* X) const;
+    // B (m x nrhs, complex) <- Q^H B (adjoint) or Q B, in place.
+    Timing apply_q(void* B,std::size_t nrhs,bool adjoint) const;
+private:
+    friend class Linalg; std::unique_ptr<detail::ComplexQRData> d;
+};
 }

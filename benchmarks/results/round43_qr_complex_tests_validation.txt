@@ -1,0 +1,92 @@
+Round 43-complex-QR correctness gate (Apple M5 Max, Release build).
+
+== Plain ctest (21/21) ==
+Thu Oct  8 11:00:27 EDT 2026
+11:00  up 2 days, 22:24, 2 users, load averages: 38.76 25.40 24.63
+      Start  9: linalg_qr
+ 9/21 Test  #9: linalg_qr ........................   Passed   59.00 sec
+      Start 10: linalg_qr_complex
+10/21 Test #10: linalg_qr_complex ................   Passed   89.69 sec
+      Start 11: arithmetic_gpu
+11/21 Test #11: arithmetic_gpu ...................   Passed   42.39 sec
+      Start 12: broadcast_gpu
+12/21 Test #12: broadcast_gpu ....................   Passed    2.96 sec
+      Start 13: batched4_gpu
+13/21 Test #13: batched4_gpu .....................   Passed    3.02 sec
+      Start 14: cast_gpu
+14/21 Test #14: cast_gpu .........................   Passed    1.89 sec
+      Start 15: segmented_dot_gpu
+15/21 Test #15: segmented_dot_gpu ................   Passed    2.60 sec
+      Start 16: vector_recurrence_gpu
+16/21 Test #16: vector_recurrence_gpu ............   Passed    4.89 sec
+      Start 17: numerics_gpu
+17/21 Test #17: numerics_gpu .....................   Passed   11.28 sec
+      Start 18: resident_units_gpu
+18/21 Test #18: resident_units_gpu ...............   Passed    7.27 sec
+      Start 19: resident_buffers
+19/21 Test #19: resident_buffers .................   Passed    1.45 sec
+      Start 20: transcendental_gpu
+20/21 Test #20: transcendental_gpu ...............   Passed   52.45 sec
+      Start 21: tree_reduction
+21/21 Test #21: tree_reduction ...................   Passed   13.40 sec
+
+100% tests passed out of 21
+
+Total Test time (real) = 846.20 sec
+Thu Oct  8 11:14:34 EDT 2026
+11:14  up 2 days, 22:38, 2 users, load averages: 20.23 28.52 29.10
+
+== MTL_SHADER_VALIDATION=1 ctest (21/21) ==
+Thu Oct  8 11:19:16 EDT 2026
+load { 34.63 32.12 30.40 }
+ 1/21 Test  #1: arithmetic_cpu ...................   Passed    1.44 sec
+ 2/21 Test  #2: bridge_cpu .......................   Passed    3.29 sec
+ 3/21 Test  #3: fused_cpu ........................   Passed    0.27 sec
+ 4/21 Test  #4: fused_gpu ........................   Passed  371.49 sec
+ 5/21 Test  #5: transcendental_cpu ...............   Passed   44.62 sec
+ 6/21 Test  #6: linalg_cpu .......................   Passed    0.24 sec
+ 7/21 Test  #7: linalg_gpu .......................   Passed   23.30 sec
+ 8/21 Test  #8: linalg_cholesky ..................   Passed   21.61 sec
+ 9/21 Test  #9: linalg_qr ........................   Passed   64.03 sec
+10/21 Test #10: linalg_qr_complex ................   Passed   88.21 sec
+11/21 Test #11: arithmetic_gpu ...................   Passed   45.35 sec
+12/21 Test #12: broadcast_gpu ....................   Passed   21.49 sec
+13/21 Test #13: batched4_gpu .....................   Passed  468.56 sec
+14/21 Test #14: cast_gpu .........................   Passed    0.83 sec
+15/21 Test #15: segmented_dot_gpu ................   Passed   55.89 sec
+16/21 Test #16: vector_recurrence_gpu ............   Passed    3.97 sec
+17/21 Test #17: numerics_gpu .....................   Passed    3.69 sec
+18/21 Test #18: resident_units_gpu ...............   Passed    1.22 sec
+19/21 Test #19: resident_buffers .................   Passed   12.80 sec
+20/21 Test #20: transcendental_gpu ...............   Passed   42.45 sec
+21/21 Test #21: tree_reduction ...................   Passed   63.84 sec
+100% tests passed out of 21
+Total Test time (real) = 1338.61 sec
+load { 16.43 20.97 23.80 }
+Thu Oct  8 11:41:35 EDT 2026
+
+== test_limbforge_qr_complex (full) and --all-widths, plain ==
+Apple M5 Max
+complex qr 224 bits: match the MPFR replay
+complex qr 256 bits: match the MPFR replay
+complex qr 64, 384 bits: match the MPFR replay
+QSC-like complex 400x200 at 224 bits: match the MPFR replay
+QSC-like complex 800x400 at 224 bits: match the MPFR replay
+QSC-like complex 400x200 at 256 bits: match the MPFR replay
+QSC-like complex 800x400 at 256 bits: match the MPFR replay
+16 real-input factorizations bit-identical to Linalg::factor_qr
+608 factorizations (240 rank-deficient; 1710 GPU and 98 host block updates), 608 solves and 1216 Q applications bit-identical to the reference
+./build/test_limbforge_qr_complex  283.94s user 49.30s system 485% cpu 1:08.63 total
+Apple M5 Max
+all widths: 64 96 128 160 192 224 256 288 320 352 384 416 448 480 512 544 576 608 640 672 704 736 768 800 832 864 896 928 960 992 1024 
+124 factorizations, 124 solves and 248 Q applications at every width bit-identical to the reference
+./build/test_limbforge_qr_complex --all-widths  7.31s user 9.19s system 36% cpu 45.154 total
+
+== test_limbforge_qr_complex (full) and --all-widths, MTL_SHADER_VALIDATION=1 ==
+== test_limbforge_transcendental --gpu-only --no-bounds --points 1000 --bits 64 224 256 384 1024 (MTL_SHADER_VALIDATION=1)
+
+== Fault injection (test_limbforge_qr_complex --quick) ==
+1. Im tau with the wrong sign: fails at the first 1x1 factor (tau entry (0,0).im).
+2. Status OR dropped in the panel's Gram/W windows: fails at 'status at (7,4).re' (R entry (0,4).re carries no status).
+
+After the final change (a file-local helper given internal linkage), the linalg_* tests were rerun: 5/5 passed.
