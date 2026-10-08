@@ -100,6 +100,7 @@ class CommandBatch {
     void encode_vector(int,const VectorRecurrence&,const std::shared_ptr<detail::BufferStorage>* in,const std::size_t* sizes,
                        const std::shared_ptr<detail::BufferStorage>& out,std::size_t out_size);
     void encode_lu4(int,const Batched4&,const std::shared_ptr<detail::BufferStorage>* in,const std::size_t* sizes);
+    void encode_cast(int,int,bool,const std::shared_ptr<detail::BufferStorage>&,const std::shared_ptr<detail::BufferStorage>&,std::size_t);
     void encode_dot(int,bool,const SegmentedDot&,const std::shared_ptr<detail::BufferStorage>&,std::size_t,const std::shared_ptr<detail::BufferStorage>&,std::size_t,
                     const std::shared_ptr<detail::BufferStorage>&,std::size_t);
     void encode_tree_sum(int,bool,const std::shared_ptr<detail::BufferStorage>&,
@@ -157,6 +158,13 @@ public:
         const std::size_t sizes[5]={A.size(),B.size(),X.size(),det.size(),status.size()};
         encode_lu4(detail::Format<T>::bits,shape,in,sizes);
     }
+    // Precision cast (docs/numerics.md): exact when widening, round to nearest even when narrowing.
+    template<class From,class To> void cast(const Buffer<From>& in,Buffer<To>& out){
+        static_assert(detail::Format<From>::bits&&detail::Format<To>::bits,"casts convert arithmetic buffers");
+        static_assert(detail::Format<From>::complex==detail::Format<To>::complex,"casts keep real or complex");
+        if(in.size()!=out.size())throw std::invalid_argument("buffer counts must match");
+        encode_cast(detail::Format<From>::bits,detail::Format<To>::bits,detail::Format<To>::complex,in.storage_,out.storage_,in.size());
+    }
     template<class T> void segmented_dot(const SegmentedDot& shape,const Buffer<T>& a,const Buffer<T>& b,Buffer<T>& out){
         encode_dot(detail::Format<T>::bits,detail::Format<T>::complex,shape,a.storage_,a.size(),b.storage_,b.size(),out.storage_,out.size());
     }
@@ -185,6 +193,8 @@ public:
     Timing run_unary(int bits,Operation op,const void* a,void* out,std::size_t count);
     Timing run_ternary(int bits,Operation op,const void* a,const void* b,const void* c,void* out,std::size_t count,Broadcast b_index={},Broadcast c_index={});
     Timing segmented_dot(int bits,bool complex,const SegmentedDot& shape,const void* a,const void* b,void* out);
+    // Host-array precision cast between any two supported widths (complex: componentwise).
+    Timing cast(int from_bits,int to_bits,bool complex,const void* in,void* out,std::size_t count);
     Timing lu4(int bits,const Batched4& shape,const void* A,const void* B,void* X,void* det,std::uint32_t* status);
     // Four seeds / instance. Adjacent states_per_weight instances share weights;
     // count must be divisible by states_per_weight. Layout is seeds[j*count+i],

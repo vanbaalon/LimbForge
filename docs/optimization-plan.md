@@ -281,6 +281,7 @@ For BSolver (≈128 lanes × 600 steps) the GPU runs ~128 threads. Two complemen
 | D6 SYRK/GEMM, Cholesky, triangular solves | done (20-D6, 23-D6b), host-array | `linalg.hpp` |
 | C1 broadcast operands | done (28) | `Broadcast` |
 | C7 pipeline prewarm | done (33) | `Engine::prewarm_async` |
+| S6 precision casts | done (38) | `Engine::cast`, `CommandBatch::cast` |
 | E1 cooperative recurrence | done for G = 16/32 (17, 22) | `cooperative.metal` |
 | L1 residue GEMM | done (16, 18, 20) | `linalg.hpp` |
 | S1 polynomial values and jets (order ≤ 2) | done (32-S1), host-array | `Numerics::poly_eval(_jet)` in `numerics.hpp` |

@@ -132,6 +132,14 @@ tree in shared memory, then reduce their roots. Padding a final block with
 canonical zero preserves the valid-input result and error behavior. Group size
 changes scheduling and storage without changing the mathematical tree.
 
+## Precision casts
+
+`Engine::cast(from_bits, to_bits, complex, in, out, count)` and `CommandBatch::cast(in, out)` convert
+between any two supported widths: widening is exact, narrowing rounds to nearest even (carrying into the
+next binade when needed), componentwise for complex values. Statuses are kept; a result outside the
+exponent range gets `exponent_overflow`. Widening rounded data cannot restore lost digits: when a
+solver raises its working precision, recompute precision-sensitive inputs from their source.
+
 ## Broadcast operands
 
 Binary and fused element-wise operations can read `b` (and `c`) through `Broadcast{stride, period}`:

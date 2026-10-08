@@ -220,3 +220,20 @@ kernel void batched4(device const Complex<N>* A [[buffer(0)]],device const Compl
         for(uint i=0;i<4;++i)X[(ulong(m)*4+i)*R+j]=y[i];
     }
 }
+
+// Precision casts (plan S6): exact widening, round-to-nearest-even narrowing, componentwise for complex.
+// The library width is the target; the source width (in words) is a parameter. Source limbs are copied
+// into a 33-word array (outside the register band) and rounded by pack.
+struct CastParams { uint count,from_words; };
+inline Number<N> cast_number(device const uint* src,uint W){
+    word a[33];for(uint i=0;i<33;++i)a[i]=0;for(uint i=0;i<W;++i)a[i]=src[i];
+    int e=as_type<int>(src[W]),sign=as_type<int>(src[W+1]);word status=src[W+2];
+    if(status||!sign)return zero<N>(status);
+    return pack<N>(a,exponent_type(e)-(32*exponent_type(W)-1),sign,ok);
+}
+kernel void cast_real(device const uint* in [[buffer(0)]],device Number<N>* out [[buffer(2)]],constant CastParams& p [[buffer(3)]],uint i [[thread_position_in_grid]]){
+    if(i>=p.count)return;out[i]=cast_number(in+ulong(i)*(p.from_words+3),p.from_words);
+}
+kernel void cast_complex(device const uint* in [[buffer(0)]],device Complex<N>* out [[buffer(2)]],constant CastParams& p [[buffer(3)]],uint i [[thread_position_in_grid]]){
+    if(i>=p.count)return;ulong w=p.from_words+3;Complex<N> z={cast_number(in+ulong(i)*2*w,p.from_words),cast_number(in+ulong(i)*2*w+w,p.from_words)};out[i]=z;
+}

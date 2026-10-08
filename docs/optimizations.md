@@ -49,6 +49,7 @@ benchmark inputs do not exercise the baseline's known exponent-boundary bug.
 | 34 | Resident `CommandBatch::lu4` and `Buffer<std::uint32_t>` status buffers | Accepted. Same shapes and contract with size checks; resident inverse, determinant and status equal the MPFR-validated host path at 224/256 bits, and a dependent `complex_mul` in the same batch sees the inverse. |
 | 36 | `vector_recurrence` at 1024 bits (composed) | Accepted. All composed modes equal MPFR at 1024 bits (compile ~3.6 s). Fused specialisations at 768/1024 bits compile slowly (23–34 s) and one 1024-bit fused variant crashed the Metal compiler, so fused mode is rejected above 512 bits with `invalid_argument`. |
 | 37 | GPU `square` always uses `mul(a,a)` | Accepted. The 384-bit symmetric square had become slower than `mul` after round 14 and returned wrong results inside heavier kernels (round 32). Unary square at 384 bits, warm: ~19.6 µs (one input stream) versus ~36.7 µs for the previous symmetric form; identical rounding. All 16 suites pass. |
+| 38 | Precision casts `Engine::cast` / `CommandBatch::cast` (plan S6, part 1) | Accepted. Source words copied into a 33-word array and rounded by `pack` in the target-width library. Equal to MPFR (`mpfr_set` to the target precision) for 10 width pairs (widening, narrowing, same width), ties, carry into the next binade, statuses and exponent limits, real and complex, host and resident. |
 
 ## Exact arithmetic retained
 

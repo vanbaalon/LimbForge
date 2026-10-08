@@ -52,6 +52,7 @@ measurements.
 - Correctly rounded real addition, subtraction, multiplication, division, square, and square root.
 - Complex addition, multiplication, and division composed from rounded real primitives.
 - Fused real `fma`/`fms` and complex `complex_fma`/`complex_fms`, each component rounded once.
+- Exact widening and round-to-nearest narrowing casts between any two supported precisions.
 - Broadcast (stride/period) operands for element-wise operations, so shared coefficients need no copies.
 - Batched 4×4 complex LU with deterministic pivoting: solve, inverse and determinant per matrix.
 - Segmented real/complex dot products with a fixed, reproducible fused order and optional shared table.

@@ -107,7 +107,10 @@ struct Engine::Impl {
         @autoreleasepool {
         id<MTLLibrary> lib=library(bits);
         NSError* error=nil;id<MTLFunction> function;
-        if(operation>=400){
+        if(operation>=500){
+            function=[lib newFunctionWithName:operation==501?@"cast_complex":@"cast_real"];
+        }
+        else if(operation>=400){
             MTLFunctionConstantValues* constants=[MTLFunctionConstantValues new];
             std::uint32_t flags=operation-400;[constants setConstantValue:&flags type:MTLDataTypeUInt atIndex:4];
             function=[lib newFunctionWithName:@"batched4" constantValues:constants error:&error];
@@ -218,6 +221,21 @@ struct Engine::Impl {
             if(command.status==MTLCommandBufferStatusError)throw std::runtime_error("Metal execution: "+error_message(command.error));
             if(x_bytes)std::memcpy(X,vector_buffers[2].contents,x_bytes);if(det_bytes)std::memcpy(det,vector_buffers[3].contents,det_bytes);
             if(status)std::memcpy(status,vector_buffers[4].contents,status_bytes);
+            return {command.GPUEndTime-command.GPUStartTime,std::chrono::duration<double>(std::chrono::steady_clock::now()-start).count()};
+        }
+    }
+    Timing cast_dispatch(int from,int to,bool complex,const void* in,std::size_t in_bytes,void* out,std::size_t out_bytes,std::size_t count){
+        @autoreleasepool {
+            int operation=complex?501:500;auto state=pipeline(to,operation);auto start=std::chrono::steady_clock::now();
+            reserve(0,in_bytes);reserve(2,out_bytes);std::memcpy(buffers[0].contents,in,in_bytes);
+            id<MTLCommandBuffer> command=[queue commandBuffer];id<MTLComputeCommandEncoder> encoder=[command computeCommandEncoder];
+            if(!command||!encoder)throw std::runtime_error("Metal command allocation failed");
+            [encoder setComputePipelineState:state];[encoder setBuffer:buffers[0] offset:0 atIndex:0];[encoder setBuffer:buffers[2] offset:0 atIndex:2];
+            std::uint32_t params[2]={std::uint32_t(count),std::uint32_t(from/32)};[encoder setBytes:params length:sizeof(params) atIndex:3];
+            [encoder dispatchThreads:MTLSizeMake(count,1,1) threadsPerThreadgroup:MTLSizeMake(group_size(state,to,operation),1,1)];
+            [encoder endEncoding];[command commit];[command waitUntilCompleted];
+            if(command.status==MTLCommandBufferStatusError)throw std::runtime_error("Metal execution: "+error_message(command.error));
+            std::memcpy(out,buffers[2].contents,out_bytes);
             return {command.GPUEndTime-command.GPUStartTime,std::chrono::duration<double>(std::chrono::steady_clock::now()-start).count()};
         }
     }
@@ -346,6 +364,17 @@ void CommandBatch::encode_lu4(int bits,const Batched4& s,const std::shared_ptr<d
     std::uint32_t params[2]={std::uint32_t(s.count),s.rhs};[encoder setBytes:params length:sizeof(params) atIndex:3];
     [encoder dispatchThreads:MTLSizeMake(s.count,1,1) threadsPerThreadgroup:MTLSizeMake(impl_->engine->group_size(state,bits,operation),1,1)];
 }
+void CommandBatch::encode_cast(int from,int to,bool complex,const std::shared_ptr<detail::BufferStorage>& in,const std::shared_ptr<detail::BufferStorage>& out,std::size_t count){
+    if(!impl_||impl_->submitted)throw std::logic_error("batch already submitted or moved");
+    validate(from,count);validate(to,count);impl_->retain(in);impl_->retain(out);if(!count)return;
+    int operation=complex?501:500;auto state=impl_->engine->pipeline(to,operation);
+    if(!impl_->encoder){impl_->encoder=[impl_->command computeCommandEncoder];if(!impl_->encoder)throw std::runtime_error("Metal encoder allocation failed");}
+    else [impl_->encoder memoryBarrierWithScope:MTLBarrierScopeBuffers];
+    auto encoder=impl_->encoder;[encoder setComputePipelineState:state];
+    [encoder setBuffer:in->buffer offset:0 atIndex:0];[encoder setBuffer:out->buffer offset:0 atIndex:2];
+    std::uint32_t params[2]={std::uint32_t(count),std::uint32_t(from/32)};[encoder setBytes:params length:sizeof(params) atIndex:3];
+    [encoder dispatchThreads:MTLSizeMake(count,1,1) threadsPerThreadgroup:MTLSizeMake(impl_->engine->group_size(state,to,operation),1,1)];
+}
 void CommandBatch::encode_dot(int bits,bool complex,const SegmentedDot& s,const std::shared_ptr<detail::BufferStorage>& a,std::size_t a_size,
                               const std::shared_ptr<detail::BufferStorage>& b,std::size_t b_size,const std::shared_ptr<detail::BufferStorage>& out,std::size_t out_size){
     if(!impl_||impl_->submitted)throw std::logic_error("batch already submitted or moved");
@@ -462,6 +491,11 @@ Timing Engine::lu4(int bits,const Batched4& s,const void* A,const void* B,void* 
 }
 void Engine::prewarm(const Prewarm& r){impl->prewarm(r);}
 std::future<void> Engine::prewarm_async(Prewarm r){auto keep=impl;return std::async(std::launch::async,[keep,r=std::move(r)]{keep->prewarm(r);});}
+Timing Engine::cast(int from,int to,bool complex,const void* in,void* out,std::size_t count){
+    validate(from,count);validate(to,count);if(!count)return {0,0};if(!in||!out)throw std::invalid_argument("null cast buffer");
+    std::size_t parts=complex?2:1;
+    return impl->cast_dispatch(from,to,complex,in,checked_size(count,(from/8+12)*parts),out,checked_size(count,(to/8+12)*parts),count);
+}
 Timing Engine::recurrence(int bits,const void* seeds,const void* weights,void* out,std::size_t count,unsigned steps,unsigned states_per_weight) {
     validate(bits,count);
     if(!states_per_weight||count%states_per_weight)throw std::invalid_argument("count must be divisible by states_per_weight");
