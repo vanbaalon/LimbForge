@@ -1,7 +1,7 @@
 # Section 9 P1.4: normal-equation measurement harness
 
 The original harness began at `e91a215` / 1.1.0 and is rebased on current main
-`52bbd50` / 1.3.0; branch `round-section9-normal-measurements`.
+`bffa58b` / 1.3.0 (WolfNum branding); branch `round-section9-normal-measurements`.
 No library kernel or API change. No accepted timings yet.
 
 `section9_normal_limbforge` compares sequential composed/fused normal equations,
@@ -40,3 +40,9 @@ The target is excluded from default builds and CTest. Rebased focused shader che
 are required before the large timing runs; the older 1.1.0-linked logs do not prove
 the rebuilt 1.3.0-linked binary. Clock labels are `cpu-interleaved` and
 `verified-warm-call`; neither is a controlled cold or continuously warm clock claim.
+
+The revised reference harness passes a genuinely CPU-only all31-width check at
+9x5 with four workers, using separate direct-index MPFR replays for all three
+contracts. Its source is byte-identical after rebasing onto the WolfNum main;
+rebuilt physical-GPU fixtures are queued after the exact-trial validation job.
+The CPU-only results do not prove GPU correctness or measured performance.
