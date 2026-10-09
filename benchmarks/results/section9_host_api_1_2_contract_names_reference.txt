@@ -1,0 +1,1 @@
+Contract names: exact cancellation=1, composed/fused sequential=0; all additive signatures compile

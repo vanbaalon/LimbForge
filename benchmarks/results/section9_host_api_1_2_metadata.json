@@ -1,0 +1,44 @@
+{
+  "recorded_utc": "2026-10-09T02:58:37.800134+00:00",
+  "revision_before_final_records": "5a0fa2e44164ed6cde2f4da56fd972f0937f2564",
+  "results": [
+    {
+      "log": "section9_host_api_1_2_section9_reference.txt",
+      "exit": 0
+    },
+    {
+      "log": "section9_host_api_1_2_algebra_prewarm_reference.txt",
+      "exit": 0
+    },
+    {
+      "log": "section9_host_api_1_2_contract_names_reference.txt",
+      "exit": 0
+    },
+    {
+      "log": "section9_host_api_1_2_section9_validation.txt",
+      "exit": 0
+    },
+    {
+      "log": "section9_host_api_1_2_algebra_prewarm_validation.txt",
+      "exit": 0
+    },
+    {
+      "log": "section9_host_api_1_2_contract_names_validation.txt",
+      "exit": 0
+    },
+    {
+      "log": "section9_host_api_1_2_package.txt",
+      "exit": 0
+    }
+  ],
+  "sha256": {
+    "include/limbforge/version.hpp": "c3f535d25198ea8ac5729a98c7c38198c4cde31c7958d7a8ba7491b0dff63e22",
+    "include/limbforge/batched_linalg.hpp": "3b36d3f83d6e5fc57ab833b03510afcfd426caccc279ffc511746b60f53b751f",
+    "include/limbforge/linalg.hpp": "ced23f8b062253d22534dc6f30f83bf4286d83ad8b87bd58689846c09e2e0ef6",
+    "src/batched_linalg.mm": "74770785a5ecef4eaac114a98686da4ad6ab3310446f704546bce5c27e6da6d1",
+    "src/linalg.mm": "3a5c8362c125b506fbb9bf9ef76da766eea52c88eb75cb07bf1626f64a8a18e0",
+    "build/liblimbforge.a": "bf2d5f0f8eeca575109abf7e832763de10114d0b8b1ef81bccdf537860a7bb31"
+  },
+  "unchanged_numeric_sources": true,
+  "validation_scope": "combined host/cache/workspace changes and inline aliases; not a repeated full arithmetic audit"
+}
