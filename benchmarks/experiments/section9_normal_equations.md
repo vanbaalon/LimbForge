@@ -36,13 +36,14 @@ retain their numerical meaning and immediate device-chainability.
 Logs: `section9_p14_normal_352_final_check.txt` and
 `section9_p14_normal_1024_resident_final_check.txt`.
 
-The target is excluded from default builds and CTest. Rebased focused shader checks
-are required before the large timing runs; the older 1.1.0-linked logs do not prove
+The target is excluded from default builds and CTest. Four rebased focused physical-GPU checks pass (352 host, 1024 resident; normal
+and shader validation) before large timing runs; the older 1.1.0-linked logs do not prove
 the rebuilt 1.3.0-linked binary. Clock labels are `cpu-interleaved` and
 `verified-warm-call`; neither is a controlled cold or continuously warm clock claim.
 
 The revised reference harness passes a genuinely CPU-only all31-width check at
 9x5 with four workers, using separate direct-index MPFR replays for all three
 contracts. Its source is byte-identical after rebasing onto the WolfNum main;
-rebuilt physical-GPU fixtures are queued after the exact-trial validation job.
+rebuilt physical-GPU fixtures now pass, recorded in
+`section9_p1_normal_wolfnum_fixture_metadata.json` and its four linked logs.
 The CPU-only results do not prove GPU correctness or measured performance.

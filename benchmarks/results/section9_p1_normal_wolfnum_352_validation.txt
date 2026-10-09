@@ -1,0 +1,2 @@
+2026-10-09 01:14:33.626 section9_normal_limbforge[73301:243435174] Metal GPU Validation Enabled
+352 bits, 9x4: all four normal-equation paths match MPFR; no timings recorded
