@@ -1,0 +1,40 @@
+cpu_sample,448,1100,944,0,0,0,5.49757975
+cpu_sample,448,1100,944,0,1,1,4.574764
+cpu_sample,448,1100,944,0,2,2,6.188173458
+sample,448,1100,944,0,0,sequential_composed,0.298879916,0.292370791663
+sample,448,1100,944,0,1,sequential_fused,2.3182425,2.3145837083
+sample,448,1100,944,0,2,exact_augmented,0.038651125,0.0222101249965
+sample,448,1100,944,0,3,exact_syrk_plus_gemm,0.030242916,0.0286981250392
+cpu_sample,448,1100,944,1,0,1,6.255238667
+cpu_sample,448,1100,944,1,1,2,7.873408417
+cpu_sample,448,1100,944,1,2,0,6.202340833
+sample,448,1100,944,1,0,sequential_fused,1.900423375,1.89122925
+sample,448,1100,944,1,1,exact_augmented,0.033569084,0.0201014999766
+sample,448,1100,944,1,2,exact_syrk_plus_gemm,0.027808458,0.0261825416819
+sample,448,1100,944,1,3,sequential_composed,0.462481041,0.461639375018
+cpu_sample,448,1100,944,2,0,2,8.345213959
+cpu_sample,448,1100,944,2,1,0,6.277987417
+cpu_sample,448,1100,944,2,2,1,6.211920875
+sample,448,1100,944,2,0,exact_augmented,0.038354166,0.0220425416483
+sample,448,1100,944,2,1,exact_syrk_plus_gemm,0.01974975,0.0183236250305
+sample,448,1100,944,2,2,sequential_composed,0.291708917,0.29144762503
+sample,448,1100,944,2,3,sequential_fused,1.973909375,1.97083187499
+Device: Apple M5 Max; immutable MPFR references check every timed CPU/GPU output; numeric-array transfers excluded; bridge conversion excluded; cpu-interleaved
+       89.06 real      1081.86 user         4.45 sys
+           914030592  maximum resident set size
+                   0  average shared memory size
+                   0  average unshared data size
+                   0  average unshared stack size
+               56393  page reclaims
+                   2  page faults
+                   0  swaps
+                   0  block input operations
+                   0  block output operations
+                   0  messages sent
+                   0  messages received
+                   0  signals received
+                   0  voluntary context switches
+              871979  involuntary context switches
+       8082637682322  instructions retired
+       3955599018601  cycles elapsed
+          2263221688  peak memory footprint

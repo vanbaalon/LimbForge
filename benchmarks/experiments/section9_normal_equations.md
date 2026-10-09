@@ -1,49 +1,77 @@
-# Section 9 P1.4: normal-equation measurement harness
+# Section 9 P1.4: checked normal-equation comparisons
 
-The original harness began at `e91a215` / 1.1.0 and is rebased on current main
-`bffa58b` / 1.3.0 (WolfNum branding); branch `round-section9-normal-measurements`.
-No library kernel or API change. No accepted timings yet.
+WolfNum 1.3.0 numerical backend, opt-in `section9_normal_limbforge`, n=944 and K=1100.
+All six 352/384/448-bit host/resident comparisons complete three repetitions with
+rotating CPU/GPU order. Every initial and timed CPU/GPU output matches its own
+independent composed/fused/exact contract. The persistent 18-worker CPU references
+compute one triangle and mirror it; their exact timed baseline uses `mpfr_dot` at B
+bits, independently checked against a 2B+64 exact sum. Linalg uses 18 host workers too.
+The CPU-only all 31 and rebuilt focused physical-GPU/shader fixtures pass beforehand.
+No numerical library source or API change is introduced by the harness.
 
-`section9_normal_limbforge` compares sequential composed/fused normal equations,
-augmented exact normal equations and plain exact SYRK plus exact GEMM for the RHS.
-All GPU paths and their optimized CPU references compute one triangle and mirror
-the normal matrix. The sequential GPU grid skips upper-triangle threads. CPU rows/outputs are balanced over the requested worker pool. The exact CPU
-timing uses MPFR's `mpfr_dot`, not a deliberately slower sequence at excess precision.
+## GPU wall measurements
 
-A separate high-precision oracle (2B+64, bounded input exponents, rows<=4096) retains
-the exact sum before final rounding. MPFR composed/fused sequences and every GPU sample
-are checked bit for bit against their corresponding reference. Every timed CPU
-composed/fused/exact output is checked against its immutable initial oracle outside
-timing, and exact dots are independently checked against the high-precision sum. Accuracy reports count
-entries differing from the once-rounded exact result and the infinity-norm error in
-units of 2^-B, normalized by the maximum exact output magnitude. This global measure
-should not be confused with per-entry relative errors on cancellation-small entries.
+All values below are median seconds for the normal matrix AND its one RHS.
+Host staging includes uploads/readback using reused buffers; resident excludes them.
+Exact fallback resolution stays inside timing. Numeric bridge conversion is excluded.
 
-CPU and GPU path orders rotate across repetitions. Linalg host work and the timed
-CPU baseline use the same requested worker count. Host staging includes input uploads and output
-downloads using reusable buffers. Resident timing excludes these transfers, while
-wait-time exact fallback remains timed. Optional `--warm` verifies an untimed call
-immediately before each sample; default is CPU-interleaved, without claiming actual
-cold clocks while other GPU jobs may be running. CSV retains quartiles and range;
-raw samples preserve order and device/wall costs.
+| Bits | Storage | Composed | Fused | Exact augmented | Exact SYRK + GEMM | Composed / augmented |
+|---|---|---:|---:|---:|---:|---:|
+| 352 | host | 0.219159 | 1.487367 | 0.049917 | 0.031334 | 4.39x |
+| 352 | resident | 0.206483 | 0.905758 | 0.024285 | 0.019263 | 8.50x |
+| 384 | host | 0.253707 | 1.149127 | 0.027911 | 0.019899 | 9.09x |
+| 384 | resident | 0.238819 | 1.227243 | 0.024466 | 0.019214 | 9.76x |
+| 448 | host | 0.310288 | 2.058552 | 0.037930 | 0.031535 | 8.18x |
+| 448 | resident | 0.298880 | 1.973909 | 0.038354 | 0.027808 | 7.79x |
 
-Build the `section9_normal_limbforge` target. Small check-only cases pass at
-352 (9x4 host staging) and 1024 (11x7 resident); they are not the requested large-shape
-measurement. Actual n=944, K=1100 and 352/384/448 timing/accuracy runs, repeated stability
-checks, load metadata and guidance decision remain pending. Existing sequential calls
-retain their numerical meaning and immediate device-chainability.
+The exact augmented path has 4.39–9.76x lower median wall time
+than composed sequential normals at these profiles. Plain exact SYRK plus GEMM has
+the lowest median in all six; its sample ranges can overlap the augmented path.
+The raw records retain each sample, quartiles and range. Clock mode is
+`cpu-interleaved`, with no controlled-cold or continuously-warm guarantee.
 
-Logs: `section9_p14_normal_352_final_check.txt` and
-`section9_p14_normal_1024_resident_final_check.txt`.
+## Accuracy and usage decision
 
-The target is excluded from default builds and CTest. Four rebased focused physical-GPU checks pass (352 host, 1024 resident; normal
-and shader validation) before large timing runs; the older 1.1.0-linked logs do not prove
-the rebuilt 1.3.0-linked binary. Clock labels are `cpu-interleaved` and
-`verified-warm-call`; neither is a controlled cold or continuously warm clock claim.
+| Bits | Composed global error units | Fused global error units | Either exact path |
+|---|---:|---:|---:|
+| 352 | 21.137290 | 21.047510 | 0.554940 |
+| 384 | 21.773523 | 21.773523 | 0.555361 |
+| 448 | 25.687258 | 26.795326 | 0.553506 |
 
-The revised reference harness passes a genuinely CPU-only all31-width check at
-9x5 with four workers, using separate direct-index MPFR replays for all three
-contracts. Its source is byte-identical after rebasing onto the WolfNum main;
-rebuilt physical-GPU fixtures now pass, recorded in
-`section9_p1_normal_wolfnum_fixture_metadata.json` and its four linked logs.
-The CPU-only results do not prove GPU correctness or measured performance.
+Error units are 2^B times maximum absolute output error divided by maximum exact
+output magnitude. They are a global infinity-norm comparison, not per-entry relative
+errors or a claimed number of correct bits. Sequential results differ from the exact
+result at 846,593–847,055 of 892,080 matrix/RHS entries; both exact paths match the
+once-rounded exact oracle at every entry. This fixture uses bounded random exponents
+in [-4,4]; wider exponent distributions can alter exact-backend placement and costs.
+
+**Recommend `normal_equations_exact` for independent normal-matrix/RHS calls at
+these measured profiles.** Plain `Linalg::syrk` plus `gemm` is another exact choice
+when the caller already has the needed resident layouts. Preserve existing
+`normal_equations` meaning/defaults: the sequential form remains useful for immediate
+within-batch chaining. Exact products require wait-time finalization and repair before
+a dependent read; the recommendation does not remove those ownership rules or
+select a qscmx switch by default.
+
+Loads exceed 4 throughout parts of every run. CPU ratios therefore remain busy-host
+library evidence, not idle-consumer acceptance or a new CPU speedup headline.
+Whole-process maximum RSS spans 788.7–916.9 MB, including MPFR truth/reference storage,
+inputs, outputs and caches. It is not a consumer or isolated API memory guarantee.
+Consumer Jacobian timing, converged histories and per-problem calibration remain P3.
+
+## Reproduce and calibrate
+
+Build `section9_normal_limbforge`, then run, for each width and both storage modes:
+
+```sh
+./build/section9_normal_limbforge --bits 352 --rows 1100 --cols 944 --workers 18 --repeats 3
+./build/section9_normal_limbforge --bits 352 --rows 1100 --cols 944 --workers 18 --repeats 3 --resident
+```
+
+Raw CSV/log/metadata triples use the `section9_p14_measured_*_interleaved` prefix.
+Manifests retain exact commands, source/binary/archive hashes, sampled loads and RSS.
+The offline operation exporter yields 24 shape/contract/residency/profile-specific
+normal keys; every generated C++ key loads and unmeasured widths/profiles stay
+unknown. No table is installed as a policy or used to change production defaults.
+Source recurrence retains its separate exporter; trial keys cover factor AND solve,
+never a factor-only CPU comparison. See [offline calibration](../../docs/calibration.md).

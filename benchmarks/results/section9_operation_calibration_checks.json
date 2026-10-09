@@ -1,0 +1,13 @@
+{
+  "scope": "Actual completed checked measurements, exported factory integration and negative guards; no GPU or additional timing runs",
+  "normal_exported_keys": 24,
+  "trial_exported_keys": 3,
+  "all_known_keys_load": "PASS",
+  "unmeasured_width_or_profile": "unknown",
+  "trial_factor_only_key": "unknown",
+  "busy_host_idle_guard": "rejected",
+  "overwrite_guard": "rejected",
+  "exporter_sha256": "25ac1c5af85fa24eb571dc7e668951bf58ef11ddb5031b2c3a558ca5a88f8bb1",
+  "raw_csv_tamper_guard": "rejected",
+  "revalidated_record_count": 27
+}

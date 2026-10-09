@@ -1,0 +1,3751 @@
+{
+  "kind": "normal",
+  "profile": "WolfNum / Apple M5 Max / Release / n944 K1100 bounded exponents [-4,4]; measured busy-host library, not idle consumer policy",
+  "margin": 0.05,
+  "records": [
+    {
+      "key": {
+        "operation": "normal_matrix_and_rhs/sequential_composed",
+        "bits": 352,
+        "count": 1,
+        "m": 1100,
+        "n": 944,
+        "k": 1,
+        "cpu_workers": 18,
+        "fused": false,
+        "profile": "WolfNum / Apple M5 Max / Release / n944 K1100 bounded exponents [-4,4]; measured busy-host library, not idle consumer policy; measured=Apple M5 Max / 1.3.0 / normal-equations; binary=5685f64040ad070229f4cb654d0ff356661ffda08655d6b8d485579755e39fa3; archive=9a608e0de477141ba032f0715e8dadf8321c15738570f5cfbad307aedbe93aa3; clock=cpu-interleaved; cpu=MPFR/sequential_composed; active_workers=18; load_series=a47ea5150b3f46accd896a13a300e55c1e635e50f7bbdb68e3a5984c53be9ad2; all_loadavg_below_4=false; scope=numeric-array-library; bridge=excluded",
+        "resident": false
+      },
+      "sample": {
+        "cpu_wall": 6.876487875,
+        "gpu_wall": 0.21915925
+      },
+      "recommendation": "gpu",
+      "source": "benchmarks/results/section9_p14_measured_352_1100_944_host_interleaved.csv",
+      "source_sha256": "93d85d36aa91ee4f1eb7a3f8b6e52c1c0ffc9c832cd0d05997807d7badb0c87c",
+      "metadata": "benchmarks/results/section9_p14_measured_352_1100_944_host_interleaved_metadata.json",
+      "load_samples": [
+        {
+          "seconds": 0.0014140839921310544,
+          "loadavg": [
+            7.009765625,
+            6.45458984375,
+            5.830078125
+          ]
+        },
+        {
+          "seconds": 5.005925208970439,
+          "loadavg": [
+            12.2138671875,
+            7.54248046875,
+            6.2177734375
+          ]
+        },
+        {
+          "seconds": 10.010970834002364,
+          "loadavg": [
+            16.2001953125,
+            8.4462890625,
+            6.54443359375
+          ]
+        },
+        {
+          "seconds": 15.012974499957636,
+          "loadavg": [
+            18.82666015625,
+            9.119140625,
+            6.79296875
+          ]
+        },
+        {
+          "seconds": 20.013239291962236,
+          "loadavg": [
+            20.20166015625,
+            9.56494140625,
+            6.9638671875
+          ]
+        },
+        {
+          "seconds": 25.017674708971754,
+          "loadavg": [
+            29.55419921875,
+            11.68017578125,
+            7.7255859375
+          ]
+        },
+        {
+          "seconds": 30.02007354196394,
+          "loadavg": [
+            31.591796875,
+            12.39892578125,
+            8.00244140625
+          ]
+        },
+        {
+          "seconds": 35.02516141696833,
+          "loadavg": [
+            32.1044921875,
+            12.82373046875,
+            8.177734375
+          ]
+        },
+        {
+          "seconds": 40.02915820898488,
+          "loadavg": [
+            33.13671875,
+            13.357421875,
+            8.39306640625
+          ]
+        },
+        {
+          "seconds": 45.03225208399817,
+          "loadavg": [
+            39.13134765625,
+            14.92822265625,
+            8.9765625
+          ]
+        },
+        {
+          "seconds": 50.03598854196025,
+          "loadavg": [
+            46.32763671875,
+            16.82177734375,
+            9.6796875
+          ]
+        },
+        {
+          "seconds": 55.0410327919526,
+          "loadavg": [
+            42.77783203125,
+            16.57568359375,
+            9.63427734375
+          ]
+        },
+        {
+          "seconds": 60.04531395895174,
+          "loadavg": [
+            45.11767578125,
+            17.49560546875,
+            9.99951171875
+          ]
+        },
+        {
+          "seconds": 65.05160362500465,
+          "loadavg": [
+            45.90869140625,
+            18.1181640625,
+            10.26318359375
+          ]
+        },
+        {
+          "seconds": 70.05547766695963,
+          "loadavg": [
+            49.43896484375,
+            19.31103515625,
+            10.72998046875
+          ]
+        },
+        {
+          "seconds": 75.06053341698134,
+          "loadavg": [
+            50.60498046875,
+            20.052734375,
+            11.0419921875
+          ]
+        },
+        {
+          "seconds": 80.06362437497592,
+          "loadavg": [
+            47.83349609375,
+            19.9853515625,
+            11.07080078125
+          ]
+        },
+        {
+          "seconds": 85.06864212499931,
+          "loadavg": [
+            48.6474609375,
+            20.6162109375,
+            11.345703125
+          ]
+        },
+        {
+          "seconds": 90.07337112497771,
+          "loadavg": [
+            48.91552734375,
+            21.13720703125,
+            11.58349609375
+          ]
+        },
+        {
+          "seconds": 95.0759053339716,
+          "loadavg": [
+            50.763671875,
+            21.9814453125,
+            11.93701171875
+          ]
+        },
+        {
+          "seconds": 100.0795407499536,
+          "loadavg": [
+            52.4638671875,
+            22.8115234375,
+            12.28857421875
+          ]
+        }
+      ]
+    },
+    {
+      "key": {
+        "operation": "normal_matrix_and_rhs/sequential_fused",
+        "bits": 352,
+        "count": 1,
+        "m": 1100,
+        "n": 944,
+        "k": 1,
+        "cpu_workers": 18,
+        "fused": true,
+        "profile": "WolfNum / Apple M5 Max / Release / n944 K1100 bounded exponents [-4,4]; measured busy-host library, not idle consumer policy; measured=Apple M5 Max / 1.3.0 / normal-equations; binary=5685f64040ad070229f4cb654d0ff356661ffda08655d6b8d485579755e39fa3; archive=9a608e0de477141ba032f0715e8dadf8321c15738570f5cfbad307aedbe93aa3; clock=cpu-interleaved; cpu=MPFR/sequential_fused; active_workers=18; load_series=a47ea5150b3f46accd896a13a300e55c1e635e50f7bbdb68e3a5984c53be9ad2; all_loadavg_below_4=false; scope=numeric-array-library; bridge=excluded",
+        "resident": false
+      },
+      "sample": {
+        "cpu_wall": 7.193481792,
+        "gpu_wall": 1.487367375
+      },
+      "recommendation": "gpu",
+      "source": "benchmarks/results/section9_p14_measured_352_1100_944_host_interleaved.csv",
+      "source_sha256": "93d85d36aa91ee4f1eb7a3f8b6e52c1c0ffc9c832cd0d05997807d7badb0c87c",
+      "metadata": "benchmarks/results/section9_p14_measured_352_1100_944_host_interleaved_metadata.json",
+      "load_samples": [
+        {
+          "seconds": 0.0014140839921310544,
+          "loadavg": [
+            7.009765625,
+            6.45458984375,
+            5.830078125
+          ]
+        },
+        {
+          "seconds": 5.005925208970439,
+          "loadavg": [
+            12.2138671875,
+            7.54248046875,
+            6.2177734375
+          ]
+        },
+        {
+          "seconds": 10.010970834002364,
+          "loadavg": [
+            16.2001953125,
+            8.4462890625,
+            6.54443359375
+          ]
+        },
+        {
+          "seconds": 15.012974499957636,
+          "loadavg": [
+            18.82666015625,
+            9.119140625,
+            6.79296875
+          ]
+        },
+        {
+          "seconds": 20.013239291962236,
+          "loadavg": [
+            20.20166015625,
+            9.56494140625,
+            6.9638671875
+          ]
+        },
+        {
+          "seconds": 25.017674708971754,
+          "loadavg": [
+            29.55419921875,
+            11.68017578125,
+            7.7255859375
+          ]
+        },
+        {
+          "seconds": 30.02007354196394,
+          "loadavg": [
+            31.591796875,
+            12.39892578125,
+            8.00244140625
+          ]
+        },
+        {
+          "seconds": 35.02516141696833,
+          "loadavg": [
+            32.1044921875,
+            12.82373046875,
+            8.177734375
+          ]
+        },
+        {
+          "seconds": 40.02915820898488,
+          "loadavg": [
+            33.13671875,
+            13.357421875,
+            8.39306640625
+          ]
+        },
+        {
+          "seconds": 45.03225208399817,
+          "loadavg": [
+            39.13134765625,
+            14.92822265625,
+            8.9765625
+          ]
+        },
+        {
+          "seconds": 50.03598854196025,
+          "loadavg": [
+            46.32763671875,
+            16.82177734375,
+            9.6796875
+          ]
+        },
+        {
+          "seconds": 55.0410327919526,
+          "loadavg": [
+            42.77783203125,
+            16.57568359375,
+            9.63427734375
+          ]
+        },
+        {
+          "seconds": 60.04531395895174,
+          "loadavg": [
+            45.11767578125,
+            17.49560546875,
+            9.99951171875
+          ]
+        },
+        {
+          "seconds": 65.05160362500465,
+          "loadavg": [
+            45.90869140625,
+            18.1181640625,
+            10.26318359375
+          ]
+        },
+        {
+          "seconds": 70.05547766695963,
+          "loadavg": [
+            49.43896484375,
+            19.31103515625,
+            10.72998046875
+          ]
+        },
+        {
+          "seconds": 75.06053341698134,
+          "loadavg": [
+            50.60498046875,
+            20.052734375,
+            11.0419921875
+          ]
+        },
+        {
+          "seconds": 80.06362437497592,
+          "loadavg": [
+            47.83349609375,
+            19.9853515625,
+            11.07080078125
+          ]
+        },
+        {
+          "seconds": 85.06864212499931,
+          "loadavg": [
+            48.6474609375,
+            20.6162109375,
+            11.345703125
+          ]
+        },
+        {
+          "seconds": 90.07337112497771,
+          "loadavg": [
+            48.91552734375,
+            21.13720703125,
+            11.58349609375
+          ]
+        },
+        {
+          "seconds": 95.0759053339716,
+          "loadavg": [
+            50.763671875,
+            21.9814453125,
+            11.93701171875
+          ]
+        },
+        {
+          "seconds": 100.0795407499536,
+          "loadavg": [
+            52.4638671875,
+            22.8115234375,
+            12.28857421875
+          ]
+        }
+      ]
+    },
+    {
+      "key": {
+        "operation": "normal_matrix_and_rhs/exact_augmented",
+        "bits": 352,
+        "count": 1,
+        "m": 1100,
+        "n": 944,
+        "k": 1,
+        "cpu_workers": 18,
+        "fused": false,
+        "profile": "WolfNum / Apple M5 Max / Release / n944 K1100 bounded exponents [-4,4]; measured busy-host library, not idle consumer policy; measured=Apple M5 Max / 1.3.0 / normal-equations; binary=5685f64040ad070229f4cb654d0ff356661ffda08655d6b8d485579755e39fa3; archive=9a608e0de477141ba032f0715e8dadf8321c15738570f5cfbad307aedbe93aa3; clock=cpu-interleaved; cpu=MPFR/exact_dot; active_workers=18; load_series=a47ea5150b3f46accd896a13a300e55c1e635e50f7bbdb68e3a5984c53be9ad2; all_loadavg_below_4=false; scope=numeric-array-library; bridge=excluded",
+        "resident": false
+      },
+      "sample": {
+        "cpu_wall": 9.366770875,
+        "gpu_wall": 0.049917166
+      },
+      "recommendation": "gpu",
+      "source": "benchmarks/results/section9_p14_measured_352_1100_944_host_interleaved.csv",
+      "source_sha256": "93d85d36aa91ee4f1eb7a3f8b6e52c1c0ffc9c832cd0d05997807d7badb0c87c",
+      "metadata": "benchmarks/results/section9_p14_measured_352_1100_944_host_interleaved_metadata.json",
+      "load_samples": [
+        {
+          "seconds": 0.0014140839921310544,
+          "loadavg": [
+            7.009765625,
+            6.45458984375,
+            5.830078125
+          ]
+        },
+        {
+          "seconds": 5.005925208970439,
+          "loadavg": [
+            12.2138671875,
+            7.54248046875,
+            6.2177734375
+          ]
+        },
+        {
+          "seconds": 10.010970834002364,
+          "loadavg": [
+            16.2001953125,
+            8.4462890625,
+            6.54443359375
+          ]
+        },
+        {
+          "seconds": 15.012974499957636,
+          "loadavg": [
+            18.82666015625,
+            9.119140625,
+            6.79296875
+          ]
+        },
+        {
+          "seconds": 20.013239291962236,
+          "loadavg": [
+            20.20166015625,
+            9.56494140625,
+            6.9638671875
+          ]
+        },
+        {
+          "seconds": 25.017674708971754,
+          "loadavg": [
+            29.55419921875,
+            11.68017578125,
+            7.7255859375
+          ]
+        },
+        {
+          "seconds": 30.02007354196394,
+          "loadavg": [
+            31.591796875,
+            12.39892578125,
+            8.00244140625
+          ]
+        },
+        {
+          "seconds": 35.02516141696833,
+          "loadavg": [
+            32.1044921875,
+            12.82373046875,
+            8.177734375
+          ]
+        },
+        {
+          "seconds": 40.02915820898488,
+          "loadavg": [
+            33.13671875,
+            13.357421875,
+            8.39306640625
+          ]
+        },
+        {
+          "seconds": 45.03225208399817,
+          "loadavg": [
+            39.13134765625,
+            14.92822265625,
+            8.9765625
+          ]
+        },
+        {
+          "seconds": 50.03598854196025,
+          "loadavg": [
+            46.32763671875,
+            16.82177734375,
+            9.6796875
+          ]
+        },
+        {
+          "seconds": 55.0410327919526,
+          "loadavg": [
+            42.77783203125,
+            16.57568359375,
+            9.63427734375
+          ]
+        },
+        {
+          "seconds": 60.04531395895174,
+          "loadavg": [
+            45.11767578125,
+            17.49560546875,
+            9.99951171875
+          ]
+        },
+        {
+          "seconds": 65.05160362500465,
+          "loadavg": [
+            45.90869140625,
+            18.1181640625,
+            10.26318359375
+          ]
+        },
+        {
+          "seconds": 70.05547766695963,
+          "loadavg": [
+            49.43896484375,
+            19.31103515625,
+            10.72998046875
+          ]
+        },
+        {
+          "seconds": 75.06053341698134,
+          "loadavg": [
+            50.60498046875,
+            20.052734375,
+            11.0419921875
+          ]
+        },
+        {
+          "seconds": 80.06362437497592,
+          "loadavg": [
+            47.83349609375,
+            19.9853515625,
+            11.07080078125
+          ]
+        },
+        {
+          "seconds": 85.06864212499931,
+          "loadavg": [
+            48.6474609375,
+            20.6162109375,
+            11.345703125
+          ]
+        },
+        {
+          "seconds": 90.07337112497771,
+          "loadavg": [
+            48.91552734375,
+            21.13720703125,
+            11.58349609375
+          ]
+        },
+        {
+          "seconds": 95.0759053339716,
+          "loadavg": [
+            50.763671875,
+            21.9814453125,
+            11.93701171875
+          ]
+        },
+        {
+          "seconds": 100.0795407499536,
+          "loadavg": [
+            52.4638671875,
+            22.8115234375,
+            12.28857421875
+          ]
+        }
+      ]
+    },
+    {
+      "key": {
+        "operation": "normal_matrix_and_rhs/exact_syrk_plus_gemm",
+        "bits": 352,
+        "count": 1,
+        "m": 1100,
+        "n": 944,
+        "k": 1,
+        "cpu_workers": 18,
+        "fused": false,
+        "profile": "WolfNum / Apple M5 Max / Release / n944 K1100 bounded exponents [-4,4]; measured busy-host library, not idle consumer policy; measured=Apple M5 Max / 1.3.0 / normal-equations; binary=5685f64040ad070229f4cb654d0ff356661ffda08655d6b8d485579755e39fa3; archive=9a608e0de477141ba032f0715e8dadf8321c15738570f5cfbad307aedbe93aa3; clock=cpu-interleaved; cpu=MPFR/exact_dot; active_workers=18; load_series=a47ea5150b3f46accd896a13a300e55c1e635e50f7bbdb68e3a5984c53be9ad2; all_loadavg_below_4=false; scope=numeric-array-library; bridge=excluded",
+        "resident": false
+      },
+      "sample": {
+        "cpu_wall": 9.366770875,
+        "gpu_wall": 0.031333625
+      },
+      "recommendation": "gpu",
+      "source": "benchmarks/results/section9_p14_measured_352_1100_944_host_interleaved.csv",
+      "source_sha256": "93d85d36aa91ee4f1eb7a3f8b6e52c1c0ffc9c832cd0d05997807d7badb0c87c",
+      "metadata": "benchmarks/results/section9_p14_measured_352_1100_944_host_interleaved_metadata.json",
+      "load_samples": [
+        {
+          "seconds": 0.0014140839921310544,
+          "loadavg": [
+            7.009765625,
+            6.45458984375,
+            5.830078125
+          ]
+        },
+        {
+          "seconds": 5.005925208970439,
+          "loadavg": [
+            12.2138671875,
+            7.54248046875,
+            6.2177734375
+          ]
+        },
+        {
+          "seconds": 10.010970834002364,
+          "loadavg": [
+            16.2001953125,
+            8.4462890625,
+            6.54443359375
+          ]
+        },
+        {
+          "seconds": 15.012974499957636,
+          "loadavg": [
+            18.82666015625,
+            9.119140625,
+            6.79296875
+          ]
+        },
+        {
+          "seconds": 20.013239291962236,
+          "loadavg": [
+            20.20166015625,
+            9.56494140625,
+            6.9638671875
+          ]
+        },
+        {
+          "seconds": 25.017674708971754,
+          "loadavg": [
+            29.55419921875,
+            11.68017578125,
+            7.7255859375
+          ]
+        },
+        {
+          "seconds": 30.02007354196394,
+          "loadavg": [
+            31.591796875,
+            12.39892578125,
+            8.00244140625
+          ]
+        },
+        {
+          "seconds": 35.02516141696833,
+          "loadavg": [
+            32.1044921875,
+            12.82373046875,
+            8.177734375
+          ]
+        },
+        {
+          "seconds": 40.02915820898488,
+          "loadavg": [
+            33.13671875,
+            13.357421875,
+            8.39306640625
+          ]
+        },
+        {
+          "seconds": 45.03225208399817,
+          "loadavg": [
+            39.13134765625,
+            14.92822265625,
+            8.9765625
+          ]
+        },
+        {
+          "seconds": 50.03598854196025,
+          "loadavg": [
+            46.32763671875,
+            16.82177734375,
+            9.6796875
+          ]
+        },
+        {
+          "seconds": 55.0410327919526,
+          "loadavg": [
+            42.77783203125,
+            16.57568359375,
+            9.63427734375
+          ]
+        },
+        {
+          "seconds": 60.04531395895174,
+          "loadavg": [
+            45.11767578125,
+            17.49560546875,
+            9.99951171875
+          ]
+        },
+        {
+          "seconds": 65.05160362500465,
+          "loadavg": [
+            45.90869140625,
+            18.1181640625,
+            10.26318359375
+          ]
+        },
+        {
+          "seconds": 70.05547766695963,
+          "loadavg": [
+            49.43896484375,
+            19.31103515625,
+            10.72998046875
+          ]
+        },
+        {
+          "seconds": 75.06053341698134,
+          "loadavg": [
+            50.60498046875,
+            20.052734375,
+            11.0419921875
+          ]
+        },
+        {
+          "seconds": 80.06362437497592,
+          "loadavg": [
+            47.83349609375,
+            19.9853515625,
+            11.07080078125
+          ]
+        },
+        {
+          "seconds": 85.06864212499931,
+          "loadavg": [
+            48.6474609375,
+            20.6162109375,
+            11.345703125
+          ]
+        },
+        {
+          "seconds": 90.07337112497771,
+          "loadavg": [
+            48.91552734375,
+            21.13720703125,
+            11.58349609375
+          ]
+        },
+        {
+          "seconds": 95.0759053339716,
+          "loadavg": [
+            50.763671875,
+            21.9814453125,
+            11.93701171875
+          ]
+        },
+        {
+          "seconds": 100.0795407499536,
+          "loadavg": [
+            52.4638671875,
+            22.8115234375,
+            12.28857421875
+          ]
+        }
+      ]
+    },
+    {
+      "key": {
+        "operation": "normal_matrix_and_rhs/sequential_composed",
+        "bits": 352,
+        "count": 1,
+        "m": 1100,
+        "n": 944,
+        "k": 1,
+        "cpu_workers": 18,
+        "fused": false,
+        "profile": "WolfNum / Apple M5 Max / Release / n944 K1100 bounded exponents [-4,4]; measured busy-host library, not idle consumer policy; measured=Apple M5 Max / 1.3.0 / normal-equations; binary=5685f64040ad070229f4cb654d0ff356661ffda08655d6b8d485579755e39fa3; archive=9a608e0de477141ba032f0715e8dadf8321c15738570f5cfbad307aedbe93aa3; clock=cpu-interleaved; cpu=MPFR/sequential_composed; active_workers=18; load_series=501f7e23dde4837d146de65985f2a523bc4f9522a9d3dc99ac0647502e4978e9; all_loadavg_below_4=false; scope=numeric-array-library; bridge=excluded",
+        "resident": true
+      },
+      "sample": {
+        "cpu_wall": 4.877239167,
+        "gpu_wall": 0.206483042
+      },
+      "recommendation": "gpu",
+      "source": "benchmarks/results/section9_p14_measured_352_1100_944_resident_interleaved.csv",
+      "source_sha256": "209d068d07010d0d0dc0ad84a59814fec37f8427969b36e786bb7943a77b1023",
+      "metadata": "benchmarks/results/section9_p14_measured_352_1100_944_resident_interleaved_metadata.json",
+      "load_samples": [
+        {
+          "seconds": 0.0013857920421287417,
+          "loadavg": [
+            39.2705078125,
+            27.01708984375,
+            16.62109375
+          ]
+        },
+        {
+          "seconds": 5.006566916999873,
+          "loadavg": [
+            42.05126953125,
+            27.796875,
+            16.95703125
+          ]
+        },
+        {
+          "seconds": 10.006611375021748,
+          "loadavg": [
+            43.0078125,
+            28.2314453125,
+            17.173828125
+          ]
+        },
+        {
+          "seconds": 15.011656832997687,
+          "loadavg": [
+            42.2060546875,
+            28.310546875,
+            17.26611328125
+          ]
+        },
+        {
+          "seconds": 20.011770167038776,
+          "loadavg": [
+            38.826171875,
+            27.84033203125,
+            17.16455078125
+          ]
+        },
+        {
+          "seconds": 25.016818708041683,
+          "loadavg": [
+            37.23828125,
+            27.693359375,
+            17.17529296875
+          ]
+        },
+        {
+          "seconds": 30.019830875040498,
+          "loadavg": [
+            34.65625,
+            27.31640625,
+            17.103515625
+          ]
+        },
+        {
+          "seconds": 35.02051320800092,
+          "loadavg": [
+            36.125,
+            27.74267578125,
+            17.3134765625
+          ]
+        },
+        {
+          "seconds": 40.02427912503481,
+          "loadavg": [
+            38.03662109375,
+            28.27783203125,
+            17.5634765625
+          ]
+        },
+        {
+          "seconds": 45.030126917001326,
+          "loadavg": [
+            42.91796875,
+            29.45166015625,
+            18.04052734375
+          ]
+        },
+        {
+          "seconds": 50.03388879203703,
+          "loadavg": [
+            44.84619140625,
+            30.07470703125,
+            18.3271484375
+          ]
+        },
+        {
+          "seconds": 55.038930125010666,
+          "loadavg": [
+            51.3447265625,
+            31.6669921875,
+            18.9580078125
+          ]
+        },
+        {
+          "seconds": 60.04240675002802,
+          "loadavg": [
+            51.71728515625,
+            32.07080078125,
+            19.1748046875
+          ]
+        },
+        {
+          "seconds": 65.04806466703303,
+          "loadavg": [
+            52.30029296875,
+            32.517578125,
+            19.40771484375
+          ]
+        }
+      ]
+    },
+    {
+      "key": {
+        "operation": "normal_matrix_and_rhs/sequential_fused",
+        "bits": 352,
+        "count": 1,
+        "m": 1100,
+        "n": 944,
+        "k": 1,
+        "cpu_workers": 18,
+        "fused": true,
+        "profile": "WolfNum / Apple M5 Max / Release / n944 K1100 bounded exponents [-4,4]; measured busy-host library, not idle consumer policy; measured=Apple M5 Max / 1.3.0 / normal-equations; binary=5685f64040ad070229f4cb654d0ff356661ffda08655d6b8d485579755e39fa3; archive=9a608e0de477141ba032f0715e8dadf8321c15738570f5cfbad307aedbe93aa3; clock=cpu-interleaved; cpu=MPFR/sequential_fused; active_workers=18; load_series=501f7e23dde4837d146de65985f2a523bc4f9522a9d3dc99ac0647502e4978e9; all_loadavg_below_4=false; scope=numeric-array-library; bridge=excluded",
+        "resident": true
+      },
+      "sample": {
+        "cpu_wall": 4.482394333,
+        "gpu_wall": 0.90575775
+      },
+      "recommendation": "gpu",
+      "source": "benchmarks/results/section9_p14_measured_352_1100_944_resident_interleaved.csv",
+      "source_sha256": "209d068d07010d0d0dc0ad84a59814fec37f8427969b36e786bb7943a77b1023",
+      "metadata": "benchmarks/results/section9_p14_measured_352_1100_944_resident_interleaved_metadata.json",
+      "load_samples": [
+        {
+          "seconds": 0.0013857920421287417,
+          "loadavg": [
+            39.2705078125,
+            27.01708984375,
+            16.62109375
+          ]
+        },
+        {
+          "seconds": 5.006566916999873,
+          "loadavg": [
+            42.05126953125,
+            27.796875,
+            16.95703125
+          ]
+        },
+        {
+          "seconds": 10.006611375021748,
+          "loadavg": [
+            43.0078125,
+            28.2314453125,
+            17.173828125
+          ]
+        },
+        {
+          "seconds": 15.011656832997687,
+          "loadavg": [
+            42.2060546875,
+            28.310546875,
+            17.26611328125
+          ]
+        },
+        {
+          "seconds": 20.011770167038776,
+          "loadavg": [
+            38.826171875,
+            27.84033203125,
+            17.16455078125
+          ]
+        },
+        {
+          "seconds": 25.016818708041683,
+          "loadavg": [
+            37.23828125,
+            27.693359375,
+            17.17529296875
+          ]
+        },
+        {
+          "seconds": 30.019830875040498,
+          "loadavg": [
+            34.65625,
+            27.31640625,
+            17.103515625
+          ]
+        },
+        {
+          "seconds": 35.02051320800092,
+          "loadavg": [
+            36.125,
+            27.74267578125,
+            17.3134765625
+          ]
+        },
+        {
+          "seconds": 40.02427912503481,
+          "loadavg": [
+            38.03662109375,
+            28.27783203125,
+            17.5634765625
+          ]
+        },
+        {
+          "seconds": 45.030126917001326,
+          "loadavg": [
+            42.91796875,
+            29.45166015625,
+            18.04052734375
+          ]
+        },
+        {
+          "seconds": 50.03388879203703,
+          "loadavg": [
+            44.84619140625,
+            30.07470703125,
+            18.3271484375
+          ]
+        },
+        {
+          "seconds": 55.038930125010666,
+          "loadavg": [
+            51.3447265625,
+            31.6669921875,
+            18.9580078125
+          ]
+        },
+        {
+          "seconds": 60.04240675002802,
+          "loadavg": [
+            51.71728515625,
+            32.07080078125,
+            19.1748046875
+          ]
+        },
+        {
+          "seconds": 65.04806466703303,
+          "loadavg": [
+            52.30029296875,
+            32.517578125,
+            19.40771484375
+          ]
+        }
+      ]
+    },
+    {
+      "key": {
+        "operation": "normal_matrix_and_rhs/exact_augmented",
+        "bits": 352,
+        "count": 1,
+        "m": 1100,
+        "n": 944,
+        "k": 1,
+        "cpu_workers": 18,
+        "fused": false,
+        "profile": "WolfNum / Apple M5 Max / Release / n944 K1100 bounded exponents [-4,4]; measured busy-host library, not idle consumer policy; measured=Apple M5 Max / 1.3.0 / normal-equations; binary=5685f64040ad070229f4cb654d0ff356661ffda08655d6b8d485579755e39fa3; archive=9a608e0de477141ba032f0715e8dadf8321c15738570f5cfbad307aedbe93aa3; clock=cpu-interleaved; cpu=MPFR/exact_dot; active_workers=18; load_series=501f7e23dde4837d146de65985f2a523bc4f9522a9d3dc99ac0647502e4978e9; all_loadavg_below_4=false; scope=numeric-array-library; bridge=excluded",
+        "resident": true
+      },
+      "sample": {
+        "cpu_wall": 5.675817333,
+        "gpu_wall": 0.024284666
+      },
+      "recommendation": "gpu",
+      "source": "benchmarks/results/section9_p14_measured_352_1100_944_resident_interleaved.csv",
+      "source_sha256": "209d068d07010d0d0dc0ad84a59814fec37f8427969b36e786bb7943a77b1023",
+      "metadata": "benchmarks/results/section9_p14_measured_352_1100_944_resident_interleaved_metadata.json",
+      "load_samples": [
+        {
+          "seconds": 0.0013857920421287417,
+          "loadavg": [
+            39.2705078125,
+            27.01708984375,
+            16.62109375
+          ]
+        },
+        {
+          "seconds": 5.006566916999873,
+          "loadavg": [
+            42.05126953125,
+            27.796875,
+            16.95703125
+          ]
+        },
+        {
+          "seconds": 10.006611375021748,
+          "loadavg": [
+            43.0078125,
+            28.2314453125,
+            17.173828125
+          ]
+        },
+        {
+          "seconds": 15.011656832997687,
+          "loadavg": [
+            42.2060546875,
+            28.310546875,
+            17.26611328125
+          ]
+        },
+        {
+          "seconds": 20.011770167038776,
+          "loadavg": [
+            38.826171875,
+            27.84033203125,
+            17.16455078125
+          ]
+        },
+        {
+          "seconds": 25.016818708041683,
+          "loadavg": [
+            37.23828125,
+            27.693359375,
+            17.17529296875
+          ]
+        },
+        {
+          "seconds": 30.019830875040498,
+          "loadavg": [
+            34.65625,
+            27.31640625,
+            17.103515625
+          ]
+        },
+        {
+          "seconds": 35.02051320800092,
+          "loadavg": [
+            36.125,
+            27.74267578125,
+            17.3134765625
+          ]
+        },
+        {
+          "seconds": 40.02427912503481,
+          "loadavg": [
+            38.03662109375,
+            28.27783203125,
+            17.5634765625
+          ]
+        },
+        {
+          "seconds": 45.030126917001326,
+          "loadavg": [
+            42.91796875,
+            29.45166015625,
+            18.04052734375
+          ]
+        },
+        {
+          "seconds": 50.03388879203703,
+          "loadavg": [
+            44.84619140625,
+            30.07470703125,
+            18.3271484375
+          ]
+        },
+        {
+          "seconds": 55.038930125010666,
+          "loadavg": [
+            51.3447265625,
+            31.6669921875,
+            18.9580078125
+          ]
+        },
+        {
+          "seconds": 60.04240675002802,
+          "loadavg": [
+            51.71728515625,
+            32.07080078125,
+            19.1748046875
+          ]
+        },
+        {
+          "seconds": 65.04806466703303,
+          "loadavg": [
+            52.30029296875,
+            32.517578125,
+            19.40771484375
+          ]
+        }
+      ]
+    },
+    {
+      "key": {
+        "operation": "normal_matrix_and_rhs/exact_syrk_plus_gemm",
+        "bits": 352,
+        "count": 1,
+        "m": 1100,
+        "n": 944,
+        "k": 1,
+        "cpu_workers": 18,
+        "fused": false,
+        "profile": "WolfNum / Apple M5 Max / Release / n944 K1100 bounded exponents [-4,4]; measured busy-host library, not idle consumer policy; measured=Apple M5 Max / 1.3.0 / normal-equations; binary=5685f64040ad070229f4cb654d0ff356661ffda08655d6b8d485579755e39fa3; archive=9a608e0de477141ba032f0715e8dadf8321c15738570f5cfbad307aedbe93aa3; clock=cpu-interleaved; cpu=MPFR/exact_dot; active_workers=18; load_series=501f7e23dde4837d146de65985f2a523bc4f9522a9d3dc99ac0647502e4978e9; all_loadavg_below_4=false; scope=numeric-array-library; bridge=excluded",
+        "resident": true
+      },
+      "sample": {
+        "cpu_wall": 5.675817333,
+        "gpu_wall": 0.019262916
+      },
+      "recommendation": "gpu",
+      "source": "benchmarks/results/section9_p14_measured_352_1100_944_resident_interleaved.csv",
+      "source_sha256": "209d068d07010d0d0dc0ad84a59814fec37f8427969b36e786bb7943a77b1023",
+      "metadata": "benchmarks/results/section9_p14_measured_352_1100_944_resident_interleaved_metadata.json",
+      "load_samples": [
+        {
+          "seconds": 0.0013857920421287417,
+          "loadavg": [
+            39.2705078125,
+            27.01708984375,
+            16.62109375
+          ]
+        },
+        {
+          "seconds": 5.006566916999873,
+          "loadavg": [
+            42.05126953125,
+            27.796875,
+            16.95703125
+          ]
+        },
+        {
+          "seconds": 10.006611375021748,
+          "loadavg": [
+            43.0078125,
+            28.2314453125,
+            17.173828125
+          ]
+        },
+        {
+          "seconds": 15.011656832997687,
+          "loadavg": [
+            42.2060546875,
+            28.310546875,
+            17.26611328125
+          ]
+        },
+        {
+          "seconds": 20.011770167038776,
+          "loadavg": [
+            38.826171875,
+            27.84033203125,
+            17.16455078125
+          ]
+        },
+        {
+          "seconds": 25.016818708041683,
+          "loadavg": [
+            37.23828125,
+            27.693359375,
+            17.17529296875
+          ]
+        },
+        {
+          "seconds": 30.019830875040498,
+          "loadavg": [
+            34.65625,
+            27.31640625,
+            17.103515625
+          ]
+        },
+        {
+          "seconds": 35.02051320800092,
+          "loadavg": [
+            36.125,
+            27.74267578125,
+            17.3134765625
+          ]
+        },
+        {
+          "seconds": 40.02427912503481,
+          "loadavg": [
+            38.03662109375,
+            28.27783203125,
+            17.5634765625
+          ]
+        },
+        {
+          "seconds": 45.030126917001326,
+          "loadavg": [
+            42.91796875,
+            29.45166015625,
+            18.04052734375
+          ]
+        },
+        {
+          "seconds": 50.03388879203703,
+          "loadavg": [
+            44.84619140625,
+            30.07470703125,
+            18.3271484375
+          ]
+        },
+        {
+          "seconds": 55.038930125010666,
+          "loadavg": [
+            51.3447265625,
+            31.6669921875,
+            18.9580078125
+          ]
+        },
+        {
+          "seconds": 60.04240675002802,
+          "loadavg": [
+            51.71728515625,
+            32.07080078125,
+            19.1748046875
+          ]
+        },
+        {
+          "seconds": 65.04806466703303,
+          "loadavg": [
+            52.30029296875,
+            32.517578125,
+            19.40771484375
+          ]
+        }
+      ]
+    },
+    {
+      "key": {
+        "operation": "normal_matrix_and_rhs/sequential_composed",
+        "bits": 384,
+        "count": 1,
+        "m": 1100,
+        "n": 944,
+        "k": 1,
+        "cpu_workers": 18,
+        "fused": false,
+        "profile": "WolfNum / Apple M5 Max / Release / n944 K1100 bounded exponents [-4,4]; measured busy-host library, not idle consumer policy; measured=Apple M5 Max / 1.3.0 / normal-equations; binary=5685f64040ad070229f4cb654d0ff356661ffda08655d6b8d485579755e39fa3; archive=9a608e0de477141ba032f0715e8dadf8321c15738570f5cfbad307aedbe93aa3; clock=cpu-interleaved; cpu=MPFR/sequential_composed; active_workers=18; load_series=9b95a54b5f4e0e6ffc3dd5a3ae9160e0a62c9a7dc1338e28dcb0315208a69cc0; all_loadavg_below_4=false; scope=numeric-array-library; bridge=excluded",
+        "resident": false
+      },
+      "sample": {
+        "cpu_wall": 4.967932833,
+        "gpu_wall": 0.253706792
+      },
+      "recommendation": "gpu",
+      "source": "benchmarks/results/section9_p14_measured_384_1100_944_host_interleaved.csv",
+      "source_sha256": "43413423b463d68260a5db2c7a39039bd8780982e11404a1e163f200d2d6b5f6",
+      "metadata": "benchmarks/results/section9_p14_measured_384_1100_944_host_interleaved_metadata.json",
+      "load_samples": [
+        {
+          "seconds": 0.0012706660199910402,
+          "loadavg": [
+            7.322265625,
+            14.998046875,
+            10.89453125
+          ]
+        },
+        {
+          "seconds": 5.003536832984537,
+          "loadavg": [
+            9.37841796875,
+            15.296875,
+            11.02392578125
+          ]
+        },
+        {
+          "seconds": 10.003993124992121,
+          "loadavg": [
+            12.791015625,
+            15.90576171875,
+            11.263671875
+          ]
+        },
+        {
+          "seconds": 15.007623124984093,
+          "loadavg": [
+            13.6083984375,
+            16.0234375,
+            11.33203125
+          ]
+        },
+        {
+          "seconds": 20.007738916028757,
+          "loadavg": [
+            17.4833984375,
+            16.78662109375,
+            11.62890625
+          ]
+        },
+        {
+          "seconds": 25.012787625018973,
+          "loadavg": [
+            16.2431640625,
+            16.541015625,
+            11.572265625
+          ]
+        },
+        {
+          "seconds": 30.017533125006594,
+          "loadavg": [
+            21.5087890625,
+            17.62744140625,
+            11.98486328125
+          ]
+        },
+        {
+          "seconds": 35.023049666022416,
+          "loadavg": [
+            26.2724609375,
+            18.67919921875,
+            12.38916015625
+          ]
+        },
+        {
+          "seconds": 40.02743787498912,
+          "loadavg": [
+            33.69775390625,
+            20.34423828125,
+            13.013671875
+          ]
+        },
+        {
+          "seconds": 45.031461791018955,
+          "loadavg": [
+            31.3193359375,
+            20.07275390625,
+            12.96044921875
+          ]
+        },
+        {
+          "seconds": 50.03401595802279,
+          "loadavg": [
+            34.01611328125,
+            20.818359375,
+            13.26513671875
+          ]
+        },
+        {
+          "seconds": 55.040285583003424,
+          "loadavg": [
+            33.8544921875,
+            21.00390625,
+            13.37451171875
+          ]
+        },
+        {
+          "seconds": 60.04323391598882,
+          "loadavg": [
+            37.06884765625,
+            21.88330078125,
+            13.7294921875
+          ]
+        },
+        {
+          "seconds": 65.04894558299566,
+          "loadavg": [
+            36.50244140625,
+            22.017578125,
+            13.82470703125
+          ]
+        },
+        {
+          "seconds": 70.05398450000212,
+          "loadavg": [
+            37.3427734375,
+            22.43212890625,
+            14.01904296875
+          ]
+        }
+      ]
+    },
+    {
+      "key": {
+        "operation": "normal_matrix_and_rhs/sequential_fused",
+        "bits": 384,
+        "count": 1,
+        "m": 1100,
+        "n": 944,
+        "k": 1,
+        "cpu_workers": 18,
+        "fused": true,
+        "profile": "WolfNum / Apple M5 Max / Release / n944 K1100 bounded exponents [-4,4]; measured busy-host library, not idle consumer policy; measured=Apple M5 Max / 1.3.0 / normal-equations; binary=5685f64040ad070229f4cb654d0ff356661ffda08655d6b8d485579755e39fa3; archive=9a608e0de477141ba032f0715e8dadf8321c15738570f5cfbad307aedbe93aa3; clock=cpu-interleaved; cpu=MPFR/sequential_fused; active_workers=18; load_series=9b95a54b5f4e0e6ffc3dd5a3ae9160e0a62c9a7dc1338e28dcb0315208a69cc0; all_loadavg_below_4=false; scope=numeric-array-library; bridge=excluded",
+        "resident": false
+      },
+      "sample": {
+        "cpu_wall": 5.333159833,
+        "gpu_wall": 1.149126875
+      },
+      "recommendation": "gpu",
+      "source": "benchmarks/results/section9_p14_measured_384_1100_944_host_interleaved.csv",
+      "source_sha256": "43413423b463d68260a5db2c7a39039bd8780982e11404a1e163f200d2d6b5f6",
+      "metadata": "benchmarks/results/section9_p14_measured_384_1100_944_host_interleaved_metadata.json",
+      "load_samples": [
+        {
+          "seconds": 0.0012706660199910402,
+          "loadavg": [
+            7.322265625,
+            14.998046875,
+            10.89453125
+          ]
+        },
+        {
+          "seconds": 5.003536832984537,
+          "loadavg": [
+            9.37841796875,
+            15.296875,
+            11.02392578125
+          ]
+        },
+        {
+          "seconds": 10.003993124992121,
+          "loadavg": [
+            12.791015625,
+            15.90576171875,
+            11.263671875
+          ]
+        },
+        {
+          "seconds": 15.007623124984093,
+          "loadavg": [
+            13.6083984375,
+            16.0234375,
+            11.33203125
+          ]
+        },
+        {
+          "seconds": 20.007738916028757,
+          "loadavg": [
+            17.4833984375,
+            16.78662109375,
+            11.62890625
+          ]
+        },
+        {
+          "seconds": 25.012787625018973,
+          "loadavg": [
+            16.2431640625,
+            16.541015625,
+            11.572265625
+          ]
+        },
+        {
+          "seconds": 30.017533125006594,
+          "loadavg": [
+            21.5087890625,
+            17.62744140625,
+            11.98486328125
+          ]
+        },
+        {
+          "seconds": 35.023049666022416,
+          "loadavg": [
+            26.2724609375,
+            18.67919921875,
+            12.38916015625
+          ]
+        },
+        {
+          "seconds": 40.02743787498912,
+          "loadavg": [
+            33.69775390625,
+            20.34423828125,
+            13.013671875
+          ]
+        },
+        {
+          "seconds": 45.031461791018955,
+          "loadavg": [
+            31.3193359375,
+            20.07275390625,
+            12.96044921875
+          ]
+        },
+        {
+          "seconds": 50.03401595802279,
+          "loadavg": [
+            34.01611328125,
+            20.818359375,
+            13.26513671875
+          ]
+        },
+        {
+          "seconds": 55.040285583003424,
+          "loadavg": [
+            33.8544921875,
+            21.00390625,
+            13.37451171875
+          ]
+        },
+        {
+          "seconds": 60.04323391598882,
+          "loadavg": [
+            37.06884765625,
+            21.88330078125,
+            13.7294921875
+          ]
+        },
+        {
+          "seconds": 65.04894558299566,
+          "loadavg": [
+            36.50244140625,
+            22.017578125,
+            13.82470703125
+          ]
+        },
+        {
+          "seconds": 70.05398450000212,
+          "loadavg": [
+            37.3427734375,
+            22.43212890625,
+            14.01904296875
+          ]
+        }
+      ]
+    },
+    {
+      "key": {
+        "operation": "normal_matrix_and_rhs/exact_augmented",
+        "bits": 384,
+        "count": 1,
+        "m": 1100,
+        "n": 944,
+        "k": 1,
+        "cpu_workers": 18,
+        "fused": false,
+        "profile": "WolfNum / Apple M5 Max / Release / n944 K1100 bounded exponents [-4,4]; measured busy-host library, not idle consumer policy; measured=Apple M5 Max / 1.3.0 / normal-equations; binary=5685f64040ad070229f4cb654d0ff356661ffda08655d6b8d485579755e39fa3; archive=9a608e0de477141ba032f0715e8dadf8321c15738570f5cfbad307aedbe93aa3; clock=cpu-interleaved; cpu=MPFR/exact_dot; active_workers=18; load_series=9b95a54b5f4e0e6ffc3dd5a3ae9160e0a62c9a7dc1338e28dcb0315208a69cc0; all_loadavg_below_4=false; scope=numeric-array-library; bridge=excluded",
+        "resident": false
+      },
+      "sample": {
+        "cpu_wall": 6.013544875,
+        "gpu_wall": 0.0279115
+      },
+      "recommendation": "gpu",
+      "source": "benchmarks/results/section9_p14_measured_384_1100_944_host_interleaved.csv",
+      "source_sha256": "43413423b463d68260a5db2c7a39039bd8780982e11404a1e163f200d2d6b5f6",
+      "metadata": "benchmarks/results/section9_p14_measured_384_1100_944_host_interleaved_metadata.json",
+      "load_samples": [
+        {
+          "seconds": 0.0012706660199910402,
+          "loadavg": [
+            7.322265625,
+            14.998046875,
+            10.89453125
+          ]
+        },
+        {
+          "seconds": 5.003536832984537,
+          "loadavg": [
+            9.37841796875,
+            15.296875,
+            11.02392578125
+          ]
+        },
+        {
+          "seconds": 10.003993124992121,
+          "loadavg": [
+            12.791015625,
+            15.90576171875,
+            11.263671875
+          ]
+        },
+        {
+          "seconds": 15.007623124984093,
+          "loadavg": [
+            13.6083984375,
+            16.0234375,
+            11.33203125
+          ]
+        },
+        {
+          "seconds": 20.007738916028757,
+          "loadavg": [
+            17.4833984375,
+            16.78662109375,
+            11.62890625
+          ]
+        },
+        {
+          "seconds": 25.012787625018973,
+          "loadavg": [
+            16.2431640625,
+            16.541015625,
+            11.572265625
+          ]
+        },
+        {
+          "seconds": 30.017533125006594,
+          "loadavg": [
+            21.5087890625,
+            17.62744140625,
+            11.98486328125
+          ]
+        },
+        {
+          "seconds": 35.023049666022416,
+          "loadavg": [
+            26.2724609375,
+            18.67919921875,
+            12.38916015625
+          ]
+        },
+        {
+          "seconds": 40.02743787498912,
+          "loadavg": [
+            33.69775390625,
+            20.34423828125,
+            13.013671875
+          ]
+        },
+        {
+          "seconds": 45.031461791018955,
+          "loadavg": [
+            31.3193359375,
+            20.07275390625,
+            12.96044921875
+          ]
+        },
+        {
+          "seconds": 50.03401595802279,
+          "loadavg": [
+            34.01611328125,
+            20.818359375,
+            13.26513671875
+          ]
+        },
+        {
+          "seconds": 55.040285583003424,
+          "loadavg": [
+            33.8544921875,
+            21.00390625,
+            13.37451171875
+          ]
+        },
+        {
+          "seconds": 60.04323391598882,
+          "loadavg": [
+            37.06884765625,
+            21.88330078125,
+            13.7294921875
+          ]
+        },
+        {
+          "seconds": 65.04894558299566,
+          "loadavg": [
+            36.50244140625,
+            22.017578125,
+            13.82470703125
+          ]
+        },
+        {
+          "seconds": 70.05398450000212,
+          "loadavg": [
+            37.3427734375,
+            22.43212890625,
+            14.01904296875
+          ]
+        }
+      ]
+    },
+    {
+      "key": {
+        "operation": "normal_matrix_and_rhs/exact_syrk_plus_gemm",
+        "bits": 384,
+        "count": 1,
+        "m": 1100,
+        "n": 944,
+        "k": 1,
+        "cpu_workers": 18,
+        "fused": false,
+        "profile": "WolfNum / Apple M5 Max / Release / n944 K1100 bounded exponents [-4,4]; measured busy-host library, not idle consumer policy; measured=Apple M5 Max / 1.3.0 / normal-equations; binary=5685f64040ad070229f4cb654d0ff356661ffda08655d6b8d485579755e39fa3; archive=9a608e0de477141ba032f0715e8dadf8321c15738570f5cfbad307aedbe93aa3; clock=cpu-interleaved; cpu=MPFR/exact_dot; active_workers=18; load_series=9b95a54b5f4e0e6ffc3dd5a3ae9160e0a62c9a7dc1338e28dcb0315208a69cc0; all_loadavg_below_4=false; scope=numeric-array-library; bridge=excluded",
+        "resident": false
+      },
+      "sample": {
+        "cpu_wall": 6.013544875,
+        "gpu_wall": 0.019899459
+      },
+      "recommendation": "gpu",
+      "source": "benchmarks/results/section9_p14_measured_384_1100_944_host_interleaved.csv",
+      "source_sha256": "43413423b463d68260a5db2c7a39039bd8780982e11404a1e163f200d2d6b5f6",
+      "metadata": "benchmarks/results/section9_p14_measured_384_1100_944_host_interleaved_metadata.json",
+      "load_samples": [
+        {
+          "seconds": 0.0012706660199910402,
+          "loadavg": [
+            7.322265625,
+            14.998046875,
+            10.89453125
+          ]
+        },
+        {
+          "seconds": 5.003536832984537,
+          "loadavg": [
+            9.37841796875,
+            15.296875,
+            11.02392578125
+          ]
+        },
+        {
+          "seconds": 10.003993124992121,
+          "loadavg": [
+            12.791015625,
+            15.90576171875,
+            11.263671875
+          ]
+        },
+        {
+          "seconds": 15.007623124984093,
+          "loadavg": [
+            13.6083984375,
+            16.0234375,
+            11.33203125
+          ]
+        },
+        {
+          "seconds": 20.007738916028757,
+          "loadavg": [
+            17.4833984375,
+            16.78662109375,
+            11.62890625
+          ]
+        },
+        {
+          "seconds": 25.012787625018973,
+          "loadavg": [
+            16.2431640625,
+            16.541015625,
+            11.572265625
+          ]
+        },
+        {
+          "seconds": 30.017533125006594,
+          "loadavg": [
+            21.5087890625,
+            17.62744140625,
+            11.98486328125
+          ]
+        },
+        {
+          "seconds": 35.023049666022416,
+          "loadavg": [
+            26.2724609375,
+            18.67919921875,
+            12.38916015625
+          ]
+        },
+        {
+          "seconds": 40.02743787498912,
+          "loadavg": [
+            33.69775390625,
+            20.34423828125,
+            13.013671875
+          ]
+        },
+        {
+          "seconds": 45.031461791018955,
+          "loadavg": [
+            31.3193359375,
+            20.07275390625,
+            12.96044921875
+          ]
+        },
+        {
+          "seconds": 50.03401595802279,
+          "loadavg": [
+            34.01611328125,
+            20.818359375,
+            13.26513671875
+          ]
+        },
+        {
+          "seconds": 55.040285583003424,
+          "loadavg": [
+            33.8544921875,
+            21.00390625,
+            13.37451171875
+          ]
+        },
+        {
+          "seconds": 60.04323391598882,
+          "loadavg": [
+            37.06884765625,
+            21.88330078125,
+            13.7294921875
+          ]
+        },
+        {
+          "seconds": 65.04894558299566,
+          "loadavg": [
+            36.50244140625,
+            22.017578125,
+            13.82470703125
+          ]
+        },
+        {
+          "seconds": 70.05398450000212,
+          "loadavg": [
+            37.3427734375,
+            22.43212890625,
+            14.01904296875
+          ]
+        }
+      ]
+    },
+    {
+      "key": {
+        "operation": "normal_matrix_and_rhs/sequential_composed",
+        "bits": 384,
+        "count": 1,
+        "m": 1100,
+        "n": 944,
+        "k": 1,
+        "cpu_workers": 18,
+        "fused": false,
+        "profile": "WolfNum / Apple M5 Max / Release / n944 K1100 bounded exponents [-4,4]; measured busy-host library, not idle consumer policy; measured=Apple M5 Max / 1.3.0 / normal-equations; binary=5685f64040ad070229f4cb654d0ff356661ffda08655d6b8d485579755e39fa3; archive=9a608e0de477141ba032f0715e8dadf8321c15738570f5cfbad307aedbe93aa3; clock=cpu-interleaved; cpu=MPFR/sequential_composed; active_workers=18; load_series=a408f354a13418e613156a5e2e72ff5cfcdd4a05f920f2f75480677b45acbe42; all_loadavg_below_4=false; scope=numeric-array-library; bridge=excluded",
+        "resident": true
+      },
+      "sample": {
+        "cpu_wall": 4.88588775,
+        "gpu_wall": 0.238818875
+      },
+      "recommendation": "gpu",
+      "source": "benchmarks/results/section9_p14_measured_384_1100_944_resident_interleaved.csv",
+      "source_sha256": "be7f3208f68fb561aaea6bd97326206d936a235d96a2e80e2c9b717f702f5e44",
+      "metadata": "benchmarks/results/section9_p14_measured_384_1100_944_resident_interleaved_metadata.json",
+      "load_samples": [
+        {
+          "seconds": 0.0012405829620547593,
+          "loadavg": [
+            48.51220703125,
+            32.060546875,
+            19.3232421875
+          ]
+        },
+        {
+          "seconds": 5.006423832965083,
+          "loadavg": [
+            50.47265625,
+            32.73974609375,
+            19.6376953125
+          ]
+        },
+        {
+          "seconds": 10.011464749986771,
+          "loadavg": [
+            50.8349609375,
+            33.10888671875,
+            19.8447265625
+          ]
+        },
+        {
+          "seconds": 15.015146207995713,
+          "loadavg": [
+            51.16845703125,
+            33.47216796875,
+            20.05029296875
+          ]
+        },
+        {
+          "seconds": 20.019307665992528,
+          "loadavg": [
+            47.15087890625,
+            32.9326171875,
+            19.9384765625
+          ]
+        },
+        {
+          "seconds": 25.024353665998206,
+          "loadavg": [
+            46.73828125,
+            33.0830078125,
+            20.0673828125
+          ]
+        },
+        {
+          "seconds": 30.027256291010417,
+          "loadavg": [
+            50.2822265625,
+            34.04443359375,
+            20.48291015625
+          ]
+        },
+        {
+          "seconds": 35.03270899999188,
+          "loadavg": [
+            52.18115234375,
+            34.70751953125,
+            20.79638671875
+          ]
+        },
+        {
+          "seconds": 40.03684149996843,
+          "loadavg": [
+            54.00830078125,
+            35.3759765625,
+            21.11376953125
+          ]
+        },
+        {
+          "seconds": 45.04188441595761,
+          "loadavg": [
+            60.33349609375,
+            36.99658203125,
+            21.76904296875
+          ]
+        },
+        {
+          "seconds": 50.0457412499818,
+          "loadavg": [
+            60.626953125,
+            37.44482421875,
+            22.01611328125
+          ]
+        },
+        {
+          "seconds": 55.04843104101019,
+          "loadavg": [
+            56.09228515625,
+            36.88916015625,
+            21.91015625
+          ]
+        },
+        {
+          "seconds": 60.052855457994156,
+          "loadavg": [
+            60.24853515625,
+            38.0693359375,
+            22.41455078125
+          ]
+        },
+        {
+          "seconds": 65.05754779098788,
+          "loadavg": [
+            64.232421875,
+            39.26318359375,
+            22.927734375
+          ]
+        },
+        {
+          "seconds": 70.06258754100418,
+          "loadavg": [
+            68.53759765625,
+            40.5703125,
+            23.484375
+          ]
+        }
+      ]
+    },
+    {
+      "key": {
+        "operation": "normal_matrix_and_rhs/sequential_fused",
+        "bits": 384,
+        "count": 1,
+        "m": 1100,
+        "n": 944,
+        "k": 1,
+        "cpu_workers": 18,
+        "fused": true,
+        "profile": "WolfNum / Apple M5 Max / Release / n944 K1100 bounded exponents [-4,4]; measured busy-host library, not idle consumer policy; measured=Apple M5 Max / 1.3.0 / normal-equations; binary=5685f64040ad070229f4cb654d0ff356661ffda08655d6b8d485579755e39fa3; archive=9a608e0de477141ba032f0715e8dadf8321c15738570f5cfbad307aedbe93aa3; clock=cpu-interleaved; cpu=MPFR/sequential_fused; active_workers=18; load_series=a408f354a13418e613156a5e2e72ff5cfcdd4a05f920f2f75480677b45acbe42; all_loadavg_below_4=false; scope=numeric-array-library; bridge=excluded",
+        "resident": true
+      },
+      "sample": {
+        "cpu_wall": 4.587139792,
+        "gpu_wall": 1.227243041
+      },
+      "recommendation": "gpu",
+      "source": "benchmarks/results/section9_p14_measured_384_1100_944_resident_interleaved.csv",
+      "source_sha256": "be7f3208f68fb561aaea6bd97326206d936a235d96a2e80e2c9b717f702f5e44",
+      "metadata": "benchmarks/results/section9_p14_measured_384_1100_944_resident_interleaved_metadata.json",
+      "load_samples": [
+        {
+          "seconds": 0.0012405829620547593,
+          "loadavg": [
+            48.51220703125,
+            32.060546875,
+            19.3232421875
+          ]
+        },
+        {
+          "seconds": 5.006423832965083,
+          "loadavg": [
+            50.47265625,
+            32.73974609375,
+            19.6376953125
+          ]
+        },
+        {
+          "seconds": 10.011464749986771,
+          "loadavg": [
+            50.8349609375,
+            33.10888671875,
+            19.8447265625
+          ]
+        },
+        {
+          "seconds": 15.015146207995713,
+          "loadavg": [
+            51.16845703125,
+            33.47216796875,
+            20.05029296875
+          ]
+        },
+        {
+          "seconds": 20.019307665992528,
+          "loadavg": [
+            47.15087890625,
+            32.9326171875,
+            19.9384765625
+          ]
+        },
+        {
+          "seconds": 25.024353665998206,
+          "loadavg": [
+            46.73828125,
+            33.0830078125,
+            20.0673828125
+          ]
+        },
+        {
+          "seconds": 30.027256291010417,
+          "loadavg": [
+            50.2822265625,
+            34.04443359375,
+            20.48291015625
+          ]
+        },
+        {
+          "seconds": 35.03270899999188,
+          "loadavg": [
+            52.18115234375,
+            34.70751953125,
+            20.79638671875
+          ]
+        },
+        {
+          "seconds": 40.03684149996843,
+          "loadavg": [
+            54.00830078125,
+            35.3759765625,
+            21.11376953125
+          ]
+        },
+        {
+          "seconds": 45.04188441595761,
+          "loadavg": [
+            60.33349609375,
+            36.99658203125,
+            21.76904296875
+          ]
+        },
+        {
+          "seconds": 50.0457412499818,
+          "loadavg": [
+            60.626953125,
+            37.44482421875,
+            22.01611328125
+          ]
+        },
+        {
+          "seconds": 55.04843104101019,
+          "loadavg": [
+            56.09228515625,
+            36.88916015625,
+            21.91015625
+          ]
+        },
+        {
+          "seconds": 60.052855457994156,
+          "loadavg": [
+            60.24853515625,
+            38.0693359375,
+            22.41455078125
+          ]
+        },
+        {
+          "seconds": 65.05754779098788,
+          "loadavg": [
+            64.232421875,
+            39.26318359375,
+            22.927734375
+          ]
+        },
+        {
+          "seconds": 70.06258754100418,
+          "loadavg": [
+            68.53759765625,
+            40.5703125,
+            23.484375
+          ]
+        }
+      ]
+    },
+    {
+      "key": {
+        "operation": "normal_matrix_and_rhs/exact_augmented",
+        "bits": 384,
+        "count": 1,
+        "m": 1100,
+        "n": 944,
+        "k": 1,
+        "cpu_workers": 18,
+        "fused": false,
+        "profile": "WolfNum / Apple M5 Max / Release / n944 K1100 bounded exponents [-4,4]; measured busy-host library, not idle consumer policy; measured=Apple M5 Max / 1.3.0 / normal-equations; binary=5685f64040ad070229f4cb654d0ff356661ffda08655d6b8d485579755e39fa3; archive=9a608e0de477141ba032f0715e8dadf8321c15738570f5cfbad307aedbe93aa3; clock=cpu-interleaved; cpu=MPFR/exact_dot; active_workers=18; load_series=a408f354a13418e613156a5e2e72ff5cfcdd4a05f920f2f75480677b45acbe42; all_loadavg_below_4=false; scope=numeric-array-library; bridge=excluded",
+        "resident": true
+      },
+      "sample": {
+        "cpu_wall": 5.929143334,
+        "gpu_wall": 0.02446575
+      },
+      "recommendation": "gpu",
+      "source": "benchmarks/results/section9_p14_measured_384_1100_944_resident_interleaved.csv",
+      "source_sha256": "be7f3208f68fb561aaea6bd97326206d936a235d96a2e80e2c9b717f702f5e44",
+      "metadata": "benchmarks/results/section9_p14_measured_384_1100_944_resident_interleaved_metadata.json",
+      "load_samples": [
+        {
+          "seconds": 0.0012405829620547593,
+          "loadavg": [
+            48.51220703125,
+            32.060546875,
+            19.3232421875
+          ]
+        },
+        {
+          "seconds": 5.006423832965083,
+          "loadavg": [
+            50.47265625,
+            32.73974609375,
+            19.6376953125
+          ]
+        },
+        {
+          "seconds": 10.011464749986771,
+          "loadavg": [
+            50.8349609375,
+            33.10888671875,
+            19.8447265625
+          ]
+        },
+        {
+          "seconds": 15.015146207995713,
+          "loadavg": [
+            51.16845703125,
+            33.47216796875,
+            20.05029296875
+          ]
+        },
+        {
+          "seconds": 20.019307665992528,
+          "loadavg": [
+            47.15087890625,
+            32.9326171875,
+            19.9384765625
+          ]
+        },
+        {
+          "seconds": 25.024353665998206,
+          "loadavg": [
+            46.73828125,
+            33.0830078125,
+            20.0673828125
+          ]
+        },
+        {
+          "seconds": 30.027256291010417,
+          "loadavg": [
+            50.2822265625,
+            34.04443359375,
+            20.48291015625
+          ]
+        },
+        {
+          "seconds": 35.03270899999188,
+          "loadavg": [
+            52.18115234375,
+            34.70751953125,
+            20.79638671875
+          ]
+        },
+        {
+          "seconds": 40.03684149996843,
+          "loadavg": [
+            54.00830078125,
+            35.3759765625,
+            21.11376953125
+          ]
+        },
+        {
+          "seconds": 45.04188441595761,
+          "loadavg": [
+            60.33349609375,
+            36.99658203125,
+            21.76904296875
+          ]
+        },
+        {
+          "seconds": 50.0457412499818,
+          "loadavg": [
+            60.626953125,
+            37.44482421875,
+            22.01611328125
+          ]
+        },
+        {
+          "seconds": 55.04843104101019,
+          "loadavg": [
+            56.09228515625,
+            36.88916015625,
+            21.91015625
+          ]
+        },
+        {
+          "seconds": 60.052855457994156,
+          "loadavg": [
+            60.24853515625,
+            38.0693359375,
+            22.41455078125
+          ]
+        },
+        {
+          "seconds": 65.05754779098788,
+          "loadavg": [
+            64.232421875,
+            39.26318359375,
+            22.927734375
+          ]
+        },
+        {
+          "seconds": 70.06258754100418,
+          "loadavg": [
+            68.53759765625,
+            40.5703125,
+            23.484375
+          ]
+        }
+      ]
+    },
+    {
+      "key": {
+        "operation": "normal_matrix_and_rhs/exact_syrk_plus_gemm",
+        "bits": 384,
+        "count": 1,
+        "m": 1100,
+        "n": 944,
+        "k": 1,
+        "cpu_workers": 18,
+        "fused": false,
+        "profile": "WolfNum / Apple M5 Max / Release / n944 K1100 bounded exponents [-4,4]; measured busy-host library, not idle consumer policy; measured=Apple M5 Max / 1.3.0 / normal-equations; binary=5685f64040ad070229f4cb654d0ff356661ffda08655d6b8d485579755e39fa3; archive=9a608e0de477141ba032f0715e8dadf8321c15738570f5cfbad307aedbe93aa3; clock=cpu-interleaved; cpu=MPFR/exact_dot; active_workers=18; load_series=a408f354a13418e613156a5e2e72ff5cfcdd4a05f920f2f75480677b45acbe42; all_loadavg_below_4=false; scope=numeric-array-library; bridge=excluded",
+        "resident": true
+      },
+      "sample": {
+        "cpu_wall": 5.929143334,
+        "gpu_wall": 0.019214209
+      },
+      "recommendation": "gpu",
+      "source": "benchmarks/results/section9_p14_measured_384_1100_944_resident_interleaved.csv",
+      "source_sha256": "be7f3208f68fb561aaea6bd97326206d936a235d96a2e80e2c9b717f702f5e44",
+      "metadata": "benchmarks/results/section9_p14_measured_384_1100_944_resident_interleaved_metadata.json",
+      "load_samples": [
+        {
+          "seconds": 0.0012405829620547593,
+          "loadavg": [
+            48.51220703125,
+            32.060546875,
+            19.3232421875
+          ]
+        },
+        {
+          "seconds": 5.006423832965083,
+          "loadavg": [
+            50.47265625,
+            32.73974609375,
+            19.6376953125
+          ]
+        },
+        {
+          "seconds": 10.011464749986771,
+          "loadavg": [
+            50.8349609375,
+            33.10888671875,
+            19.8447265625
+          ]
+        },
+        {
+          "seconds": 15.015146207995713,
+          "loadavg": [
+            51.16845703125,
+            33.47216796875,
+            20.05029296875
+          ]
+        },
+        {
+          "seconds": 20.019307665992528,
+          "loadavg": [
+            47.15087890625,
+            32.9326171875,
+            19.9384765625
+          ]
+        },
+        {
+          "seconds": 25.024353665998206,
+          "loadavg": [
+            46.73828125,
+            33.0830078125,
+            20.0673828125
+          ]
+        },
+        {
+          "seconds": 30.027256291010417,
+          "loadavg": [
+            50.2822265625,
+            34.04443359375,
+            20.48291015625
+          ]
+        },
+        {
+          "seconds": 35.03270899999188,
+          "loadavg": [
+            52.18115234375,
+            34.70751953125,
+            20.79638671875
+          ]
+        },
+        {
+          "seconds": 40.03684149996843,
+          "loadavg": [
+            54.00830078125,
+            35.3759765625,
+            21.11376953125
+          ]
+        },
+        {
+          "seconds": 45.04188441595761,
+          "loadavg": [
+            60.33349609375,
+            36.99658203125,
+            21.76904296875
+          ]
+        },
+        {
+          "seconds": 50.0457412499818,
+          "loadavg": [
+            60.626953125,
+            37.44482421875,
+            22.01611328125
+          ]
+        },
+        {
+          "seconds": 55.04843104101019,
+          "loadavg": [
+            56.09228515625,
+            36.88916015625,
+            21.91015625
+          ]
+        },
+        {
+          "seconds": 60.052855457994156,
+          "loadavg": [
+            60.24853515625,
+            38.0693359375,
+            22.41455078125
+          ]
+        },
+        {
+          "seconds": 65.05754779098788,
+          "loadavg": [
+            64.232421875,
+            39.26318359375,
+            22.927734375
+          ]
+        },
+        {
+          "seconds": 70.06258754100418,
+          "loadavg": [
+            68.53759765625,
+            40.5703125,
+            23.484375
+          ]
+        }
+      ]
+    },
+    {
+      "key": {
+        "operation": "normal_matrix_and_rhs/sequential_composed",
+        "bits": 448,
+        "count": 1,
+        "m": 1100,
+        "n": 944,
+        "k": 1,
+        "cpu_workers": 18,
+        "fused": false,
+        "profile": "WolfNum / Apple M5 Max / Release / n944 K1100 bounded exponents [-4,4]; measured busy-host library, not idle consumer policy; measured=Apple M5 Max / 1.3.0 / normal-equations; binary=5685f64040ad070229f4cb654d0ff356661ffda08655d6b8d485579755e39fa3; archive=9a608e0de477141ba032f0715e8dadf8321c15738570f5cfbad307aedbe93aa3; clock=cpu-interleaved; cpu=MPFR/sequential_composed; active_workers=18; load_series=a4f60e75281bea1fb3fd9c2670d9b0e5a46836a702816486bf7372ed8e3e2467; all_loadavg_below_4=false; scope=numeric-array-library; bridge=excluded",
+        "resident": false
+      },
+      "sample": {
+        "cpu_wall": 4.823266125,
+        "gpu_wall": 0.31028825
+      },
+      "recommendation": "gpu",
+      "source": "benchmarks/results/section9_p14_measured_448_1100_944_host_interleaved.csv",
+      "source_sha256": "120d805ca0e3d33c681c0e6fbbda7f7fee8fbd8c42d4e53341ad67b8bb7ddefd",
+      "metadata": "benchmarks/results/section9_p14_measured_448_1100_944_host_interleaved_metadata.json",
+      "load_samples": [
+        {
+          "seconds": 0.001475374971050769,
+          "loadavg": [
+            36.51416015625,
+            22.5078125,
+            14.0947265625
+          ]
+        },
+        {
+          "seconds": 5.006763375014998,
+          "loadavg": [
+            33.91015625,
+            22.2001953125,
+            14.03515625
+          ]
+        },
+        {
+          "seconds": 10.009156165993772,
+          "loadavg": [
+            37.1201171875,
+            23.06005859375,
+            14.38623046875
+          ]
+        },
+        {
+          "seconds": 15.011336957977619,
+          "loadavg": [
+            36.9501953125,
+            23.2578125,
+            14.5068359375
+          ]
+        },
+        {
+          "seconds": 20.01637904101517,
+          "loadavg": [
+            38.7158203125,
+            23.85107421875,
+            14.76708984375
+          ]
+        },
+        {
+          "seconds": 25.02143033297034,
+          "loadavg": [
+            35.935546875,
+            23.521484375,
+            14.70361328125
+          ]
+        },
+        {
+          "seconds": 30.023711999994703,
+          "loadavg": [
+            34.5791015625,
+            23.4462890625,
+            14.728515625
+          ]
+        },
+        {
+          "seconds": 35.024942707968876,
+          "loadavg": [
+            32.77099609375,
+            23.255859375,
+            14.71240234375
+          ]
+        },
+        {
+          "seconds": 40.025357832957525,
+          "loadavg": [
+            37.75390625,
+            24.44677734375,
+            15.1826171875
+          ]
+        },
+        {
+          "seconds": 45.030400082992855,
+          "loadavg": [
+            39.294921875,
+            24.98681640625,
+            15.42724609375
+          ]
+        },
+        {
+          "seconds": 50.03195741598029,
+          "loadavg": [
+            38.39013671875,
+            25.03662109375,
+            15.50048828125
+          ]
+        },
+        {
+          "seconds": 55.032026958011556,
+          "loadavg": [
+            39.96044921875,
+            25.58349609375,
+            15.7490234375
+          ]
+        },
+        {
+          "seconds": 60.036417499999516,
+          "loadavg": [
+            37.32080078125,
+            25.27490234375,
+            15.69775390625
+          ]
+        },
+        {
+          "seconds": 65.04230383300455,
+          "loadavg": [
+            45.0625,
+            27.07958984375,
+            16.390625
+          ]
+        },
+        {
+          "seconds": 70.04326970799593,
+          "loadavg": [
+            45.77783203125,
+            27.5263671875,
+            16.61083984375
+          ]
+        },
+        {
+          "seconds": 75.04410724999616,
+          "loadavg": [
+            45.39501953125,
+            27.75,
+            16.75341796875
+          ]
+        }
+      ]
+    },
+    {
+      "key": {
+        "operation": "normal_matrix_and_rhs/sequential_fused",
+        "bits": 448,
+        "count": 1,
+        "m": 1100,
+        "n": 944,
+        "k": 1,
+        "cpu_workers": 18,
+        "fused": true,
+        "profile": "WolfNum / Apple M5 Max / Release / n944 K1100 bounded exponents [-4,4]; measured busy-host library, not idle consumer policy; measured=Apple M5 Max / 1.3.0 / normal-equations; binary=5685f64040ad070229f4cb654d0ff356661ffda08655d6b8d485579755e39fa3; archive=9a608e0de477141ba032f0715e8dadf8321c15738570f5cfbad307aedbe93aa3; clock=cpu-interleaved; cpu=MPFR/sequential_fused; active_workers=18; load_series=a4f60e75281bea1fb3fd9c2670d9b0e5a46836a702816486bf7372ed8e3e2467; all_loadavg_below_4=false; scope=numeric-array-library; bridge=excluded",
+        "resident": false
+      },
+      "sample": {
+        "cpu_wall": 4.503318042,
+        "gpu_wall": 2.058551708
+      },
+      "recommendation": "gpu",
+      "source": "benchmarks/results/section9_p14_measured_448_1100_944_host_interleaved.csv",
+      "source_sha256": "120d805ca0e3d33c681c0e6fbbda7f7fee8fbd8c42d4e53341ad67b8bb7ddefd",
+      "metadata": "benchmarks/results/section9_p14_measured_448_1100_944_host_interleaved_metadata.json",
+      "load_samples": [
+        {
+          "seconds": 0.001475374971050769,
+          "loadavg": [
+            36.51416015625,
+            22.5078125,
+            14.0947265625
+          ]
+        },
+        {
+          "seconds": 5.006763375014998,
+          "loadavg": [
+            33.91015625,
+            22.2001953125,
+            14.03515625
+          ]
+        },
+        {
+          "seconds": 10.009156165993772,
+          "loadavg": [
+            37.1201171875,
+            23.06005859375,
+            14.38623046875
+          ]
+        },
+        {
+          "seconds": 15.011336957977619,
+          "loadavg": [
+            36.9501953125,
+            23.2578125,
+            14.5068359375
+          ]
+        },
+        {
+          "seconds": 20.01637904101517,
+          "loadavg": [
+            38.7158203125,
+            23.85107421875,
+            14.76708984375
+          ]
+        },
+        {
+          "seconds": 25.02143033297034,
+          "loadavg": [
+            35.935546875,
+            23.521484375,
+            14.70361328125
+          ]
+        },
+        {
+          "seconds": 30.023711999994703,
+          "loadavg": [
+            34.5791015625,
+            23.4462890625,
+            14.728515625
+          ]
+        },
+        {
+          "seconds": 35.024942707968876,
+          "loadavg": [
+            32.77099609375,
+            23.255859375,
+            14.71240234375
+          ]
+        },
+        {
+          "seconds": 40.025357832957525,
+          "loadavg": [
+            37.75390625,
+            24.44677734375,
+            15.1826171875
+          ]
+        },
+        {
+          "seconds": 45.030400082992855,
+          "loadavg": [
+            39.294921875,
+            24.98681640625,
+            15.42724609375
+          ]
+        },
+        {
+          "seconds": 50.03195741598029,
+          "loadavg": [
+            38.39013671875,
+            25.03662109375,
+            15.50048828125
+          ]
+        },
+        {
+          "seconds": 55.032026958011556,
+          "loadavg": [
+            39.96044921875,
+            25.58349609375,
+            15.7490234375
+          ]
+        },
+        {
+          "seconds": 60.036417499999516,
+          "loadavg": [
+            37.32080078125,
+            25.27490234375,
+            15.69775390625
+          ]
+        },
+        {
+          "seconds": 65.04230383300455,
+          "loadavg": [
+            45.0625,
+            27.07958984375,
+            16.390625
+          ]
+        },
+        {
+          "seconds": 70.04326970799593,
+          "loadavg": [
+            45.77783203125,
+            27.5263671875,
+            16.61083984375
+          ]
+        },
+        {
+          "seconds": 75.04410724999616,
+          "loadavg": [
+            45.39501953125,
+            27.75,
+            16.75341796875
+          ]
+        }
+      ]
+    },
+    {
+      "key": {
+        "operation": "normal_matrix_and_rhs/exact_augmented",
+        "bits": 448,
+        "count": 1,
+        "m": 1100,
+        "n": 944,
+        "k": 1,
+        "cpu_workers": 18,
+        "fused": false,
+        "profile": "WolfNum / Apple M5 Max / Release / n944 K1100 bounded exponents [-4,4]; measured busy-host library, not idle consumer policy; measured=Apple M5 Max / 1.3.0 / normal-equations; binary=5685f64040ad070229f4cb654d0ff356661ffda08655d6b8d485579755e39fa3; archive=9a608e0de477141ba032f0715e8dadf8321c15738570f5cfbad307aedbe93aa3; clock=cpu-interleaved; cpu=MPFR/exact_dot; active_workers=18; load_series=a4f60e75281bea1fb3fd9c2670d9b0e5a46836a702816486bf7372ed8e3e2467; all_loadavg_below_4=false; scope=numeric-array-library; bridge=excluded",
+        "resident": false
+      },
+      "sample": {
+        "cpu_wall": 5.805176916,
+        "gpu_wall": 0.037930125
+      },
+      "recommendation": "gpu",
+      "source": "benchmarks/results/section9_p14_measured_448_1100_944_host_interleaved.csv",
+      "source_sha256": "120d805ca0e3d33c681c0e6fbbda7f7fee8fbd8c42d4e53341ad67b8bb7ddefd",
+      "metadata": "benchmarks/results/section9_p14_measured_448_1100_944_host_interleaved_metadata.json",
+      "load_samples": [
+        {
+          "seconds": 0.001475374971050769,
+          "loadavg": [
+            36.51416015625,
+            22.5078125,
+            14.0947265625
+          ]
+        },
+        {
+          "seconds": 5.006763375014998,
+          "loadavg": [
+            33.91015625,
+            22.2001953125,
+            14.03515625
+          ]
+        },
+        {
+          "seconds": 10.009156165993772,
+          "loadavg": [
+            37.1201171875,
+            23.06005859375,
+            14.38623046875
+          ]
+        },
+        {
+          "seconds": 15.011336957977619,
+          "loadavg": [
+            36.9501953125,
+            23.2578125,
+            14.5068359375
+          ]
+        },
+        {
+          "seconds": 20.01637904101517,
+          "loadavg": [
+            38.7158203125,
+            23.85107421875,
+            14.76708984375
+          ]
+        },
+        {
+          "seconds": 25.02143033297034,
+          "loadavg": [
+            35.935546875,
+            23.521484375,
+            14.70361328125
+          ]
+        },
+        {
+          "seconds": 30.023711999994703,
+          "loadavg": [
+            34.5791015625,
+            23.4462890625,
+            14.728515625
+          ]
+        },
+        {
+          "seconds": 35.024942707968876,
+          "loadavg": [
+            32.77099609375,
+            23.255859375,
+            14.71240234375
+          ]
+        },
+        {
+          "seconds": 40.025357832957525,
+          "loadavg": [
+            37.75390625,
+            24.44677734375,
+            15.1826171875
+          ]
+        },
+        {
+          "seconds": 45.030400082992855,
+          "loadavg": [
+            39.294921875,
+            24.98681640625,
+            15.42724609375
+          ]
+        },
+        {
+          "seconds": 50.03195741598029,
+          "loadavg": [
+            38.39013671875,
+            25.03662109375,
+            15.50048828125
+          ]
+        },
+        {
+          "seconds": 55.032026958011556,
+          "loadavg": [
+            39.96044921875,
+            25.58349609375,
+            15.7490234375
+          ]
+        },
+        {
+          "seconds": 60.036417499999516,
+          "loadavg": [
+            37.32080078125,
+            25.27490234375,
+            15.69775390625
+          ]
+        },
+        {
+          "seconds": 65.04230383300455,
+          "loadavg": [
+            45.0625,
+            27.07958984375,
+            16.390625
+          ]
+        },
+        {
+          "seconds": 70.04326970799593,
+          "loadavg": [
+            45.77783203125,
+            27.5263671875,
+            16.61083984375
+          ]
+        },
+        {
+          "seconds": 75.04410724999616,
+          "loadavg": [
+            45.39501953125,
+            27.75,
+            16.75341796875
+          ]
+        }
+      ]
+    },
+    {
+      "key": {
+        "operation": "normal_matrix_and_rhs/exact_syrk_plus_gemm",
+        "bits": 448,
+        "count": 1,
+        "m": 1100,
+        "n": 944,
+        "k": 1,
+        "cpu_workers": 18,
+        "fused": false,
+        "profile": "WolfNum / Apple M5 Max / Release / n944 K1100 bounded exponents [-4,4]; measured busy-host library, not idle consumer policy; measured=Apple M5 Max / 1.3.0 / normal-equations; binary=5685f64040ad070229f4cb654d0ff356661ffda08655d6b8d485579755e39fa3; archive=9a608e0de477141ba032f0715e8dadf8321c15738570f5cfbad307aedbe93aa3; clock=cpu-interleaved; cpu=MPFR/exact_dot; active_workers=18; load_series=a4f60e75281bea1fb3fd9c2670d9b0e5a46836a702816486bf7372ed8e3e2467; all_loadavg_below_4=false; scope=numeric-array-library; bridge=excluded",
+        "resident": false
+      },
+      "sample": {
+        "cpu_wall": 5.805176916,
+        "gpu_wall": 0.03153475
+      },
+      "recommendation": "gpu",
+      "source": "benchmarks/results/section9_p14_measured_448_1100_944_host_interleaved.csv",
+      "source_sha256": "120d805ca0e3d33c681c0e6fbbda7f7fee8fbd8c42d4e53341ad67b8bb7ddefd",
+      "metadata": "benchmarks/results/section9_p14_measured_448_1100_944_host_interleaved_metadata.json",
+      "load_samples": [
+        {
+          "seconds": 0.001475374971050769,
+          "loadavg": [
+            36.51416015625,
+            22.5078125,
+            14.0947265625
+          ]
+        },
+        {
+          "seconds": 5.006763375014998,
+          "loadavg": [
+            33.91015625,
+            22.2001953125,
+            14.03515625
+          ]
+        },
+        {
+          "seconds": 10.009156165993772,
+          "loadavg": [
+            37.1201171875,
+            23.06005859375,
+            14.38623046875
+          ]
+        },
+        {
+          "seconds": 15.011336957977619,
+          "loadavg": [
+            36.9501953125,
+            23.2578125,
+            14.5068359375
+          ]
+        },
+        {
+          "seconds": 20.01637904101517,
+          "loadavg": [
+            38.7158203125,
+            23.85107421875,
+            14.76708984375
+          ]
+        },
+        {
+          "seconds": 25.02143033297034,
+          "loadavg": [
+            35.935546875,
+            23.521484375,
+            14.70361328125
+          ]
+        },
+        {
+          "seconds": 30.023711999994703,
+          "loadavg": [
+            34.5791015625,
+            23.4462890625,
+            14.728515625
+          ]
+        },
+        {
+          "seconds": 35.024942707968876,
+          "loadavg": [
+            32.77099609375,
+            23.255859375,
+            14.71240234375
+          ]
+        },
+        {
+          "seconds": 40.025357832957525,
+          "loadavg": [
+            37.75390625,
+            24.44677734375,
+            15.1826171875
+          ]
+        },
+        {
+          "seconds": 45.030400082992855,
+          "loadavg": [
+            39.294921875,
+            24.98681640625,
+            15.42724609375
+          ]
+        },
+        {
+          "seconds": 50.03195741598029,
+          "loadavg": [
+            38.39013671875,
+            25.03662109375,
+            15.50048828125
+          ]
+        },
+        {
+          "seconds": 55.032026958011556,
+          "loadavg": [
+            39.96044921875,
+            25.58349609375,
+            15.7490234375
+          ]
+        },
+        {
+          "seconds": 60.036417499999516,
+          "loadavg": [
+            37.32080078125,
+            25.27490234375,
+            15.69775390625
+          ]
+        },
+        {
+          "seconds": 65.04230383300455,
+          "loadavg": [
+            45.0625,
+            27.07958984375,
+            16.390625
+          ]
+        },
+        {
+          "seconds": 70.04326970799593,
+          "loadavg": [
+            45.77783203125,
+            27.5263671875,
+            16.61083984375
+          ]
+        },
+        {
+          "seconds": 75.04410724999616,
+          "loadavg": [
+            45.39501953125,
+            27.75,
+            16.75341796875
+          ]
+        }
+      ]
+    },
+    {
+      "key": {
+        "operation": "normal_matrix_and_rhs/sequential_composed",
+        "bits": 448,
+        "count": 1,
+        "m": 1100,
+        "n": 944,
+        "k": 1,
+        "cpu_workers": 18,
+        "fused": false,
+        "profile": "WolfNum / Apple M5 Max / Release / n944 K1100 bounded exponents [-4,4]; measured busy-host library, not idle consumer policy; measured=Apple M5 Max / 1.3.0 / normal-equations; binary=5685f64040ad070229f4cb654d0ff356661ffda08655d6b8d485579755e39fa3; archive=9a608e0de477141ba032f0715e8dadf8321c15738570f5cfbad307aedbe93aa3; clock=cpu-interleaved; cpu=MPFR/sequential_composed; active_workers=18; load_series=76485c726bf3f2d634c130e0f54c29675e90b220ed5bc46c46d1d8ed971af680; all_loadavg_below_4=false; scope=numeric-array-library; bridge=excluded",
+        "resident": true
+      },
+      "sample": {
+        "cpu_wall": 6.202340833,
+        "gpu_wall": 0.298879916
+      },
+      "recommendation": "gpu",
+      "source": "benchmarks/results/section9_p14_measured_448_1100_944_resident_interleaved.csv",
+      "source_sha256": "35eafb10fab2c57199aaafc8cafd04f52bee16c658e5de353ef28d5a7d192284",
+      "metadata": "benchmarks/results/section9_p14_measured_448_1100_944_resident_interleaved_metadata.json",
+      "load_samples": [
+        {
+          "seconds": 0.0013425000361166894,
+          "loadavg": [
+            63.369140625,
+            39.962890625,
+            23.3701171875
+          ]
+        },
+        {
+          "seconds": 5.0065274580265395,
+          "loadavg": [
+            60.61669921875,
+            39.78076171875,
+            23.40283203125
+          ]
+        },
+        {
+          "seconds": 10.011296208016574,
+          "loadavg": [
+            58.24462890625,
+            39.634765625,
+            23.447265625
+          ]
+        },
+        {
+          "seconds": 15.0157507500262,
+          "loadavg": [
+            54.62109375,
+            39.1923828125,
+            23.3857421875
+          ]
+        },
+        {
+          "seconds": 20.02013966703089,
+          "loadavg": [
+            56.4931640625,
+            39.83642578125,
+            23.70556640625
+          ]
+        },
+        {
+          "seconds": 25.02170516701881,
+          "loadavg": [
+            59.09619140625,
+            40.65234375,
+            24.087890625
+          ]
+        },
+        {
+          "seconds": 30.026751458004583,
+          "loadavg": [
+            59.24853515625,
+            40.98974609375,
+            24.3037109375
+          ]
+        },
+        {
+          "seconds": 35.032165792013984,
+          "loadavg": [
+            62.431640625,
+            41.95263671875,
+            24.7412109375
+          ]
+        },
+        {
+          "seconds": 40.03657929203473,
+          "loadavg": [
+            64.63916015625,
+            42.75,
+            25.12353515625
+          ]
+        },
+        {
+          "seconds": 45.041633292043116,
+          "loadavg": [
+            63.306640625,
+            42.8369140625,
+            25.25732421875
+          ]
+        },
+        {
+          "seconds": 50.043285833031405,
+          "loadavg": [
+            63.28173828125,
+            43.17138671875,
+            25.47802734375
+          ]
+        },
+        {
+          "seconds": 55.04832650005119,
+          "loadavg": [
+            63.1787109375,
+            43.48388671875,
+            25.69189453125
+          ]
+        },
+        {
+          "seconds": 60.05002191703534,
+          "loadavg": [
+            67.248046875,
+            44.654296875,
+            26.208984375
+          ]
+        },
+        {
+          "seconds": 65.0562162080314,
+          "loadavg": [
+            62.42333984375,
+            44.02880859375,
+            26.09619140625
+          ]
+        },
+        {
+          "seconds": 70.06126191699877,
+          "loadavg": [
+            61.50830078125,
+            44.14453125,
+            26.24169921875
+          ]
+        },
+        {
+          "seconds": 75.06352395802969,
+          "loadavg": [
+            63.06884765625,
+            44.75634765625,
+            26.5625
+          ]
+        },
+        {
+          "seconds": 80.06713904201752,
+          "loadavg": [
+            60.18017578125,
+            44.46142578125,
+            26.56494140625
+          ]
+        },
+        {
+          "seconds": 85.07217933301581,
+          "loadavg": [
+            59.28466796875,
+            44.53662109375,
+            26.6962890625
+          ]
+        }
+      ]
+    },
+    {
+      "key": {
+        "operation": "normal_matrix_and_rhs/sequential_fused",
+        "bits": 448,
+        "count": 1,
+        "m": 1100,
+        "n": 944,
+        "k": 1,
+        "cpu_workers": 18,
+        "fused": true,
+        "profile": "WolfNum / Apple M5 Max / Release / n944 K1100 bounded exponents [-4,4]; measured busy-host library, not idle consumer policy; measured=Apple M5 Max / 1.3.0 / normal-equations; binary=5685f64040ad070229f4cb654d0ff356661ffda08655d6b8d485579755e39fa3; archive=9a608e0de477141ba032f0715e8dadf8321c15738570f5cfbad307aedbe93aa3; clock=cpu-interleaved; cpu=MPFR/sequential_fused; active_workers=18; load_series=76485c726bf3f2d634c130e0f54c29675e90b220ed5bc46c46d1d8ed971af680; all_loadavg_below_4=false; scope=numeric-array-library; bridge=excluded",
+        "resident": true
+      },
+      "sample": {
+        "cpu_wall": 6.211920875,
+        "gpu_wall": 1.973909375
+      },
+      "recommendation": "gpu",
+      "source": "benchmarks/results/section9_p14_measured_448_1100_944_resident_interleaved.csv",
+      "source_sha256": "35eafb10fab2c57199aaafc8cafd04f52bee16c658e5de353ef28d5a7d192284",
+      "metadata": "benchmarks/results/section9_p14_measured_448_1100_944_resident_interleaved_metadata.json",
+      "load_samples": [
+        {
+          "seconds": 0.0013425000361166894,
+          "loadavg": [
+            63.369140625,
+            39.962890625,
+            23.3701171875
+          ]
+        },
+        {
+          "seconds": 5.0065274580265395,
+          "loadavg": [
+            60.61669921875,
+            39.78076171875,
+            23.40283203125
+          ]
+        },
+        {
+          "seconds": 10.011296208016574,
+          "loadavg": [
+            58.24462890625,
+            39.634765625,
+            23.447265625
+          ]
+        },
+        {
+          "seconds": 15.0157507500262,
+          "loadavg": [
+            54.62109375,
+            39.1923828125,
+            23.3857421875
+          ]
+        },
+        {
+          "seconds": 20.02013966703089,
+          "loadavg": [
+            56.4931640625,
+            39.83642578125,
+            23.70556640625
+          ]
+        },
+        {
+          "seconds": 25.02170516701881,
+          "loadavg": [
+            59.09619140625,
+            40.65234375,
+            24.087890625
+          ]
+        },
+        {
+          "seconds": 30.026751458004583,
+          "loadavg": [
+            59.24853515625,
+            40.98974609375,
+            24.3037109375
+          ]
+        },
+        {
+          "seconds": 35.032165792013984,
+          "loadavg": [
+            62.431640625,
+            41.95263671875,
+            24.7412109375
+          ]
+        },
+        {
+          "seconds": 40.03657929203473,
+          "loadavg": [
+            64.63916015625,
+            42.75,
+            25.12353515625
+          ]
+        },
+        {
+          "seconds": 45.041633292043116,
+          "loadavg": [
+            63.306640625,
+            42.8369140625,
+            25.25732421875
+          ]
+        },
+        {
+          "seconds": 50.043285833031405,
+          "loadavg": [
+            63.28173828125,
+            43.17138671875,
+            25.47802734375
+          ]
+        },
+        {
+          "seconds": 55.04832650005119,
+          "loadavg": [
+            63.1787109375,
+            43.48388671875,
+            25.69189453125
+          ]
+        },
+        {
+          "seconds": 60.05002191703534,
+          "loadavg": [
+            67.248046875,
+            44.654296875,
+            26.208984375
+          ]
+        },
+        {
+          "seconds": 65.0562162080314,
+          "loadavg": [
+            62.42333984375,
+            44.02880859375,
+            26.09619140625
+          ]
+        },
+        {
+          "seconds": 70.06126191699877,
+          "loadavg": [
+            61.50830078125,
+            44.14453125,
+            26.24169921875
+          ]
+        },
+        {
+          "seconds": 75.06352395802969,
+          "loadavg": [
+            63.06884765625,
+            44.75634765625,
+            26.5625
+          ]
+        },
+        {
+          "seconds": 80.06713904201752,
+          "loadavg": [
+            60.18017578125,
+            44.46142578125,
+            26.56494140625
+          ]
+        },
+        {
+          "seconds": 85.07217933301581,
+          "loadavg": [
+            59.28466796875,
+            44.53662109375,
+            26.6962890625
+          ]
+        }
+      ]
+    },
+    {
+      "key": {
+        "operation": "normal_matrix_and_rhs/exact_augmented",
+        "bits": 448,
+        "count": 1,
+        "m": 1100,
+        "n": 944,
+        "k": 1,
+        "cpu_workers": 18,
+        "fused": false,
+        "profile": "WolfNum / Apple M5 Max / Release / n944 K1100 bounded exponents [-4,4]; measured busy-host library, not idle consumer policy; measured=Apple M5 Max / 1.3.0 / normal-equations; binary=5685f64040ad070229f4cb654d0ff356661ffda08655d6b8d485579755e39fa3; archive=9a608e0de477141ba032f0715e8dadf8321c15738570f5cfbad307aedbe93aa3; clock=cpu-interleaved; cpu=MPFR/exact_dot; active_workers=18; load_series=76485c726bf3f2d634c130e0f54c29675e90b220ed5bc46c46d1d8ed971af680; all_loadavg_below_4=false; scope=numeric-array-library; bridge=excluded",
+        "resident": true
+      },
+      "sample": {
+        "cpu_wall": 7.873408417,
+        "gpu_wall": 0.038354166
+      },
+      "recommendation": "gpu",
+      "source": "benchmarks/results/section9_p14_measured_448_1100_944_resident_interleaved.csv",
+      "source_sha256": "35eafb10fab2c57199aaafc8cafd04f52bee16c658e5de353ef28d5a7d192284",
+      "metadata": "benchmarks/results/section9_p14_measured_448_1100_944_resident_interleaved_metadata.json",
+      "load_samples": [
+        {
+          "seconds": 0.0013425000361166894,
+          "loadavg": [
+            63.369140625,
+            39.962890625,
+            23.3701171875
+          ]
+        },
+        {
+          "seconds": 5.0065274580265395,
+          "loadavg": [
+            60.61669921875,
+            39.78076171875,
+            23.40283203125
+          ]
+        },
+        {
+          "seconds": 10.011296208016574,
+          "loadavg": [
+            58.24462890625,
+            39.634765625,
+            23.447265625
+          ]
+        },
+        {
+          "seconds": 15.0157507500262,
+          "loadavg": [
+            54.62109375,
+            39.1923828125,
+            23.3857421875
+          ]
+        },
+        {
+          "seconds": 20.02013966703089,
+          "loadavg": [
+            56.4931640625,
+            39.83642578125,
+            23.70556640625
+          ]
+        },
+        {
+          "seconds": 25.02170516701881,
+          "loadavg": [
+            59.09619140625,
+            40.65234375,
+            24.087890625
+          ]
+        },
+        {
+          "seconds": 30.026751458004583,
+          "loadavg": [
+            59.24853515625,
+            40.98974609375,
+            24.3037109375
+          ]
+        },
+        {
+          "seconds": 35.032165792013984,
+          "loadavg": [
+            62.431640625,
+            41.95263671875,
+            24.7412109375
+          ]
+        },
+        {
+          "seconds": 40.03657929203473,
+          "loadavg": [
+            64.63916015625,
+            42.75,
+            25.12353515625
+          ]
+        },
+        {
+          "seconds": 45.041633292043116,
+          "loadavg": [
+            63.306640625,
+            42.8369140625,
+            25.25732421875
+          ]
+        },
+        {
+          "seconds": 50.043285833031405,
+          "loadavg": [
+            63.28173828125,
+            43.17138671875,
+            25.47802734375
+          ]
+        },
+        {
+          "seconds": 55.04832650005119,
+          "loadavg": [
+            63.1787109375,
+            43.48388671875,
+            25.69189453125
+          ]
+        },
+        {
+          "seconds": 60.05002191703534,
+          "loadavg": [
+            67.248046875,
+            44.654296875,
+            26.208984375
+          ]
+        },
+        {
+          "seconds": 65.0562162080314,
+          "loadavg": [
+            62.42333984375,
+            44.02880859375,
+            26.09619140625
+          ]
+        },
+        {
+          "seconds": 70.06126191699877,
+          "loadavg": [
+            61.50830078125,
+            44.14453125,
+            26.24169921875
+          ]
+        },
+        {
+          "seconds": 75.06352395802969,
+          "loadavg": [
+            63.06884765625,
+            44.75634765625,
+            26.5625
+          ]
+        },
+        {
+          "seconds": 80.06713904201752,
+          "loadavg": [
+            60.18017578125,
+            44.46142578125,
+            26.56494140625
+          ]
+        },
+        {
+          "seconds": 85.07217933301581,
+          "loadavg": [
+            59.28466796875,
+            44.53662109375,
+            26.6962890625
+          ]
+        }
+      ]
+    },
+    {
+      "key": {
+        "operation": "normal_matrix_and_rhs/exact_syrk_plus_gemm",
+        "bits": 448,
+        "count": 1,
+        "m": 1100,
+        "n": 944,
+        "k": 1,
+        "cpu_workers": 18,
+        "fused": false,
+        "profile": "WolfNum / Apple M5 Max / Release / n944 K1100 bounded exponents [-4,4]; measured busy-host library, not idle consumer policy; measured=Apple M5 Max / 1.3.0 / normal-equations; binary=5685f64040ad070229f4cb654d0ff356661ffda08655d6b8d485579755e39fa3; archive=9a608e0de477141ba032f0715e8dadf8321c15738570f5cfbad307aedbe93aa3; clock=cpu-interleaved; cpu=MPFR/exact_dot; active_workers=18; load_series=76485c726bf3f2d634c130e0f54c29675e90b220ed5bc46c46d1d8ed971af680; all_loadavg_below_4=false; scope=numeric-array-library; bridge=excluded",
+        "resident": true
+      },
+      "sample": {
+        "cpu_wall": 7.873408417,
+        "gpu_wall": 0.027808458
+      },
+      "recommendation": "gpu",
+      "source": "benchmarks/results/section9_p14_measured_448_1100_944_resident_interleaved.csv",
+      "source_sha256": "35eafb10fab2c57199aaafc8cafd04f52bee16c658e5de353ef28d5a7d192284",
+      "metadata": "benchmarks/results/section9_p14_measured_448_1100_944_resident_interleaved_metadata.json",
+      "load_samples": [
+        {
+          "seconds": 0.0013425000361166894,
+          "loadavg": [
+            63.369140625,
+            39.962890625,
+            23.3701171875
+          ]
+        },
+        {
+          "seconds": 5.0065274580265395,
+          "loadavg": [
+            60.61669921875,
+            39.78076171875,
+            23.40283203125
+          ]
+        },
+        {
+          "seconds": 10.011296208016574,
+          "loadavg": [
+            58.24462890625,
+            39.634765625,
+            23.447265625
+          ]
+        },
+        {
+          "seconds": 15.0157507500262,
+          "loadavg": [
+            54.62109375,
+            39.1923828125,
+            23.3857421875
+          ]
+        },
+        {
+          "seconds": 20.02013966703089,
+          "loadavg": [
+            56.4931640625,
+            39.83642578125,
+            23.70556640625
+          ]
+        },
+        {
+          "seconds": 25.02170516701881,
+          "loadavg": [
+            59.09619140625,
+            40.65234375,
+            24.087890625
+          ]
+        },
+        {
+          "seconds": 30.026751458004583,
+          "loadavg": [
+            59.24853515625,
+            40.98974609375,
+            24.3037109375
+          ]
+        },
+        {
+          "seconds": 35.032165792013984,
+          "loadavg": [
+            62.431640625,
+            41.95263671875,
+            24.7412109375
+          ]
+        },
+        {
+          "seconds": 40.03657929203473,
+          "loadavg": [
+            64.63916015625,
+            42.75,
+            25.12353515625
+          ]
+        },
+        {
+          "seconds": 45.041633292043116,
+          "loadavg": [
+            63.306640625,
+            42.8369140625,
+            25.25732421875
+          ]
+        },
+        {
+          "seconds": 50.043285833031405,
+          "loadavg": [
+            63.28173828125,
+            43.17138671875,
+            25.47802734375
+          ]
+        },
+        {
+          "seconds": 55.04832650005119,
+          "loadavg": [
+            63.1787109375,
+            43.48388671875,
+            25.69189453125
+          ]
+        },
+        {
+          "seconds": 60.05002191703534,
+          "loadavg": [
+            67.248046875,
+            44.654296875,
+            26.208984375
+          ]
+        },
+        {
+          "seconds": 65.0562162080314,
+          "loadavg": [
+            62.42333984375,
+            44.02880859375,
+            26.09619140625
+          ]
+        },
+        {
+          "seconds": 70.06126191699877,
+          "loadavg": [
+            61.50830078125,
+            44.14453125,
+            26.24169921875
+          ]
+        },
+        {
+          "seconds": 75.06352395802969,
+          "loadavg": [
+            63.06884765625,
+            44.75634765625,
+            26.5625
+          ]
+        },
+        {
+          "seconds": 80.06713904201752,
+          "loadavg": [
+            60.18017578125,
+            44.46142578125,
+            26.56494140625
+          ]
+        },
+        {
+          "seconds": 85.07217933301581,
+          "loadavg": [
+            59.28466796875,
+            44.53662109375,
+            26.6962890625
+          ]
+        }
+      ]
+    }
+  ]
+}

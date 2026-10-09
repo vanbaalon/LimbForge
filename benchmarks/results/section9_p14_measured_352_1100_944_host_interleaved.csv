@@ -1,0 +1,5 @@
+bits,rows,cols,path,resident,workers,repeats,clock,cpu_reference_wall,gpu_wall,gpu_device,wall_p25,wall_p75,wall_min,wall_max,different_from_exact,error_units_2neg_bits,profile
+352,1100,944,sequential_composed,0,18,3,cpu-interleaved,6.876487875,0.21915925,0.203525624995,0.199112625,0.21915925,0.199112625,0.671557917,847055,21.1372903922,Apple M5 Max / 1.3.0 / normal-equations
+352,1100,944,sequential_fused,0,18,3,cpu-interleaved,7.193481792,1.487367375,1.48119695834,1.396996209,1.487367375,1.396996209,1.687648083,846656,21.0475098819,Apple M5 Max / 1.3.0 / normal-equations
+352,1100,944,exact_augmented,0,18,3,cpu-interleaved,9.366770875,0.049917166,0.0219648749917,0.034040542,0.049917166,0.034040542,0.074254417,0,0.554939701892,Apple M5 Max / 1.3.0 / normal-equations
+352,1100,944,exact_syrk_plus_gemm,0,18,3,cpu-interleaved,9.366770875,0.031333625,0.028004999971,0.016678583,0.031333625,0.016678583,0.05305925,0,0.554939701892,Apple M5 Max / 1.3.0 / normal-equations

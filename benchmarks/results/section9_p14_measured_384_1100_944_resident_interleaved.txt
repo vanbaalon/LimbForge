@@ -1,0 +1,40 @@
+cpu_sample,384,1100,944,0,0,0,4.932711791
+cpu_sample,384,1100,944,0,1,1,5.033676
+cpu_sample,384,1100,944,0,2,2,6.134759125
+sample,384,1100,944,0,0,sequential_composed,0.238818875,0.231964583334
+sample,384,1100,944,0,1,sequential_fused,1.227243041,1.22352450003
+sample,384,1100,944,0,2,exact_augmented,0.023221375,0.014381166664
+sample,384,1100,944,0,3,exact_syrk_plus_gemm,0.019214209,0.0181984583032
+cpu_sample,384,1100,944,1,0,1,4.587139792
+cpu_sample,384,1100,944,1,1,2,5.738816084
+cpu_sample,384,1100,944,1,2,0,4.88588775
+sample,384,1100,944,1,0,sequential_fused,1.175754917,1.166382625
+sample,384,1100,944,1,1,exact_augmented,0.02446575,0.0142418749747
+sample,384,1100,944,1,2,exact_syrk_plus_gemm,0.019252959,0.0182322500041
+sample,384,1100,944,1,3,sequential_composed,0.314298333,0.313471625035
+cpu_sample,384,1100,944,2,0,2,5.929143334
+cpu_sample,384,1100,944,2,1,0,4.834747416
+cpu_sample,384,1100,944,2,2,1,4.442150625
+sample,384,1100,944,2,0,exact_augmented,0.033544542,0.0200116249616
+sample,384,1100,944,2,1,exact_syrk_plus_gemm,0.015176875,0.0141719999956
+sample,384,1100,944,2,2,sequential_composed,0.226860125,0.226322416682
+sample,384,1100,944,2,3,sequential_fused,1.254489208,1.25137908332
+Device: Apple M5 Max; immutable MPFR references check every timed CPU/GPU output; numeric-array transfers excluded; bridge conversion excluded; cpu-interleaved
+       72.73 real      1006.57 user         4.01 sys
+           825982976  maximum resident set size
+                   0  average shared memory size
+                   0  average unshared data size
+                   0  average unshared stack size
+               50938  page reclaims
+                   2  page faults
+                   0  swaps
+                   0  block input operations
+                   0  block output operations
+                   0  messages sent
+                   0  messages received
+                   0  signals received
+                   0  voluntary context switches
+              778395  involuntary context switches
+       7317028809727  instructions retired
+       3719366601267  cycles elapsed
+          2044626336  peak memory footprint
