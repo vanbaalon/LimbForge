@@ -1,0 +1,10 @@
+2026-10-08 22:52:42.144 test_limbforge_algebra_prewarm[93463:232283179] Metal GPU Validation Enabled
+64 bits: complex GEMM tile tails/broadcast/strides, triple product, negative power moments
+64 bits: resident normal equations, three damping trials, solves, async wait, exact fallback repair
+64 bits: on-device Horner recurrence, reverse/all_steps, sharing tails, composed/fused
+64 bits: prewarm/encode overlap, repeat requests, compact tails, host/resident exact and Cholesky passed
+352 bits: complex GEMM tile tails/broadcast/strides, triple product, negative power moments
+352 bits: resident normal equations, three damping trials, solves, async wait, exact fallback repair
+352 bits: on-device Horner recurrence, reverse/all_steps, sharing tails, composed/fused
+352 bits: prewarm/encode overlap, repeat requests, compact tails, host/resident exact and Cholesky passed
+Algebra prewarm focused references, lifetime and validation passed

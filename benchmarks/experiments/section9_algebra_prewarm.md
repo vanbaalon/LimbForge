@@ -12,14 +12,15 @@ destruction without moving thread-local host-pool cleanup onto a background thre
 Batched cache access gains a mutex; Linalg preserves its recursive cache locking.
 
 No Metal source or core arithmetic changes. Build and both version/package checks pass
-(4.84 s). The focused harness is compiled and prepared for physical GPU checks, after
-existing GPU gate jobs finish. It overlaps two prewarm tasks with ordinary owner-thread
+(4.84 s). The focused physical-GPU harness passes normally and under shader validation,
+recorded in `section9_p3_prewarm_reference.txt` and `...validation.txt`.
+It overlaps two prewarm tasks with ordinary owner-thread
 encoding, repeats requests, checks host/resident exact SYRK and GPU-updated Cholesky,
 real compact 4-row tails, composed/fused polynomial/normal paths and malformed requests,
 and waits after both units and the Engine are destroyed. Widths 64/352 exercise numerics;
-224 exercises detached-cache lifetime. These checks remain pending, normally and under
-shader validation. No full numerical sweep is warranted by an unchanged shader body;
-run the focused lifetime/concurrency checks before accepting this host/cache addition.
+224 exercises detached-cache lifetime. No shader body or arithmetic sequence changed;
+these focused lifetime/concurrency checks cover the host/cache addition. Final combined
+API checks and consumer wiring remain required before release/integration acceptance.
 
 Build explicitly:
 
