@@ -4,14 +4,25 @@
 #include <random>
 #include <array>
 #include <cmath>
+#include <algorithm>
 
 struct Options {
     int bits=352;
     std::size_t count=1,m=66,n=3800,k=130;
     unsigned workers=18,repeats=5;
-    int path=-1; // -1: all; 0: composed; 1: fused; 2: exact embedding; 3: Gauss.
+    std::vector<unsigned> paths{0,1,2,3}; // composed, fused, exact embedding, matrix Gauss.
     bool resident=false,warm=false,check_only=false,cpu_only=false;
 };
+unsigned path_number(const std::string& name){
+    if(name=="composed")return 0;if(name=="fused")return 1;if(name=="exact")return 2;if(name=="gauss")return 3;
+    throw std::invalid_argument("unknown path: "+name);
+}
+std::vector<unsigned> selected_paths(const std::string& names){
+    std::vector<unsigned> result;std::size_t first=0;
+    do{auto end=names.find(',',first);auto path=path_number(names.substr(first,end==std::string::npos?end:end-first));
+        if(std::find(result.begin(),result.end(),path)!=result.end())throw std::invalid_argument("duplicate path");result.push_back(path);
+        if(end==std::string::npos)break;first=end+1;}while(true);return result;
+}
 std::size_t checked(std::size_t a,std::size_t b) {
     if(b&&a>std::size_t(-1)/b)throw std::invalid_argument("shape overflow");
     return a*b;
@@ -21,7 +32,7 @@ template<int B> void run(const Options& o) {
     const auto ac=checked(checked(o.count,o.m),o.k);
     const auto bc=checked(checked(o.count,o.k),o.n);
     const auto oc=checked(checked(o.count,o.m),o.n);
-    std::vector<unsigned> paths;if(o.path<0)paths={0,1,2,3};else paths={unsigned(o.path)};
+    const auto& paths=o.paths;
     Workers pool(o.workers);std::mt19937_64 rng(B+137);
     std::vector<C> A(ac),BB(bc),got(oc);
     MPArray am(2*ac,B),bm(2*bc,B),as(ac,B),bs(bc,B),neg_ai(ac,B),truth(2*oc,2*B+64);
@@ -92,7 +103,8 @@ template<int B> void run(const Options& o) {
         for(unsigned c=0;c<2;++c){to_mpfr<B>(value.x,c?expected[p][i].im:expected[p][i].re);mpfr_sub(diff.x,value.x,truth[2*i+c],MPFR_RNDN);mpfr_abs(diff.x,diff.x,MPFR_RNDN);if(mpfr_cmp(diff.x,maximum.x)>0)mpfr_set(maximum.x,diff.x,MPFR_RNDN);}}
         if(!mpfr_zero_p(scale.x)){mpfr_div(maximum.x,maximum.x,scale.x,MPFR_RNDN);mpfr_mul_2ui(maximum.x,maximum.x,B,MPFR_RNDN);}error[p]=mpfr_get_d(maximum.x,MPFR_RNDN);}
     Engine engine;BatchedLinalg seq(engine);LinalgOptions exact_options;exact_options.host_threads=o.workers;Linalg exact(engine,exact_options);
-    bool use_complex=o.path<2,use_exact=o.path<0||o.path==2,use_gauss=o.path<0||o.path==3;
+    auto selected=[&](unsigned p){return std::find(paths.begin(),paths.end(),p)!=paths.end();};
+    bool use_complex=selected(0)||selected(1),use_exact=selected(2),use_gauss=selected(3);
     std::vector<F> ar(use_gauss?ac:0),ai(ar.size()),br(use_gauss?bc:0),bi(br.size());
     std::vector<F> embedded_a(use_exact?4*ac:0),embedded_b(use_exact?2*bc:0),embedded_c(use_exact?2*oc:0),real(use_gauss?oc:0),imag(real.size());
     auto pack=[&](unsigned p){if(p==2){for(std::size_t batch=0;batch<o.count;++batch){
@@ -139,11 +151,12 @@ template<int B> void run(const Options& o) {
     for(auto p:paths)std::cout<<B<<','<<o.count<<','<<o.m<<','<<o.n<<','<<o.k<<','<<names[p]<<','<<o.resident<<','<<o.workers<<','<<o.repeats<<','<<(o.warm?"verified-warm-call":"cpu-interleaved")<<','<<std::setprecision(12)<<quantile(cpu_times[p],.5)<<','<<quantile(wall[p],.5)<<','<<quantile(device[p],.5)<<','<<quantile(wall[p],.25)<<','<<quantile(wall[p],.75)<<','<<quantile(wall[p],0)<<','<<quantile(wall[p],1)<<','<<differs[p]<<','<<error[p]<<','<<engine.device_name()<<" / " LIMBFORGE_VERSION_STRING " / complex-gemm-contracts\n";
 }
 template<int B=64> void width(const Options& o){if(o.bits==B)run<B>(o);else if constexpr(B<1024)width<B+32>(o);}
-int main(int argc,char** argv){try{Options o;for(int i=1;i<argc;++i){std::string a=argv[i];
+int main(int argc,char** argv){try{Options o;bool selection_given=false;for(int i=1;i<argc;++i){std::string a=argv[i];
     if(a=="--resident"){o.resident=true;continue;}if(a=="--warm"){o.warm=true;continue;}if(a=="--check-only"){o.check_only=true;continue;}if(a=="--cpu-only"){o.cpu_only=true;continue;}
-    if(a=="--help"){std::cout<<"section9_gemm_limbforge --bits B --count C --m M --n N --k K --workers W --repeats R [--path composed|fused|exact|gauss] [--resident] [--warm] [--check-only] [--cpu-only]\n";return 0;}
+    if(a=="--help"){std::cout<<"section9_gemm_limbforge --bits B --count C --m M --n N --k K --workers W --repeats R [--path composed|fused|exact|gauss | --paths composed,fused,gauss] [--resident] [--warm] [--check-only] [--cpu-only]\n";return 0;}
     if(++i==argc)throw std::invalid_argument("missing value");std::string s=argv[i];
-    if(a=="--path"){if(s=="composed")o.path=0;else if(s=="fused")o.path=1;else if(s=="exact")o.path=2;else if(s=="gauss")o.path=3;else throw std::invalid_argument("unknown path");continue;}
+    if(a=="--path"||a=="--paths"){if(selection_given)throw std::invalid_argument("specify only one path selector");selection_given=true;
+        o.paths=a=="--path"?std::vector<unsigned>{path_number(s)}:selected_paths(s);continue;}
     std::size_t used;auto v=std::stoull(s,&used);
     if(used!=s.size()||s[0]=='-'||!v||v>100000)throw std::invalid_argument("invalid positive integer");
     if(a=="--bits")o.bits=int(v);else if(a=="--count")o.count=v;else if(a=="--m")o.m=v;else if(a=="--n")o.n=v;else if(a=="--k")o.k=v;else if(a=="--workers")o.workers=unsigned(v);else if(a=="--repeats")o.repeats=unsigned(v);else throw std::invalid_argument("unknown option");}
