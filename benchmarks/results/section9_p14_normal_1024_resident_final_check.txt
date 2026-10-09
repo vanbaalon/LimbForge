@@ -1,0 +1,1 @@
+1024 bits, 11x7: all four normal-equation paths match MPFR; no timings recorded
