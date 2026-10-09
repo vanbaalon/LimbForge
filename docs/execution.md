@@ -267,6 +267,23 @@ shapes with accumulation disabled and retains a resident intermediate through th
 `PowerMoments` uses E/y `[count][steps]`, W `[count][steps][ncols]` and out
 `[count][nmax+1][ncols]` (inclusive nmax). It currently generates a full device left matrix before
 GEMM. Synchronous runtime-width host-array GEMM/power forms include staging and readback.
+The existing host and resident overloads keep full-table storage. Since 1.1.0, append
+`PowerStorage::compact` to either overload to use an unscaled checkpoint per `(batch,step)`
+and at most eight output rows of powers at a time. Auxiliary power scratch is
+`count*steps*(1+min(nmax+1,8))*element_bytes`, versus `count*steps*(nmax+1)*element_bytes`
+for the full table. This excludes inputs, outputs, host staging and driver memory; zero-step
+reductions use no power elements. Compact storage saves memory for more than nine rows,
+but can use more for short tables and adds dispatches. It is an explicit memory/latency trade-off;
+[measured results](../benchmarks/experiments/section9_compact_power.md) keep the faster default.
+`PowerMoments` and packed number layouts are unchanged. Both modes retain the same inputs,
+output ownership and within-batch finality. An invalid storage enum throws `std::invalid_argument`.
+
+```cpp
+la.power_moments(batch, shape, E, y, W, out, limbforge::PowerStorage::compact);
+// Or the synchronous runtime-width host-array form:
+la.power_moments(bits, true, shape, Eptr, yptr, Wptr, outptr,
+                 limbforge::PowerStorage::compact);
+```
 
 `normal_equations` has immediately final outputs for in-batch consumers. The exact variant
 packs `[J g]` on device and submits one augmented SYRK. Its ticket resolves at `wait()`:

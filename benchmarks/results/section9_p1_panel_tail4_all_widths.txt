@@ -1,0 +1,63 @@
+Auditing 64 bits
+64 bits: power references passed
+Auditing 96 bits
+96 bits: power references passed
+Auditing 128 bits
+128 bits: power references passed
+Auditing 160 bits
+160 bits: power references passed
+Auditing 192 bits
+192 bits: power references passed
+Auditing 224 bits
+224 bits: power references passed
+Auditing 256 bits
+256 bits: power references passed
+Auditing 288 bits
+288 bits: power references passed
+Auditing 320 bits
+320 bits: power references passed
+Auditing 352 bits
+352 bits: power references passed
+Auditing 384 bits
+384 bits: power references passed
+Auditing 416 bits
+416 bits: power references passed
+Auditing 448 bits
+448 bits: power references passed
+Auditing 480 bits
+480 bits: power references passed
+Auditing 512 bits
+512 bits: power references passed
+Auditing 544 bits
+544 bits: power references passed
+Auditing 576 bits
+576 bits: power references passed
+Auditing 608 bits
+608 bits: power references passed
+Auditing 640 bits
+640 bits: power references passed
+Auditing 672 bits
+672 bits: power references passed
+Auditing 704 bits
+704 bits: power references passed
+Auditing 736 bits
+736 bits: power references passed
+Auditing 768 bits
+768 bits: power references passed
+Auditing 800 bits
+800 bits: power references passed
+Auditing 832 bits
+832 bits: power references passed
+Auditing 864 bits
+864 bits: power references passed
+Auditing 896 bits
+896 bits: power references passed
+Auditing 928 bits
+928 bits: power references passed
+Auditing 960 bits
+960 bits: power references passed
+Auditing 992 bits
+992 bits: power references passed
+Auditing 1024 bits
+1024 bits: power references passed
+Section 9 reference run passed; all 31 widths; dense stress not run.

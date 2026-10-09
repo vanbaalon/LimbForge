@@ -1405,6 +1405,10 @@ GEMM result, including its initial accumulator. Power generation uses composed i
 exponentiation by squaring at n0, then repeated composed multiplication by y; E is
 multiplied afterwards. Thus the result has a deterministic **sequence of roundings**,
 not the single-round exact-dot contract of `Linalg::gemm`.
+`PowerStorage::compact` preserves this sequence exactly: the unscaled power is carried
+from one eight-row panel to the next, without reseeding, prefix replay or an extra multiply
+at the final row. Panel GEMMs write their own output rows with the same ascending k updates.
+Storage mode changes scratch and dispatch count, not precision or rounding.
 
 Integer exponentiation starts from one, visits the absolute exponent's bits low to high,
 multiplies the accumulator by the current base for each set bit, and squares the base only

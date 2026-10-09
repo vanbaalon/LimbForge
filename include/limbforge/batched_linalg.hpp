@@ -11,6 +11,9 @@ struct StridedGemm {
     std::size_t count=1,m=0,n=0,k=0,stride_a=0,stride_b=0,stride_c=0;
     bool accumulate=false,fused=false,negative=false;
 };
+// Same numerical sequence in both modes; compact bounds auxiliary power scratch to
+// count*steps*(1+min(nmax+1,8)) elements, at the cost of additional dispatches.
+enum class PowerStorage { full_table, compact };
 struct PowerMoments {
     std::size_t count=0; unsigned steps=0,nmax=0,ncols=0; int n0=0;
     bool accumulate=false,fused=false;
@@ -38,7 +41,7 @@ struct InlineComplexRecord {
 class BatchedLinalg {
     Engine* engine_; struct Impl; std::unique_ptr<Impl> impl_;
     void encode_gemm(CommandBatch&,int,bool,const StridedGemm&,detail::Operand,detail::Operand,detail::Operand);
-    void encode_power(CommandBatch&,int,bool,const PowerMoments&,detail::Operand,detail::Operand,detail::Operand,detail::Operand);
+    void encode_power(CommandBatch&,int,bool,const PowerMoments&,detail::Operand,detail::Operand,detail::Operand,detail::Operand,PowerStorage);
     void encode_normal(CommandBatch&,int,std::size_t,std::size_t,detail::Operand,detail::Operand,detail::Operand,detail::Operand,bool);
     void encode_trials(CommandBatch&,int,const CholeskyTrials&,detail::Operand,detail::Operand,detail::Operand,detail::Operand,detail::Operand);
     void encode_solve(CommandBatch&,int,std::size_t,std::size_t,std::size_t,detail::Operand,detail::Operand,detail::Operand,detail::Operand);
@@ -52,6 +55,7 @@ public:
     // Synchronous host-array forms, including input staging and output readback. Same kernels/contracts.
     Timing gemm(int bits,bool complex,const StridedGemm&,const void* A,const void* B,void* C);
     Timing power_moments(int bits,bool complex,const PowerMoments&,const void* E,const void* y,const void* W,void* out);
+    Timing power_moments(int bits,bool complex,const PowerMoments&,const void* E,const void* y,const void* W,void* out,PowerStorage);
     template<class T> void polynomial_recurrence(CommandBatch& b,const PolynomialRecurrence& s,const Buffer<T>& start,const Buffer<T>& cp,const Buffer<T>& cq,const Buffer<T>& y,const Buffer<T>& Ep,const Buffer<T>& Eq,Buffer<T>& out){
         static_assert(detail::Format<T>::complex,"polynomial recurrence uses complex buffers");
         encode_polynomial(b,detail::Format<T>::bits,s,detail::Access::operand(start),detail::Access::operand(cp),detail::Access::operand(cq),detail::Access::operand(y),detail::Access::operand(Ep),detail::Access::operand(Eq),detail::Access::operand(out));}
@@ -60,7 +64,9 @@ public:
     // E,y: [count][steps], W: [count][steps][ncols], out: [count][nmax+1][ncols].
     // Powers start at powi(y,n0), then multiply by y for each ascending n; E is multiplied afterwards.
     template<class T> void power_moments(CommandBatch& b,const PowerMoments& s,const Buffer<T>& E,const Buffer<T>& y,const Buffer<T>& W,Buffer<T>& out){
-        encode_power(b,detail::Format<T>::bits,detail::Format<T>::complex,s,detail::Access::operand(E),detail::Access::operand(y),detail::Access::operand(W),detail::Access::operand(out));}
+        power_moments(b,s,E,y,W,out,PowerStorage::full_table);}
+    template<class T> void power_moments(CommandBatch& b,const PowerMoments& s,const Buffer<T>& E,const Buffer<T>& y,const Buffer<T>& W,Buffer<T>& out,PowerStorage storage){
+        encode_power(b,detail::Format<T>::bits,detail::Format<T>::complex,s,detail::Access::operand(E),detail::Access::operand(y),detail::Access::operand(W),detail::Access::operand(out),storage);}
     // General two-stage matrix product. Intermediate shape: [first.count][first.m][first.n].
     // first/second accumulation must be false; strides of the intermediate are supplied internally.
     template<class T> void product3(CommandBatch& b,StridedGemm first,StridedGemm second,const Buffer<T>& A,const Buffer<T>& B,const Buffer<T>& D,Buffer<T>& C,bool negative=false){

@@ -4,6 +4,24 @@
 
 No changes yet.
 
+## 1.1.0 — 2026-10-08
+
+- Added `PowerStorage::compact` overloads of host-array and resident `power_moments`.
+  An eight-row power panel and an unscaled checkpoint replace the full auxiliary table
+  when requested. Existing entry points retain full-table storage; public shape/number
+  layouts and all rounding/ownership contracts are unchanged. Compact scratch is 6.7–11.2×
+  smaller at the measured large shapes, with additional launch costs. Most measured cases
+  are slower, so this release makes no power-kernel speedup claim.
+- Recorded interleaved full-table/compact benchmarks at 352/384/448 bits, host and resident,
+  with seven repeats and independent MPFR checks of initial and every timed output.
+  These are busy-host library measurements, not accepted end-to-end solver timings.
+- Validation: the numerical candidate passed 26/26 library suites, 19/19 shader-validation
+  GPU suites and all-width dense/reference sweeps. The exposed compact API passes its
+  31-width power reference sweep normally and under shader validation; focused tests check
+  host/resident selection, negative powers, empty reductions and invalid enum rejection.
+  Version/package checks are rebuilt for 1.1.0. Raw records distinguish candidate gates
+  from final API checks.
+
 ## 1.0.1 — 2026-10-08
 
 - Corrected dense complex `BatchedLinalg::gemm` outputs that could have incorrect limbs

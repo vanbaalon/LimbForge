@@ -1,0 +1,3 @@
+operation,bits,count,m,n,k,cpu_workers,fused,repeats,cpu_wall,gpu_wall,gpu_device,recommendation,profile,resident,power_path,clock_mode,power_scratch_bytes
+power_moments_complex,448,520,60,16,160,18,0,7,2.84180358,0.466463166,0.419219333,gpu,Apple M5 Max / section9-panel / 1.0.1 / Release / table / warm,0,table,warm,678912000
+power_moments_complex,448,520,60,16,160,18,0,7,2.84180358,0.55385575,0.52653275,gpu,Apple M5 Max / section9-panel / 1.0.1 / Release / panel / warm,0,panel,warm,101836800

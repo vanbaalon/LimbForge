@@ -1,0 +1,64 @@
+2026-10-08 19:25:42.378 test_limbforge_section9_audit[81551:213457043] Metal GPU Validation Enabled
+Auditing 64 bits
+64 bits: normal-equation references passed
+Auditing 96 bits
+96 bits: normal-equation references passed
+Auditing 128 bits
+128 bits: normal-equation references passed
+Auditing 160 bits
+160 bits: normal-equation references passed
+Auditing 192 bits
+192 bits: normal-equation references passed
+Auditing 224 bits
+224 bits: normal-equation references passed
+Auditing 256 bits
+256 bits: normal-equation references passed
+Auditing 288 bits
+288 bits: normal-equation references passed
+Auditing 320 bits
+320 bits: normal-equation references passed
+Auditing 352 bits
+352 bits: normal-equation references passed
+Auditing 384 bits
+384 bits: normal-equation references passed
+Auditing 416 bits
+416 bits: normal-equation references passed
+Auditing 448 bits
+448 bits: normal-equation references passed
+Auditing 480 bits
+480 bits: normal-equation references passed
+Auditing 512 bits
+512 bits: normal-equation references passed
+Auditing 544 bits
+544 bits: normal-equation references passed
+Auditing 576 bits
+576 bits: normal-equation references passed
+Auditing 608 bits
+608 bits: normal-equation references passed
+Auditing 640 bits
+640 bits: normal-equation references passed
+Auditing 672 bits
+672 bits: normal-equation references passed
+Auditing 704 bits
+704 bits: normal-equation references passed
+Auditing 736 bits
+736 bits: normal-equation references passed
+Auditing 768 bits
+768 bits: normal-equation references passed
+Auditing 800 bits
+800 bits: normal-equation references passed
+Auditing 832 bits
+832 bits: normal-equation references passed
+Auditing 864 bits
+864 bits: normal-equation references passed
+Auditing 896 bits
+896 bits: normal-equation references passed
+Auditing 928 bits
+928 bits: normal-equation references passed
+Auditing 960 bits
+960 bits: normal-equation references passed
+Auditing 992 bits
+992 bits: normal-equation references passed
+Auditing 1024 bits
+1024 bits: normal-equation references passed
+Section 9 reference run passed; all 31 widths; dense stress not run.

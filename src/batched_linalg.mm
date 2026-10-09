@@ -9,7 +9,7 @@
 namespace limbforge {
 namespace {
 using I=detail::Internal;using O=detail::Operand;using S=std::shared_ptr<detail::BufferStorage>;
-struct Params {std::uint64_t count,m,n,k,sa,sb,sc;std::int32_t n0;std::uint32_t flags;};
+struct Params {std::uint64_t count,m,n,k,sa,sb,sc;std::int32_t n0;std::uint32_t flags;std::uint64_t row_offset=0;};
 std::size_t mul_size(std::size_t a,std::size_t b){if(b&&a>std::size_t(-1)/b)throw std::invalid_argument("batched algebra: size overflow");return a*b;}
 std::size_t extent(std::size_t count,std::size_t stride,std::size_t matrix){if(!count||!matrix)return 0;auto n=mul_size(count-1,stride);if(matrix>std::size_t(-1)-n)throw std::invalid_argument("batched algebra: stride overflow");return n+matrix;}
 void bits_ok(int bits){if(bits<64||bits>1024||bits%32)throw std::invalid_argument("bits must be a multiple of 32 in [64,1024]");}
@@ -62,8 +62,12 @@ Timing BatchedLinalg::gemm(int bits,bool complex,const StridedGemm& s,const void
     return host_call(*engine_,bits,complex,sizes,pointers,true,[&](CommandBatch& b,O a,O bb,O,O c){encode_gemm(b,bits,complex,s,a,bb,c);});
 }
 Timing BatchedLinalg::power_moments(int bits,bool complex,const PowerMoments& s,const void* E,const void* y,const void* W,void* out){
+    return power_moments(bits,complex,s,E,y,W,out,PowerStorage::full_table);
+}
+Timing BatchedLinalg::power_moments(int bits,bool complex,const PowerMoments& s,const void* E,const void* y,const void* W,void* out,PowerStorage storage){
+    if(storage!=PowerStorage::full_table&&storage!=PowerStorage::compact)throw std::invalid_argument("power moments: invalid storage mode");
     auto ek=mul_size(s.count,s.steps);std::size_t sizes[4]={ek,ek,mul_size(ek,s.ncols),mul_size(mul_size(s.count,std::size_t(s.nmax)+1),s.ncols)};const void* pointers[4]={E,y,W,out};
-    return host_call(*engine_,bits,complex,sizes,pointers,s.accumulate,[&](CommandBatch& b,O e,O yy,O w,O c){encode_power(b,bits,complex,s,e,yy,w,c);});
+    return host_call(*engine_,bits,complex,sizes,pointers,s.accumulate,[&](CommandBatch& b,O e,O yy,O w,O c){encode_power(b,bits,complex,s,e,yy,w,c,storage);});
 }
 void BatchedLinalg::encode_gemm(CommandBatch& b,int bits,bool complex,const StridedGemm& s,O A,O B,O C){
     bits_ok(bits);auto as=mul_size(s.m,s.k),bs=mul_size(s.k,s.n),cs=mul_size(s.m,s.n);grid_ok(mul_size(s.count,cs));
@@ -76,15 +80,30 @@ void BatchedLinalg::encode_gemm(CommandBatch& b,int bits,bool complex,const Stri
     if(complex)impl_->pass(b,bits,"batch_private_complex",p,{{0,a},{1,bb},{2,c}},s.count*cs,s.fused,false,true);
     else impl_->pass(b,bits,small?"batch_gemm4_real":"batch_gemm_real",p,{{0,a},{1,bb},{2,c}},s.count*cs,s.fused,true);
 }
-void BatchedLinalg::encode_power(CommandBatch& b,int bits,bool complex,const PowerMoments& s,O E,O y,O W,O out){
+void BatchedLinalg::encode_power(CommandBatch& b,int bits,bool complex,const PowerMoments& s,O E,O y,O W,O out,PowerStorage storage){
+    if(storage!=PowerStorage::full_table&&storage!=PowerStorage::compact)throw std::invalid_argument("power moments: invalid storage mode");
     bits_ok(bits);auto rows=std::size_t(s.nmax)+1,ek=mul_size(s.count,s.steps),wk=mul_size(ek,s.ncols),pk=mul_size(ek,rows);
     grid_ok(ek);grid_ok(mul_size(mul_size(s.count,rows),s.ncols));size_ok(E,ek);size_ok(y,ek);size_ok(W,wk);distinct(out,{E,y,W});
     StridedGemm shape{s.count,rows,s.ncols,s.steps,rows*s.steps,std::size_t(s.steps)*s.ncols,rows*s.ncols,s.accumulate,s.fused};
     size_ok(out,mul_size(s.count,shape.stride_c));if(!s.count||!s.ncols)return;
-    std::size_t bytes=mul_size(pk,std::size_t(bits/8+12)*(complex?2:1));auto powers=I::scratch(b,bytes);
-    if(ek){auto e=retain(b,E,ek),yy=retain(b,y,ek);Params p{s.count,rows,s.ncols,s.steps,0,0,0,s.n0,0};
-        impl_->pass(b,bits,complex?"batch_powers_complex":"batch_powers_real",p,{{0,e},{1,yy},{2,powers}},ek);}
-    encode_gemm(b,bits,complex,shape,{powers,pk},W,out);
+    const bool panel=storage==PowerStorage::compact;
+    auto element=std::size_t(bits/8+12)*(complex?2:1);
+    if(!panel||!s.steps){auto powers=I::scratch(b,mul_size(pk,element));
+        if(ek){auto e=retain(b,E,ek),yy=retain(b,y,ek);Params p{s.count,rows,s.ncols,s.steps,0,0,0,s.n0,0};
+            impl_->pass(b,bits,complex?"batch_powers_complex":"batch_powers_real",p,{{0,e},{1,yy},{2,powers}},ek);}
+        encode_gemm(b,bits,complex,shape,{powers,pk},W,out);return;}
+    // The state is always unscaled. Segmenting the repeated multiplication adds no rounding.
+    auto tile_rows=std::min<std::size_t>(8,rows),work_elements=mul_size(ek,tile_rows);
+    auto state=I::scratch(b,mul_size(ek,element)),work=I::scratch(b,mul_size(work_elements,element));
+    auto e=retain(b,E,ek),yy=retain(b,y,ek),w=retain(b,W,wk),c=retain(b,out,s.count*shape.stride_c,true);
+    Params p{s.count,tile_rows,s.ncols,s.steps,rows,0,0,s.n0,0};
+    impl_->pass(b,bits,complex?"batch_panel_seed_complex":"batch_panel_seed_real",p,{{0,yy},{2,state}},ek);
+    for(std::size_t first=0;first<rows;first+=tile_rows){p.m=std::min(tile_rows,rows-first);p.row_offset=first;
+        impl_->pass(b,bits,complex?"batch_panel_powers_complex":"batch_panel_powers_real",p,{{0,e},{1,yy},{2,work},{4,state}},ek);
+        Params g{s.count,p.m,s.ncols,s.steps,p.m*s.steps,std::size_t(s.steps)*s.ncols,shape.stride_c,0,std::uint32_t(s.accumulate),first};
+        if(complex)impl_->pass(b,bits,"batch_private_complex",g,{{0,work},{1,w},{2,c}},s.count*p.m*s.ncols,s.fused,false,true);
+        else impl_->pass(b,bits,p.m==4&&s.ncols==4&&s.steps==4?"batch_gemm4_real":"batch_gemm_real",g,{{0,work},{1,w},{2,c}},s.count*p.m*s.ncols,s.fused,true);
+    }
 }
 void BatchedLinalg::encode_normal(CommandBatch& b,int bits,std::size_t rows,std::size_t cols,O J,O g,O A,O rhs,bool fused){
     bits_ok(bits);auto jn=mul_size(rows,cols),an=mul_size(cols,cols),grid=mul_size(cols,cols+1);grid_ok(grid);

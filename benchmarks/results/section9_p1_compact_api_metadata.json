@@ -1,0 +1,23 @@
+{
+  "base": "72637b4",
+  "api_version": "1.1.0",
+  "shader_sha256": {
+    "linalg_source.hpp": "c0c0495721f99936e716a6dc60fdc9209cae319ac1e43c4fb67c8f4d71907bc9",
+    "numerics_source.hpp": "50e57ad281379e9b9126c5f99cb2bc21f5a30ec848cbcd2e2adefbf4aa993600",
+    "batched_linalg_source.hpp": "4924cf0576861d6b83a405134410f433620c0003e797e061d92a2279b204705b",
+    "shader_source.hpp": "2915154eae1de2dc3deab4cdf0ad9afe120e79efab7c90a71ca343b11bd5480f",
+    "transcendental_source.hpp": "37013f65974417108792707403196121b1f880a688caf225bb206d63b7a11cdc"
+  },
+  "matches_full_suite_and_benchmark_candidate": true,
+  "host_changes": "Public per-call storage selection replaces the private environment selector; invalid modes rejected; zero-step compact reduction uses existing full-table zero-power path.",
+  "layout": "Public packed types and PowerMoments unchanged.",
+  "final_checks": "31-width compact power reference sweeps normal/validation, version/package/smoke and validation smoke; numerical candidate full 26/26 and 19/19 before API wrapper addition.",
+  "final_shader_sha256": {
+    "linalg_source.hpp": "c0c0495721f99936e716a6dc60fdc9209cae319ac1e43c4fb67c8f4d71907bc9",
+    "numerics_source.hpp": "50e57ad281379e9b9126c5f99cb2bc21f5a30ec848cbcd2e2adefbf4aa993600",
+    "batched_linalg_source.hpp": "6f8944b90ba3d085e0238bf2d62f5d5a817b308563729629f02f9d2ebc7441b6",
+    "shader_source.hpp": "2915154eae1de2dc3deab4cdf0ad9afe120e79efab7c90a71ca343b11bd5480f",
+    "transcendental_source.hpp": "37013f65974417108792707403196121b1f880a688caf225bb206d63b7a11cdc"
+  },
+  "final_shader_difference": "One stale comment replaced in batched_linalg_source.hpp; replacing it back reproduces every validated candidate hash exactly. Final rebuilt version/package/smoke and shader-validation smoke pass."
+}

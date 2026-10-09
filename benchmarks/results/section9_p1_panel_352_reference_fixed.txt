@@ -1,0 +1,3 @@
+Auditing 352 bits
+352 bits: power references passed
+Section 9 reference run passed; selected width; dense stress not run.

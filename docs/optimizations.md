@@ -10,6 +10,7 @@ benchmark inputs do not exercise the baseline's known exponent-boundary bug.
 
 | Round | Change | Decision and evidence |
 |---|---|---|
+| §9-P1.1 | Bounded power panels | Accepted as an explicit `PowerStorage::compact` option in 1.1.0. Eight rows plus unscaled checkpoints preserve the exact sequential contract and reduce auxiliary scratch 6.7–11.2× at large measured shapes. Existing calls keep full-table storage: most A/B cases are slower; warm central checks are +9–24%. 26/26 + 19/19 candidate suites, dense/all-width sweeps, and final 31-width power/API checks recorded. Busy-host timings are not consumer performance acceptance. [Record](../benchmarks/experiments/section9_compact_power.md). |
 | 1 | Fix rounding into the minimum supported exponent; constrain template precision | Accepted, `c706d1a`. All 31 precisions pass, including adversarial products immediately below a binade boundary. No speedup claimed. |
 | 2 | Typed resident buffers, asynchronous tickets, one command buffer for a dependent chain | Accepted, `07c934d`. Ownership/lifetime tests and full MPFR benchmark matrix pass. Copies and repeated waits are amortized across 16 operations. |
 | 3 | One exact addition workspace; use `N+2` limbs for exponent gaps up to 32 | Accepted, `2172965`. Preserve every aligned bit and cancellation behavior. Dense complex GPU regression added. |

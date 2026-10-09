@@ -1,0 +1,1 @@
+Device: Apple M5 Max; composed complex arithmetic; n0=0; checked every sample (262400 outputs); host-array, transfers included; GPU warm-up 0 s

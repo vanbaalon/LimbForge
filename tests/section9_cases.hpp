@@ -41,6 +41,14 @@ template<int B> void products(Engine& e,BatchedLinalg& la){
         auto one=C<B>{from_decimal<B>("1"),zero<B/32>()};auto pw=reference::complex<B>(Operation::complex_div,one,cm<B>(Y[t*7+k],Y[t*7+k]));
         for(int r=0;r<n;++r)pw=cm<B>(pw,Y[t*7+k]);z=ca<B>(z,cm<B>(cm<B>(E[t*7+k],pw),W[(t*7+k)*4+j]));}ref[(t*4+n)*4+j]=z;}
     auto eb=put(e,E),yb=put(e,Y),wb=put(e,W),rb=e.make_buffer<C<B>>(32);auto powers=e.batch();la.power_moments(powers,p,eb,yb,wb,rb);powers.submit().wait();check<B>(get(rb),ref,"power moments");
+    auto compact=e.batch();la.power_moments(compact,p,eb,yb,wb,rb,PowerStorage::compact);compact.submit().wait();check<B>(get(rb),ref,"compact resident power moments");
+    la.power_moments(B,true,p,E.data(),Y.data(),W.data(),result.data(),PowerStorage::compact);check<B>(result,ref,"compact host power moments");
+    PowerMoments empty_power{2,0,12,4,0,true,true};std::vector<C<B>> empty_result(2*13*4,random()),empty_expected=empty_result;
+    la.power_moments(B,true,empty_power,nullptr,nullptr,nullptr,empty_result.data(),PowerStorage::compact);check<B>(empty_result,empty_expected,"compact empty reduction accumulation");
+    empty_power.accumulate=false;for(auto& z:empty_expected)z={zero<B/32>(),zero<B/32>()};
+    la.power_moments(B,true,empty_power,nullptr,nullptr,nullptr,empty_result.data(),PowerStorage::compact);check<B>(empty_result,empty_expected,"compact empty reduction overwrite");
+    bool invalid_mode=false;try{auto bad=e.batch();la.power_moments(bad,p,eb,yb,wb,rb,static_cast<PowerStorage>(99));}catch(const std::invalid_argument&){invalid_mode=true;}require(invalid_mode,"invalid resident power storage accepted");
+    invalid_mode=false;try{la.power_moments(B,true,p,E.data(),Y.data(),W.data(),result.data(),static_cast<PowerStorage>(99));}catch(const std::invalid_argument&){invalid_mode=true;}require(invalid_mode,"invalid host power storage accepted");
     bool rejected=false;try{auto bad=e.batch();s.stride_c=1;la.gemm(bad,s,ab,mb,out);}catch(const std::invalid_argument&){rejected=true;}require(rejected,"overlapping outputs accepted");
     std::cout<<B<<" bits: complex GEMM tile tails/broadcast/strides, triple product, negative power moments\n";
 }

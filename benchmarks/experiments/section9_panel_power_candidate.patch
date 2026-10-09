@@ -1,0 +1,229 @@
+diff --git a/CMakeLists.txt b/CMakeLists.txt
+index 3f9b68d..cafb747 100644
+--- a/CMakeLists.txt
++++ b/CMakeLists.txt
+@@ -35,6 +35,7 @@ endif()
+ string(REPLACE "namespace limbforge {" "namespace limbforge_batched_private {" BATCHED_PRIVATE_CORE_SOURCE "${CORE_SOURCE}")
+ string(REPLACE "word limb[N];" "word limb[33];" BATCHED_PRIVATE_CORE_SOURCE "${BATCHED_PRIVATE_CORE_SOURCE}")
+ string(REPLACE "for(int i=0;i<N;++i)r.limb[i]=0;" "for(int i=0;i<33;++i)r.limb[i]=0;" BATCHED_PRIVATE_CORE_SOURCE "${BATCHED_PRIVATE_CORE_SOURCE}")
++string(REPLACE "mul<N,false>" "mul<N,true>" BATCHED_PRIVATE_CORE_SOURCE "${BATCHED_PRIVATE_CORE_SOURCE}")
+ configure_file(src/batched_linalg_source.hpp.in generated/batched_linalg_source.hpp @ONLY)
+ file(READ src/numerics.metal NUMERICS_SOURCE)
+ configure_file(src/numerics_source.hpp.in generated/numerics_source.hpp @ONLY)
+diff --git a/benchmarks/section9.cpp b/benchmarks/section9.cpp
+index 9978844..c93c013 100644
+--- a/benchmarks/section9.cpp
++++ b/benchmarks/section9.cpp
+@@ -3,9 +3,11 @@
+ #include "limbforge/dispatch_policy.hpp"
+ #include "benchmark_support.hpp"
+ #include <random>
++#include <cstdlib>
++#include <cmath>
+ struct Options {
+     int bits=352;std::size_t count=2,m=4,n=4,k=4;unsigned workers=18,repeats=3;
+-    std::string operation="gemm";
++    std::string operation="gemm";bool resident=false,compare_power=false;double warm=0;
+ };
+ // The four products are separately rounded, exactly as the composed GPU complex multiply.
+ void product(mpfr_ptr r,mpfr_ptr i,mpfr_srcptr ar,mpfr_srcptr ai,mpfr_srcptr br,mpfr_srcptr bi,MPArray& t){
+@@ -18,7 +20,7 @@ template<int Bits> void run(const Options& o){
+     using C=Complex<Bits/32>;Engine e;BatchedLinalg la(e);Workers pool(o.workers);
+     auto left=checked(checked(o.count,o.m),o.k),right=checked(checked(o.count,o.k),o.n),outputs=checked(checked(o.count,o.m),o.n),ek=checked(o.count,o.k);
+     MPArray a(checked(left,2),Bits),b(checked(right,2),Bits),result(checked(outputs,2),Bits),ep(checked(ek,2),Bits),yy(checked(ek,2),Bits);
+-    std::vector<C> A(left),B(right),E(ek),Y(ek),out(outputs);std::mt19937_64 rng(9+Bits);
++    std::vector<C> A(o.operation=="gemm"?left:0),B(right),E(ek),Y(ek),out(outputs);std::mt19937_64 rng(9+Bits);
+     auto fill=[&](std::vector<C>& x,MPArray& dest){for(std::size_t j=0;j<x.size();++j){x[j]={reference::random_number<Bits>(rng,2),reference::random_number<Bits>(rng,2)};
+         to_mpfr<Bits>(dest[2*j],x[j].re);to_mpfr<Bits>(dest[2*j+1],x[j].im);}};
+     fill(A,a);fill(B,b);fill(E,ep);fill(Y,yy);
+@@ -37,26 +39,39 @@ template<int Bits> void run(const Options& o){
+     };
+     StridedGemm shape{o.count,o.m,o.n,o.k,o.m*o.k,o.k*o.n,o.m*o.n};
+     PowerMoments powers{o.count,unsigned(o.k),unsigned(o.m-1),unsigned(o.n),0};
+-    auto gpu=[&]{return o.operation=="gemm"?la.gemm(Bits,true,shape,A.data(),B.data(),out.data()):la.power_moments(Bits,true,powers,E.data(),Y.data(),B.data(),out.data());};
+-    auto verify=[&]{for(std::size_t i=0;i<outputs;++i){C want{from_mpfr<Bits>(result[2*i]),from_mpfr<Bits>(result[2*i+1])};
++    auto put=[&](const std::vector<C>& v){auto buffer=e.make_buffer<C>(v.size());buffer.upload(v.data(),v.size());return buffer;};
++    Buffer<C> ab,bb,eb,yb,cb;if(o.resident){ab=put(A);bb=put(B);eb=put(E);yb=put(Y);cb=e.make_buffer<C>(outputs);}
++    auto gpu=[&]{if(!o.resident)return o.operation=="gemm"?la.gemm(Bits,true,shape,A.data(),B.data(),out.data()):la.power_moments(Bits,true,powers,E.data(),Y.data(),B.data(),out.data());
++        auto batch=e.batch();if(o.operation=="gemm")la.gemm(batch,shape,ab,bb,cb);else la.power_moments(batch,powers,eb,yb,bb,cb);return batch.submit().wait();};
++    auto verify=[&]{if(o.resident)cb.download(out.data(),outputs);for(std::size_t i=0;i<outputs;++i){C want{from_mpfr<Bits>(result[2*i]),from_mpfr<Bits>(result[2*i+1])};
+         if(!reference::equal_complex<Bits>(out[i],want))throw std::runtime_error("CPU/GPU mismatch at "+std::to_string(i));}};
+-    gpu();cpu();verify(); // shader compilation, CPU pool start and page faults excluded
+-    std::vector<double> ct,gt,device;
+-    for(unsigned r=0;r<o.repeats;++r){auto begin=Clock::now();cpu();ct.push_back(std::chrono::duration<double>(Clock::now()-begin).count());auto t=gpu();gt.push_back(t.wall_seconds);device.push_back(t.gpu_seconds);verify();}
+-    DispatchKey key{o.operation=="gemm"?"gemm_complex":"power_moments_complex",Bits,o.count,o.m,o.n,o.k,o.workers,false};
+-    key.profile=e.device_name()+" / section9-verified-samples / " LIMBFORGE_VERSION_STRING " / "+LIMBFORGE_CALIBRATION_BUILD_TYPE;
+-    DispatchSample sample{quantile(ct,.5),quantile(gt,.5)};BreakEvenTable table;table.record(key,sample);
+-    auto rec=table.recommend(key);
+-    std::cerr<<"Device: "<<e.device_name()<<"; deterministic composed complex arithmetic; n0=0; checked "<<outputs<<" outputs\n";
+-    std::cout<<"operation,bits,count,m,n,k,cpu_workers,fused,repeats,cpu_wall,gpu_wall,gpu_device,recommendation,profile,resident\n";
+-    std::cout<<key.operation<<','<<Bits<<','<<o.count<<','<<o.m<<','<<o.n<<','<<o.k<<','<<o.workers<<",0,"<<o.repeats<<','<<std::setprecision(9)<<sample.cpu_wall<<','<<sample.gpu_wall<<','<<quantile(device,.5)<<','<<(rec==BackendRecommendation::gpu?"gpu":rec==BackendRecommendation::cpu?"cpu":"unknown")<<','<<key.profile<<",0\n";
++    const char* previous=std::getenv("LIMBFORGE_POWER_PATH");bool had_path=previous;std::string saved=previous?previous:"";
++    struct Restore {bool had;std::string value;~Restore(){if(had)setenv("LIMBFORGE_POWER_PATH",value.c_str(),1);else unsetenv("LIMBFORGE_POWER_PATH");}} restore{had_path,saved};
++    std::vector<std::string> paths=o.compare_power?std::vector<std::string>{"table","panel"}:std::vector<std::string>{previous?previous:"default"};
++    auto select=[&](std::size_t p){if(o.compare_power)setenv("LIMBFORGE_POWER_PATH",paths[p].c_str(),1);};
++    std::vector<double> ct;std::vector<std::vector<double>> gt(paths.size()),device(paths.size());cpu();
++    for(std::size_t p=0;p<paths.size();++p){select(p);gpu();verify();} // compilation, workers and page faults excluded
++    gpu_warm_seconds=o.warm;
++    for(unsigned r=0;r<o.repeats;++r){auto begin=Clock::now();cpu();ct.push_back(std::chrono::duration<double>(Clock::now()-begin).count());
++        for(std::size_t j=0;j<paths.size();++j){auto p=(j+r)%paths.size();select(p);keep_gpu_busy(gpu);auto t=gpu();gt[p].push_back(t.wall_seconds);device[p].push_back(t.gpu_seconds);verify();}}
++    std::cerr<<"Device: "<<e.device_name()<<"; composed complex arithmetic; n0=0; checked every sample ("<<outputs<<" outputs); "<<(o.resident?"resident, transfers outside timing":"host-array, transfers included")<<"; GPU warm-up "<<o.warm<<" s\n";
++    std::cout<<"operation,bits,count,m,n,k,cpu_workers,fused,repeats,cpu_wall,gpu_wall,gpu_device,recommendation,profile,resident,power_path,clock_mode,power_scratch_bytes\n";
++    for(std::size_t p=0;p<paths.size();++p){DispatchKey key{o.operation=="gemm"?"gemm_complex":"power_moments_complex",Bits,o.count,o.m,o.n,o.k,o.workers,false};
++        key.profile=e.device_name()+" / section9-panel / " LIMBFORGE_VERSION_STRING " / "+LIMBFORGE_CALIBRATION_BUILD_TYPE+" / "+paths[p]+(o.warm>0?" / warm":" / cpu-interleaved");key.resident=o.resident;
++        DispatchSample sample{quantile(ct,.5),quantile(gt[p],.5)};BreakEvenTable table;table.record(key,sample);auto rec=table.recommend(key);
++        auto scratch_bytes=o.operation=="gemm"?0:checked(checked(ek,paths[p]=="panel"?1+std::min<std::size_t>(8,o.m):o.m),sizeof(C));
++        std::cout<<key.operation<<','<<Bits<<','<<o.count<<','<<o.m<<','<<o.n<<','<<o.k<<','<<o.workers<<",0,"<<o.repeats<<','<<std::setprecision(9)<<sample.cpu_wall<<','<<sample.gpu_wall<<','<<quantile(device[p],.5)<<','<<(rec==BackendRecommendation::gpu?"gpu":rec==BackendRecommendation::cpu?"cpu":"unknown")<<','<<key.profile<<','<<o.resident<<','<<paths[p]<<','<<(o.warm>0?"warm":"cpu-interleaved")<<','<<scratch_bytes<<'\n';}
++
+ }
+ template<int Bits=64> void width(const Options& o){if(o.bits==Bits)run<Bits>(o);else if constexpr(Bits<1024)width<Bits+32>(o);}
+ int main(int argc,char** argv){try{Options o;
+-    for(int i=1;i<argc;++i){std::string arg=argv[i];if(arg=="--help"){std::cout<<"section9_limbforge --operation gemm|power --bits B --count C --m M --n N --k K --workers W --repeats R\n";return 0;}
++    for(int i=1;i<argc;++i){std::string arg=argv[i];if(arg=="--help"){std::cout<<"section9_limbforge --operation gemm|power --bits B --count C --m M --n N --k K --workers W --repeats R [--resident] [--gpu-warm seconds] [--compare-power]\n";return 0;}
++        if(arg=="--resident"){o.resident=true;continue;}if(arg=="--compare-power"){o.compare_power=true;continue;}
+         if(i+1==argc)throw std::invalid_argument("missing option value");std::string value=argv[++i];if(arg=="--operation")o.operation=value;
++        else if(arg=="--gpu-warm"){std::size_t end;o.warm=std::stod(value,&end);if(end!=value.size()||!std::isfinite(o.warm)||o.warm<0||o.warm>10)throw std::invalid_argument("invalid warm-up seconds");}
+         else {if(value.empty()||value[0]=='-')throw std::invalid_argument("expected positive integer");std::size_t end=0;auto v=std::stoull(value,&end);if(end!=value.size()||v>UINT32_MAX||!v)throw std::invalid_argument("invalid integer");
+             if(arg=="--bits")o.bits=int(v);else if(arg=="--count")o.count=v;else if(arg=="--m")o.m=v;else if(arg=="--n")o.n=v;else if(arg=="--k")o.k=v;else if(arg=="--workers")o.workers=unsigned(v);else if(arg=="--repeats")o.repeats=unsigned(v);else throw std::invalid_argument("unknown option");}}
+     if(o.bits<64||o.bits>1024||o.bits%32||(o.operation!="gemm"&&o.operation!="power")||o.workers>256||o.repeats>1000)throw std::invalid_argument("invalid calibration options");
++    if(o.compare_power&&o.operation!="power")throw std::invalid_argument("--compare-power requires --operation power");
+     checked(checked(o.count,o.m),o.n);width(o);return 0;
+ }catch(const std::exception& e){std::cerr<<e.what()<<'\n';return 1;}}
+diff --git a/src/batched_linalg.metal b/src/batched_linalg.metal
+index 92ed25f..7abbcd5 100644
+--- a/src/batched_linalg.metal
++++ b/src/batched_linalg.metal
+@@ -2,7 +2,7 @@ using namespace metal;
+ using namespace limbforge;
+ constant int N=LF_BITS/32;
+ constant bool batch_fused [[function_constant(0)]];
+-struct BatchParams {ulong count,m,n,k,sa,sb,sc; int n0; uint flags;};
++struct BatchParams {ulong count,m,n,k,sa,sb,sc; int n0; uint flags; ulong row_offset;};
+ inline Number<N> bz(Number<N>){return zero<N>();}
+ inline Complex<N> bz(Complex<N>){return {zero<N>(),zero<N>()};}
+ inline Number<N> bone(Number<N>){Number<N> z=zero<N>();z.sign=1;z.limb[N-1]=0x80000000u;return z;}
+@@ -24,7 +24,7 @@ constant uint TK=N<=14?16:8;
+ template<class T> void bgemm(device const T* A,device const T* B,device T* C,constant BatchParams& p,
+                             uint tid,uint3 tile,threadgroup T* a,threadgroup T* b){
+     ulong row=ulong(tile.y)*8+tid/4,col=ulong(tile.x)*4+tid%4,base=ulong(tile.z);
+-    bool valid=row<p.m&&col<p.n;T z=bz(T{}),sum=(valid&&(p.flags&1))?C[base*p.sc+row*p.n+col]:z;
++    bool valid=row<p.m&&col<p.n;T z=bz(T{}),sum=(valid&&(p.flags&1))?C[base*p.sc+(row+p.row_offset)*p.n+col]:z;
+     _Pragma("clang loop unroll(disable)") for(ulong k0=0;k0<p.k;k0+=TK){
+         for(uint t=tid;t<8*TK;t+=32){ulong r=ulong(tile.y)*8+t/TK,k=k0+t%TK;a[t]=r<p.m&&k<p.k?A[base*p.sa+r*p.k+k]:z;}
+         for(uint t=tid;t<TK*4;t+=32){ulong k=k0+t/4,c=ulong(tile.x)*4+t%4;b[t]=k<p.k&&c<p.n?B[base*p.sb+k*p.n+c]:z;}
+@@ -33,7 +33,7 @@ template<class T> void bgemm(device const T* A,device const T* B,device T* C,con
+         _Pragma("clang loop unroll(disable)") for(uint k=0;k<TK&&k0+k<p.k;++k)if(valid)sum=ba(a[(tid/4)*TK+k],b[k*4+tid%4],sum);
+         threadgroup_barrier(mem_flags::mem_threadgroup);
+     }
+-    if(valid)C[base*p.sc+row*p.n+col]=(p.flags&2)?bn(sum):sum;
++    if(valid)C[base*p.sc+(row+p.row_offset)*p.n+col]=(p.flags&2)?bn(sum):sum;
+ }
+ kernel void batch_gemm_real(device const Number<N>* A [[buffer(0)]],device const Number<N>* B [[buffer(1)]],device Number<N>* C [[buffer(2)]],
+                             constant BatchParams& p [[buffer(3)]],uint tid [[thread_index_in_threadgroup]],uint3 tile [[threadgroup_position_in_grid]]){
+@@ -46,9 +46,9 @@ template<class T> void bgemm4(device const T* A,device const T* B,device T* C,co
+     ulong batch=ulong(group)*2+tid/16;uint local=tid%16,row=local/4,col=local%4,offset=(tid/16)*16;
+     bool valid=batch<p.count;T z=bz(T{});a[tid]=valid?A[batch*p.sa+local]:z;b[tid]=valid?B[batch*p.sb+local]:z;
+     threadgroup_barrier(mem_flags::mem_threadgroup);
+-    if(valid){T sum=(p.flags&1)?C[batch*p.sc+local]:z;
++    if(valid){T sum=(p.flags&1)?C[batch*p.sc+p.row_offset*p.n+local]:z;
+         _Pragma("clang loop unroll(disable)") for(uint k=0;k<4;++k)sum=ba(a[offset+row*4+k],b[offset+k*4+col],sum);
+-        C[batch*p.sc+local]=(p.flags&2)?bn(sum):sum;}
++        C[batch*p.sc+p.row_offset*p.n+local]=(p.flags&2)?bn(sum):sum;}
+ }
+ kernel void batch_gemm4_real(device const Number<N>* A [[buffer(0)]],device const Number<N>* B [[buffer(1)]],device Number<N>* C [[buffer(2)]],constant BatchParams& p [[buffer(3)]],uint tid [[thread_index_in_threadgroup]],uint3 group [[threadgroup_position_in_grid]]){
+     threadgroup Number<N> a[32],b[32];bgemm4(A,B,C,p,tid,group.x,a,b);}
+@@ -144,7 +144,7 @@ inline void batch_private_store(device Number<N>& out,thread const PrivateNumber
+ }
+ kernel void batch_private_complex(device const Complex<N>* A [[buffer(0)]],device const Complex<N>* B [[buffer(1)]],device Number<N>* C [[buffer(2)]],constant BatchParams& p [[buffer(3)]],uint2 index [[thread_position_in_grid]]){
+     ulong entry=index.x,part=index.y,t=entry/(p.m*p.n),cell=entry%(p.m*p.n),row=cell/p.n,col=cell%p.n;
+-    if(t>=p.count)return;ulong o=2*(t*p.sc+cell)+part;
++    if(t>=p.count)return;ulong o=2*(t*p.sc+p.row_offset*p.n+cell)+part;
+     PrivateNumber sum=(p.flags&1)?batch_private_load(C[o]):limbforge_batched_private::zero<N>();
+     _Pragma("clang loop unroll(disable)") for(ulong k=0;k<p.k;++k){
+         PrivateNumber ar=batch_private_load(A[t*p.sa+row*p.k+k].re),ai=batch_private_load(A[t*p.sa+row*p.k+k].im);
+@@ -156,3 +156,35 @@ kernel void batch_private_complex(device const Complex<N>* A [[buffer(0)]],devic
+     }
+     if(p.flags&2)sum=limbforge_batched_private::negate(sum);batch_private_store(C[o],sum);
+ }
++
++// To be added in the next optimization round, after the P0 correctness fix.
++// Requires BatchParams::row_offset and private cmul using padded product workspaces.
++using PrivateComplex=limbforge_batched_private::Complex<N>;
++inline PrivateComplex batch_private_load(device const Complex<N>& x){return {batch_private_load(x.re),batch_private_load(x.im)};}
++inline void batch_private_store(device Complex<N>& out,thread const PrivateComplex& x){batch_private_store(out.re,x.re);batch_private_store(out.im,x.im);}
++inline PrivateNumber panel_one(PrivateNumber){auto r=limbforge_batched_private::zero<N>();r.sign=1;r.limb[N-1]=0x80000000u;return r;}
++inline PrivateComplex panel_one(PrivateComplex){PrivateNumber x=limbforge_batched_private::zero<N>();return {panel_one(x),x};}
++inline PrivateNumber panel_mul(PrivateNumber a,PrivateNumber b){return limbforge_batched_private::mul(a,b);}
++inline PrivateComplex panel_mul(PrivateComplex a,PrivateComplex b){return limbforge_batched_private::cmul(a,b);}
++inline PrivateNumber panel_inv(PrivateNumber x){return limbforge_batched_private::div(panel_one(x),x);}
++inline PrivateComplex panel_inv(PrivateComplex x){return limbforge_batched_private::cdiv(panel_one(x),x);}
++template<class T> T panel_powi(T x,int exponent){
++    T r=panel_one(x);long e=exponent;bool inv=e<0;ulong k=inv?ulong(-e):ulong(e);
++    while(k){if(k&1)r=panel_mul(r,x);k>>=1;if(k)x=panel_mul(x,x);}return inv?panel_inv(r):r;
++}
++template<class Packed> void panel_seed(device const Packed* Y,device Packed* state,constant BatchParams& p,uint i){
++    if(ulong(i)>=p.count*p.k)return;auto value=panel_powi(batch_private_load(Y[i]),p.n0);batch_private_store(state[i],value);
++}
++kernel void batch_panel_seed_real(device const Number<N>* Y [[buffer(0)]],device Number<N>* state [[buffer(2)]],constant BatchParams& p [[buffer(3)]],uint i [[thread_position_in_grid]]){panel_seed(Y,state,p,i);}
++kernel void batch_panel_seed_complex(device const Complex<N>* Y [[buffer(0)]],device Complex<N>* state [[buffer(2)]],constant BatchParams& p [[buffer(3)]],uint i [[thread_position_in_grid]]){panel_seed(Y,state,p,i);}
++template<class Packed> void panel_powers(device const Packed* E,device const Packed* Y,device Packed* P,device Packed* state,constant BatchParams& p,uint i){
++    if(ulong(i)>=p.count*p.k)return;ulong b=i/p.k,k=i%p.k;
++    auto y=batch_private_load(Y[i]),pw=batch_private_load(state[i]),e=batch_private_load(E[i]);
++    _Pragma("clang loop unroll(disable)") for(ulong n=0;n<p.m;++n){
++        auto value=panel_mul(e,pw);batch_private_store(P[(b*p.m+n)*p.k+k],value);
++        if(p.row_offset+n+1<p.sa)pw=panel_mul(pw,y);
++    }
++    batch_private_store(state[i],pw);
++}
++kernel void batch_panel_powers_real(device const Number<N>* E [[buffer(0)]],device const Number<N>* Y [[buffer(1)]],device Number<N>* P [[buffer(2)]],constant BatchParams& p [[buffer(3)]],device Number<N>* state [[buffer(4)]],uint i [[thread_position_in_grid]]){panel_powers(E,Y,P,state,p,i);}
++kernel void batch_panel_powers_complex(device const Complex<N>* E [[buffer(0)]],device const Complex<N>* Y [[buffer(1)]],device Complex<N>* P [[buffer(2)]],constant BatchParams& p [[buffer(3)]],device Complex<N>* state [[buffer(4)]],uint i [[thread_position_in_grid]]){panel_powers(E,Y,P,state,p,i);}
+diff --git a/src/batched_linalg.mm b/src/batched_linalg.mm
+index 8176f48..2a5511f 100644
+--- a/src/batched_linalg.mm
++++ b/src/batched_linalg.mm
+@@ -3,13 +3,14 @@
+ #include "engine_internal.hpp"
+ #include "batched_linalg_source.hpp"
+ #include <cstring>
++#include <cstdlib>
+ #include <map>
+ #include <chrono>
+ #include <unistd.h>
+ namespace limbforge {
+ namespace {
+ using I=detail::Internal;using O=detail::Operand;using S=std::shared_ptr<detail::BufferStorage>;
+-struct Params {std::uint64_t count,m,n,k,sa,sb,sc;std::int32_t n0;std::uint32_t flags;};
++struct Params {std::uint64_t count,m,n,k,sa,sb,sc;std::int32_t n0;std::uint32_t flags;std::uint64_t row_offset=0;};
+ std::size_t mul_size(std::size_t a,std::size_t b){if(b&&a>std::size_t(-1)/b)throw std::invalid_argument("batched algebra: size overflow");return a*b;}
+ std::size_t extent(std::size_t count,std::size_t stride,std::size_t matrix){if(!count||!matrix)return 0;auto n=mul_size(count-1,stride);if(matrix>std::size_t(-1)-n)throw std::invalid_argument("batched algebra: stride overflow");return n+matrix;}
+ void bits_ok(int bits){if(bits<64||bits>1024||bits%32)throw std::invalid_argument("bits must be a multiple of 32 in [64,1024]");}
+@@ -81,10 +82,25 @@ void BatchedLinalg::encode_power(CommandBatch& b,int bits,bool complex,const Pow
+     grid_ok(ek);grid_ok(mul_size(mul_size(s.count,rows),s.ncols));size_ok(E,ek);size_ok(y,ek);size_ok(W,wk);distinct(out,{E,y,W});
+     StridedGemm shape{s.count,rows,s.ncols,s.steps,rows*s.steps,std::size_t(s.steps)*s.ncols,rows*s.ncols,s.accumulate,s.fused};
+     size_ok(out,mul_size(s.count,shape.stride_c));if(!s.count||!s.ncols)return;
+-    std::size_t bytes=mul_size(pk,std::size_t(bits/8+12)*(complex?2:1));auto powers=I::scratch(b,bytes);
+-    if(ek){auto e=retain(b,E,ek),yy=retain(b,y,ek);Params p{s.count,rows,s.ncols,s.steps,0,0,0,s.n0,0};
+-        impl_->pass(b,bits,complex?"batch_powers_complex":"batch_powers_real",p,{{0,e},{1,yy},{2,powers}},ek);}
+-    encode_gemm(b,bits,complex,shape,{powers,pk},W,out);
++    const char* path=std::getenv("LIMBFORGE_POWER_PATH");bool panel=path&&std::strcmp(path,"panel")==0;
++    if(path&&std::strcmp(path,"table")&&std::strcmp(path,"panel"))throw std::invalid_argument("experimental power path must be table or panel");
++    auto element=std::size_t(bits/8+12)*(complex?2:1);
++    if(!panel){auto powers=I::scratch(b,mul_size(pk,element));
++        if(ek){auto e=retain(b,E,ek),yy=retain(b,y,ek);Params p{s.count,rows,s.ncols,s.steps,0,0,0,s.n0,0};
++            impl_->pass(b,bits,complex?"batch_powers_complex":"batch_powers_real",p,{{0,e},{1,yy},{2,powers}},ek);}
++        encode_gemm(b,bits,complex,shape,{powers,pk},W,out);return;}
++    // The state is always unscaled. Segmenting the repeated multiplication adds no rounding.
++    auto tile_rows=std::min<std::size_t>(8,rows),work_elements=mul_size(ek,tile_rows);
++    auto state=I::scratch(b,mul_size(ek,element)),work=I::scratch(b,mul_size(work_elements,element));
++    auto e=retain(b,E,ek),yy=retain(b,y,ek),w=retain(b,W,wk),c=retain(b,out,s.count*shape.stride_c,true);
++    Params p{s.count,tile_rows,s.ncols,s.steps,rows,0,0,s.n0,0};
++    impl_->pass(b,bits,complex?"batch_panel_seed_complex":"batch_panel_seed_real",p,{{0,yy},{2,state}},ek);
++    for(std::size_t first=0;first<rows;first+=tile_rows){p.m=std::min(tile_rows,rows-first);p.row_offset=first;
++        impl_->pass(b,bits,complex?"batch_panel_powers_complex":"batch_panel_powers_real",p,{{0,e},{1,yy},{2,work},{4,state}},ek);
++        Params g{s.count,p.m,s.ncols,s.steps,p.m*s.steps,std::size_t(s.steps)*s.ncols,shape.stride_c,0,std::uint32_t(s.accumulate),first};
++        if(complex)impl_->pass(b,bits,"batch_private_complex",g,{{0,work},{1,w},{2,c}},s.count*p.m*s.ncols,s.fused,false,true);
++        else impl_->pass(b,bits,p.m==4&&s.ncols==4&&s.steps==4?"batch_gemm4_real":"batch_gemm_real",g,{{0,work},{1,w},{2,c}},s.count*p.m*s.ncols,s.fused,true);
++    }
+ }
+ void BatchedLinalg::encode_normal(CommandBatch& b,int bits,std::size_t rows,std::size_t cols,O J,O g,O A,O rhs,bool fused){
+     bits_ok(bits);auto jn=mul_size(rows,cols),an=mul_size(cols,cols),grid=mul_size(cols,cols+1);grid_ok(grid);

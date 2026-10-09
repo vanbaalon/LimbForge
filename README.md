@@ -15,7 +15,7 @@ steps of 32. Real arithmetic uses round-to-nearest, ties-to-even.
 **Author: Nikolay Gromov.**
 
 > **Versioned API 1.x:** the compatibility baseline is **1.0.0**; the current release is
-> **1.0.1**, correcting dense batched complex GEMM. Production consumers can pin `v1.0.1`;
+> **1.1.0**, adding optional compact storage for power moments. Production consumers can pin `v1.1.0`;
 > see [versioning and compatibility](docs/versioning.md).
 > CPU and physical GPU validation use independent MPFR operations, with device validation
 > currently covering an Apple M5 Max. See the [numerical contract](docs/numerics.md).

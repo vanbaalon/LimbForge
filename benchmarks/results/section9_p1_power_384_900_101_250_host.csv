@@ -1,0 +1,3 @@
+operation,bits,count,m,n,k,cpu_workers,fused,repeats,cpu_wall,gpu_wall,gpu_device,recommendation,profile,resident,power_path,clock_mode,power_scratch_bytes
+power_moments_complex,384,900,101,16,250,18,0,7,10.8568117,2.16754208,2.01527692,gpu,Apple M5 Max / section9-panel / 1.0.1 / Release / table / cpu-interleaved,0,table,cpu-interleaved,2727000000
+power_moments_complex,384,900,101,16,250,18,0,7,10.8568117,2.38922342,2.24525904,gpu,Apple M5 Max / section9-panel / 1.0.1 / Release / panel / cpu-interleaved,0,panel,cpu-interleaved,243000000

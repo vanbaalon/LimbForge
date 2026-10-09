@@ -89,7 +89,7 @@ template<int B,class T> void power_variants(Engine& e,BatchedLinalg& la){
         for(std::size_t t=0;t<s.count;++t)for(std::size_t n=0;n<rows;++n)for(std::size_t j=0;j<s.ncols;++j){auto z=accumulate?initial[(t*rows+n)*s.ncols+j]:zvalue<B,T>();
             for(std::size_t k=0;k<s.steps;++k)z=mac<B>(table[(t*rows+n)*s.steps+k],W[(t*s.steps+k)*s.ncols+j],z,fused);expected[(t*rows+n)*s.ncols+j]=z;}
         const auto label=std::string(std::is_same_v<T,F<B>>?"real":"complex")+" powers rows="+std::to_string(rows)+" steps="+std::to_string(s.steps)+" n0="+std::to_string(n0)+" fused="+std::to_string(fused)+" accumulate="+std::to_string(accumulate);
-        out.upload(initial.data(),initial.size());auto batch=e.batch();la.power_moments(batch,s,eb,yb,wb,out);batch.submit().wait();check<B>(get(out),expected,label.c_str());
+        out.upload(initial.data(),initial.size());auto batch=e.batch();la.power_moments(batch,s,eb,yb,wb,out,std::getenv("LIMBFORGE_AUDIT_COMPACT")?PowerStorage::compact:PowerStorage::full_table);batch.submit().wait();check<B>(get(out),expected,label.c_str());
     }}
 }
 template<int B> void fused_normal(Engine& e,BatchedLinalg& la){

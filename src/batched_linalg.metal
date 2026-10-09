@@ -2,7 +2,7 @@ using namespace metal;
 using namespace limbforge;
 constant int N=LF_BITS/32;
 constant bool batch_fused [[function_constant(0)]];
-struct BatchParams {ulong count,m,n,k,sa,sb,sc; int n0; uint flags;};
+struct BatchParams {ulong count,m,n,k,sa,sb,sc; int n0; uint flags; ulong row_offset;};
 inline Number<N> bz(Number<N>){return zero<N>();}
 inline Complex<N> bz(Complex<N>){return {zero<N>(),zero<N>()};}
 inline Number<N> bone(Number<N>){Number<N> z=zero<N>();z.sign=1;z.limb[N-1]=0x80000000u;return z;}
@@ -24,7 +24,7 @@ constant uint TK=N<=14?16:8;
 template<class T> void bgemm(device const T* A,device const T* B,device T* C,constant BatchParams& p,
                             uint tid,uint3 tile,threadgroup T* a,threadgroup T* b){
     ulong row=ulong(tile.y)*8+tid/4,col=ulong(tile.x)*4+tid%4,base=ulong(tile.z);
-    bool valid=row<p.m&&col<p.n;T z=bz(T{}),sum=(valid&&(p.flags&1))?C[base*p.sc+row*p.n+col]:z;
+    bool valid=row<p.m&&col<p.n;T z=bz(T{}),sum=(valid&&(p.flags&1))?C[base*p.sc+(row+p.row_offset)*p.n+col]:z;
     _Pragma("clang loop unroll(disable)") for(ulong k0=0;k0<p.k;k0+=TK){
         for(uint t=tid;t<8*TK;t+=32){ulong r=ulong(tile.y)*8+t/TK,k=k0+t%TK;a[t]=r<p.m&&k<p.k?A[base*p.sa+r*p.k+k]:z;}
         for(uint t=tid;t<TK*4;t+=32){ulong k=k0+t/4,c=ulong(tile.x)*4+t%4;b[t]=k<p.k&&c<p.n?B[base*p.sb+k*p.n+c]:z;}
@@ -33,7 +33,7 @@ template<class T> void bgemm(device const T* A,device const T* B,device T* C,con
         _Pragma("clang loop unroll(disable)") for(uint k=0;k<TK&&k0+k<p.k;++k)if(valid)sum=ba(a[(tid/4)*TK+k],b[k*4+tid%4],sum);
         threadgroup_barrier(mem_flags::mem_threadgroup);
     }
-    if(valid)C[base*p.sc+row*p.n+col]=(p.flags&2)?bn(sum):sum;
+    if(valid)C[base*p.sc+(row+p.row_offset)*p.n+col]=(p.flags&2)?bn(sum):sum;
 }
 kernel void batch_gemm_real(device const Number<N>* A [[buffer(0)]],device const Number<N>* B [[buffer(1)]],device Number<N>* C [[buffer(2)]],
                             constant BatchParams& p [[buffer(3)]],uint tid [[thread_index_in_threadgroup]],uint3 tile [[threadgroup_position_in_grid]]){
@@ -46,9 +46,9 @@ template<class T> void bgemm4(device const T* A,device const T* B,device T* C,co
     ulong batch=ulong(group)*2+tid/16;uint local=tid%16,row=local/4,col=local%4,offset=(tid/16)*16;
     bool valid=batch<p.count;T z=bz(T{});a[tid]=valid?A[batch*p.sa+local]:z;b[tid]=valid?B[batch*p.sb+local]:z;
     threadgroup_barrier(mem_flags::mem_threadgroup);
-    if(valid){T sum=(p.flags&1)?C[batch*p.sc+local]:z;
+    if(valid){T sum=(p.flags&1)?C[batch*p.sc+p.row_offset*p.n+local]:z;
         _Pragma("clang loop unroll(disable)") for(uint k=0;k<4;++k)sum=ba(a[offset+row*4+k],b[offset+k*4+col],sum);
-        C[batch*p.sc+local]=(p.flags&2)?bn(sum):sum;}
+        C[batch*p.sc+p.row_offset*p.n+local]=(p.flags&2)?bn(sum):sum;}
 }
 kernel void batch_gemm4_real(device const Number<N>* A [[buffer(0)]],device const Number<N>* B [[buffer(1)]],device Number<N>* C [[buffer(2)]],constant BatchParams& p [[buffer(3)]],uint tid [[thread_index_in_threadgroup]],uint3 group [[threadgroup_position_in_grid]]){
     threadgroup Number<N> a[32],b[32];bgemm4(A,B,C,p,tid,group.x,a,b);}
@@ -144,7 +144,7 @@ inline void batch_private_store(device Number<N>& out,thread const PrivateNumber
 }
 kernel void batch_private_complex(device const Complex<N>* A [[buffer(0)]],device const Complex<N>* B [[buffer(1)]],device Number<N>* C [[buffer(2)]],constant BatchParams& p [[buffer(3)]],uint2 index [[thread_position_in_grid]]){
     ulong entry=index.x,part=index.y,t=entry/(p.m*p.n),cell=entry%(p.m*p.n),row=cell/p.n,col=cell%p.n;
-    if(t>=p.count)return;ulong o=2*(t*p.sc+cell)+part;
+    if(t>=p.count)return;ulong o=2*(t*p.sc+p.row_offset*p.n+cell)+part;
     PrivateNumber sum=(p.flags&1)?batch_private_load(C[o]):limbforge_batched_private::zero<N>();
     _Pragma("clang loop unroll(disable)") for(ulong k=0;k<p.k;++k){
         PrivateNumber ar=batch_private_load(A[t*p.sa+row*p.k+k].re),ai=batch_private_load(A[t*p.sa+row*p.k+k].im);
@@ -156,3 +156,35 @@ kernel void batch_private_complex(device const Complex<N>* A [[buffer(0)]],devic
     }
     if(p.flags&2)sum=limbforge_batched_private::negate(sum);batch_private_store(C[o],sum);
 }
+
+// Compact power panels preserve the unscaled repeated-multiplication state.
+// Requires BatchParams::row_offset and private cmul using padded product workspaces.
+using PrivateComplex=limbforge_batched_private::Complex<N>;
+inline PrivateComplex batch_private_load(device const Complex<N>& x){return {batch_private_load(x.re),batch_private_load(x.im)};}
+inline void batch_private_store(device Complex<N>& out,thread const PrivateComplex& x){batch_private_store(out.re,x.re);batch_private_store(out.im,x.im);}
+inline PrivateNumber panel_one(PrivateNumber){auto r=limbforge_batched_private::zero<N>();r.sign=1;r.limb[N-1]=0x80000000u;return r;}
+inline PrivateComplex panel_one(PrivateComplex){PrivateNumber x=limbforge_batched_private::zero<N>();return {panel_one(x),x};}
+inline PrivateNumber panel_mul(PrivateNumber a,PrivateNumber b){return limbforge_batched_private::mul(a,b);}
+inline PrivateComplex panel_mul(PrivateComplex a,PrivateComplex b){return limbforge_batched_private::cmul(a,b);}
+inline PrivateNumber panel_inv(PrivateNumber x){return limbforge_batched_private::div(panel_one(x),x);}
+inline PrivateComplex panel_inv(PrivateComplex x){return limbforge_batched_private::cdiv(panel_one(x),x);}
+template<class T> T panel_powi(T x,int exponent){
+    T r=panel_one(x);long e=exponent;bool inv=e<0;ulong k=inv?ulong(-e):ulong(e);
+    while(k){if(k&1)r=panel_mul(r,x);k>>=1;if(k)x=panel_mul(x,x);}return inv?panel_inv(r):r;
+}
+template<class Packed> void panel_seed(device const Packed* Y,device Packed* state,constant BatchParams& p,uint i){
+    if(ulong(i)>=p.count*p.k)return;auto value=panel_powi(batch_private_load(Y[i]),p.n0);batch_private_store(state[i],value);
+}
+kernel void batch_panel_seed_real(device const Number<N>* Y [[buffer(0)]],device Number<N>* state [[buffer(2)]],constant BatchParams& p [[buffer(3)]],uint i [[thread_position_in_grid]]){panel_seed(Y,state,p,i);}
+kernel void batch_panel_seed_complex(device const Complex<N>* Y [[buffer(0)]],device Complex<N>* state [[buffer(2)]],constant BatchParams& p [[buffer(3)]],uint i [[thread_position_in_grid]]){panel_seed(Y,state,p,i);}
+template<class Packed> void panel_powers(device const Packed* E,device const Packed* Y,device Packed* P,device Packed* state,constant BatchParams& p,uint i){
+    if(ulong(i)>=p.count*p.k)return;ulong b=i/p.k,k=i%p.k;
+    auto y=batch_private_load(Y[i]),pw=batch_private_load(state[i]),e=batch_private_load(E[i]);
+    _Pragma("clang loop unroll(disable)") for(ulong n=0;n<p.m;++n){
+        auto value=panel_mul(e,pw);batch_private_store(P[(b*p.m+n)*p.k+k],value);
+        if(p.row_offset+n+1<p.sa)pw=panel_mul(pw,y);
+    }
+    batch_private_store(state[i],pw);
+}
+kernel void batch_panel_powers_real(device const Number<N>* E [[buffer(0)]],device const Number<N>* Y [[buffer(1)]],device Number<N>* P [[buffer(2)]],constant BatchParams& p [[buffer(3)]],device Number<N>* state [[buffer(4)]],uint i [[thread_position_in_grid]]){panel_powers(E,Y,P,state,p,i);}
+kernel void batch_panel_powers_complex(device const Complex<N>* E [[buffer(0)]],device const Complex<N>* Y [[buffer(1)]],device Complex<N>* P [[buffer(2)]],constant BatchParams& p [[buffer(3)]],device Complex<N>* state [[buffer(4)]],uint i [[thread_position_in_grid]]){panel_powers(E,Y,P,state,p,i);}

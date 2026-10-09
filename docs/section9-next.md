@@ -98,7 +98,13 @@ a row in `docs/optimizations.md`, rejected attempts kept under `benchmarks/exper
 
 ### P1: performance at real sizes
 
-**P1.1: `power_moments` without the device power table.**
+**P1.1: `power_moments` without the full device power table.**
+- **Delivered in 1.1.0:** explicit `PowerStorage::compact` host/resident overloads use an
+  eight-row panel plus unscaled checkpoints, preserving the sequence. Scratch falls by
+  6.7–11.2× at the measured large shapes. Most timings are slower (warm central checks
+  +9–24%), so existing calls retain the full-table default. This solves the auxiliary-memory
+  problem; a faster fused tile-loader remains a possible future experiment.
+  [Validation and measurements](../benchmarks/experiments/section9_compact_power.md).
 - **Problem:** the kernel materialises `count × (nmax+1) × steps` complex powers in device memory.
 - **Size of the table:**
 
@@ -159,3 +165,19 @@ a row in `docs/optimizations.md`, rejected attempts kept under `benchmarks/exper
   - optionally the base pass to `polynomial_recurrence`.
 - **Check:** Δ agrees to 10⁻²⁵ at g = 0.1, 0.2, 0.5, and the Newton histories match.
 - **Measure:** wall time per Jacobian against the current ≈ 7 s (Nc = 59, Nsh = 160, nPts = 65, 352 bits), on an idle host.
+
+### Consumer requests from `qsccpp/LIMBFORGE_NEXT.md` (2026-10-08)
+
+- **Prewarm algebra units:** `Engine::Prewarm` covers arithmetic/recurrences/dots/LU4,
+  not `BatchedLinalg::power_moments` or `Linalg::syrk/cholesky`. Add operation/shape-aware,
+  asynchronous preparation on the owning algebra units with safe lifetime/concurrency
+  rules. A dummy arithmetic prewarm must not be advertised as warming these pipelines.
+- **Consumer status:** qscmx's three original switches are implemented. Robustness work
+  adds a shared engine, matching-release checks, transactional helper outputs, worker-error
+  propagation, CPU fallback and per-operation runtime switches. A focused helper check
+  passes at 352 bits. Small saved-seed .1/.5 diagnostics agree; a reused-seed .2 diagnostic diverges and stalls, while its own saved seed agrees but stalls above tolerance. Full converged g=.1/.2/.5 histories and idle-host timing acceptance
+  remain pending; small truncation-limited solves do not satisfy that gate.
+- **Compact storage:** the consumer may opt into the new 1.1.0 overload after rebuilding
+  matching headers/archive. This reduces GPU auxiliary powers, not its full host W table.
+- Treat the Fourier 7.9× and trial timings in the old handoff as historical measurements;
+  they predate the dense-complex correction and are not current integration speed claims.

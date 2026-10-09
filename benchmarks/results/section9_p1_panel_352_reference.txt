@@ -1,0 +1,5 @@
+Auditing 352 bits
+real powers rows=10 steps=5 n0=-3 fused=0 accumulate=0 index 24
+GPU: sign=-1 exponent=2 status=0 limbs=8f778e56 d07672b1 5c93024b 2369d6bf 3e07805d 68557af5 41067e14 238d71eb 49b94d09 4b85d233 dee3e9b 
+MPFR: sign=0 exponent=0 status=1 limbs=0 0 0 0 0 0 0 0 0 0 0 
+Section 9 audit: real powers rows=10 steps=5 n0=-3 fused=0 accumulate=0 index 24
