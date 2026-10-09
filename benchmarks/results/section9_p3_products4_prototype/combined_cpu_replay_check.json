@@ -1,0 +1,13 @@
+{
+  "scope": "Both deferred consumer stages CPU-only; no new GPU arithmetic or timing acceptance",
+  "Delta_histories_residual_exactly_equal": true,
+  "residual": "5.57752179966997436E-25",
+  "history_entries": 3,
+  "reference_sha256": "c840246a9b187881aef16603c52070ec1e000335f8252dee5c3d4c7a3c5ca7bc",
+  "sha256": {
+    "prototype-results/j3_products4_fourier_split_cpu.m": "44b4e56150e44044f222529ed687ba55e8ca5584aaaa5dae4d50cf558c8cae7b",
+    "prototype-results/j3_products4_fourier_split_cpu.log": "a3590a2c3271b53f506439fa46bb02b52dba01f85ff48a012e3ee5d5acd22408",
+    "include/mx.hpp": "9cf8afa03ba01e41541ad9ddae4802abc5e562acc32ce16a9cac17b7dfecfbab",
+    "build/qscmx": "4388cdf78a6113152bad3c88ec8e99412b3a0f8e53bf72be4f900822afa74897"
+  }
+}

@@ -1,0 +1,48 @@
+[ 80%] Built target limbforge
+[ 90%] Building CXX object CMakeFiles/qscmx.dir/src/qscmx.cpp.o
+In file included from /private/tmp/wolfnum-qsc-section9-small4/src/qscmx.cpp:19:
+/private/tmp/wolfnum-qsc-section9-small4/include/mx.hpp:1370:34: warning: captured structured bindings are a C++20 extension [-Wc++20-extensions]
+ 1370 |         int fr = r - S.Dm + S.dl[a]; C s, t;
+      |                                  ^
+/private/tmp/wolfnum-qsc-section9-small4/include/mx.hpp:1358:17: note: 'a' declared here
+ 1358 |       auto [ty, a, nn] = id[cols[q]];
+      |                 ^
+/private/tmp/wolfnum-qsc-section9-small4/include/mx.hpp:1372:13: warning: captured structured bindings are a C++20 extension [-Wc++20-extensions]
+ 1372 |         if (ty == 0) { const LT& H = HL[i][a]; for (int k = col + nn; k <= fr; ++k) fma_(s, H[fr * N + k], dv[k - col], t); }
+      |             ^
+/private/tmp/wolfnum-qsc-section9-small4/include/mx.hpp:1358:13: note: 'ty' declared here
+ 1358 |       auto [ty, a, nn] = id[cols[q]];
+      |             ^
+/private/tmp/wolfnum-qsc-section9-small4/include/mx.hpp:1372:67: warning: captured structured bindings are a C++20 extension [-Wc++20-extensions]
+ 1372 |         if (ty == 0) { const LT& H = HL[i][a]; for (int k = col + nn; k <= fr; ++k) fma_(s, H[fr * N + k], dv[k - col], t); }
+      |                                                                   ^
+/private/tmp/wolfnum-qsc-section9-small4/include/mx.hpp:1358:20: note: 'nn' declared here
+ 1358 |       auto [ty, a, nn] = id[cols[q]];
+      |                    ^
+3 warnings generated.
+[100%] Linking CXX executable qscmx
+[100%] Built target qscmx
+[ 80%] Built target limbforge
+[ 90%] Building CXX object CMakeFiles/qscmx_products4_check.dir/tools/test_products4_candidate.cpp.o
+In file included from /private/tmp/wolfnum-qsc-section9-small4/tools/test_products4_candidate.cpp:1:
+/private/tmp/wolfnum-qsc-section9-small4/include/mx.hpp:1370:34: warning: captured structured bindings are a C++20 extension [-Wc++20-extensions]
+ 1370 |         int fr = r - S.Dm + S.dl[a]; C s, t;
+      |                                  ^
+/private/tmp/wolfnum-qsc-section9-small4/include/mx.hpp:1358:17: note: 'a' declared here
+ 1358 |       auto [ty, a, nn] = id[cols[q]];
+      |                 ^
+/private/tmp/wolfnum-qsc-section9-small4/include/mx.hpp:1372:13: warning: captured structured bindings are a C++20 extension [-Wc++20-extensions]
+ 1372 |         if (ty == 0) { const LT& H = HL[i][a]; for (int k = col + nn; k <= fr; ++k) fma_(s, H[fr * N + k], dv[k - col], t); }
+      |             ^
+/private/tmp/wolfnum-qsc-section9-small4/include/mx.hpp:1358:13: note: 'ty' declared here
+ 1358 |       auto [ty, a, nn] = id[cols[q]];
+      |             ^
+/private/tmp/wolfnum-qsc-section9-small4/include/mx.hpp:1372:67: warning: captured structured bindings are a C++20 extension [-Wc++20-extensions]
+ 1372 |         if (ty == 0) { const LT& H = HL[i][a]; for (int k = col + nn; k <= fr; ++k) fma_(s, H[fr * N + k], dv[k - col], t); }
+      |                                                                   ^
+/private/tmp/wolfnum-qsc-section9-small4/include/mx.hpp:1358:20: note: 'nn' declared here
+ 1358 |       auto [ty, a, nn] = id[cols[q]];
+      |                    ^
+3 warnings generated.
+[100%] Linking CXX executable qscmx_products4_check
+[100%] Built target qscmx_products4_check

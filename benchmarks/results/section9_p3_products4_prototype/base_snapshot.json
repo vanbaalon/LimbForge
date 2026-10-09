@@ -1,0 +1,15 @@
+{
+  "source": "/tmp/wolfnum-qsc-section9-fourier",
+  "scope": "isolated copy; source Fourier candidate remains frozen",
+  "sha256": {
+    "CMakeLists.txt": "296aaa5bb28c2d6913aa683c0f1a2c68d4c6b176f02c54378f0a2756d8b108e6",
+    "include/mp.hpp": "d5695b6aef005a3a5472e115c9355b55dc634df8bbbbe41768b7a2e28f6c73b7",
+    "include/series.hpp": "2b89c67d2dc60a400bda76f5b7882df0719e099c6516b42d93caf0f57b9a8b95",
+    "include/qsc.hpp": "a93ad88a254eb5a148efd858a0e20782a758b0bb1302cd881d829ddf3618e1cc",
+    "include/mx.hpp": "3b0a0bf6cd71af4de3876d8eb4c513633c809ad97a08f105f9db2f3955cd7a04",
+    "include/linalg.hpp": "28b756e6874c7226ef68f6ad69ed30289df0a9b4afe1113256d94e053ddc56b2",
+    "include/lmp_rel.hpp": "c7b8335bbed3a4382e0cf168eb46466d813df9b2c84c2ae440a852897e1a111e",
+    "src/qscmx.cpp": "679b75e38054dde0747499583814f52d9ad57c848ce5fd728ef3f3b25be104e4",
+    "src/qsctw.cpp": "469ba07388cd3ec8f64680e23bf7c09b0d3058c48b5b3c240906589e33a6db00"
+  }
+}

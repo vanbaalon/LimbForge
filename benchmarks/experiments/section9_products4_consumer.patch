@@ -1,0 +1,310 @@
+--- a/include/mx.hpp
++++ b/include/mx.hpp
+@@ -571,8 +571,31 @@
+ struct JGProf { std::atomic<long long> dB{0}, desc{0}, res{0}; };
+ inline JGProf& jgprof() { static JGProf p; return p; }
+ inline long long nowns() { return std::chrono::duration_cast<std::chrono::nanoseconds>(std::chrono::steady_clock::now().time_since_epoch()).count(); }
++inline Mat tangent_inverse_product_cpu(const Mat& Qi,const Mat& dQ){
++  C t;Mat tmp(4,Vec(4)),dQi(4,Vec(4));
++  for(int a=0;a<4;++a)for(int b=0;b<4;++b)for(int c=0;c<4;++c)fma_(tmp[a][b],Qi[a][c],dQ[c][b],t);
++  for(int a=0;a<4;++a)for(int b=0;b<4;++b){for(int c=0;c<4;++c)fma_(dQi[a][b],tmp[a][c],Qi[c][b],t);dQi[a][b]=-dQi[a][b];}
++  return dQi;
++}
++inline void rows_tangent_finish_point(const Setup& S,const Trace& tr,const Rows& R0,int ty,int a0,int n0,const C& h,
++                                      int j,const Mat& dQ,const Mat& dQi,Rows& out){
++  const int nP=S.nPts;C t;const Mat& Q=R0.Q[j];const Mat& Qi=R0.Qi[j];
++    for (int s2 = 0; s2 < 2; ++s2) {
++      int r = 2 * j + s2;
++      const C* Pl = &tr.Plc[(size_t(j) * 2 + s2) * 4]; const C* Pu = &tr.Puc[(size_t(j) * 2 + s2) * 4];
++      C dP = (ty == 0) ? S.ELc[a0 * nP + j] * S.powLc[S.iPc(a0, s2, j, n0)] : S.EUc[a0 * nP + j] * S.powUc[S.iPc(a0, s2, j, n0)];
++      for (int i = 0; i < 4; ++i) {
++        C dl, dsr;
++        for (int a = 0; a < 4; ++a) { fma_(dl, Pu[a], dQ[a][i], t); fma_(dsr, Pl[a], dQi[i][a], t); }
++        if (ty == 1) fma_(dl, dP, Q[a0][i], t); else fma_(dsr, dP, Qi[i][a0], t);
++        out.L[r][i] -= h * dl;
++        out.R[r][i] -= h * conj(dsr);
++      }
++    }
++    for (int a = 0; a < 4; ++a) for (int b = 0; b < 4; ++b) { out.Q[j][a][b] += h * dQ[a][b]; out.Qi[j][a][b] += h * dQi[a][b]; }
++}
+ inline Rows rows_tangent(const Setup& S, const CD& X, const TData& T, const Amats& Am, const HLR& HL, const HLR& HR,
+-                         const Trace& tr, const Rows& R0, int ty, int a0, int n0, const C& h, const AdjPrep* ap = nullptr) {
++                         const Trace& tr, const Rows& R0, int ty, int a0, int n0, const C& h, const AdjPrep* ap = nullptr, std::vector<Mat>* deferred_dQ = nullptr) {
+   int N = S.NQ + 1, s = S.band, nP = S.nPts, Nsh = S.Nsh, NQ = S.NQ; C t; long long tp0 = nowns();
+   // derivative series of vl_a0 (ty 0) or vu_a0 (ty 1)
+   Ser dv(N);
+@@ -618,6 +641,7 @@
+       dB[a][i] = v;
+     }
+   }
++  if(deferred_dQ)deferred_dQ->resize(nP);
+   Rows out = R0; jgprof().dB += nowns() - tp0; tp0 = nowns();
+   for (int j = 0; j < nP; ++j) {
+     Mat dQ(4, Vec(4));
+@@ -645,23 +669,9 @@
+       for (int a = 0; a < 4; ++a) for (int i = 0; i < 4; ++i) fma_(dQ[a][i], tr.pl[o + a], drow[i], t);
+       if (ty == 0) for (int i = 0; i < 4; ++i) fma_(dQ[a0][i], dp, tr.row[o + i], t);
+     }
+-    const Mat& Q = R0.Q[j]; const Mat& Qi = R0.Qi[j];
+-    Mat tmp(4, Vec(4)), dQi(4, Vec(4));
+-    for (int a = 0; a < 4; ++a) for (int b = 0; b < 4; ++b) for (int c = 0; c < 4; ++c) fma_(tmp[a][b], Qi[a][c], dQ[c][b], t);
+-    for (int a = 0; a < 4; ++a) for (int b = 0; b < 4; ++b) { for (int c = 0; c < 4; ++c) fma_(dQi[a][b], tmp[a][c], Qi[c][b], t); dQi[a][b] = -dQi[a][b]; }
+-    for (int s2 = 0; s2 < 2; ++s2) {
+-      int r = 2 * j + s2;
+-      const C* Pl = &tr.Plc[(size_t(j) * 2 + s2) * 4]; const C* Pu = &tr.Puc[(size_t(j) * 2 + s2) * 4];
+-      C dP = (ty == 0) ? S.ELc[a0 * nP + j] * S.powLc[S.iPc(a0, s2, j, n0)] : S.EUc[a0 * nP + j] * S.powUc[S.iPc(a0, s2, j, n0)];
+-      for (int i = 0; i < 4; ++i) {
+-        C dl, dsr;
+-        for (int a = 0; a < 4; ++a) { fma_(dl, Pu[a], dQ[a][i], t); fma_(dsr, Pl[a], dQi[i][a], t); }
+-        if (ty == 1) fma_(dl, dP, Q[a0][i], t); else fma_(dsr, dP, Qi[i][a0], t);
+-        out.L[r][i] -= h * dl;
+-        out.R[r][i] -= h * conj(dsr);
+-      }
+-    }
+-    for (int a = 0; a < 4; ++a) for (int b = 0; b < 4; ++b) { out.Q[j][a][b] += h * dQ[a][b]; out.Qi[j][a][b] += h * dQi[a][b]; }
++    if(deferred_dQ){(*deferred_dQ)[j]=std::move(dQ);continue;}
++    Mat dQi=tangent_inverse_product_cpu(R0.Qi[j],dQ);
++    rows_tangent_finish_point(S,tr,R0,ty,a0,n0,h,j,dQ,dQi,out);
+   }
+   jgprof().desc += nowns() - tp0;
+   return out;
+@@ -822,6 +832,8 @@
+ #ifdef QSC_LIMBFORGE
+ namespace lfx {
+ inline bool fourier_enabled();
++inline bool products4_enabled();
++inline bool tangent_products4(const Rows&,const std::vector<std::vector<Mat>>&,std::vector<std::vector<Mat>>&,int);
+ inline bool fourier_batch(const Setup&,const std::vector<ModeProjection>&,std::vector<Mat>&,int);
+ }
+ #endif
+@@ -1004,11 +1016,15 @@
+   task.width = bits();
+   if (!operation_enabled("QSC_GPU_PREWARM") || task.width < 64 || task.width > 1024) return task;
+   try {
+-    if (operation_enabled("QSC_GPU_POWER")) {
++    const bool prepare_power=operation_enabled("QSC_GPU_POWER");
++    const bool prepare_products4=S.tangent&&products4_enabled();
++    if (prepare_power || prepare_products4) {
+       if (S.nPts < 0 || S.Nsh < 0 || S.Nc < 0) throw std::invalid_argument("prewarm: negative power shape");
+       limbforge::BatchedPrewarm request;
+       request.bits = {task.width};
+-      request.complex_power = {{size_t(S.nPts)*8, unsigned(S.Nsh), unsigned(S.Nc), 16, 0}};
++      if(prepare_power)request.complex_power = {{size_t(S.nPts)*8, unsigned(S.Nsh), unsigned(S.Nc), 16, 0}};
++      if(prepare_products4){limbforge::StridedGemm shape;shape.count=1;shape.m=shape.n=shape.k=4;
++        shape.stride_a=shape.stride_b=shape.stride_c=16;request.complex_gemm.push_back(shape);}
+       task.power = batched().prewarm_async(std::move(request));
+       task.requested = true;
+     }
+@@ -1098,6 +1114,73 @@
+ }
+ // Explicit exact-dot candidate; existing sequential MPC residuals stay the default.
+ inline bool fourier_enabled(){const char* v=std::getenv("QSC_GPU_FOURIER");return v&&!std::strcmp(v,"1")&&operation_enabled("QSC_GPU_FOURIER")&&bits()>=256&&bits()<=1024;}
++inline bool products4_enabled(){
++  const char* v=std::getenv("QSC_GPU_PRODUCTS4");
++  return v&&!std::strcmp(v,"1")&&operation_enabled("QSC_GPU_PRODUCTS4")&&bits()>=256&&bits()<=1024;
++}
++// All tangent columns and collocation points in one product3 submission.
++// This is the library's composed scalar-product sequence at the rounded GPU width,
++// followed by conversion to the consumer precision, not MPC's complex-mul sequence.
++template<int B> bool tangent_products4_t(const Rows& base,const std::vector<std::vector<Mat>>& derivatives,
++                                         std::vector<std::vector<Mat>>& out,int thr){
++  try{
++    using T=limbforge::Complex<B/32>;
++    auto matrix_ok=[](const Mat& m){if(m.size()!=4)return false;for(auto& row:m)if(row.size()!=4)return false;return true;};
++    const size_t points=base.Qi.size();
++    std::vector<size_t> columns;
++    for(size_t col=0;col<derivatives.size();++col){if(derivatives[col].empty())continue;
++      if(!points||derivatives[col].size()!=points)throw std::invalid_argument("tangent products4: point count");
++      for(auto& m:derivatives[col])if(!matrix_ok(m))throw std::invalid_argument("tangent products4: derivative shape");
++      columns.push_back(col);
++    }
++    for(auto& m:base.Qi)if(!matrix_ok(m))throw std::invalid_argument("tangent products4: inverse shape");
++    if(columns.empty()){std::vector<std::vector<Mat>> result(derivatives.size());out.swap(result);return true;}
++    if(points>size_t(-1)/columns.size())throw std::invalid_argument("tangent products4: count overflow");
++    const size_t count=points*columns.size();
++    if(count>size_t(INT_MAX)||count>size_t(-1)/16)throw std::invalid_argument("tangent products4: size overflow");
++    const long long t0=nowns();std::vector<T> inverse(count*16),delta(count*16),values(count*16);
++    bridge_par_for(int(count),thr,[&](int job){size_t point=size_t(job)%points,col=columns[size_t(job)/points];
++      for(int i=0;i<4;++i)for(int j=0;j<4;++j){size_t x=size_t(job)*16+i*4+j;
++        limbforge::from_mpc(B,base.Qi[point][i][j].v,&inverse[x]);
++        limbforge::from_mpc(B,derivatives[col][point][i][j].v,&delta[x]);
++        if(inverse[x].re.status||inverse[x].im.status||delta[x].re.status||delta[x].im.status)
++          throw std::runtime_error("tangent products4: input conversion status");
++      }});
++    auto a=engine().make_buffer<T>(count*16),b=engine().make_buffer<T>(count*16),c=engine().make_buffer<T>(count*16);
++    a.upload(inverse.data(),inverse.size());b.upload(delta.data(),delta.size());
++    const long long t1=nowns();auto batch=engine().batch();
++    limbforge::StridedGemm shape;shape.count=count;shape.m=shape.n=shape.k=4;
++    shape.stride_a=shape.stride_b=shape.stride_c=16;
++    batched().product3(batch,shape,shape,a,b,a,c,true);
++    auto timing=batch.submit().wait();const long long t2=nowns();c.download(values.data(),values.size());
++    std::vector<std::vector<Mat>> result(derivatives.size());
++    for(auto col:columns)result[col].assign(points,Mat(4,Vec(4)));
++    bridge_par_for(int(count),thr,[&](int job){size_t point=size_t(job)%points,col=columns[size_t(job)/points];
++      for(int i=0;i<4;++i)for(int j=0;j<4;++j){auto& value=values[size_t(job)*16+i*4+j];
++        if(value.re.status||value.im.status)throw std::runtime_error("tangent products4: output arithmetic status");
++        limbforge::to_mpc(B,result[col][point][i][j].v,&value);}});
++    out.swap(result);
++    if(std::getenv("QSC_GPU_PROFILE"))std::cerr<<"  tangent products4: "<<count<<" matrices, pack/upload "<<(t1-t0)*1e-9
++      <<" s, library wall "<<(t2-t1)*1e-9<<" s (device "<<timing.gpu_seconds<<" s), download/unpack "<<(nowns()-t2)*1e-9<<" s\n";
++    return true;
++  }catch(const std::exception& e){static std::atomic_flag warned=ATOMIC_FLAG_INIT;warning("tangent products4",e,warned);return false;}
++}
++inline bool tangent_products4(const Rows& base,const std::vector<std::vector<Mat>>& derivatives,
++                              std::vector<std::vector<Mat>>& out,int thr){
++  if(!products4_enabled())return false;
++  const int width=bits();
++#define QSC_PRODUCTS4_CASE(B) case B:return tangent_products4_t<B>(base,derivatives,out,thr);
++  switch(width){
++    QSC_PRODUCTS4_CASE(256) QSC_PRODUCTS4_CASE(288) QSC_PRODUCTS4_CASE(320) QSC_PRODUCTS4_CASE(352)
++    QSC_PRODUCTS4_CASE(384) QSC_PRODUCTS4_CASE(416) QSC_PRODUCTS4_CASE(448) QSC_PRODUCTS4_CASE(480)
++    QSC_PRODUCTS4_CASE(512) QSC_PRODUCTS4_CASE(544) QSC_PRODUCTS4_CASE(576) QSC_PRODUCTS4_CASE(608)
++    QSC_PRODUCTS4_CASE(640) QSC_PRODUCTS4_CASE(672) QSC_PRODUCTS4_CASE(704) QSC_PRODUCTS4_CASE(736)
++    QSC_PRODUCTS4_CASE(768) QSC_PRODUCTS4_CASE(800) QSC_PRODUCTS4_CASE(832) QSC_PRODUCTS4_CASE(864)
++    QSC_PRODUCTS4_CASE(896) QSC_PRODUCTS4_CASE(928) QSC_PRODUCTS4_CASE(960) QSC_PRODUCTS4_CASE(992)
++    QSC_PRODUCTS4_CASE(1024) default:return false;
++  }
++#undef QSC_PRODUCTS4_CASE
++}
+ inline bool fourier_batch(const Setup& S,const std::vector<ModeProjection>& data,std::vector<Mat>& out,int thr){
+   if(!fourier_enabled())return false;
+   try{
+@@ -1476,14 +1559,17 @@
+       std::vector<ModeProjection> mode_data(batch_modes?size_t(nFD)*2:0);
+       std::vector<CD> mode_states(batch_modes?size_t(nFD)*2:0);
+       Mat JGre(mG, Vec(nFD)), JGim(mG, Vec(nFD));
+-      par_for(nFD, S.threads, [&](int col) {
+-        Vec zz = z; zz[FD[col]] += h;
+-        CD X1 = unpack(S, zz);
+-        int sp = species(FD[col]);
+-        Rows R1;
+-        if (sp >= 0 && S.tangent) { auto u = uid[FD[col]]; R1 = rows_tangent(S, X0, t, A0, HL, HR, tr0, R0, u[0], u[1], u[2], h, useAdj ? &apx : nullptr); }
+-        else if (sp >= 0 && !noUpd) { Amats A1 = amats_upd(S, X1, A0, sp, &t); R1 = glue_rows(S, X1, &t, &A1); }
+-        else R1 = glue_rows(S, X1, &t);
++      bool batch_products4=false;
++#ifdef QSC_LIMBFORGE
++      batch_products4=S.tangent&&lfx::products4_enabled();
++#endif
++      // Private audit: the deferred schedule without GPU or a changed arithmetic sequence.
++      const char* product_split=std::getenv("QSC_PRODUCTS4_CPU_SPLIT");
++      if(S.tangent&&product_split&&!std::strcmp(product_split,"1"))batch_products4=true;
++      std::vector<Rows> deferred_rows(batch_products4?size_t(nFD):0);
++      std::vector<CD> deferred_states(batch_products4?size_t(nFD):0);
++      std::vector<std::vector<Mat>> deferred_dQ(batch_products4?size_t(nFD):0);
++      auto project_column=[&](int col,const CD& X1,const Rows& R1){
+         long long tr0n = nowns();
+         Vec g1;
+         if(batch_modes){mode_data[size_t(col)*2]=mode_projection_prepare(S,R1,X1);mode_states[size_t(col)*2]=X1;}
+@@ -1503,7 +1589,31 @@
+         jgprof().res += nowns() - tr0n;
+         C ih = C(1) / h;
+         for (size_t i = 0; i < mG; ++i) { JGre[i][col] = (g1[i] - Gr[i]) * ih; JGim[i][col] = (g2[i] - Gr[i]) * ih; }
++      };
++      par_for(nFD, S.threads, [&](int col) {
++        Vec zz = z; zz[FD[col]] += h;
++        CD X1 = unpack(S, zz);
++        int sp = species(FD[col]);
++        Rows R1;
++        if (sp >= 0 && S.tangent) { auto u = uid[FD[col]]; R1 = rows_tangent(S, X0, t, A0, HL, HR, tr0, R0, u[0], u[1], u[2], h, useAdj ? &apx : nullptr,batch_products4?&deferred_dQ[col]:nullptr); }
++        else if (sp >= 0 && !noUpd) { Amats A1 = amats_upd(S, X1, A0, sp, &t); R1 = glue_rows(S, X1, &t, &A1); }
++        else R1 = glue_rows(S, X1, &t);
++
++        if(batch_products4&&sp>=0&&S.tangent){deferred_rows[col]=std::move(R1);deferred_states[col]=std::move(X1);return;}
++        project_column(col,X1,R1);
+       });
++      if(batch_products4){std::vector<std::vector<Mat>> inverse_products;bool gpu_products4=false;
++#ifdef QSC_LIMBFORGE
++        gpu_products4=lfx::tangent_products4(R0,deferred_dQ,inverse_products,S.threads);
++#endif
++        par_for(nFD,S.threads,[&](int col){if(deferred_dQ[col].empty())return;
++          const auto u=uid[FD[col]];long long tp=nowns();
++          for(int j=0;j<S.nPts;++j){Mat dQi=gpu_products4?inverse_products[col][j]:tangent_inverse_product_cpu(R0.Qi[j],deferred_dQ[col][j]);
++            rows_tangent_finish_point(S,tr0,R0,u[0],u[1],u[2],h,j,deferred_dQ[col][j],dQi,deferred_rows[col]);}
++          jgprof().desc+=nowns()-tp;project_column(col,deferred_states[col],deferred_rows[col]);
++        });
++        if(std::getenv("QSC_GPU_PROFILE"))std::cerr<<"  tangent 4x4 Jacobian ("<<(gpu_products4?"GPU":"CPU fallback")<<")\n";
++      }
+       if(batch_modes){std::vector<Mat> projected;bool gpu_fourier=false;
+ #ifdef QSC_LIMBFORGE
+         gpu_fourier=lfx::fourier_batch(S,mode_data,projected,S.threads);
+--- a/CMakeLists.txt
++++ b/CMakeLists.txt
+@@ -58,4 +58,7 @@
+   add_executable(qscmx_fourier_check EXCLUDE_FROM_ALL tools/test_fourier_candidate.cpp)
+   target_compile_definitions(qscmx_fourier_check PRIVATE QSC_LIMBFORGE)
+   target_link_libraries(qscmx_fourier_check PRIVATE LimbForge::limbforge ${MPC_LIB} ${MPFR_LIB} ${GMP_LIB} pthread)
++  add_executable(qscmx_products4_check EXCLUDE_FROM_ALL tools/test_products4_candidate.cpp)
++  target_compile_definitions(qscmx_products4_check PRIVATE QSC_LIMBFORGE)
++  target_link_libraries(qscmx_products4_check PRIVATE LimbForge::limbforge ${MPC_LIB} ${MPFR_LIB} ${GMP_LIB} pthread)
+ endif()
+--- /dev/null
++++ b/tools/test_products4_candidate.cpp
+@@ -0,0 +1,68 @@
++#include "mx.hpp"
++#include <iostream>
++using namespace mx;
++static void require(bool ok,const char* message){if(!ok)throw std::runtime_error(message);}
++// Independent MPFR primitives replay the public composed GEMM contract.
++static C composed_product(const C& a,const C& b,long width){
++  C result,p,q;
++  for(C* x:{&result,&p,&q}){mpfr_set_prec(mpc_realref(x->v),width);mpfr_set_prec(mpc_imagref(x->v),width);}
++  mpfr_mul(mpc_realref(p.v),mpc_realref(a.v),mpc_realref(b.v),MPFR_RNDN);
++  mpfr_mul(mpc_realref(q.v),mpc_imagref(a.v),mpc_imagref(b.v),MPFR_RNDN);
++  mpfr_sub(mpc_realref(result.v),mpc_realref(p.v),mpc_realref(q.v),MPFR_RNDN);
++  mpfr_mul(mpc_realref(p.v),mpc_realref(a.v),mpc_imagref(b.v),MPFR_RNDN);
++  mpfr_mul(mpc_realref(q.v),mpc_imagref(a.v),mpc_realref(b.v),MPFR_RNDN);
++  mpfr_add(mpc_imagref(result.v),mpc_realref(p.v),mpc_realref(q.v),MPFR_RNDN);
++  return result;
++}
++static Mat composed_matmul(const Mat& a,const Mat& b,long width){
++  Mat result(4,Vec(4));
++  for(auto& row:result)for(auto& x:row){mpfr_set_prec(mpc_realref(x.v),width);mpfr_set_prec(mpc_imagref(x.v),width);mpc_set_ui(x.v,0,RND);}
++  for(int i=0;i<4;++i)for(int j=0;j<4;++j)for(int k=0;k<4;++k){C product=composed_product(a[i][k],b[k][j],width);
++    mpfr_add(mpc_realref(result[i][j].v),mpc_realref(result[i][j].v),mpc_realref(product.v),MPFR_RNDN);
++    mpfr_add(mpc_imagref(result[i][j].v),mpc_imagref(result[i][j].v),mpc_imagref(product.v),MPFR_RNDN);}
++  return result;
++}
++static C number(int key,int scale){
++  C x;mpfr_set_str(mpc_realref(x.v),"0.123456789123456789123456789123456789123456789123456789123456789123456789123456789123456789123456789",10,MPFR_RNDN);
++  mpfr_set_str(mpc_imagref(x.v),"0.987654321987654321987654321987654321987654321987654321987654321987654321987654321987654321987654321",10,MPFR_RNDN);
++  mpfr_mul_si(mpc_realref(x.v),mpc_realref(x.v),(key%11)-5,MPFR_RNDN);
++  mpfr_mul_si(mpc_imagref(x.v),mpc_imagref(x.v),(key%7)-3,MPFR_RNDN);
++  mpfr_mul_2si(mpc_realref(x.v),mpc_realref(x.v),scale,MPFR_RNDN);
++  mpfr_mul_2si(mpc_imagref(x.v),mpc_imagref(x.v),scale,MPFR_RNDN);
++  return x;
++}
++int main(int argc,char** argv){try{
++  bool cpu=argc>1&&std::string(argv[1])=="--cpu-only";
++  setenv("QSC_GPU",cpu?"0":"1",1);setenv("QSC_GPU_PRODUCTS4","1",1);
++  for(long precision:{352L,374L,448L}){set_prec(precision);
++    Rows base;base.Qi.assign(7,Mat(4,Vec(4)));
++    std::vector<std::vector<Mat>> derivatives(5);for(size_t col:{0u,1u,3u,4u})derivatives[col].assign(7,Mat(4,Vec(4)));
++    for(size_t j=0;j<7;++j)for(int a=0;a<4;++a)for(int b=0;b<4;++b){
++      base.Qi[j][a][b]=number(int(j)*17+a*4+b,j==6?((a+b)%2?500:-500):0);
++      for(size_t col:{0u,1u,3u,4u})derivatives[col][j][a][b]=number(int(col)*19+int(j)*3+a*4+b,j==6?((a+b)%2?-500:500):0);
++    }
++    // Exact cancellation in one inner dot, plus a skipped column and an odd point count.
++    for(int a=0;a<4;++a){base.Qi[0][a][1]=base.Qi[0][a][0];derivatives[0][0][1][a]=-derivatives[0][0][0][a];}
++    std::vector<std::vector<Mat>> out(1,std::vector<Mat>(1,Mat(1,Vec(1,C(123)))));
++    if(cpu){require(!lfx::tangent_products4(base,derivatives,out,2),"global GPU guard");require(same(out[0][0][0][0],C(123)),"disabled output changed");
++      for(size_t col:{0u,1u,3u,4u})for(size_t j=0;j<7;++j){auto result=tangent_inverse_product_cpu(base.Qi[j],derivatives[col][j]);require(result.size()==4&&result[0].size()==4,"CPU shape");}
++      std::cout<<precision<<" bits: CPU fixtures and global guard pass\n";continue;}
++    require(lfx::tangent_products4(base,derivatives,out,2),"GPU products4 fallback");
++    require(out.size()==5&&out[2].empty(),"column mapping");
++    int B=lfx::bits();
++    for(size_t col:{0u,1u,3u,4u})for(size_t j=0;j<7;++j){auto intermediate=composed_matmul(base.Qi[j],derivatives[col][j],B);auto truth=composed_matmul(intermediate,base.Qi[j],B);
++      for(int a=0;a<4;++a)for(int b=0;b<4;++b){mpc_neg(truth[a][b].v,truth[a][b].v,RND);C expected;mpc_set(expected.v,truth[a][b].v,RND);
++        require(same(out[col][j][a][b],expected),"MPFR two-stage product mismatch");}}
++    std::vector<std::vector<Mat>> preserved(1,std::vector<Mat>(1,Mat(1,Vec(1,C(123)))));
++    derivatives[0][0][0].pop_back();require(!lfx::tangent_products4(base,derivatives,preserved,2),"malformed derivative accepted");
++    require(same(preserved[0][0][0][0],C(123)),"failure changed output");
++    derivatives[0][0][0].push_back(C(0));mpfr_set_nan(mpc_realref(derivatives[0][0][0][0].v));
++    require(!lfx::tangent_products4(base,derivatives,preserved,2),"nonfinite conversion accepted");
++    require(same(preserved[0][0][0][0],C(123)),"conversion failure changed output");
++    setenv("QSC_GPU_PRODUCTS4","0",1);require(!lfx::tangent_products4(base,derivatives,preserved,2),"sub-switch ignored");setenv("QSC_GPU_PRODUCTS4","1",1);
++    std::cout<<precision<<" bits: MPFR product3, rounded width, cancellation/wide data, mapping and failure guards pass\n";
++  }
++  set_prec(1056);Rows empty;std::vector<std::vector<Mat>> derivatives,out;
++  require(!lfx::tangent_products4(empty,derivatives,out,1),">1024-bit fallback");
++  return 0;
++}catch(const std::exception& e){std::cerr<<e.what()<<'\n';return 1;}}

@@ -1,0 +1,34 @@
+{
+  "scope": "Consumer-only source prototype on top of the independently queued Fourier candidate; no library API/default changes",
+  "library_main": "e456ef4712d7c127da0e179ae339440e299caf8b",
+  "library_version": "1.3.1",
+  "base": {
+    "include/mx.hpp": "3b0a0bf6cd71af4de3876d8eb4c513633c809ad97a08f105f9db2f3955cd7a04",
+    "CMakeLists.txt": "296aaa5bb28c2d6913aa683c0f1a2c68d4c6b176f02c54378f0a2756d8b108e6"
+  },
+  "prepared": {
+    "include/mx.hpp": "9cf8afa03ba01e41541ad9ddae4802abc5e562acc32ce16a9cac17b7dfecfbab",
+    "CMakeLists.txt": "752ef4f57e073b2412e567d98776b79fd6753dcf6634855189d77566a310bf69",
+    "tools/test_products4_candidate.cpp": "e3c888dd3920aaf1cdfeaf4f06f229807033a90af3d5fae3e66b9b6508b6892f",
+    "build/qscmx": "4388cdf78a6113152bad3c88ec8e99412b3a0f8e53bf72be4f900822afa74897",
+    "build/qscmx_products4_check": "ed52de94a2b89795401d963f9704234637a6405adfdb9198223004e3437849f2",
+    "build/limbforge/liblimbforge.a": "3da167f754e5242eb3430e7c5f52f34807a1a1551bfaea3bc272992043470018"
+  },
+  "evidence_sha256": {
+    "j3_products4_split_cpu.log": "35fd5d902a35bec0841ae7cccdc60bffd724476052ad343002618e986120a4d0",
+    "j3_products4_fourier_split_cpu.m": "44b4e56150e44044f222529ed687ba55e8ca5584aaaa5dae4d50cf558c8cae7b",
+    "configure.log": "c5474ad4847131fc280d58f8a29e0f2b79f53c3ee5f21f4741e5c017fa248c4b",
+    "cpu_replay_check.json": "3903b592d6dc2287d0631fa03d1f9c53fdb669a7151f009a073ce380ad68feff",
+    "configure_products4.log": "e270cecdaaebd97903d14352c81670c39939e588021927e4d72750498a09ce53",
+    "j3_products4_default_cpu.log": "8367d01ddc3c032d0d06b252c36d273c9fda5f24d622092350eaa7962b8f4af8",
+    "helper_cpu.log": "819a95f182455f9731f3c6188ca89f69e1a0a55bf8205f2e949dba27d7588312",
+    "build_products4.log": "ee1da77cdae0c951f4272f3ad3b86c018ab6a904de42ebb96382cf8d5ea27b3c",
+    "base_snapshot.json": "587946a8b410bdbdfd7c0e0630bfbca7837cef0108b2d3a1c7f717a7775071da",
+    "build_products4_final.log": "524503181521edfa9df5eac3cac347c72d0ad24dddec1f90e5e1510bf23a972e",
+    "j3_products4_split_cpu.m": "2f490e783980dfb5aaecc48017b43b1fcd7a3e3f5c7d56aeefef9e31c65b629e",
+    "combined_cpu_replay_check.json": "29d9d11608dd338d53c8135ae8dda60086668faab44eec86d5b1221d75a7c22e",
+    "j3_products4_fourier_split_cpu.log": "a3590a2c3271b53f506439fa46bb02b52dba01f85ff48a012e3ee5d5acd22408",
+    "j3_products4_default_cpu.m": "3a0c5bb01b2b3e190440a304bdce9f3973f2f5b4c54e9b2aac8b691fccaa3b66"
+  },
+  "remaining": "Physical GPU helper normal/MTL and saved J3 replay queued; independently compare outputs after terminal; LU4 still not integrated; g=.1/.2/.5 and idle timings remain pending"
+}

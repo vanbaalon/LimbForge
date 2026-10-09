@@ -1,0 +1,36 @@
+{
+  "scope": "CPU staging parity only; no GPU helper, convergence or timing claim for new arithmetic",
+  "reference": "/Users/k0959535/Dropbox/IntegrabilityProjects/2026 4d SoV/LimbForge/benchmarks/results/section9_p3_wolfnum_1_3_1_consumer/j3_X2Y_g0.202_nc21_cpu.m",
+  "reference_sha256": "c840246a9b187881aef16603c52070ec1e000335f8252dee5c3d4c7a3c5ca7bc",
+  "records": [
+    {
+      "label": "default",
+      "Delta_max_component_error": "0E-110",
+      "histories_exactly_equal": true,
+      "residual_exactly_equal": true,
+      "residual": "5.57752179966997436E-25",
+      "history_entries": 3
+    },
+    {
+      "label": "split",
+      "Delta_max_component_error": "0E-110",
+      "histories_exactly_equal": true,
+      "residual_exactly_equal": true,
+      "residual": "5.57752179966997436E-25",
+      "history_entries": 3
+    }
+  ],
+  "split_adjoint_pass": true,
+  "sha256": {
+    "include/mx.hpp": "9cf8afa03ba01e41541ad9ddae4802abc5e562acc32ce16a9cac17b7dfecfbab",
+    "tools/test_products4_candidate.cpp": "e3c888dd3920aaf1cdfeaf4f06f229807033a90af3d5fae3e66b9b6508b6892f",
+    "build/qscmx": "4388cdf78a6113152bad3c88ec8e99412b3a0f8e53bf72be4f900822afa74897",
+    "build/qscmx_products4_check": "ed52de94a2b89795401d963f9704234637a6405adfdb9198223004e3437849f2",
+    "build/limbforge/liblimbforge.a": "3da167f754e5242eb3430e7c5f52f34807a1a1551bfaea3bc272992043470018",
+    "prototype-results/helper_cpu.log": "819a95f182455f9731f3c6188ca89f69e1a0a55bf8205f2e949dba27d7588312",
+    "prototype-results/j3_products4_default_cpu.log": "8367d01ddc3c032d0d06b252c36d273c9fda5f24d622092350eaa7962b8f4af8",
+    "prototype-results/j3_products4_default_cpu.m": "3a0c5bb01b2b3e190440a304bdce9f3973f2f5b4c54e9b2aac8b691fccaa3b66",
+    "prototype-results/j3_products4_split_cpu.log": "35fd5d902a35bec0841ae7cccdc60bffd724476052ad343002618e986120a4d0",
+    "prototype-results/j3_products4_split_cpu.m": "2f490e783980dfb5aaecc48017b43b1fcd7a3e3f5c7d56aeefef9e31c65b629e"
+  }
+}

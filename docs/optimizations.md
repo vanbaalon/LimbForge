@@ -216,3 +216,12 @@ projection, with explicit opt-in, transactional publication and sequential MPC
 fallback. It builds; default and split-CPU J3 replays exactly match recorded
 Delta/history/residual values. GPU and acceptance gates are pending; no consumer
 source/default or speed claim is promoted. [Prototype](../benchmarks/experiments/section9_fourier_consumer.md).
+
+## Section 9 P3: batched tangent 4x4 adapter preparation
+
+An isolated consumer stages all tangent columns for one composed product3
+submission, with explicit opt-in, status checks and MPC fallback. Matching default,
+staged-CPU and combined Fourier/staged-CPU J3 replays exactly reproduce recorded
+Delta/history/residual values. Physical GPU and consumer gates are queued; LU4,
+the requested g sweep and idle timings remain open. No production API/default
+or speed claim is changed. [Prototype](../benchmarks/experiments/section9_products4_consumer.md).
