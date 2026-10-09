@@ -135,6 +135,15 @@ a row in `docs/optimizations.md`, rejected attempts kept under `benchmarks/exper
 - **Benchmark:** commit one for the trials (shape above), including `cholesky_solve` with several right-hand sides (the chord steps).
 
 **P1.3: GEMM kernel.**
+- **Exact 4x4 prototype in qualification:** isolated branch
+  `round-section9-exact-gemm4` adds a single-dispatch real/complex exact batch,
+  input snapshots and per-component wide-exponent repair at wait. All 31
+  small/dense normal/Metal widths and 26 normal library suites pass. The 19
+  Metal suites and supplementary/multi-call checks are still running or queued;
+  the normal-suite collector wording correction preserves the passing raw run.
+  No timing, installed API or release is accepted yet. Next: complete those gates,
+  then measure the 352/384/448-bit 1e4/1e5 host/resident/clock grid against all four
+  MPFR contracts. See `benchmarks/experiments/exact_gemm4/QUALIFICATION.md`.
 - **Native three-product decision:** the isolated per-product Gauss kernel passes
   all 31 small/dense/wide normal/Metal checks and 26 normal/19 Metal regressions,
   but loses to composed in all 22 checked 352/384/448-bit Fourier/4x4 profiles
@@ -276,7 +285,7 @@ candidate or an unconverged diagnostic as accepted production behavior.
 | Idle-host Jacobian timings | Pending: all load averages <4 before each solve; 352 bits, Nc=23/31/59, with the large case Nsh=160 and nPts=65 |
 | Fold `J^T G` into exact augmented SYRK | Local candidate behind explicit `QSC_GPU_NORMAL=1`; default off, CPU fallback and `QSC_GPU_SYRK` gate retained; requested combined-switch g sweep passes; idle timing remains pending |
 | Fourier residual -> complex GEMM | Integrated locally behind off-default switch; matching 1.3.1 build passes MPFR normal/Metal checks and saved J3 default/combined GPU replay. Requested combined-switch g sweep passes; idle timings remain pending |
-| Per-column 4x4 products and LU4 | Integrated locally behind off-default switches; matching 1.3.1 build passes MPFR normal/Metal checks and saved J3 default/combined GPU replay. Full g sweep and idle timings pending. See [integration](../benchmarks/experiments/section9_consumer_integrated.md) |
+| Per-column 4x4 products and LU4 | Integrated locally behind off-default switches; matching 1.3.1 build passes MPFR normal/Metal checks and saved J3 default/combined GPU replay. Requested combined-switch g sweep passes; idle timings remain pending. See [integration](../benchmarks/experiments/section9_consumer_integrated.md) |
 | Remaining damping trials | Pending; preserve the first exact factor path, use batched trials only after P1.2/P2.2 numerical/performance acceptance; keep the new switch off until current-backend acceptance; historical small-matrix ratios are insufficient |
 | Optional base polynomial recurrence | Pending; measure shared Horner sources (P1.5) before switching the solver |
 | Large-shape memory | Pending consumer measurement: host W remains; compact 1.1.0 power storage is available explicitly, with a latency trade-off; chunk count if needed |
