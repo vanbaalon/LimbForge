@@ -192,7 +192,7 @@ candidate or an unconverged diagnostic as accepted production behavior.
 |---|---|
 | Catch GPU/bridge errors and fall back to CPU; warn once | Implemented locally; focused helper check passes, including transactional output preservation and worker exception propagation |
 | One shared Engine for algebra units | Implemented locally; matching 1.1.0 headers/archive checked at startup; pipeline caches remain separate |
-| Algebra prewarm | **Library API pending:** operation/shape-aware asynchronous preparation on the owning `BatchedLinalg`/`Linalg`, with safe lifetime and concurrent cache access |
+| Algebra prewarm | Local API candidate `870adfe`: operation/shape-aware synchronous and asynchronous preparation on the owning units, with detached cache lifetime and synchronized cache access. Build + version/package checks pass; focused normal/shader lifetime and numerical checks, minor release and consumer wiring pending |
 | Keep `adj_prep` CPU-only; select stage 2 after the glue | Preserved; do not move the glue or invoke GPU work inside stage 1 |
 | Relative MPFR adjoint check in units of `2^-prec` | Implemented; finite, nonempty checks require <=65536 normalized units; report finite-difference amplification separately |
 | Converged CPU/GPU g=.1/.2/.5 checks | Pending: componentwise Delta agreement <=1e-25, equal iteration counts and matching residual histories; save inputs and both logs |
