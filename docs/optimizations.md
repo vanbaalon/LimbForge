@@ -192,3 +192,11 @@ width/profile/shape queries. Failed/nonterminal measurements, changed raw hashes
 busy-host idle export and overwrites are rejected. No arithmetic, installed API or
 backend default changes. Other widths/clock modes and consumer acceptance remain
 open. [Calibration and provenance](calibration.md).
+
+## Section 9 P3: matching 1.3.1 consumer replay evidence
+
+A read-only check of the current consumer records verifies matching source/archive/
+binary identities, the converged J=3 g=.202 fixture and the still-stalled J=2 g=.2
+fixture. Delta/history/residual values and GPU/adjoint markers match raw outputs.
+No new switch or idle timing is accepted; requested g=.1/.2/.5 coverage remains
+open. [Raw evidence and scope](../benchmarks/experiments/section9_consumer_replay.md).

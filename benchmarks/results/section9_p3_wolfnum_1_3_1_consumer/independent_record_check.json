@@ -1,0 +1,74 @@
+{
+  "state": "terminal",
+  "exit": 0,
+  "recorded_utc": "2026-10-09T07:50:13.334680+00:00",
+  "scope": "Read-only verification of existing consumer records; no new solver runs or timings",
+  "original_source_archive_binary_hashes_verified": 11,
+  "cases": [
+    {
+      "input": "j3_X2Y_g0.202_nc21.txt",
+      "g": [
+        "0.20200000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000e0",
+        "0"
+      ],
+      "dims": [
+        "21",
+        "25",
+        "300",
+        "27"
+      ],
+      "precision": [
+        "374"
+      ],
+      "gtol": "1E-22",
+      "delta_error": "7.10245197342712E-125",
+      "history_error": "0",
+      "iterations": 3,
+      "converged": true,
+      "acceptance_pass": true
+    },
+    {
+      "input": "g0.2_nc15_saved_seed.txt",
+      "g": [
+        "0.20000000000000000000000000000000000000000000000000000000000000000000000000000000e0",
+        "0"
+      ],
+      "dims": [
+        "15",
+        "19",
+        "100",
+        "21"
+      ],
+      "precision": [
+        "352"
+      ],
+      "gtol": "1E-25",
+      "delta_error": "3.0523092452E-118",
+      "history_error": "0",
+      "iterations": 5,
+      "converged": false,
+      "acceptance_pass": false
+    }
+  ],
+  "sha256": {
+    "j3_X2Y_g0.202_nc21_cpu.m": "c840246a9b187881aef16603c52070ec1e000335f8252dee5c3d4c7a3c5ca7bc",
+    "original_metadata.json": "2d32019811e2b3a6734edd0da0eac2d6d6d2530fd4faf66d897e995d927a6f3b",
+    "j3_X2Y_g0.202_nc21_gpu.m": "c745c121228691f5805fcc613f2ff1570f4cde87ff420d36f65fdc3fa12bea25",
+    "j3_X2Y_g0.202_nc21_cpu.log": "e2fa786f7e74781223a307c4c24b1c797d6bd712d73e446f2693b1e38de3766f",
+    "g0.2_nc15_saved_seed_cpu.log": "0d006c7c84902ad25b3fca9fdf931bcb501dafe0b75e312f30bce4d38033959b",
+    "g0.2_nc15_saved_seed_gpu.log": "caf720c95c084ee1f338bf9da46c13da5a4490de78e02d1286d0eba6c662766c",
+    "comparison.json": "e0e09544b183232e4091114625ede68934e990b858c81171502e46fc6ea8c813",
+    "j3_X2Y_g0.202_nc21_gpu.log": "bfd6a9f5eacc204a4cbc66adcbf0cae35bd01e9c4bcc71a197901b91bdfd3281",
+    "g0.2_nc15_saved_seed.txt": "86fa0d295563ce23a290aa9a4e61f7348a4ba4635ad97a26d8c5845fc504d766",
+    "helper_validation.log": "75e11d9f051c155a12b9ed8e9026a2e82c1fbd3d721623319f34b67b3ed445d0",
+    "g0.2_nc15_saved_seed_gpu.m": "eb45846d3fb23063f8e49b98e56ad38dea933af69b6e8d494a44580759a51175",
+    "configuration_checks.json": "dd6d9f298ae95be28337aa9bc5456e7d24485647502d55f8c0276c1c81dbce4c",
+    "helper_reference.log": "891b7aab6075250956adca025b3b6419c271a81fc66c37ba4f7a27ec5bc3cecf",
+    "comparison_reader.py": "150bc793315de9819792836747da95bd6b32e82211c02ebdc20f81767e9e8226",
+    "j3_X2Y_g0.202_nc21.txt": "4545c163d78f20017d5626019a3530dab7897a368a3765c5661220137d38a6b2",
+    "g0.2_nc15_saved_seed_cpu.m": "139ceedf075a5f8229ab78b4e64dde554fd734cb89d35746ed0172f196b3878e"
+  },
+  "p3_required_g0_1_0_2_0_5_complete": false,
+  "idle_timing_accepted": false,
+  "combined_normal_accepted": false
+}

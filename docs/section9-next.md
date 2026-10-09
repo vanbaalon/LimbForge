@@ -283,3 +283,22 @@ The original saved-seed .1/.5 diagnostics also agree but stall. A reused-seed .2
 diverges and stalls; its own saved seed agrees but still fails convergence acceptance.
 Full g=.1/.2/.5 production checks remain open. Fourier 7.9x and old trial ratios are
 historical pre-1.0.1 measurements and must be remeasured before any speed claim.
+
+### Verified WolfNum 1.3.1 consumer replay (2026-10-09)
+
+The current `build-wolfnum-hp` consumer uses matching 1.3.1 headers/archive at
+`78f7da6`, with ten inline limbs. Source/archive/binary hashes, raw serialized
+outputs and log markers have been independently checked against the existing
+consumer records; no new solver run or timing was performed by this review.
+
+The J=3 X²Y fixture at g=.202, Nc=21/NQ=25/Nsh=300/nPts=27 and 374 bits passes
+its input convergence gate (gtol=1e-22): both residuals are 5.57752179966997436e-25,
+three-entry histories match, and maximum component Delta difference is
+7.10245197342712e-125. Adjoint checks pass and all three existing GPU paths run
+without fallback. The combined exact-normal candidate is explicitly disabled.
+This is evidence for that fixture; it does not complete the requested g=.1/.2/.5
+checks, new switches or idle-host timings. The same comparison command also
+contains the old J=2 g=.2 diagnostic, which still stalls at 5.34e-14 and therefore
+returns overall exit 2. Preserve that unsuccessful acceptance result.
+
+[Archived raw records and independent check](../benchmarks/experiments/section9_consumer_replay.md).

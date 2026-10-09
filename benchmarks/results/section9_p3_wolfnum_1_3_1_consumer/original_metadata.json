@@ -1,0 +1,38 @@
+{
+  "library": "WolfNum",
+  "version": "1.3.1",
+  "source": "/Users/k0959535/Dropbox/IntegrabilityProjects/2026 4d SoV/LimbForge",
+  "commit": "78f7da609047be82943b578594c33bdd126371a1",
+  "dirty": false,
+  "build": "qsccpp/build-wolfnum-hp",
+  "maxlimbs": 10,
+  "load_before": [
+    14.37744140625,
+    13.25439453125,
+    14.69970703125
+  ],
+  "timing_accepted": false,
+  "sha256": {
+    "/Users/k0959535/Dropbox/IntegrabilityProjects/2026 4d SoV/LimbForge/include/limbforge/version.hpp": "257f26894dabe6ae2a348507477f678234f7295fe510e276439ff2cf397b72f3",
+    "qsccpp/build-wolfnum-hp/limbforge/liblimbforge.a": "3535fed5214cf8f65531ba9f5b393c0f4270551c28e97f2a728c5baf7e411e40",
+    "qsccpp/build-wolfnum-hp/qscmx": "b3209717b5e9eec4f1c85d43613e5e64449c202b5fa90967c152f35c89dbe8ce",
+    "qsccpp/include/mx.hpp": "e88a0498fe417f3a5fb7f126b1f9164b17e4beddf70469a40c9b3e4248d13010",
+    "qsccpp/CMakeLists.txt": "f3c0e004bf5520f84133a1b89b0194489267b7f5137c4530a5c691f290aa1af1",
+    "qsccpp/runs/wolfnum_1_3_1/inputs/j3_X2Y_g0.202_nc21.txt": "4545c163d78f20017d5626019a3530dab7897a368a3765c5661220137d38a6b2",
+    "qsccpp/tools/test_limbforge.cpp": "42e740df6bf3a92747be6421c2a98f82a6159ef3331d93d226528df446b7e64f",
+    "qsccpp/runs/wolfnum_1_3_1/solver_comparison/comparison.json": "e0e09544b183232e4091114625ede68934e990b858c81171502e46fc6ea8c813",
+    "qsccpp/runs/wolfnum_1_3_1/helper_reference.log": "891b7aab6075250956adca025b3b6419c271a81fc66c37ba4f7a27ec5bc3cecf",
+    "qsccpp/runs/wolfnum_1_3_1/helper_validation.log": "75e11d9f051c155a12b9ed8e9026a2e82c1fbd3d721623319f34b67b3ed445d0",
+    "qsccpp/runs/wolfnum_1_3_1/configuration_checks.json": "dd6d9f298ae95be28337aa9bc5456e7d24485647502d55f8c0276c1c81dbce4c"
+  },
+  "checks": {
+    "focused_reference": "pass",
+    "metal_shader_validation": "pass",
+    "solver_comparison": "solver_comparison/comparison.json",
+    "comparison_command_exit": 2,
+    "j3_fixture_acceptance": true,
+    "historical_j2_fixture_acceptance": false,
+    "combined_exact_normal": false,
+    "configuration_options": "configuration_checks.json"
+  }
+}

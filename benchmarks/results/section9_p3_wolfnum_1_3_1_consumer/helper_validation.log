@@ -1,0 +1,5 @@
+2026-10-09 03:42:19.205 qscmx_limbforge_check[21604:253219179] Metal GPU Validation Enabled
+WolfNum power moments: batched algebra: null host operand; using CPU fallback
+WolfNum normal equations: normal equations: inconsistent shape; using CPU fallback
+WolfNum startup prewarm: injected prewarm compile failure; using CPU fallback
+QSC WolfNum 1.3.1 focused checks passed (352 bits, startup prewarm/drain/fallback, exceptions, transactional outputs, switches, combined exact normal equations, width guard).

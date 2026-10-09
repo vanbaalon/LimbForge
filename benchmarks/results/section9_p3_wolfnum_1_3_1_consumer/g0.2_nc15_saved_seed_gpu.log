@@ -1,0 +1,29 @@
+WolfNum algebra prewarm: 1.3.1, 352 bits, startup wait 0.74300045800000003 s (outside solve timing)
+  start |G| = 5.8209873273557105e-12  |cons| = 1.3513056683173392e-23  (0.26655287500000002 s)
+  power moments: pack 0.004302625 s, library wall 0.042391042000000004 s (device 0.026543666666839272 s), unpack 0.0010410830000000002 s
+  adjoint tables: stage 1 0.035413125000000004 s, stage 2 (GPU) 0.053262542000000003 s
+  adjoint check: PASS relative max difference 0, 0 units of 2^-352 (limit 65536; scale max |rows|; 12 columns), relative to max |dRows| 0
+  normal matrix (GPU): 0.0076552090000000005 s, CPU J^T G: 0.004074416 s
+  first Cholesky (GPU): 0.019220792 s
+  it 1  |G| = 5.3435097144530087e-14  mu = 1.0000000000000001e-18  Delta = 2 + 0.0070912190526593172 + -6.8500145751194759e-25 i  (1.5776144999999999 s)
+  power moments: pack 0.0033583330000000002 s, library wall 0.030912125000000002 s (device 0.026364874967839569 s), unpack 0.0006770420000000001 s
+  adjoint tables: stage 1 0.028299791000000001 s, stage 2 (GPU) 0.039474459000000003 s
+  adjoint check: PASS relative max difference 0, 0 units of 2^-352 (limit 65536; scale max |rows|; 12 columns), relative to max |dRows| 0
+  normal matrix (GPU): 0.004633458 s, CPU J^T G: 0.00089816700000000006 s
+  first Cholesky (GPU): 0.011727833 s
+  it 2  |G| = 5.3435097144530087e-14  mu = 0.0001  Delta = 2 + 0.0070912190526593172 + -6.8500145751194759e-25 i  (3.6642463749999998 s)
+  power moments: pack 0.0014082090000000001 s, library wall 0.030177666000000002 s (device 0.026261999970301986 s), unpack 0.00060216700000000002 s
+  adjoint tables: stage 1 0.029105958000000001 s, stage 2 (GPU) 0.035583875000000001 s
+  adjoint check: PASS relative max difference 0, 0 units of 2^-352 (limit 65536; scale max |rows|; 12 columns), relative to max |dRows| 0
+  normal matrix (GPU): 0.0057515410000000006 s, CPU J^T G: 0.00084066700000000002 s
+  first Cholesky (GPU): 0.015164458 s
+  it 3  |G| = 5.3435097144530087e-14  mu = 10000  Delta = 2 + 0.0070912190526593172 + -6.8500145751194759e-25 i  (5.4325261669999998 s)
+  power moments: pack 0.0022460420000000002 s, library wall 0.035091042000000003 s (device 0.026480625034309924 s), unpack 0.00063795799999999999 s
+  adjoint tables: stage 1 0.022255542 s, stage 2 (GPU) 0.043122333000000006 s
+  adjoint check: PASS relative max difference 0, 0 units of 2^-352 (limit 65536; scale max |rows|; 12 columns), relative to max |dRows| 0
+  normal matrix (GPU): 0.010961750000000001 s, CPU J^T G: 0.00089050000000000002 s
+  first Cholesky (GPU): 0.047859709 s
+  it 4  |G| = 5.3435097144530087e-14  mu = 1000000000000  Delta = 2 + 0.0070912190526593172 + -6.8500145751194759e-25 i  (7.6037307079999996 s)
+  timing: Jc 0.66617066599999997  JG 3.4010659570000001  lin 0.14996058500000001  LM 2.7032314990000001  chord 0.41607512600000002 s (0 chord steps)
+  JG split (thread-summed s): dB 0.92361286100000006  descent 4.5467003790000007  residual 3.331943785
+done (8.6900953340000004 s)

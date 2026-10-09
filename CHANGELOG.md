@@ -2,6 +2,10 @@
 
 ## Unreleased
 
+- Archived and independently verified matching 1.3.1 qscmx replay records: J=3
+  g=.202 converges at its input tolerance; the historical J=2 g=.2 diagnostic
+  remains stalled. No new consumer switch, complete g sweep or timing acceptance.
+
 - Recorded 14 offline GEMM calibration keys from checked WolfNum 1.3.1 Fourier
   and resident 4x4 profiles. Generated C++ lookups and failed/nonterminal/hash, idle
   and overwrite guards pass. Busy-host results establish no consumer default.

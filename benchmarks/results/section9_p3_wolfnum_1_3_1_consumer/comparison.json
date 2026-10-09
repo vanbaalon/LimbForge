@@ -1,0 +1,90 @@
+[
+  {
+    "input": "runs/wolfnum_1_3_1/inputs/j3_X2Y_g0.202_nc21.txt",
+    "sha256": "4545c163d78f20017d5626019a3530dab7897a368a3765c5661220137d38a6b2",
+    "g": [
+      "0.20200000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000e0",
+      "0"
+    ],
+    "dims": [
+      "21",
+      "25",
+      "300",
+      "27"
+    ],
+    "prec": [
+      "374"
+    ],
+    "binary": "/Users/k0959535/Dropbox/IntegrabilityProjects/2026 Near N=4/qsccpp/build-wolfnum-hp/qscmx",
+    "load_before": [
+      [
+        20.140625,
+        14.8115234375,
+        15.22509765625
+      ],
+      [
+        23.0205078125,
+        15.58056640625,
+        15.49169921875
+      ]
+    ],
+    "timing_accepted": false,
+    "combined_exact_normal": false,
+    "delta_max_component_error": "7.10245197342712E-125",
+    "cpu_iterations": 3,
+    "gpu_iterations": 3,
+    "history_max_relative_error": "0",
+    "cpu_residual": "5.57752179966997436E-25",
+    "gpu_residual": "5.57752179966997436E-25",
+    "gtol": "1E-22",
+    "adjoint_checks_pass": true,
+    "all_three_gpu_paths_exercised": true,
+    "agreement_pass": true,
+    "converged": true,
+    "acceptance_pass": true
+  },
+  {
+    "input": "runs/limbforge/inputs/g0.2_nc15_saved_seed.txt",
+    "sha256": "86fa0d295563ce23a290aa9a4e61f7348a4ba4635ad97a26d8c5845fc504d766",
+    "g": [
+      "0.20000000000000000000000000000000000000000000000000000000000000000000000000000000e0",
+      "0"
+    ],
+    "dims": [
+      "15",
+      "19",
+      "100",
+      "21"
+    ],
+    "prec": [
+      "352"
+    ],
+    "binary": "/Users/k0959535/Dropbox/IntegrabilityProjects/2026 Near N=4/qsccpp/build-wolfnum-hp/qscmx",
+    "load_before": [
+      [
+        22.5380859375,
+        15.60400390625,
+        15.50048828125
+      ],
+      [
+        21.37841796875,
+        15.58349609375,
+        15.494140625
+      ]
+    ],
+    "timing_accepted": false,
+    "combined_exact_normal": false,
+    "delta_max_component_error": "3.0523092452E-118",
+    "cpu_iterations": 5,
+    "gpu_iterations": 5,
+    "history_max_relative_error": "0",
+    "cpu_residual": "5.34350971445300872E-14",
+    "gpu_residual": "5.34350971445300872E-14",
+    "gtol": "1E-25",
+    "adjoint_checks_pass": true,
+    "all_three_gpu_paths_exercised": true,
+    "agreement_pass": true,
+    "converged": false,
+    "acceptance_pass": false
+  }
+]

@@ -1,0 +1,22 @@
+[
+  {
+    "case": "legacy",
+    "exit": 0,
+    "pass": true
+  },
+  {
+    "case": "same_tree",
+    "exit": 0,
+    "pass": true
+  },
+  {
+    "case": "conflict",
+    "exit": 1,
+    "pass": true
+  },
+  {
+    "case": "cpu",
+    "exit": 0,
+    "pass": true
+  }
+]

@@ -1,0 +1,13 @@
+WolfNum algebra prewarm: 1.3.1, 384 bits, startup wait 1.8109206670000002 s (outside solve timing)
+Dset: rank 32 of 168  (4.1413889160000004 s)
+  start |G| = 1.0243522681269547e-10  |cons| = 4.1028220842960933e-94  (0.46722820900000001 s)
+  power moments: pack 0.011865042000000001 s, library wall 0.12540916600000002 s (device 0.10152212501270697 s), unpack 0.001716375 s
+  adjoint tables: stage 1 0.077231000000000008 s, stage 2 (GPU) 0.15712545800000002 s
+  adjoint check: PASS relative max difference 0, 0 units of 2^-374 (limit 65536; scale max |rows|; 12 columns), relative to max |dRows| 0
+  normal matrix (GPU): 0.053339000000000004 s, CPU J^T G: 0.0011178340000000001 s
+  first Cholesky (GPU): 0.060701167 s
+  it 1  |G| = 1.2649616737754718e-21  mu = 1.0000000000000001e-21  Delta = 2 + 1.0012726137914625 + 2.069011156244995e-31 i  (3.6011721250000002 s)
+  it 2 (chord)  |G| = 5.5775217996699744e-25  Delta = 2 + 1.0012726137914625 + -1.2665295352789159e-29 i  (3.795949834 s)
+  timing: Jc 0.31923516600000001  JG 2.4465135419999999  lin 0.114478208  LM 0.25362974999999999  chord 0.19454725 s (1 chord steps)
+  JG split (thread-summed s): dB 0.45526828900000005  descent 3.6272598380000001  residual 2.848589085
+done (8.0703402499999992 s)

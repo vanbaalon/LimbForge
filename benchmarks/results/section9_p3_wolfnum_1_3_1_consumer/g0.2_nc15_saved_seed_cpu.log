@@ -1,0 +1,24 @@
+  start |G| = 5.8209873273557105e-12  |cons| = 1.3513056683173392e-23  (0.26800066700000003 s)
+  adjoint tables: stage 1 0.025123667000000002 s, stage 2 (CPU) 0.25498866600000003 s
+  adjoint check: PASS relative max difference 0, 0 units of 2^-352 (limit 65536; scale max |rows|; 12 columns), relative to max |dRows| 0
+  normal matrix (CPU): 0.087647125000000006 s, CPU J^T G: 0.00093775000000000011 s
+  first Cholesky (CPU): 0.071296499999999999 s
+  it 1  |G| = 5.3435097144530087e-14  mu = 1.0000000000000001e-18  Delta = 2 + 0.0070912190526593172 + -6.8500145751194759e-25 i  (1.8420271669999999 s)
+  adjoint tables: stage 1 0.031214000000000002 s, stage 2 (CPU) 0.22577925000000001 s
+  adjoint check: PASS relative max difference 0, 0 units of 2^-352 (limit 65536; scale max |rows|; 12 columns), relative to max |dRows| 0
+  normal matrix (CPU): 0.076364167000000011 s, CPU J^T G: 0.00094641600000000005 s
+  first Cholesky (CPU): 0.079334292000000001 s
+  it 2  |G| = 5.3435097144530087e-14  mu = 0.0001  Delta = 2 + 0.0070912190526593172 + -6.8500145751194759e-25 i  (4.1286444580000001 s)
+  adjoint tables: stage 1 0.020841417000000001 s, stage 2 (CPU) 0.18501008300000002 s
+  adjoint check: PASS relative max difference 0, 0 units of 2^-352 (limit 65536; scale max |rows|; 12 columns), relative to max |dRows| 0
+  normal matrix (CPU): 0.085030166000000004 s, CPU J^T G: 0.00090475000000000006 s
+  first Cholesky (CPU): 0.058952500000000005 s
+  it 3  |G| = 5.3435097144530087e-14  mu = 10000  Delta = 2 + 0.0070912190526593172 + -6.8500145751194759e-25 i  (6.4315494580000001 s)
+  adjoint tables: stage 1 0.026804875000000002 s, stage 2 (CPU) 0.205293 s
+  adjoint check: PASS relative max difference 0, 0 units of 2^-352 (limit 65536; scale max |rows|; 12 columns), relative to max |dRows| 0
+  normal matrix (CPU): 0.086614667000000006 s, CPU J^T G: 0.00090570800000000008 s
+  first Cholesky (CPU): 0.057994542000000003 s
+  it 4  |G| = 5.3435097144530087e-14  mu = 1000000000000  Delta = 2 + 0.0070912190526593172 + -6.8500145751194759e-25 i  (8.8356884999999998 s)
+  timing: Jc 0.56488204200000003  JG 4.0996433740000002  lin 0.45657658400000001  LM 3.0182490829999997  chord 0.427605874 s (0 chord steps)
+  JG split (thread-summed s): dB 0.85299867700000009  descent 8.672944888  residual 3.2308620330000002
+done (9.1462398329999992 s)
