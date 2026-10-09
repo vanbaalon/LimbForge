@@ -1,0 +1,33 @@
+2026-10-09 09:07:23.904 test_wolfnum_exact_gemm4_supplement[41540:278585336] Metal GPU Validation Enabled
+64 bits exact4 overflow cancellation, far-epsilon ties and old-component statuses PASS
+96 bits exact4 overflow cancellation, far-epsilon ties and old-component statuses PASS
+128 bits exact4 overflow cancellation, far-epsilon ties and old-component statuses PASS
+160 bits exact4 overflow cancellation, far-epsilon ties and old-component statuses PASS
+192 bits exact4 overflow cancellation, far-epsilon ties and old-component statuses PASS
+224 bits exact4 overflow cancellation, far-epsilon ties and old-component statuses PASS
+256 bits exact4 overflow cancellation, far-epsilon ties and old-component statuses PASS
+288 bits exact4 overflow cancellation, far-epsilon ties and old-component statuses PASS
+320 bits exact4 overflow cancellation, far-epsilon ties and old-component statuses PASS
+352 bits exact4 overflow cancellation, far-epsilon ties and old-component statuses PASS
+384 bits exact4 overflow cancellation, far-epsilon ties and old-component statuses PASS
+416 bits exact4 overflow cancellation, far-epsilon ties and old-component statuses PASS
+448 bits exact4 overflow cancellation, far-epsilon ties and old-component statuses PASS
+480 bits exact4 overflow cancellation, far-epsilon ties and old-component statuses PASS
+512 bits exact4 overflow cancellation, far-epsilon ties and old-component statuses PASS
+544 bits exact4 overflow cancellation, far-epsilon ties and old-component statuses PASS
+576 bits exact4 overflow cancellation, far-epsilon ties and old-component statuses PASS
+608 bits exact4 overflow cancellation, far-epsilon ties and old-component statuses PASS
+640 bits exact4 overflow cancellation, far-epsilon ties and old-component statuses PASS
+672 bits exact4 overflow cancellation, far-epsilon ties and old-component statuses PASS
+704 bits exact4 overflow cancellation, far-epsilon ties and old-component statuses PASS
+736 bits exact4 overflow cancellation, far-epsilon ties and old-component statuses PASS
+768 bits exact4 overflow cancellation, far-epsilon ties and old-component statuses PASS
+800 bits exact4 overflow cancellation, far-epsilon ties and old-component statuses PASS
+832 bits exact4 overflow cancellation, far-epsilon ties and old-component statuses PASS
+864 bits exact4 overflow cancellation, far-epsilon ties and old-component statuses PASS
+896 bits exact4 overflow cancellation, far-epsilon ties and old-component statuses PASS
+928 bits exact4 overflow cancellation, far-epsilon ties and old-component statuses PASS
+960 bits exact4 overflow cancellation, far-epsilon ties and old-component statuses PASS
+992 bits exact4 overflow cancellation, far-epsilon ties and old-component statuses PASS
+1024 bits exact4 overflow cancellation, far-epsilon ties and old-component statuses PASS
+PASS exact4 supplementary31-width gate

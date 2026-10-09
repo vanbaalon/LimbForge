@@ -1,0 +1,1 @@
+PASS exact4:31 small/dense normal+Metal,26/19 regressions,31 supplemental normal+Metal,31 comparison CPU widths/6 rejections,8 comparison GPU checks,31 normal+Metal multi-call probes; no performance/API acceptance

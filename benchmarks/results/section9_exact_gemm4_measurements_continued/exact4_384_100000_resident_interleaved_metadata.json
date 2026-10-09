@@ -1,0 +1,170 @@
+{
+  "state": "terminal",
+  "command": [
+    "./build/wolfnum_exact_gemm4_comparison",
+    "--bits",
+    "384",
+    "--count",
+    "100000",
+    "--workers",
+    "18",
+    "--repeats",
+    "3",
+    "--resident"
+  ],
+  "kind": "comparison",
+  "sha256": {
+    "CMakeLists.txt": "58baecab72b87bb06c519c8d628077ed4af4577d1e7878ac13ad7b37ea984211",
+    "include/limbforge/version.hpp": "257f26894dabe6ae2a348507477f678234f7295fe510e276439ff2cf397b72f3",
+    "include/limbforge/core.hpp": "12cc4bcd199bc0957275f55f7e7462f79918ad19fb3f21b55404d08119ef2ce8",
+    "include/limbforge/engine.hpp": "e4b391b03ac5e87172da224be0bc6f41a0672143049c0bb98a95fdf3feb9983e",
+    "include/limbforge/linalg.hpp": "ced23f8b062253d22534dc6f30f83bf4286d83ad8b87bd58689846c09e2e0ef6",
+    "src/engine_internal.hpp": "b98542215fe502b99ab491af0d2459b4c1d56182e70bb78bba3352948f8fe761",
+    "tests/reference.hpp": "fc4fa600d9703a5fa7e6341cc6ad56661d5ef5877b8cd6c3327ede99a26db796",
+    "benchmarks/benchmark_support.hpp": "9facbdc33083514f06ff4c868926adcc65545b5b4d32cc175fc74d9d4874522d",
+    "build/generated/exact_gemm4_source.hpp": "4051deb06995c8437ffc5dbfb73de5e530d5bb7249a55c6c34186279de4a7069",
+    "benchmarks/experiments/exact_gemm4/prototype.hpp": "46755381adc782a058dc266259bc25a111e885c1e05be8c4088333443a820aff",
+    "benchmarks/experiments/exact_gemm4/prototype.mm": "3ab24f3b7d02534c7618181eeef48571cc5d9d708a322c419b3bff15d3c21252",
+    "benchmarks/experiments/exact_gemm4/kernel.metal": "ac51e40f777793bada037b63e8ab559ab4e79d66a0abe3e65a990b9200d01285",
+    "benchmarks/experiments/exact_gemm4/source.hpp.in": "7638344aab9efca9e341cb721ac3e3a6b0eede120a1c93fbd4fdc5d8346af00b",
+    "benchmarks/experiments/exact_gemm4/test.cpp": "40e35ffa28468ecf0afc65335aee380e237ca3822d6b2fba486f933d0730d55c",
+    "benchmarks/experiments/exact_gemm4/supplement.cpp": "155d07f7ae1efdff61febd7b53f391437dea242d71c87e04ffd0bbaacc53c681",
+    "benchmarks/experiments/exact_gemm4/comparison.cpp": "3d289c809852886e4520e6a7e3572208b47203c36792db568b3cf048ea399699",
+    "benchmarks/experiments/exact_gemm4/clock_probe.cpp": "1d9e144c6309e04e939e6599fd1a37b5209bc2b37294a0106f7f3c5eb02d523d",
+    "benchmarks/experiments/exact_gemm4/measure_continued.py": "669ea23c38d34bd519815074621b1489f075f636bcf53499b6ddaa77b3be76db",
+    "benchmarks/experiments/exact_gemm4/verify.py": "1bee149dea876b09e60efde055888292bae1eb472ff97debf116968185a0aed8",
+    "build/liblimbforge.a": "466c05404b13fc94068d02048c1af9f5ebb556162d026e333be612d3b39fc018",
+    "build/libwolfnum_exact_gemm4.a": "7da48754132a40376b9123cf3bee3372692c3e26fbca3e56b16be8751eec6c25",
+    "build/wolfnum_exact_gemm4_comparison": "8023531e233874642766d7409a5a83d9ac8e1c93fd3c9fe1350cc22e87684db5",
+    "build/wolfnum_exact_gemm4_clock_probe": "de9551cc3d2f35a0ca6b6db51f29315a844d0972b0d53433d39a4a8733bc7a77"
+  },
+  "source_commit": "d47df9ea4810ac2e2e23f671ff3d7991c75f3838",
+  "library_baseline": "v1.3.1",
+  "experimental_api": true,
+  "promoted": false,
+  "correctness_gate_sha256": {
+    "section9_exact_gemm4_gate": "3376a089764153e6a11810a07e23d033bd46f6a26d405bc8359582364238b063",
+    "section9_exact_gemm4_post_gate_continued": "7124b11d884949ae25fb6f1154ce45bdceb4a56774d6f180e15f7d067d6f78b5",
+    "section9_exact_gemm4_clock_gate_continued": "e3842135659b1dd44aef4d0de4c386a74e0059f3b2f7f100787b4b4749bde212",
+    "section9_exact_gemm4_comparison_cpu_gate": "743df9f61094139e00e0b168e5209240d2b8b5c430a5cd6ae7ed85d24678b20b"
+  },
+  "load_samples": [
+    {
+      "monotonic": 332725.789910041,
+      "utc": "2026-10-09T13:14:03.081663+00:00",
+      "loadavg": [
+        7.43603515625,
+        5.37841796875,
+        5.50634765625
+      ]
+    },
+    {
+      "monotonic": 332726.817745916,
+      "utc": "2026-10-09T13:14:04.109523+00:00",
+      "loadavg": [
+        7.32080078125,
+        5.388671875,
+        5.5087890625
+      ]
+    },
+    {
+      "monotonic": 332727.820762416,
+      "utc": "2026-10-09T13:14:05.112546+00:00",
+      "loadavg": [
+        7.32080078125,
+        5.388671875,
+        5.5087890625
+      ]
+    },
+    {
+      "monotonic": 332728.823872458,
+      "utc": "2026-10-09T13:14:06.115669+00:00",
+      "loadavg": [
+        7.32080078125,
+        5.388671875,
+        5.5087890625
+      ]
+    },
+    {
+      "monotonic": 332729.830432,
+      "utc": "2026-10-09T13:14:07.122242+00:00",
+      "loadavg": [
+        7.32080078125,
+        5.388671875,
+        5.5087890625
+      ]
+    },
+    {
+      "monotonic": 332730.831312375,
+      "utc": "2026-10-09T13:14:08.123136+00:00",
+      "loadavg": [
+        7.32080078125,
+        5.388671875,
+        5.5087890625
+      ]
+    },
+    {
+      "monotonic": 332731.851892083,
+      "utc": "2026-10-09T13:14:09.143730+00:00",
+      "loadavg": [
+        9.13671875,
+        5.796875,
+        5.65185546875
+      ]
+    },
+    {
+      "monotonic": 332732.854192541,
+      "utc": "2026-10-09T13:14:10.146044+00:00",
+      "loadavg": [
+        9.13671875,
+        5.796875,
+        5.65185546875
+      ]
+    },
+    {
+      "monotonic": 332733.855652291,
+      "utc": "2026-10-09T13:14:11.147517+00:00",
+      "loadavg": [
+        9.13671875,
+        5.796875,
+        5.65185546875
+      ]
+    },
+    {
+      "monotonic": 332734.8571375,
+      "utc": "2026-10-09T13:14:12.149016+00:00",
+      "loadavg": [
+        9.13671875,
+        5.796875,
+        5.65185546875
+      ]
+    },
+    {
+      "monotonic": 332734.857444416,
+      "utc": "2026-10-09T13:14:12.149320+00:00",
+      "loadavg": [
+        9.13671875,
+        5.796875,
+        5.65185546875
+      ]
+    }
+  ],
+  "started_utc": "2026-10-09T13:14:03.081607+00:00",
+  "timing_accepted_for_consumer": false,
+  "clock": "cpu-interleaved",
+  "pid": 45531,
+  "birth_command": "Fri Oct  9 09:14:03 2026     /usr/bin/time -l ./build/wolfnum_exact_gemm4_comparison --bits 384 --count 100000 --workers 18 --repeats 3 --resident",
+  "exit": 0,
+  "ended_utc": "2026-10-09T13:14:12.149328+00:00",
+  "elapsed_seconds": 9.06753945798846,
+  "checked_csv_rows": 4,
+  "artifacts_sha256": {
+    "exact4_384_100000_resident_interleaved.csv": "50be4c239bf2f771873f2d4cd022c14b8c8c74b6d04873d40e280a6e560ad9a0",
+    "exact4_384_100000_resident_interleaved.txt": "adf6ce4881921c0430151733a8bfe7f442eddee82770a41ff7d550adf6e04add"
+  },
+  "all_recorded_loadavg_below_4": false,
+  "process_memory_time_l_fields": {
+    "maximum resident set size": 5997117440,
+    "peak memory footprint": 7587714040
+  }
+}

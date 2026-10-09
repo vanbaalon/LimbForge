@@ -1,0 +1,5 @@
+bits,count,m,n,k,path,resident,workers,repeats,clock,cpu_wall,gpu_wall,gpu_device,wall_p25,wall_p75,wall_min,wall_max,different_complex_entries,error_units_2neg_bits,profile
+448,10000,4,4,4,complex_composed,1,18,3,cpu-interleaved,0.019601,0.004545292,0.00399175001075,0.004456459,0.004545292,0.004456459,0.005463834,119102,1.78462047562,Apple M5 Max / 1.3.1 / experimental-exact4-gemm-contracts
+448,10000,4,4,4,complex_fused,1,18,3,cpu-interleaved,0.05721175,0.008391917,0.00764512497699,0.00690075,0.008391917,0.00690075,0.008898333,88864,1.06464307029,Apple M5 Max / 1.3.1 / experimental-exact4-gemm-contracts
+448,10000,4,4,4,exact_batched4,1,18,3,cpu-interleaved,0.02830125,0.005333166,0.00321687501855,0.005099667,0.005333166,0.005099667,0.005866416,0,0.412392476264,Apple M5 Max / 1.3.1 / experimental-exact4-gemm-contracts
+448,10000,4,4,4,gauss_three_real_composed,1,18,3,cpu-interleaved,0.018226708,0.003547625,0.00295525003457,0.003286583,0.003547625,0.003286583,0.00408725,136831,3.09528869354,Apple M5 Max / 1.3.1 / experimental-exact4-gemm-contracts

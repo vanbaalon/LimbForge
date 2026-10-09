@@ -135,15 +135,15 @@ a row in `docs/optimizations.md`, rejected attempts kept under `benchmarks/exper
 - **Benchmark:** commit one for the trials (shape above), including `cholesky_solve` with several right-hand sides (the chord steps).
 
 **P1.3: GEMM kernel.**
-- **Exact 4x4 prototype in qualification:** isolated branch
-  `round-section9-exact-gemm4` adds a single-dispatch real/complex exact batch,
-  input snapshots and per-component wide-exponent repair at wait. All 31
-  small/dense normal/Metal widths and 26 normal library suites pass. The 19
-  Metal suites and supplementary/multi-call checks are still running or queued;
-  the normal-suite collector wording correction preserves the passing raw run.
-  No timing, installed API or release is accepted yet. Next: complete those gates,
-  then measure the 352/384/448-bit 1e4/1e5 host/resident/clock grid against all four
-  MPFR contracts. See `benchmarks/experiments/exact_gemm4/QUALIFICATION.md`.
+- **Exact 4x4 baseline complete, optimization open:** the uninstalled one-dispatch
+  real/complex exact prototype passes all 31 small/dense/supplement/multi-call
+  normal/Metal gates and all 26 normal/19 Metal library suites. All 24 checked
+  352/384/448-bit 1e4/1e5 host/resident/clock comparisons and three clock probes
+  independently verify. Exact wall time exceeds composed by 1.054–4.582 times
+  in every recorded profile, so no installed API, release or default is promoted.
+  Preserved collector corrections do not alter successful numerical runs.
+  Next: workspace reuse and fallback-scan overhead, then fresh qualification and
+  measurements. [Full baseline](../benchmarks/experiments/exact_gemm4/BASELINE.md).
 - **Native three-product decision:** the isolated per-product Gauss kernel passes
   all 31 small/dense/wide normal/Metal checks and 26 normal/19 Metal regressions,
   but loses to composed in all 22 checked 352/384/448-bit Fourier/4x4 profiles

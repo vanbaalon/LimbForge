@@ -1,0 +1,43 @@
+Test project /private/tmp/wolfnum-section9-exact-gemm4/build
+      Start  1: fused_gpu
+ 1/19 Test  #1: fused_gpu ........................   Passed  303.63 sec
+      Start  2: linalg_gpu
+ 2/19 Test  #2: linalg_gpu .......................   Passed   23.66 sec
+      Start  3: linalg_cholesky
+ 3/19 Test  #3: linalg_cholesky ..................   Passed   15.14 sec
+      Start  4: linalg_qr
+ 4/19 Test  #4: linalg_qr ........................   Passed   47.33 sec
+      Start  5: linalg_qr_complex
+ 5/19 Test  #5: linalg_qr_complex ................   Passed  101.51 sec
+      Start  6: arithmetic_gpu
+ 6/19 Test  #6: arithmetic_gpu ...................   Passed   99.17 sec
+      Start  7: broadcast_gpu
+ 7/19 Test  #7: broadcast_gpu ....................   Passed   15.32 sec
+      Start  8: batched4_gpu
+ 8/19 Test  #8: batched4_gpu .....................   Passed  321.15 sec
+      Start  9: section9_smoke
+ 9/19 Test  #9: section9_smoke ...................   Passed   38.42 sec
+      Start 10: threshold_gpu
+10/19 Test #10: threshold_gpu ....................   Passed    2.15 sec
+      Start 11: cast_gpu
+11/19 Test #11: cast_gpu .........................   Passed    0.96 sec
+      Start 12: segmented_dot_gpu
+12/19 Test #12: segmented_dot_gpu ................   Passed   22.84 sec
+      Start 13: vector_recurrence_gpu
+13/19 Test #13: vector_recurrence_gpu ............   Passed   24.43 sec
+      Start 14: numerics_gpu
+14/19 Test #14: numerics_gpu .....................   Passed   94.83 sec
+      Start 15: resident_units_gpu
+15/19 Test #15: resident_units_gpu ...............   Passed  240.51 sec
+      Start 16: resident_linalg_gpu
+16/19 Test #16: resident_linalg_gpu ..............   Passed   41.81 sec
+      Start 17: resident_buffers
+17/19 Test #17: resident_buffers .................   Passed   11.95 sec
+      Start 18: transcendental_gpu
+18/19 Test #18: transcendental_gpu ...............   Passed  182.87 sec
+      Start 19: tree_reduction
+19/19 Test #19: tree_reduction ...................   Passed   18.36 sec
+
+100% tests passed out of 19
+
+Total Test time (real) = 1606.07 sec

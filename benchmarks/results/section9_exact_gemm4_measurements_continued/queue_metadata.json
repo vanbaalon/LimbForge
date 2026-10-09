@@ -1,0 +1,286 @@
+{
+  "state": "terminal",
+  "started_utc": "2026-10-09T13:13:04.282940+00:00",
+  "driver_pid": 44941,
+  "driver_birth_command": "Fri Oct  9 09:13:04 2026     /opt/homebrew/Cellar/python@3.14/3.14.6/Frameworks/Python.framework/Versions/3.14/Resources/Python.app/Contents/MacOS/Python benchmarks/experiments/exact_gemm4/measure_continued.py",
+  "dependency_pid": 26418,
+  "dependency_birth_command": "Fri Oct  9 08:41:55 2026     /opt/homebrew/Cellar/python@3.14/3.14.6/Frameworks/Python.framework/Versions/3.14/Resources/Python.app/Contents/MacOS/Python benchmarks/experiments/exact_gemm4/clock_gates_continued.py",
+  "source_commit": "d47df9ea4810ac2e2e23f671ff3d7991c75f3838",
+  "sha256": {
+    "CMakeLists.txt": "58baecab72b87bb06c519c8d628077ed4af4577d1e7878ac13ad7b37ea984211",
+    "include/limbforge/version.hpp": "257f26894dabe6ae2a348507477f678234f7295fe510e276439ff2cf397b72f3",
+    "include/limbforge/core.hpp": "12cc4bcd199bc0957275f55f7e7462f79918ad19fb3f21b55404d08119ef2ce8",
+    "include/limbforge/engine.hpp": "e4b391b03ac5e87172da224be0bc6f41a0672143049c0bb98a95fdf3feb9983e",
+    "include/limbforge/linalg.hpp": "ced23f8b062253d22534dc6f30f83bf4286d83ad8b87bd58689846c09e2e0ef6",
+    "src/engine_internal.hpp": "b98542215fe502b99ab491af0d2459b4c1d56182e70bb78bba3352948f8fe761",
+    "tests/reference.hpp": "fc4fa600d9703a5fa7e6341cc6ad56661d5ef5877b8cd6c3327ede99a26db796",
+    "benchmarks/benchmark_support.hpp": "9facbdc33083514f06ff4c868926adcc65545b5b4d32cc175fc74d9d4874522d",
+    "build/generated/exact_gemm4_source.hpp": "4051deb06995c8437ffc5dbfb73de5e530d5bb7249a55c6c34186279de4a7069",
+    "benchmarks/experiments/exact_gemm4/prototype.hpp": "46755381adc782a058dc266259bc25a111e885c1e05be8c4088333443a820aff",
+    "benchmarks/experiments/exact_gemm4/prototype.mm": "3ab24f3b7d02534c7618181eeef48571cc5d9d708a322c419b3bff15d3c21252",
+    "benchmarks/experiments/exact_gemm4/kernel.metal": "ac51e40f777793bada037b63e8ab559ab4e79d66a0abe3e65a990b9200d01285",
+    "benchmarks/experiments/exact_gemm4/source.hpp.in": "7638344aab9efca9e341cb721ac3e3a6b0eede120a1c93fbd4fdc5d8346af00b",
+    "benchmarks/experiments/exact_gemm4/test.cpp": "40e35ffa28468ecf0afc65335aee380e237ca3822d6b2fba486f933d0730d55c",
+    "benchmarks/experiments/exact_gemm4/supplement.cpp": "155d07f7ae1efdff61febd7b53f391437dea242d71c87e04ffd0bbaacc53c681",
+    "benchmarks/experiments/exact_gemm4/comparison.cpp": "3d289c809852886e4520e6a7e3572208b47203c36792db568b3cf048ea399699",
+    "benchmarks/experiments/exact_gemm4/clock_probe.cpp": "1d9e144c6309e04e939e6599fd1a37b5209bc2b37294a0106f7f3c5eb02d523d",
+    "benchmarks/experiments/exact_gemm4/measure_continued.py": "669ea23c38d34bd519815074621b1489f075f636bcf53499b6ddaa77b3be76db",
+    "benchmarks/experiments/exact_gemm4/verify.py": "1bee149dea876b09e60efde055888292bae1eb472ff97debf116968185a0aed8",
+    "build/liblimbforge.a": "466c05404b13fc94068d02048c1af9f5ebb556162d026e333be612d3b39fc018",
+    "build/libwolfnum_exact_gemm4.a": "7da48754132a40376b9123cf3bee3372692c3e26fbca3e56b16be8751eec6c25",
+    "build/wolfnum_exact_gemm4_comparison": "8023531e233874642766d7409a5a83d9ac8e1c93fd3c9fe1350cc22e87684db5",
+    "build/wolfnum_exact_gemm4_clock_probe": "de9551cc3d2f35a0ca6b6db51f29315a844d0972b0d53433d39a4a8733bc7a77"
+  },
+  "scope": "Uninstalled exact4 prototype vs production1.3.1 contracts; library-only, no accepted consumer/default policy",
+  "steps": [
+    {
+      "name": "clock_352_1024",
+      "state": "terminal",
+      "exit": 0,
+      "verified": true,
+      "retained_prior_measurement": "benchmarks/results/section9_exact_gemm4_measurements/clock_352_1024_metadata.json",
+      "metadata_sha256": "166d40f7e81e123d0cba50d9c2de54a271dae49af15f1967b918a6b76bad00fe"
+    },
+    {
+      "name": "clock_384_1024",
+      "state": "terminal",
+      "exit": 0,
+      "verified": true,
+      "retained_prior_measurement": "benchmarks/results/section9_exact_gemm4_measurements/clock_384_1024_metadata.json",
+      "metadata_sha256": "dfb40e6468868c30087216b2f5b4216c7f5dbe2519939794d65e38671c897a7b"
+    },
+    {
+      "name": "clock_448_1024",
+      "state": "terminal",
+      "exit": 0,
+      "verified": true,
+      "retained_prior_measurement": "benchmarks/results/section9_exact_gemm4_measurements/clock_448_1024_metadata.json",
+      "metadata_sha256": "a03638f101c72d2c1c99c4b3cc28672b9f335eed91540234868064986fe84fe9"
+    },
+    {
+      "name": "exact4_352_10000_host_interleaved",
+      "state": "terminal",
+      "exit": 0,
+      "verified": true,
+      "retained_prior_measurement": "benchmarks/results/section9_exact_gemm4_measurements/exact4_352_10000_host_interleaved_metadata.json",
+      "metadata_sha256": "2cc9bfa37305c56d7f268762bffa42668ebe0fd209caf6727f0eeb8a3d47f711"
+    },
+    {
+      "name": "exact4_352_10000_host_warm",
+      "state": "terminal",
+      "pid": 44952,
+      "birth_command": "Fri Oct  9 09:13:04 2026     /usr/bin/time -l ./build/wolfnum_exact_gemm4_comparison --bits 352 --count 10000 --workers 18 --repeats 3 --warm",
+      "exit": 0,
+      "metadata_sha256": "96f9317f73873c039b69d8ad4922b15457e3a538a997d42d36e555d86341481f",
+      "verified": true
+    },
+    {
+      "name": "exact4_352_10000_resident_interleaved",
+      "state": "terminal",
+      "pid": 44963,
+      "birth_command": "Fri Oct  9 09:13:05 2026     /usr/bin/time -l ./build/wolfnum_exact_gemm4_comparison --bits 352 --count 10000 --workers 18 --repeats 3 --resident",
+      "exit": 0,
+      "metadata_sha256": "3a6769b1bd5f5184d75c0eb5b1da73a5d2b3f1ff7e0e2ededef2b46cf9abe0ff",
+      "verified": true
+    },
+    {
+      "name": "exact4_352_10000_resident_warm",
+      "state": "terminal",
+      "pid": 44972,
+      "birth_command": "Fri Oct  9 09:13:06 2026     /usr/bin/time -l ./build/wolfnum_exact_gemm4_comparison --bits 352 --count 10000 --workers 18 --repeats 3 --resident --warm",
+      "exit": 0,
+      "metadata_sha256": "59dae2b5beb874e1a8ffd33cc1307a4e5522fae1002da2bd11ee1b6534644eac",
+      "verified": true
+    },
+    {
+      "name": "exact4_352_100000_host_interleaved",
+      "state": "terminal",
+      "pid": 44983,
+      "birth_command": "Fri Oct  9 09:13:07 2026     /usr/bin/time -l ./build/wolfnum_exact_gemm4_comparison --bits 352 --count 100000 --workers 18 --repeats 3",
+      "exit": 0,
+      "metadata_sha256": "f1d0d5ae1c2f09e4639473378849d6a9cbdb6bb5d1edee12e333736d140033f7",
+      "verified": true
+    },
+    {
+      "name": "exact4_352_100000_host_warm",
+      "state": "terminal",
+      "pid": 45058,
+      "birth_command": "Fri Oct  9 09:13:15 2026     /usr/bin/time -l ./build/wolfnum_exact_gemm4_comparison --bits 352 --count 100000 --workers 18 --repeats 3 --warm",
+      "exit": 0,
+      "metadata_sha256": "7825a6e8b7dd28414d5a9d3966216f3eb93cfcf33a25fc2073a0961c5358fae2",
+      "verified": true
+    },
+    {
+      "name": "exact4_352_100000_resident_interleaved",
+      "state": "terminal",
+      "pid": 45125,
+      "birth_command": "Fri Oct  9 09:13:23 2026     /usr/bin/time -l ./build/wolfnum_exact_gemm4_comparison --bits 352 --count 100000 --workers 18 --repeats 3 --resident",
+      "exit": 0,
+      "metadata_sha256": "2be5670aa3374fa34a811b1e297d1ea514a84bf06ce4b0a7f980c53d22b14d03",
+      "verified": true
+    },
+    {
+      "name": "exact4_352_100000_resident_warm",
+      "state": "terminal",
+      "pid": 45205,
+      "birth_command": "Fri Oct  9 09:13:31 2026     /usr/bin/time -l ./build/wolfnum_exact_gemm4_comparison --bits 352 --count 100000 --workers 18 --repeats 3 --resident --warm",
+      "exit": 0,
+      "metadata_sha256": "9476b8d010c1720dbf9c98666833744694484368e2df88af669bbde89ba840d0",
+      "verified": true
+    },
+    {
+      "name": "exact4_384_10000_host_interleaved",
+      "state": "terminal",
+      "pid": 45285,
+      "birth_command": "Fri Oct  9 09:13:39 2026     /usr/bin/time -l ./build/wolfnum_exact_gemm4_comparison --bits 384 --count 10000 --workers 18 --repeats 3",
+      "exit": 0,
+      "metadata_sha256": "446ee6f452011eea624d78295849c3c2b362f0405beac67ebe870cdf92724b64",
+      "verified": true
+    },
+    {
+      "name": "exact4_384_10000_host_warm",
+      "state": "terminal",
+      "pid": 45328,
+      "birth_command": "Fri Oct  9 09:13:42 2026     /usr/bin/time -l ./build/wolfnum_exact_gemm4_comparison --bits 384 --count 10000 --workers 18 --repeats 3 --warm",
+      "exit": 0,
+      "metadata_sha256": "c00f2a5dcb5b896b8287e9c3f8b91a230c4e2eac70aeab4ac2c684bc091a1b2b",
+      "verified": true
+    },
+    {
+      "name": "exact4_384_10000_resident_interleaved",
+      "state": "terminal",
+      "pid": 45340,
+      "birth_command": "Fri Oct  9 09:13:43 2026     /usr/bin/time -l ./build/wolfnum_exact_gemm4_comparison --bits 384 --count 10000 --workers 18 --repeats 3 --resident",
+      "exit": 0,
+      "metadata_sha256": "00d28bc0ba03e8387b5fd90ac160ab9950c5b2447091a1feb89b5811994dc206",
+      "verified": true
+    },
+    {
+      "name": "exact4_384_10000_resident_warm",
+      "state": "terminal",
+      "pid": 45349,
+      "birth_command": "Fri Oct  9 09:13:44 2026     /usr/bin/time -l ./build/wolfnum_exact_gemm4_comparison --bits 384 --count 10000 --workers 18 --repeats 3 --resident --warm",
+      "exit": 0,
+      "metadata_sha256": "9d8ef822ab1377f5aa26584b27f7a5a916814afc19776dd7fe3a0ad4abfe13d6",
+      "verified": true
+    },
+    {
+      "name": "exact4_384_100000_host_interleaved",
+      "state": "terminal",
+      "pid": 45360,
+      "birth_command": "Fri Oct  9 09:13:45 2026     /usr/bin/time -l ./build/wolfnum_exact_gemm4_comparison --bits 384 --count 100000 --workers 18 --repeats 3",
+      "exit": 0,
+      "metadata_sha256": "717650a766cef4300fec27471d1c1a4690d0c0d0e9d9b85883245d699a205da6",
+      "verified": true
+    },
+    {
+      "name": "exact4_384_100000_host_warm",
+      "state": "terminal",
+      "pid": 45447,
+      "birth_command": "Fri Oct  9 09:13:54 2026     /usr/bin/time -l ./build/wolfnum_exact_gemm4_comparison --bits 384 --count 100000 --workers 18 --repeats 3 --warm",
+      "exit": 0,
+      "metadata_sha256": "4076445f9efaa0a531c80e8d33a4bbd6ba51a6853dee5bc15dd8361481d4d509",
+      "verified": true
+    },
+    {
+      "name": "exact4_384_100000_resident_interleaved",
+      "state": "terminal",
+      "pid": 45531,
+      "birth_command": "Fri Oct  9 09:14:03 2026     /usr/bin/time -l ./build/wolfnum_exact_gemm4_comparison --bits 384 --count 100000 --workers 18 --repeats 3 --resident",
+      "exit": 0,
+      "metadata_sha256": "af5e01222fbda9fe674275fac03101ce9ffee2f5197359f6ec6ab2b55dfcd880",
+      "verified": true
+    },
+    {
+      "name": "exact4_384_100000_resident_warm",
+      "state": "terminal",
+      "pid": 45620,
+      "birth_command": "Fri Oct  9 09:14:12 2026     /usr/bin/time -l ./build/wolfnum_exact_gemm4_comparison --bits 384 --count 100000 --workers 18 --repeats 3 --resident --warm",
+      "exit": 0,
+      "metadata_sha256": "22979b9f0f76f91dff01b8cb339a787914fa2a64ddfea475c001f06cbb7617b9",
+      "verified": true
+    },
+    {
+      "name": "exact4_448_10000_host_interleaved",
+      "state": "terminal",
+      "pid": 45697,
+      "birth_command": "Fri Oct  9 09:14:23 2026     /usr/bin/time -l ./build/wolfnum_exact_gemm4_comparison --bits 448 --count 10000 --workers 18 --repeats 3",
+      "exit": 0,
+      "metadata_sha256": "1346410d011326527964e43bd7df2d62a64de634c13b05ec393bb9ebc55bb383",
+      "verified": true
+    },
+    {
+      "name": "exact4_448_10000_host_warm",
+      "state": "terminal",
+      "pid": 45719,
+      "birth_command": "Fri Oct  9 09:14:26 2026     /usr/bin/time -l ./build/wolfnum_exact_gemm4_comparison --bits 448 --count 10000 --workers 18 --repeats 3 --warm",
+      "exit": 0,
+      "metadata_sha256": "a024404494da610262ad5da63df288169640f3133cadf0f8e5177ae50d6d7de1",
+      "verified": true
+    },
+    {
+      "name": "exact4_448_10000_resident_interleaved",
+      "state": "terminal",
+      "pid": 45752,
+      "birth_command": "Fri Oct  9 09:14:28 2026     /usr/bin/time -l ./build/wolfnum_exact_gemm4_comparison --bits 448 --count 10000 --workers 18 --repeats 3 --resident",
+      "exit": 0,
+      "metadata_sha256": "534e31175c3c5dfb818604e34ecdf8a436b309a8ec8e3782dfa8a535078f9c54",
+      "verified": true
+    },
+    {
+      "name": "exact4_448_10000_resident_warm",
+      "state": "terminal",
+      "pid": 45765,
+      "birth_command": "Fri Oct  9 09:14:29 2026     /usr/bin/time -l ./build/wolfnum_exact_gemm4_comparison --bits 448 --count 10000 --workers 18 --repeats 3 --resident --warm",
+      "exit": 0,
+      "metadata_sha256": "f6790916e987da68704d008d9975a14f16b185e91ae06c4428c192160a32074f",
+      "verified": true
+    },
+    {
+      "name": "exact4_448_100000_host_interleaved",
+      "state": "terminal",
+      "pid": 45780,
+      "birth_command": "Fri Oct  9 09:14:31 2026     /usr/bin/time -l ./build/wolfnum_exact_gemm4_comparison --bits 448 --count 100000 --workers 18 --repeats 3",
+      "exit": 0,
+      "metadata_sha256": "06c79185c373f9e794abbc0fc98e39d9d04b7a59330a8ae99ad22bc13c69e9ee",
+      "verified": true
+    },
+    {
+      "name": "exact4_448_100000_host_warm",
+      "state": "terminal",
+      "pid": 45882,
+      "birth_command": "Fri Oct  9 09:14:41 2026     /usr/bin/time -l ./build/wolfnum_exact_gemm4_comparison --bits 448 --count 100000 --workers 18 --repeats 3 --warm",
+      "exit": 0,
+      "metadata_sha256": "ccca4dd914148f731aadf6f491616c2da8f4416aee38e43aa11a9db0c0fe28ce",
+      "verified": true
+    },
+    {
+      "name": "exact4_448_100000_resident_interleaved",
+      "state": "terminal",
+      "pid": 45953,
+      "birth_command": "Fri Oct  9 09:14:50 2026     /usr/bin/time -l ./build/wolfnum_exact_gemm4_comparison --bits 448 --count 100000 --workers 18 --repeats 3 --resident",
+      "exit": 0,
+      "metadata_sha256": "1adbfd9cb2556ffac905afdf95e41bf596913dacb0fbb0a36930f777412d1642",
+      "verified": true
+    },
+    {
+      "name": "exact4_448_100000_resident_warm",
+      "state": "terminal",
+      "pid": 46034,
+      "birth_command": "Fri Oct  9 09:15:00 2026     /usr/bin/time -l ./build/wolfnum_exact_gemm4_comparison --bits 448 --count 100000 --workers 18 --repeats 3 --resident --warm",
+      "exit": 0,
+      "metadata_sha256": "9d0e18355fa129ea880f350c28e7a94790202d02b8983d38cea8410ff35be732",
+      "verified": true
+    }
+  ],
+  "promoted": false,
+  "correctness_gate_sha256": {
+    "section9_exact_gemm4_gate": "3376a089764153e6a11810a07e23d033bd46f6a26d405bc8359582364238b063",
+    "section9_exact_gemm4_post_gate_continued": "7124b11d884949ae25fb6f1154ce45bdceb4a56774d6f180e15f7d067d6f78b5",
+    "section9_exact_gemm4_clock_gate_continued": "e3842135659b1dd44aef4d0de4c386a74e0059f3b2f7f100787b4b4749bde212",
+    "section9_exact_gemm4_comparison_cpu_gate": "743df9f61094139e00e0b168e5209240d2b8b5c430a5cd6ae7ed85d24678b20b"
+  },
+  "independent_correctness_verification_sha256": "97b5bfcf8683de2a7cba1ba19a2db06716d86f7016e0218388c8d2d9262d8cb1",
+  "status": "PASS",
+  "ended_utc": "2026-10-09T13:15:11.850955+00:00"
+}

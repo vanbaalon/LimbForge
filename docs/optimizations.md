@@ -325,3 +325,14 @@ idle/overwrite guards pass. Exact embedding is fastest in the measured Fourier
 fixtures; all contracts retain distinct references and accuracy measures. A fair
 batched exact 4x4 comparison, tile candidates and idle-consumer policy stay open.
 No library/API/version/default change. [Raw grid and verification](../benchmarks/experiments/section9_gemm_extended/README.md).
+
+## Section 9 P1.3: exact batched 4x4 baseline
+
+The uninstalled single-dispatch exact real/complex prototype passes all 31
+small/dense/supplement/multi-call normal/Metal checks and 26 normal/19 Metal
+regression suites. All 24 four-contract 352/384/448-bit comparisons (1e4/1e5,
+host/resident, both clock profiles) and three clock probes independently verify.
+The exact wall time is 1.054–4.582 times composed in every configuration; it is
+not promoted. Raw records, frozen shader, collector corrections and next overhead
+candidates are [retained here](../benchmarks/experiments/exact_gemm4/BASELINE.md).
+Production release/API/defaults stay at WolfNum 1.3.1 / API 1.

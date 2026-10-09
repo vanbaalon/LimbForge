@@ -1,0 +1,2 @@
+2026-10-09 09:07:40.982 wolfnum_exact_gemm4_comparison[41731:278586207] Metal GPU Validation Enabled
+1024 bits, 33x(4x4x4): 4 selected GPU contracts match MPFR; no timings

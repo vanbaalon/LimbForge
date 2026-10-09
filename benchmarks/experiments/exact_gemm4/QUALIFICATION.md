@@ -1,55 +1,47 @@
-# Qualification and measurement order
+# Qualification and measurement status
 
-Prototype/source gate commit: `1e748c6`, based on main `97d6b28`.
-The four 31-width small/dense normal/Metal sweeps are terminal PASS.
-The 26 normal library suites pass. Their collector expected a different CTest
-summary spelling and stopped after that completed passing suite; rejected
-metadata/source bytes are retained. `resume_gates.py` independently checked all
-26 unique test names, zero exit and raw hashes, then continued only the unexecuted
-19-suite Metal regression. Qualification remains incomplete until it finishes.
+All exact4 qualification and baseline measurements are terminal PASS. The
+uninstalled prototype is based on production main `97d6b28`, WolfNum 1.3.1.
+Existing installed APIs and numerical defaults are unchanged.
 
-`post_gates_continued.py` waits on that exact PID and process birth/command identity.
-Only a terminal PASS starts the extra 31-width overflow-cancellation, midpoint
-plus/minus far epsilon and accumulated-component-status checks, then eight
-352/1024-bit host/resident normal/Metal comparison checks. `clock_gates_continued.py`
-waits on that identified post-gate process and checks 1/32 independent live
-calls in one submission at every width in both modes. A missing handle fails;
-no driver restarts a process or overwrites an existing result folder.
+The four 31-width small/dense normal/Metal sweeps pass, followed by all 26 normal
+and 19 Metal library regressions. All 31 supplemental overflow-cancellation,
+far-epsilon ties and accumulated-component-status checks pass in both modes.
+Eight 352/1024-bit host/resident normal/Metal comparison checks pass. Every width
+also passes independently checked 1/32-live-call batches normally and under
+Metal validation. Comparison CPU references pass at all 31 widths; six invalid
+shape/selector checks pass.
 
-The copied comparison replaces only the old per-matrix exact embedding driver
-with the single-dispatch prototype. It keeps all four MPFR references, the
-independent high-precision oracle, fixture generator, rotating CPU/GPU orders,
-wall/device scopes and accuracy/error accounting. Its 31 CPU widths and six
-shape/selector rejection checks pass. `exact_batched4` is an experimental
-backend label, with the same once-rounded complex exact-dot contract as the
-embedding, excluding accumulation in this fixture. Every exact GPU call must
-also report zero host repairs for the bounded-exponent fixture.
+The normal regression collector rejected an alternative CTest success-summary
+spelling after the suite had passed. Original metadata/source are retained;
+`resume_gates.py` independently checked all 26 unique passing test names, zero
+exit and raw hashes, then ran only the outstanding 19 Metal suites. No numerical
+failure occurred. Original post/clock dependency failures are retained separately
+from the successful continued records.
 
-Use `sh benchmarks/experiments/exact_gemm4/build_tools.sh` from the repository
-root after building `wolfnum_exact_gemm4`. The tools are intentionally not
-installed and do not change the default build or public API 1.3.1.
-Run `verify.py --live-root "$PWD"` after all three correctness drivers terminate;
-it checks raw source/log/binary identities and actual coverage, not just PASS
-fields. An unfinished gate makes verification fail.
+The comparison preserves four distinct MPFR contracts, an independent
+high-precision oracle, rotating CPU/GPU sample orders, accuracy accounting and
+separate wall/device scopes. Every bounded exact call reports zero host repair.
+24 configurations cover 352/384/448 bits, 10,000/100,000 4x4 matrices, host/resident
+and CPU-interleaved/verified-warm-call profiles, with three checked samples per
+contract. Three nine-repetition clock probes retain idle-delayed single calls
+and 32-call batches after accumulated checked device work.
 
-Only then measure 352/384/448-bit 4x4 batches of 1e4/1e5 matrices, host/resident,
-CPU-interleaved/verified-warm-call clocks, with three rotating checked samples
-per configuration and all four contracts. Preserve raw sample orders, medians,
-quartiles/ranges, normalized accuracy, process memory and host load. These are
-library measurements; busy-host CPU ratios do not establish idle consumer
-policy. No new measurement has run while qualification is pending.
+The first measurement collector assumed interpolated quartiles, whereas the
+benchmark uses lower-rank sorted quantiles. Original rejected records and source
+are retained. The corrected continuation independently validated and retained
+three clock records and the first comparison, then ran only 23 missing profiles.
+Raw orders, medians, lower-rank quartiles, ranges, accuracy, hashes, load and
+process memory independently verify. Twenty synthetic rejection guards pass.
 
-The separate clock probe reports 100ms idle-delayed single calls and 32 calls
-in one batch after at least 200ms accumulated checked device work. Snapshots and
-dispatches are in device time; encoding, scratch allocation, wait and report
-are in wall time. Verification/transfers are outside resident timing. These
-conditions do not prove a controlled GPU frequency or continuous warmth.
+Run `verify.py` and `verify_measurements.py` from the repository root for offline
+verification. In the original matching build add `--live-root "$PWD"` to check
+binary identities. These checks establish numerical/measurement provenance,
+not performance or consumer acceptance. [Full baseline and decision](BASELINE.md).
 
-After the checked baseline, candidate follow-up rounds include: a compact
-fallback counter to avoid scanning every mask on the bounded fast path;
-workspace reuse with the existing busy-release/lifetime rules; and a fully
-on-device clustered exact sum for large exponent spreads, with a rigorous
-rounding proof and fresh physical-GPU gates. Do not change the current frozen
-kernel before its baseline is recorded. Promotion requires measured benefit,
-final source/package checks and an additive minor release. The separate 3x
-exact-trial target and consumer idle/memory/damping/base tasks remain open.
+The exact candidate is slower than composed in all 24 recorded profiles and is
+not promoted. Next optimization rounds must preserve this baseline before
+changing workspace lifetimes or shader fallback accounting. A future additive
+public API requires a minor release and final package/numerical checks. The
+separate 3x exact-trial target and consumer idle/memory/damping/base tasks remain
+open. No owned qualification or measurement jobs remain running.

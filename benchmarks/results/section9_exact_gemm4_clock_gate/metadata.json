@@ -1,0 +1,20 @@
+{
+  "state": "terminal",
+  "started_utc": "2026-10-09T12:28:25.009689+00:00",
+  "driver_pid": 18829,
+  "driver_birth_command": "Fri Oct  9 08:28:24 2026     /opt/homebrew/Cellar/python@3.14/3.14.6/Frameworks/Python.framework/Versions/3.14/Resources/Python.app/Contents/MacOS/Python benchmarks/experiments/exact_gemm4/clock_gates.py",
+  "dependency_pid": 15271,
+  "dependency_birth_command": "Fri Oct  9 08:22:15 2026     /opt/homebrew/Cellar/python@3.14/3.14.6/Frameworks/Python.framework/Versions/3.14/Resources/Python.app/Contents/MacOS/Python benchmarks/experiments/exact_gemm4/post_gates.py",
+  "source_sha256": {
+    "benchmarks/experiments/exact_gemm4/clock_probe.cpp": "1d9e144c6309e04e939e6599fd1a37b5209bc2b37294a0106f7f3c5eb02d523d",
+    "benchmarks/experiments/exact_gemm4/clock_gates.py": "e040890196c21f689ad1cbdadb738519c8c85bd39971ae4f55f5e2cdbeb9314a",
+    "benchmarks/experiments/exact_gemm4/test.cpp": "40e35ffa28468ecf0afc65335aee380e237ca3822d6b2fba486f933d0730d55c",
+    "benchmarks/experiments/exact_gemm4/build_tools.sh": "758fcf445a9972ebfa6d97c66a40f93a188a444c6f4ce5ca1402dd68292117c7"
+  },
+  "binary_sha256": "de9551cc3d2f35a0ca6b6db51f29315a844d0972b0d53433d39a4a8733bc7a77",
+  "benchmarks_run": false,
+  "steps": [],
+  "status": "FAILED",
+  "error": "post gate failed regression dependency failed: unexpected CTest coverage full_normal",
+  "ended_utc": "2026-10-09T12:35:25.904825+00:00"
+}

@@ -2,12 +2,20 @@
 
 ## Unreleased
 
+- Retained an uninstalled exact batched real/complex 4x4 prototype and complete
+  checked baseline: all 31 supported widths, small/dense/supplement/multi-call
+  normal/Metal checks, 26 normal/19 Metal suites, 24 four-contract comparisons
+  and three clock probes pass. Independent raw/provenance verification retains
+  both collector corrections. The exact prototype loses to composed in every
+  profile (1.054–4.582x wall), so no public API/default change is promoted.
+  Production remains WolfNum 1.3.1 / API 1; overhead optimization is pending.
+
 - Completed the GEMM measurement grid at 352/384/448 bits, host/resident and
   CPU-interleaved/verified-warm-call layouts for Fourier and 1e4/1e5 4x4 batches.
   Thirty-two new checked records plus eight originals yield 120 offline keys;
   raw-sample/coverage checks, compiled factory and provenance/idle/overwrite
-  guards pass. Library/API/default remain 1.3.1; idle consumer policy and a fair
-  batched exact 4x4 comparison remain open.
+  guards pass. Library/API/default remain 1.3.1; idle consumer policy remains open; the subsequent fair exact4 baseline is
+  recorded above.
 
 - Completed the requested J3 g=.1/.2/.5 combined-switch convergence sweep.
   All final CPU/GPU modes solves preserve gtol=1e-22, match two history entries,

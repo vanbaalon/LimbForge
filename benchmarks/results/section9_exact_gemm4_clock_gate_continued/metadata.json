@@ -1,0 +1,1261 @@
+{
+  "state": "terminal",
+  "started_utc": "2026-10-09T12:41:55.837958+00:00",
+  "driver_pid": 26418,
+  "driver_birth_command": "Fri Oct  9 08:41:55 2026     /opt/homebrew/Cellar/python@3.14/3.14.6/Frameworks/Python.framework/Versions/3.14/Resources/Python.app/Contents/MacOS/Python benchmarks/experiments/exact_gemm4/clock_gates_continued.py",
+  "dependency_pid": 26403,
+  "dependency_birth_command": "Fri Oct  9 08:41:54 2026     /opt/homebrew/Cellar/python@3.14/3.14.6/Frameworks/Python.framework/Versions/3.14/Resources/Python.app/Contents/MacOS/Python benchmarks/experiments/exact_gemm4/post_gates_continued.py",
+  "source_sha256": {
+    "benchmarks/experiments/exact_gemm4/clock_probe.cpp": "1d9e144c6309e04e939e6599fd1a37b5209bc2b37294a0106f7f3c5eb02d523d",
+    "benchmarks/experiments/exact_gemm4/clock_gates_continued.py": "9978f256d99600b6fd70e3b474097bd6a98f3fa974dddb157c15132049f3a6cf",
+    "benchmarks/experiments/exact_gemm4/test.cpp": "40e35ffa28468ecf0afc65335aee380e237ca3822d6b2fba486f933d0730d55c",
+    "benchmarks/experiments/exact_gemm4/build_tools.sh": "758fcf445a9972ebfa6d97c66a40f93a188a444c6f4ce5ca1402dd68292117c7"
+  },
+  "binary_sha256": "de9551cc3d2f35a0ca6b6db51f29315a844d0972b0d53433d39a4a8733bc7a77",
+  "benchmarks_run": false,
+  "steps": [
+    {
+      "name": "64_normal",
+      "state": "terminal",
+      "command": [
+        "./build/wolfnum_exact_gemm4_clock_probe",
+        "--bits",
+        "64",
+        "--count",
+        "33",
+        "--check-only"
+      ],
+      "bits": 64,
+      "metal_validation": false,
+      "started_utc": "2026-10-09T13:07:44.058079+00:00",
+      "pid": 41775,
+      "birth_command": "Fri Oct  9 09:07:44 2026     ./build/wolfnum_exact_gemm4_clock_probe --bits 64 --count 33 --check-only",
+      "exit": 0,
+      "ended_utc": "2026-10-09T13:07:44.295700+00:00",
+      "log_sha256": "2c578d8cef8826bc93225c4e1172d998ed7884edcb184990a84ee0bcd2b1b126"
+    },
+    {
+      "name": "96_normal",
+      "state": "terminal",
+      "command": [
+        "./build/wolfnum_exact_gemm4_clock_probe",
+        "--bits",
+        "96",
+        "--count",
+        "33",
+        "--check-only"
+      ],
+      "bits": 96,
+      "metal_validation": false,
+      "started_utc": "2026-10-09T13:07:44.296148+00:00",
+      "pid": 41777,
+      "birth_command": "Fri Oct  9 09:07:44 2026     ./build/wolfnum_exact_gemm4_clock_probe --bits 96 --count 33 --check-only",
+      "exit": 0,
+      "ended_utc": "2026-10-09T13:07:44.340447+00:00",
+      "log_sha256": "e5e01b16ae587663a1c48ac5d97017f15a8ee0032c3db5ec43c1d6d917b8df4a"
+    },
+    {
+      "name": "128_normal",
+      "state": "terminal",
+      "command": [
+        "./build/wolfnum_exact_gemm4_clock_probe",
+        "--bits",
+        "128",
+        "--count",
+        "33",
+        "--check-only"
+      ],
+      "bits": 128,
+      "metal_validation": false,
+      "started_utc": "2026-10-09T13:07:44.340871+00:00",
+      "pid": 41779,
+      "birth_command": "Fri Oct  9 09:07:44 2026     ./build/wolfnum_exact_gemm4_clock_probe --bits 128 --count 33 --check-only",
+      "exit": 0,
+      "ended_utc": "2026-10-09T13:07:44.384995+00:00",
+      "log_sha256": "2a9e82304c9ae2917137ddc0f9bcd08402ff99728e03b7978f7f1a7c14e3bb1e"
+    },
+    {
+      "name": "160_normal",
+      "state": "terminal",
+      "command": [
+        "./build/wolfnum_exact_gemm4_clock_probe",
+        "--bits",
+        "160",
+        "--count",
+        "33",
+        "--check-only"
+      ],
+      "bits": 160,
+      "metal_validation": false,
+      "started_utc": "2026-10-09T13:07:44.385437+00:00",
+      "pid": 41781,
+      "birth_command": "Fri Oct  9 09:07:44 2026     ./build/wolfnum_exact_gemm4_clock_probe --bits 160 --count 33 --check-only",
+      "exit": 0,
+      "ended_utc": "2026-10-09T13:07:44.434440+00:00",
+      "log_sha256": "9a107e48d4bfb500132ac4cd852303ec1758f003cf4df7f4945e04ac494c3b65"
+    },
+    {
+      "name": "192_normal",
+      "state": "terminal",
+      "command": [
+        "./build/wolfnum_exact_gemm4_clock_probe",
+        "--bits",
+        "192",
+        "--count",
+        "33",
+        "--check-only"
+      ],
+      "bits": 192,
+      "metal_validation": false,
+      "started_utc": "2026-10-09T13:07:44.434904+00:00",
+      "pid": 41783,
+      "birth_command": "Fri Oct  9 09:07:44 2026     ./build/wolfnum_exact_gemm4_clock_probe --bits 192 --count 33 --check-only",
+      "exit": 0,
+      "ended_utc": "2026-10-09T13:07:44.485937+00:00",
+      "log_sha256": "ce02221e0dec6a99a6388195afdb59f3296912c4aad10a0449d15196fdbf473a"
+    },
+    {
+      "name": "224_normal",
+      "state": "terminal",
+      "command": [
+        "./build/wolfnum_exact_gemm4_clock_probe",
+        "--bits",
+        "224",
+        "--count",
+        "33",
+        "--check-only"
+      ],
+      "bits": 224,
+      "metal_validation": false,
+      "started_utc": "2026-10-09T13:07:44.486538+00:00",
+      "pid": 41792,
+      "birth_command": "Fri Oct  9 09:07:44 2026     ./build/wolfnum_exact_gemm4_clock_probe --bits 224 --count 33 --check-only",
+      "exit": 0,
+      "ended_utc": "2026-10-09T13:07:44.538206+00:00",
+      "log_sha256": "f122149b8fda2d36ea09d765a3847b74a77c85c4706e4baf975d85dac39c7a21"
+    },
+    {
+      "name": "256_normal",
+      "state": "terminal",
+      "command": [
+        "./build/wolfnum_exact_gemm4_clock_probe",
+        "--bits",
+        "256",
+        "--count",
+        "33",
+        "--check-only"
+      ],
+      "bits": 256,
+      "metal_validation": false,
+      "started_utc": "2026-10-09T13:07:44.538745+00:00",
+      "pid": 41794,
+      "birth_command": "Fri Oct  9 09:07:44 2026     ./build/wolfnum_exact_gemm4_clock_probe --bits 256 --count 33 --check-only",
+      "exit": 0,
+      "ended_utc": "2026-10-09T13:07:44.587451+00:00",
+      "log_sha256": "7b70122ba7c64a10a9961ddbcc39d2b2bc25b633d27b48cd033278b15519f8c1"
+    },
+    {
+      "name": "288_normal",
+      "state": "terminal",
+      "command": [
+        "./build/wolfnum_exact_gemm4_clock_probe",
+        "--bits",
+        "288",
+        "--count",
+        "33",
+        "--check-only"
+      ],
+      "bits": 288,
+      "metal_validation": false,
+      "started_utc": "2026-10-09T13:07:44.587930+00:00",
+      "pid": 41796,
+      "birth_command": "Fri Oct  9 09:07:44 2026     ./build/wolfnum_exact_gemm4_clock_probe --bits 288 --count 33 --check-only",
+      "exit": 0,
+      "ended_utc": "2026-10-09T13:07:44.641146+00:00",
+      "log_sha256": "c434c9e5cbd4a8e676ee5dfa219acf37959e9cb773c29605f46f621c830b8217"
+    },
+    {
+      "name": "320_normal",
+      "state": "terminal",
+      "command": [
+        "./build/wolfnum_exact_gemm4_clock_probe",
+        "--bits",
+        "320",
+        "--count",
+        "33",
+        "--check-only"
+      ],
+      "bits": 320,
+      "metal_validation": false,
+      "started_utc": "2026-10-09T13:07:44.641612+00:00",
+      "pid": 41798,
+      "birth_command": "Fri Oct  9 09:07:44 2026     ./build/wolfnum_exact_gemm4_clock_probe --bits 320 --count 33 --check-only",
+      "exit": 0,
+      "ended_utc": "2026-10-09T13:07:44.690976+00:00",
+      "log_sha256": "82f86503e1236e4ae161a971ac934aa2a539397258dabf9c002fd6215b31f749"
+    },
+    {
+      "name": "352_normal",
+      "state": "terminal",
+      "command": [
+        "./build/wolfnum_exact_gemm4_clock_probe",
+        "--bits",
+        "352",
+        "--count",
+        "33",
+        "--check-only"
+      ],
+      "bits": 352,
+      "metal_validation": false,
+      "started_utc": "2026-10-09T13:07:44.691454+00:00",
+      "pid": 41800,
+      "birth_command": "Fri Oct  9 09:07:44 2026     ./build/wolfnum_exact_gemm4_clock_probe --bits 352 --count 33 --check-only",
+      "exit": 0,
+      "ended_utc": "2026-10-09T13:07:44.743382+00:00",
+      "log_sha256": "72f812e9244fbea1419dc3a1e0c75df90048bf57b01b31d44f93e3612cb91e4c"
+    },
+    {
+      "name": "384_normal",
+      "state": "terminal",
+      "command": [
+        "./build/wolfnum_exact_gemm4_clock_probe",
+        "--bits",
+        "384",
+        "--count",
+        "33",
+        "--check-only"
+      ],
+      "bits": 384,
+      "metal_validation": false,
+      "started_utc": "2026-10-09T13:07:44.743855+00:00",
+      "pid": 41802,
+      "birth_command": "Fri Oct  9 09:07:44 2026     ./build/wolfnum_exact_gemm4_clock_probe --bits 384 --count 33 --check-only",
+      "exit": 0,
+      "ended_utc": "2026-10-09T13:07:44.793880+00:00",
+      "log_sha256": "be34f147fb23afbd1dab61f1a2df8aa7d2ac2c8dfb25014c6427abe953d1c051"
+    },
+    {
+      "name": "416_normal",
+      "state": "terminal",
+      "command": [
+        "./build/wolfnum_exact_gemm4_clock_probe",
+        "--bits",
+        "416",
+        "--count",
+        "33",
+        "--check-only"
+      ],
+      "bits": 416,
+      "metal_validation": false,
+      "started_utc": "2026-10-09T13:07:44.794367+00:00",
+      "pid": 41804,
+      "birth_command": "Fri Oct  9 09:07:44 2026     ./build/wolfnum_exact_gemm4_clock_probe --bits 416 --count 33 --check-only",
+      "exit": 0,
+      "ended_utc": "2026-10-09T13:07:44.847016+00:00",
+      "log_sha256": "4e64f5c6bf83ad9369e2260011765c05ee87ef3a42ebfc88ee6d2f1d95aa9e00"
+    },
+    {
+      "name": "448_normal",
+      "state": "terminal",
+      "command": [
+        "./build/wolfnum_exact_gemm4_clock_probe",
+        "--bits",
+        "448",
+        "--count",
+        "33",
+        "--check-only"
+      ],
+      "bits": 448,
+      "metal_validation": false,
+      "started_utc": "2026-10-09T13:07:44.847723+00:00",
+      "pid": 41808,
+      "birth_command": "Fri Oct  9 09:07:44 2026     ./build/wolfnum_exact_gemm4_clock_probe --bits 448 --count 33 --check-only",
+      "exit": 0,
+      "ended_utc": "2026-10-09T13:07:44.895108+00:00",
+      "log_sha256": "99883077f1b2df347cfc7f4519cf640bc91434c49f3a69ec42f47fd87c1bcfa2"
+    },
+    {
+      "name": "480_normal",
+      "state": "terminal",
+      "command": [
+        "./build/wolfnum_exact_gemm4_clock_probe",
+        "--bits",
+        "480",
+        "--count",
+        "33",
+        "--check-only"
+      ],
+      "bits": 480,
+      "metal_validation": false,
+      "started_utc": "2026-10-09T13:07:44.895604+00:00",
+      "pid": 41810,
+      "birth_command": "Fri Oct  9 09:07:44 2026     ./build/wolfnum_exact_gemm4_clock_probe --bits 480 --count 33 --check-only",
+      "exit": 0,
+      "ended_utc": "2026-10-09T13:07:44.943960+00:00",
+      "log_sha256": "24385aa689f8824673b4c51fe610ebdd49ede3785fe54d7e0cf37b3463242287"
+    },
+    {
+      "name": "512_normal",
+      "state": "terminal",
+      "command": [
+        "./build/wolfnum_exact_gemm4_clock_probe",
+        "--bits",
+        "512",
+        "--count",
+        "33",
+        "--check-only"
+      ],
+      "bits": 512,
+      "metal_validation": false,
+      "started_utc": "2026-10-09T13:07:44.944755+00:00",
+      "pid": 41812,
+      "birth_command": "Fri Oct  9 09:07:44 2026     ./build/wolfnum_exact_gemm4_clock_probe --bits 512 --count 33 --check-only",
+      "exit": 0,
+      "ended_utc": "2026-10-09T13:07:44.993821+00:00",
+      "log_sha256": "a96968cf75109a83e8ad5d7ded2ce7ed95f0170773eb3b670760ffdee66a6686"
+    },
+    {
+      "name": "544_normal",
+      "state": "terminal",
+      "command": [
+        "./build/wolfnum_exact_gemm4_clock_probe",
+        "--bits",
+        "544",
+        "--count",
+        "33",
+        "--check-only"
+      ],
+      "bits": 544,
+      "metal_validation": false,
+      "started_utc": "2026-10-09T13:07:44.994474+00:00",
+      "pid": 41814,
+      "birth_command": "Fri Oct  9 09:07:44 2026     ./build/wolfnum_exact_gemm4_clock_probe --bits 544 --count 33 --check-only",
+      "exit": 0,
+      "ended_utc": "2026-10-09T13:07:45.040984+00:00",
+      "log_sha256": "f4636f0bbba44793e9d2203c0ea0a81acf943613592b90b92d72f55b49bd63af"
+    },
+    {
+      "name": "576_normal",
+      "state": "terminal",
+      "command": [
+        "./build/wolfnum_exact_gemm4_clock_probe",
+        "--bits",
+        "576",
+        "--count",
+        "33",
+        "--check-only"
+      ],
+      "bits": 576,
+      "metal_validation": false,
+      "started_utc": "2026-10-09T13:07:45.041447+00:00",
+      "pid": 41816,
+      "birth_command": "Fri Oct  9 09:07:45 2026     ./build/wolfnum_exact_gemm4_clock_probe --bits 576 --count 33 --check-only",
+      "exit": 0,
+      "ended_utc": "2026-10-09T13:07:45.090709+00:00",
+      "log_sha256": "a80e07ae60855cf54056ecc9d346945d121ac25bd608b5d4d53bdfc7b184bb98"
+    },
+    {
+      "name": "608_normal",
+      "state": "terminal",
+      "command": [
+        "./build/wolfnum_exact_gemm4_clock_probe",
+        "--bits",
+        "608",
+        "--count",
+        "33",
+        "--check-only"
+      ],
+      "bits": 608,
+      "metal_validation": false,
+      "started_utc": "2026-10-09T13:07:45.091225+00:00",
+      "pid": 41818,
+      "birth_command": "Fri Oct  9 09:07:45 2026     ./build/wolfnum_exact_gemm4_clock_probe --bits 608 --count 33 --check-only",
+      "exit": 0,
+      "ended_utc": "2026-10-09T13:07:45.147316+00:00",
+      "log_sha256": "9b83aa6f978ca259f7c9b397434d2a612289ab60536da93e1a9d2562153a7fa7"
+    },
+    {
+      "name": "640_normal",
+      "state": "terminal",
+      "command": [
+        "./build/wolfnum_exact_gemm4_clock_probe",
+        "--bits",
+        "640",
+        "--count",
+        "33",
+        "--check-only"
+      ],
+      "bits": 640,
+      "metal_validation": false,
+      "started_utc": "2026-10-09T13:07:45.147839+00:00",
+      "pid": 41820,
+      "birth_command": "Fri Oct  9 09:07:45 2026     ./build/wolfnum_exact_gemm4_clock_probe --bits 640 --count 33 --check-only",
+      "exit": 0,
+      "ended_utc": "2026-10-09T13:07:45.194808+00:00",
+      "log_sha256": "c351da638fa4f6bfaa45f502ad1d776ee6443bae17ad260507957fd9e0401781"
+    },
+    {
+      "name": "672_normal",
+      "state": "terminal",
+      "command": [
+        "./build/wolfnum_exact_gemm4_clock_probe",
+        "--bits",
+        "672",
+        "--count",
+        "33",
+        "--check-only"
+      ],
+      "bits": 672,
+      "metal_validation": false,
+      "started_utc": "2026-10-09T13:07:45.195281+00:00",
+      "pid": 41822,
+      "birth_command": "Fri Oct  9 09:07:45 2026     ./build/wolfnum_exact_gemm4_clock_probe --bits 672 --count 33 --check-only",
+      "exit": 0,
+      "ended_utc": "2026-10-09T13:07:45.245138+00:00",
+      "log_sha256": "56dbc49babf2897724eb737ea6e89933ec7e8f739aec5550fa2105ca93417e8e"
+    },
+    {
+      "name": "704_normal",
+      "state": "terminal",
+      "command": [
+        "./build/wolfnum_exact_gemm4_clock_probe",
+        "--bits",
+        "704",
+        "--count",
+        "33",
+        "--check-only"
+      ],
+      "bits": 704,
+      "metal_validation": false,
+      "started_utc": "2026-10-09T13:07:45.245623+00:00",
+      "pid": 41824,
+      "birth_command": "Fri Oct  9 09:07:45 2026     ./build/wolfnum_exact_gemm4_clock_probe --bits 704 --count 33 --check-only",
+      "exit": 0,
+      "ended_utc": "2026-10-09T13:07:45.294153+00:00",
+      "log_sha256": "79e84a37b1602a69c455b8d6992cfaf924767ae4e5335acabf7916d110399d34"
+    },
+    {
+      "name": "736_normal",
+      "state": "terminal",
+      "command": [
+        "./build/wolfnum_exact_gemm4_clock_probe",
+        "--bits",
+        "736",
+        "--count",
+        "33",
+        "--check-only"
+      ],
+      "bits": 736,
+      "metal_validation": false,
+      "started_utc": "2026-10-09T13:07:45.294689+00:00",
+      "pid": 41826,
+      "birth_command": "Fri Oct  9 09:07:45 2026     ./build/wolfnum_exact_gemm4_clock_probe --bits 736 --count 33 --check-only",
+      "exit": 0,
+      "ended_utc": "2026-10-09T13:07:45.342444+00:00",
+      "log_sha256": "221e708715316f814538aa812621783e725ad3b9ebfd35d845e72ead7e542a07"
+    },
+    {
+      "name": "768_normal",
+      "state": "terminal",
+      "command": [
+        "./build/wolfnum_exact_gemm4_clock_probe",
+        "--bits",
+        "768",
+        "--count",
+        "33",
+        "--check-only"
+      ],
+      "bits": 768,
+      "metal_validation": false,
+      "started_utc": "2026-10-09T13:07:45.342981+00:00",
+      "pid": 41828,
+      "birth_command": "Fri Oct  9 09:07:45 2026     ./build/wolfnum_exact_gemm4_clock_probe --bits 768 --count 33 --check-only",
+      "exit": 0,
+      "ended_utc": "2026-10-09T13:07:45.390212+00:00",
+      "log_sha256": "9ffe868300025268e77a003242a8fc2fc6685c7cfd1b4e80bbe766aefd813d29"
+    },
+    {
+      "name": "800_normal",
+      "state": "terminal",
+      "command": [
+        "./build/wolfnum_exact_gemm4_clock_probe",
+        "--bits",
+        "800",
+        "--count",
+        "33",
+        "--check-only"
+      ],
+      "bits": 800,
+      "metal_validation": false,
+      "started_utc": "2026-10-09T13:07:45.390707+00:00",
+      "pid": 41830,
+      "birth_command": "Fri Oct  9 09:07:45 2026     ./build/wolfnum_exact_gemm4_clock_probe --bits 800 --count 33 --check-only",
+      "exit": 0,
+      "ended_utc": "2026-10-09T13:07:45.443954+00:00",
+      "log_sha256": "fb68544804e37b4e785fbadb2516fa64dd528efd87571f854e03e511fdb5b097"
+    },
+    {
+      "name": "832_normal",
+      "state": "terminal",
+      "command": [
+        "./build/wolfnum_exact_gemm4_clock_probe",
+        "--bits",
+        "832",
+        "--count",
+        "33",
+        "--check-only"
+      ],
+      "bits": 832,
+      "metal_validation": false,
+      "started_utc": "2026-10-09T13:07:45.444428+00:00",
+      "pid": 41832,
+      "birth_command": "Fri Oct  9 09:07:45 2026     ./build/wolfnum_exact_gemm4_clock_probe --bits 832 --count 33 --check-only",
+      "exit": 0,
+      "ended_utc": "2026-10-09T13:07:45.497808+00:00",
+      "log_sha256": "28c6d603ba88af69a69827cdc54b3ba4cbcb75f2efd78609d31f5eda5863d07e"
+    },
+    {
+      "name": "864_normal",
+      "state": "terminal",
+      "command": [
+        "./build/wolfnum_exact_gemm4_clock_probe",
+        "--bits",
+        "864",
+        "--count",
+        "33",
+        "--check-only"
+      ],
+      "bits": 864,
+      "metal_validation": false,
+      "started_utc": "2026-10-09T13:07:45.498286+00:00",
+      "pid": 41834,
+      "birth_command": "Fri Oct  9 09:07:45 2026     ./build/wolfnum_exact_gemm4_clock_probe --bits 864 --count 33 --check-only",
+      "exit": 0,
+      "ended_utc": "2026-10-09T13:07:45.555376+00:00",
+      "log_sha256": "5e9224ca0f52bc9db82e4ca0974af3c0a49760d8d213efbf982e3e62d86b3637"
+    },
+    {
+      "name": "896_normal",
+      "state": "terminal",
+      "command": [
+        "./build/wolfnum_exact_gemm4_clock_probe",
+        "--bits",
+        "896",
+        "--count",
+        "33",
+        "--check-only"
+      ],
+      "bits": 896,
+      "metal_validation": false,
+      "started_utc": "2026-10-09T13:07:45.555859+00:00",
+      "pid": 41836,
+      "birth_command": "Fri Oct  9 09:07:45 2026     ./build/wolfnum_exact_gemm4_clock_probe --bits 896 --count 33 --check-only",
+      "exit": 0,
+      "ended_utc": "2026-10-09T13:07:45.611990+00:00",
+      "log_sha256": "58d4998a09053a12ffb2bff46ad01ade5fdc75d2f9af2ffa2d22c80af7f15106"
+    },
+    {
+      "name": "928_normal",
+      "state": "terminal",
+      "command": [
+        "./build/wolfnum_exact_gemm4_clock_probe",
+        "--bits",
+        "928",
+        "--count",
+        "33",
+        "--check-only"
+      ],
+      "bits": 928,
+      "metal_validation": false,
+      "started_utc": "2026-10-09T13:07:45.612658+00:00",
+      "pid": 41841,
+      "birth_command": "Fri Oct  9 09:07:45 2026     ./build/wolfnum_exact_gemm4_clock_probe --bits 928 --count 33 --check-only",
+      "exit": 0,
+      "ended_utc": "2026-10-09T13:07:45.664814+00:00",
+      "log_sha256": "5f8cc4e13824e6db435d005dd9789d829755a215132b86f17db644c523bac901"
+    },
+    {
+      "name": "960_normal",
+      "state": "terminal",
+      "command": [
+        "./build/wolfnum_exact_gemm4_clock_probe",
+        "--bits",
+        "960",
+        "--count",
+        "33",
+        "--check-only"
+      ],
+      "bits": 960,
+      "metal_validation": false,
+      "started_utc": "2026-10-09T13:07:45.665329+00:00",
+      "pid": 41846,
+      "birth_command": "Fri Oct  9 09:07:45 2026     ./build/wolfnum_exact_gemm4_clock_probe --bits 960 --count 33 --check-only",
+      "exit": 0,
+      "ended_utc": "2026-10-09T13:07:45.720694+00:00",
+      "log_sha256": "0e2c34a1f0b2a764356f0f20921a8e15f86461df45b980b25205630209716834"
+    },
+    {
+      "name": "992_normal",
+      "state": "terminal",
+      "command": [
+        "./build/wolfnum_exact_gemm4_clock_probe",
+        "--bits",
+        "992",
+        "--count",
+        "33",
+        "--check-only"
+      ],
+      "bits": 992,
+      "metal_validation": false,
+      "started_utc": "2026-10-09T13:07:45.721322+00:00",
+      "pid": 41848,
+      "birth_command": "Fri Oct  9 09:07:45 2026     ./build/wolfnum_exact_gemm4_clock_probe --bits 992 --count 33 --check-only",
+      "exit": 0,
+      "ended_utc": "2026-10-09T13:07:45.774479+00:00",
+      "log_sha256": "bbd4c970c4b55f935e23b50ee6cd73afc29b35f9b89fc2a47f22843a68e6759b"
+    },
+    {
+      "name": "1024_normal",
+      "state": "terminal",
+      "command": [
+        "./build/wolfnum_exact_gemm4_clock_probe",
+        "--bits",
+        "1024",
+        "--count",
+        "33",
+        "--check-only"
+      ],
+      "bits": 1024,
+      "metal_validation": false,
+      "started_utc": "2026-10-09T13:07:45.774954+00:00",
+      "pid": 41850,
+      "birth_command": "Fri Oct  9 09:07:45 2026     ./build/wolfnum_exact_gemm4_clock_probe --bits 1024 --count 33 --check-only",
+      "exit": 0,
+      "ended_utc": "2026-10-09T13:07:45.827214+00:00",
+      "log_sha256": "ca9acf20e2aaa9dd8610d31e16222ef0b983654d9203d8175d2532a20fe8a9f1"
+    },
+    {
+      "name": "64_metal",
+      "state": "terminal",
+      "command": [
+        "./build/wolfnum_exact_gemm4_clock_probe",
+        "--bits",
+        "64",
+        "--count",
+        "33",
+        "--check-only"
+      ],
+      "bits": 64,
+      "metal_validation": true,
+      "started_utc": "2026-10-09T13:07:45.827759+00:00",
+      "pid": 41852,
+      "birth_command": "Fri Oct  9 09:07:45 2026     ./build/wolfnum_exact_gemm4_clock_probe --bits 64 --count 33 --check-only",
+      "exit": 0,
+      "ended_utc": "2026-10-09T13:07:45.869875+00:00",
+      "log_sha256": "bca0ae19e6f1ffe99bc040bab22fcd09769a34c5604b7be393ad9934350639b1"
+    },
+    {
+      "name": "96_metal",
+      "state": "terminal",
+      "command": [
+        "./build/wolfnum_exact_gemm4_clock_probe",
+        "--bits",
+        "96",
+        "--count",
+        "33",
+        "--check-only"
+      ],
+      "bits": 96,
+      "metal_validation": true,
+      "started_utc": "2026-10-09T13:07:45.870368+00:00",
+      "pid": 41854,
+      "birth_command": "Fri Oct  9 09:07:45 2026     ./build/wolfnum_exact_gemm4_clock_probe --bits 96 --count 33 --check-only",
+      "exit": 0,
+      "ended_utc": "2026-10-09T13:07:45.913821+00:00",
+      "log_sha256": "e22c69c00554914bec5fe526058bb8b486b3df87a6694483fc075bb5e84264c6"
+    },
+    {
+      "name": "128_metal",
+      "state": "terminal",
+      "command": [
+        "./build/wolfnum_exact_gemm4_clock_probe",
+        "--bits",
+        "128",
+        "--count",
+        "33",
+        "--check-only"
+      ],
+      "bits": 128,
+      "metal_validation": true,
+      "started_utc": "2026-10-09T13:07:45.914363+00:00",
+      "pid": 41856,
+      "birth_command": "Fri Oct  9 09:07:45 2026     ./build/wolfnum_exact_gemm4_clock_probe --bits 128 --count 33 --check-only",
+      "exit": 0,
+      "ended_utc": "2026-10-09T13:07:45.959320+00:00",
+      "log_sha256": "59448f669c7803376a27bc8c1b744a5d9e29147a3ca1d63b62734879809e7596"
+    },
+    {
+      "name": "160_metal",
+      "state": "terminal",
+      "command": [
+        "./build/wolfnum_exact_gemm4_clock_probe",
+        "--bits",
+        "160",
+        "--count",
+        "33",
+        "--check-only"
+      ],
+      "bits": 160,
+      "metal_validation": true,
+      "started_utc": "2026-10-09T13:07:45.959857+00:00",
+      "pid": 41858,
+      "birth_command": "Fri Oct  9 09:07:45 2026     ./build/wolfnum_exact_gemm4_clock_probe --bits 160 --count 33 --check-only",
+      "exit": 0,
+      "ended_utc": "2026-10-09T13:07:46.007990+00:00",
+      "log_sha256": "563f84e06d0c3ac528bed5292ba901088902bee8c89486243681f9705a2388a3"
+    },
+    {
+      "name": "192_metal",
+      "state": "terminal",
+      "command": [
+        "./build/wolfnum_exact_gemm4_clock_probe",
+        "--bits",
+        "192",
+        "--count",
+        "33",
+        "--check-only"
+      ],
+      "bits": 192,
+      "metal_validation": true,
+      "started_utc": "2026-10-09T13:07:46.008786+00:00",
+      "pid": 41862,
+      "birth_command": "Fri Oct  9 09:07:46 2026     ./build/wolfnum_exact_gemm4_clock_probe --bits 192 --count 33 --check-only",
+      "exit": 0,
+      "ended_utc": "2026-10-09T13:07:46.062256+00:00",
+      "log_sha256": "712118b775b48429134abdc468be128401b49893f2f93118d8aac374e7969ce8"
+    },
+    {
+      "name": "224_metal",
+      "state": "terminal",
+      "command": [
+        "./build/wolfnum_exact_gemm4_clock_probe",
+        "--bits",
+        "224",
+        "--count",
+        "33",
+        "--check-only"
+      ],
+      "bits": 224,
+      "metal_validation": true,
+      "started_utc": "2026-10-09T13:07:46.063005+00:00",
+      "pid": 41864,
+      "birth_command": "Fri Oct  9 09:07:46 2026     ./build/wolfnum_exact_gemm4_clock_probe --bits 224 --count 33 --check-only",
+      "exit": 0,
+      "ended_utc": "2026-10-09T13:07:46.116552+00:00",
+      "log_sha256": "7d4281e0693ff602e2ddca88ad3d905c27579396ef8c4791a9f18e28d5d0a247"
+    },
+    {
+      "name": "256_metal",
+      "state": "terminal",
+      "command": [
+        "./build/wolfnum_exact_gemm4_clock_probe",
+        "--bits",
+        "256",
+        "--count",
+        "33",
+        "--check-only"
+      ],
+      "bits": 256,
+      "metal_validation": true,
+      "started_utc": "2026-10-09T13:07:46.117161+00:00",
+      "pid": 41866,
+      "birth_command": "Fri Oct  9 09:07:46 2026     ./build/wolfnum_exact_gemm4_clock_probe --bits 256 --count 33 --check-only",
+      "exit": 0,
+      "ended_utc": "2026-10-09T13:07:46.169191+00:00",
+      "log_sha256": "68fd5034cb6b09acf99ceaf6e2d7a29d815678faa74a89b67bc212be94ad8330"
+    },
+    {
+      "name": "288_metal",
+      "state": "terminal",
+      "command": [
+        "./build/wolfnum_exact_gemm4_clock_probe",
+        "--bits",
+        "288",
+        "--count",
+        "33",
+        "--check-only"
+      ],
+      "bits": 288,
+      "metal_validation": true,
+      "started_utc": "2026-10-09T13:07:46.170621+00:00",
+      "pid": 41868,
+      "birth_command": "Fri Oct  9 09:07:46 2026     ./build/wolfnum_exact_gemm4_clock_probe --bits 288 --count 33 --check-only",
+      "exit": 0,
+      "ended_utc": "2026-10-09T13:07:46.221359+00:00",
+      "log_sha256": "d7e72cfcd2f36f82d15cd275e2907813636ed6c31d509ec185ce76df7b400c76"
+    },
+    {
+      "name": "320_metal",
+      "state": "terminal",
+      "command": [
+        "./build/wolfnum_exact_gemm4_clock_probe",
+        "--bits",
+        "320",
+        "--count",
+        "33",
+        "--check-only"
+      ],
+      "bits": 320,
+      "metal_validation": true,
+      "started_utc": "2026-10-09T13:07:46.222061+00:00",
+      "pid": 41872,
+      "birth_command": "Fri Oct  9 09:07:46 2026     ./build/wolfnum_exact_gemm4_clock_probe --bits 320 --count 33 --check-only",
+      "exit": 0,
+      "ended_utc": "2026-10-09T13:07:46.274200+00:00",
+      "log_sha256": "89fb961eafea5b726ae9053e08fb76d400d7ee79ad7ef6d9c5633bd2eb50870c"
+    },
+    {
+      "name": "352_metal",
+      "state": "terminal",
+      "command": [
+        "./build/wolfnum_exact_gemm4_clock_probe",
+        "--bits",
+        "352",
+        "--count",
+        "33",
+        "--check-only"
+      ],
+      "bits": 352,
+      "metal_validation": true,
+      "started_utc": "2026-10-09T13:07:46.275251+00:00",
+      "pid": 41875,
+      "birth_command": "Fri Oct  9 09:07:46 2026     ./build/wolfnum_exact_gemm4_clock_probe --bits 352 --count 33 --check-only",
+      "exit": 0,
+      "ended_utc": "2026-10-09T13:07:46.323753+00:00",
+      "log_sha256": "ca994cbc92ad2d9f16e6ec01b80897280cbd812c7fd1e30650e5d7a5a965f52d"
+    },
+    {
+      "name": "384_metal",
+      "state": "terminal",
+      "command": [
+        "./build/wolfnum_exact_gemm4_clock_probe",
+        "--bits",
+        "384",
+        "--count",
+        "33",
+        "--check-only"
+      ],
+      "bits": 384,
+      "metal_validation": true,
+      "started_utc": "2026-10-09T13:07:46.324365+00:00",
+      "pid": 41881,
+      "birth_command": "Fri Oct  9 09:07:46 2026     ./build/wolfnum_exact_gemm4_clock_probe --bits 384 --count 33 --check-only",
+      "exit": 0,
+      "ended_utc": "2026-10-09T13:07:46.376635+00:00",
+      "log_sha256": "658919db41f82bb0ded3a763cf6c66793ab6ab1ec101596e0a6887a274e959f0"
+    },
+    {
+      "name": "416_metal",
+      "state": "terminal",
+      "command": [
+        "./build/wolfnum_exact_gemm4_clock_probe",
+        "--bits",
+        "416",
+        "--count",
+        "33",
+        "--check-only"
+      ],
+      "bits": 416,
+      "metal_validation": true,
+      "started_utc": "2026-10-09T13:07:46.377440+00:00",
+      "pid": 41885,
+      "birth_command": "Fri Oct  9 09:07:46 2026     ./build/wolfnum_exact_gemm4_clock_probe --bits 416 --count 33 --check-only",
+      "exit": 0,
+      "ended_utc": "2026-10-09T13:07:46.427076+00:00",
+      "log_sha256": "6f80b0ceabf33e3ca83ff63b0a876594de4bbbfb9ed3ef812a393db85c74bc1c"
+    },
+    {
+      "name": "448_metal",
+      "state": "terminal",
+      "command": [
+        "./build/wolfnum_exact_gemm4_clock_probe",
+        "--bits",
+        "448",
+        "--count",
+        "33",
+        "--check-only"
+      ],
+      "bits": 448,
+      "metal_validation": true,
+      "started_utc": "2026-10-09T13:07:46.427711+00:00",
+      "pid": 41887,
+      "birth_command": "Fri Oct  9 09:07:46 2026     ./build/wolfnum_exact_gemm4_clock_probe --bits 448 --count 33 --check-only",
+      "exit": 0,
+      "ended_utc": "2026-10-09T13:07:46.477888+00:00",
+      "log_sha256": "3a3018c83e637c9d1218d20dd0343df8e37a0f54d938282dc82f9199f9c6d9c7"
+    },
+    {
+      "name": "480_metal",
+      "state": "terminal",
+      "command": [
+        "./build/wolfnum_exact_gemm4_clock_probe",
+        "--bits",
+        "480",
+        "--count",
+        "33",
+        "--check-only"
+      ],
+      "bits": 480,
+      "metal_validation": true,
+      "started_utc": "2026-10-09T13:07:46.478445+00:00",
+      "pid": 41889,
+      "birth_command": "Fri Oct  9 09:07:46 2026     ./build/wolfnum_exact_gemm4_clock_probe --bits 480 --count 33 --check-only",
+      "exit": 0,
+      "ended_utc": "2026-10-09T13:07:46.532733+00:00",
+      "log_sha256": "82390841ee6dabc6bcc09411378cb4e382b6b361088d0c6cb8bc5d07bdb83893"
+    },
+    {
+      "name": "512_metal",
+      "state": "terminal",
+      "command": [
+        "./build/wolfnum_exact_gemm4_clock_probe",
+        "--bits",
+        "512",
+        "--count",
+        "33",
+        "--check-only"
+      ],
+      "bits": 512,
+      "metal_validation": true,
+      "started_utc": "2026-10-09T13:07:46.533644+00:00",
+      "pid": 41891,
+      "birth_command": "Fri Oct  9 09:07:46 2026     ./build/wolfnum_exact_gemm4_clock_probe --bits 512 --count 33 --check-only",
+      "exit": 0,
+      "ended_utc": "2026-10-09T13:07:46.584709+00:00",
+      "log_sha256": "b6b2f87ae7431fa13bcb91280ca6b9a8b597c10889bd03defe64d1f63e6c8c5e"
+    },
+    {
+      "name": "544_metal",
+      "state": "terminal",
+      "command": [
+        "./build/wolfnum_exact_gemm4_clock_probe",
+        "--bits",
+        "544",
+        "--count",
+        "33",
+        "--check-only"
+      ],
+      "bits": 544,
+      "metal_validation": true,
+      "started_utc": "2026-10-09T13:07:46.585338+00:00",
+      "pid": 41893,
+      "birth_command": "Fri Oct  9 09:07:46 2026     ./build/wolfnum_exact_gemm4_clock_probe --bits 544 --count 33 --check-only",
+      "exit": 0,
+      "ended_utc": "2026-10-09T13:07:46.639485+00:00",
+      "log_sha256": "54bd70ca6ce2b3a83f2a5283cc60057b55d39b53c8067e87e3f64c1959238e7b"
+    },
+    {
+      "name": "576_metal",
+      "state": "terminal",
+      "command": [
+        "./build/wolfnum_exact_gemm4_clock_probe",
+        "--bits",
+        "576",
+        "--count",
+        "33",
+        "--check-only"
+      ],
+      "bits": 576,
+      "metal_validation": true,
+      "started_utc": "2026-10-09T13:07:46.640110+00:00",
+      "pid": 41895,
+      "birth_command": "Fri Oct  9 09:07:46 2026     ./build/wolfnum_exact_gemm4_clock_probe --bits 576 --count 33 --check-only",
+      "exit": 0,
+      "ended_utc": "2026-10-09T13:07:46.690290+00:00",
+      "log_sha256": "d70693464e5b69ab05e1de371fe65722d237d48b0114f24c4fa4cef2ef409780"
+    },
+    {
+      "name": "608_metal",
+      "state": "terminal",
+      "command": [
+        "./build/wolfnum_exact_gemm4_clock_probe",
+        "--bits",
+        "608",
+        "--count",
+        "33",
+        "--check-only"
+      ],
+      "bits": 608,
+      "metal_validation": true,
+      "started_utc": "2026-10-09T13:07:46.691002+00:00",
+      "pid": 41897,
+      "birth_command": "Fri Oct  9 09:07:46 2026     ./build/wolfnum_exact_gemm4_clock_probe --bits 608 --count 33 --check-only",
+      "exit": 0,
+      "ended_utc": "2026-10-09T13:07:46.744569+00:00",
+      "log_sha256": "07387b5d38cf9bfdd03819682d3b27e4ffceb96e9415c075e977208a737f0d4e"
+    },
+    {
+      "name": "640_metal",
+      "state": "terminal",
+      "command": [
+        "./build/wolfnum_exact_gemm4_clock_probe",
+        "--bits",
+        "640",
+        "--count",
+        "33",
+        "--check-only"
+      ],
+      "bits": 640,
+      "metal_validation": true,
+      "started_utc": "2026-10-09T13:07:46.745515+00:00",
+      "pid": 41899,
+      "birth_command": "Fri Oct  9 09:07:46 2026     ./build/wolfnum_exact_gemm4_clock_probe --bits 640 --count 33 --check-only",
+      "exit": 0,
+      "ended_utc": "2026-10-09T13:07:46.799992+00:00",
+      "log_sha256": "1ad78fe649e163c090823e84ff1915718db0dc31e2568f31c8dd8de2c7cce194"
+    },
+    {
+      "name": "672_metal",
+      "state": "terminal",
+      "command": [
+        "./build/wolfnum_exact_gemm4_clock_probe",
+        "--bits",
+        "672",
+        "--count",
+        "33",
+        "--check-only"
+      ],
+      "bits": 672,
+      "metal_validation": true,
+      "started_utc": "2026-10-09T13:07:46.800533+00:00",
+      "pid": 41907,
+      "birth_command": "Fri Oct  9 09:07:46 2026     ./build/wolfnum_exact_gemm4_clock_probe --bits 672 --count 33 --check-only",
+      "exit": 0,
+      "ended_utc": "2026-10-09T13:07:46.853188+00:00",
+      "log_sha256": "82af6f49b62187a8ce4a49ae499a8faf4b17270db9227259d7e0a00210878cde"
+    },
+    {
+      "name": "704_metal",
+      "state": "terminal",
+      "command": [
+        "./build/wolfnum_exact_gemm4_clock_probe",
+        "--bits",
+        "704",
+        "--count",
+        "33",
+        "--check-only"
+      ],
+      "bits": 704,
+      "metal_validation": true,
+      "started_utc": "2026-10-09T13:07:46.853965+00:00",
+      "pid": 41909,
+      "birth_command": "Fri Oct  9 09:07:46 2026     ./build/wolfnum_exact_gemm4_clock_probe --bits 704 --count 33 --check-only",
+      "exit": 0,
+      "ended_utc": "2026-10-09T13:07:46.910724+00:00",
+      "log_sha256": "09ff6e3f37e2a9f38068f539a67910e8f1258607097a18652f9c602e63ac85de"
+    },
+    {
+      "name": "736_metal",
+      "state": "terminal",
+      "command": [
+        "./build/wolfnum_exact_gemm4_clock_probe",
+        "--bits",
+        "736",
+        "--count",
+        "33",
+        "--check-only"
+      ],
+      "bits": 736,
+      "metal_validation": true,
+      "started_utc": "2026-10-09T13:07:46.911512+00:00",
+      "pid": 41911,
+      "birth_command": "Fri Oct  9 09:07:46 2026     ./build/wolfnum_exact_gemm4_clock_probe --bits 736 --count 33 --check-only",
+      "exit": 0,
+      "ended_utc": "2026-10-09T13:07:46.965533+00:00",
+      "log_sha256": "4e7fdb6b7c32a9f5571508ce2c354d576e5dfcd0a26755e56df37c5a2f9aacd5"
+    },
+    {
+      "name": "768_metal",
+      "state": "terminal",
+      "command": [
+        "./build/wolfnum_exact_gemm4_clock_probe",
+        "--bits",
+        "768",
+        "--count",
+        "33",
+        "--check-only"
+      ],
+      "bits": 768,
+      "metal_validation": true,
+      "started_utc": "2026-10-09T13:07:46.966259+00:00",
+      "pid": 41913,
+      "birth_command": "Fri Oct  9 09:07:46 2026     ./build/wolfnum_exact_gemm4_clock_probe --bits 768 --count 33 --check-only",
+      "exit": 0,
+      "ended_utc": "2026-10-09T13:07:47.021607+00:00",
+      "log_sha256": "e635a8f4eb85d1a17bde10767706ef5a10a7fc4309ac849488fff1cfd9f6f44e"
+    },
+    {
+      "name": "800_metal",
+      "state": "terminal",
+      "command": [
+        "./build/wolfnum_exact_gemm4_clock_probe",
+        "--bits",
+        "800",
+        "--count",
+        "33",
+        "--check-only"
+      ],
+      "bits": 800,
+      "metal_validation": true,
+      "started_utc": "2026-10-09T13:07:47.022181+00:00",
+      "pid": 41916,
+      "birth_command": "Fri Oct  9 09:07:47 2026     ./build/wolfnum_exact_gemm4_clock_probe --bits 800 --count 33 --check-only",
+      "exit": 0,
+      "ended_utc": "2026-10-09T13:07:47.081008+00:00",
+      "log_sha256": "2f73ee10869f75d669bd05e503a3fa661031f6861695fc78caffb9c070f7fbe0"
+    },
+    {
+      "name": "832_metal",
+      "state": "terminal",
+      "command": [
+        "./build/wolfnum_exact_gemm4_clock_probe",
+        "--bits",
+        "832",
+        "--count",
+        "33",
+        "--check-only"
+      ],
+      "bits": 832,
+      "metal_validation": true,
+      "started_utc": "2026-10-09T13:07:47.081544+00:00",
+      "pid": 41918,
+      "birth_command": "Fri Oct  9 09:07:47 2026     ./build/wolfnum_exact_gemm4_clock_probe --bits 832 --count 33 --check-only",
+      "exit": 0,
+      "ended_utc": "2026-10-09T13:07:47.136176+00:00",
+      "log_sha256": "fd311ae0304404a1ea05ce450f63387aad7a90cfcb8dea25e013540b63e0b69b"
+    },
+    {
+      "name": "864_metal",
+      "state": "terminal",
+      "command": [
+        "./build/wolfnum_exact_gemm4_clock_probe",
+        "--bits",
+        "864",
+        "--count",
+        "33",
+        "--check-only"
+      ],
+      "bits": 864,
+      "metal_validation": true,
+      "started_utc": "2026-10-09T13:07:47.136753+00:00",
+      "pid": 41921,
+      "birth_command": "Fri Oct  9 09:07:47 2026     ./build/wolfnum_exact_gemm4_clock_probe --bits 864 --count 33 --check-only",
+      "exit": 0,
+      "ended_utc": "2026-10-09T13:07:47.193734+00:00",
+      "log_sha256": "a73672df1daf158d291e8a936f481ebf92ce9630f7847b217d200b89c1420262"
+    },
+    {
+      "name": "896_metal",
+      "state": "terminal",
+      "command": [
+        "./build/wolfnum_exact_gemm4_clock_probe",
+        "--bits",
+        "896",
+        "--count",
+        "33",
+        "--check-only"
+      ],
+      "bits": 896,
+      "metal_validation": true,
+      "started_utc": "2026-10-09T13:07:47.194426+00:00",
+      "pid": 41923,
+      "birth_command": "Fri Oct  9 09:07:47 2026     ./build/wolfnum_exact_gemm4_clock_probe --bits 896 --count 33 --check-only",
+      "exit": 0,
+      "ended_utc": "2026-10-09T13:07:47.253101+00:00",
+      "log_sha256": "e30cbc84b5d3f2d3bbc594138bda339a9f6d5dc30dd33341b801145df25e1134"
+    },
+    {
+      "name": "928_metal",
+      "state": "terminal",
+      "command": [
+        "./build/wolfnum_exact_gemm4_clock_probe",
+        "--bits",
+        "928",
+        "--count",
+        "33",
+        "--check-only"
+      ],
+      "bits": 928,
+      "metal_validation": true,
+      "started_utc": "2026-10-09T13:07:47.253685+00:00",
+      "pid": 41925,
+      "birth_command": "Fri Oct  9 09:07:47 2026     ./build/wolfnum_exact_gemm4_clock_probe --bits 928 --count 33 --check-only",
+      "exit": 0,
+      "ended_utc": "2026-10-09T13:07:47.315158+00:00",
+      "log_sha256": "40c2de7d2e7458d9b2111f822adb3482da122df781f9f005a1ed06e291a6ad3a"
+    },
+    {
+      "name": "960_metal",
+      "state": "terminal",
+      "command": [
+        "./build/wolfnum_exact_gemm4_clock_probe",
+        "--bits",
+        "960",
+        "--count",
+        "33",
+        "--check-only"
+      ],
+      "bits": 960,
+      "metal_validation": true,
+      "started_utc": "2026-10-09T13:07:47.315957+00:00",
+      "pid": 41927,
+      "birth_command": "Fri Oct  9 09:07:47 2026     ./build/wolfnum_exact_gemm4_clock_probe --bits 960 --count 33 --check-only",
+      "exit": 0,
+      "ended_utc": "2026-10-09T13:07:47.373971+00:00",
+      "log_sha256": "bfc40d5af530fd3ee4c9a4393f16124d99ac39966a745480feae299e982d59d5"
+    },
+    {
+      "name": "992_metal",
+      "state": "terminal",
+      "command": [
+        "./build/wolfnum_exact_gemm4_clock_probe",
+        "--bits",
+        "992",
+        "--count",
+        "33",
+        "--check-only"
+      ],
+      "bits": 992,
+      "metal_validation": true,
+      "started_utc": "2026-10-09T13:07:47.374764+00:00",
+      "pid": 41929,
+      "birth_command": "Fri Oct  9 09:07:47 2026     ./build/wolfnum_exact_gemm4_clock_probe --bits 992 --count 33 --check-only",
+      "exit": 0,
+      "ended_utc": "2026-10-09T13:07:47.441402+00:00",
+      "log_sha256": "611fd7ee33d4c2c66e625cc34126577adcb6d2fb96abcaefd1b87401e534c3f8"
+    },
+    {
+      "name": "1024_metal",
+      "state": "terminal",
+      "command": [
+        "./build/wolfnum_exact_gemm4_clock_probe",
+        "--bits",
+        "1024",
+        "--count",
+        "33",
+        "--check-only"
+      ],
+      "bits": 1024,
+      "metal_validation": true,
+      "started_utc": "2026-10-09T13:07:47.442658+00:00",
+      "pid": 41931,
+      "birth_command": "Fri Oct  9 09:07:47 2026     ./build/wolfnum_exact_gemm4_clock_probe --bits 1024 --count 33 --check-only",
+      "exit": 0,
+      "ended_utc": "2026-10-09T13:07:47.503541+00:00",
+      "log_sha256": "da647a8aded170afe5a144d42dce0bdc535158eadef4040d360e884b5a44295c"
+    }
+  ],
+  "dependency_sha256": "7124b11d884949ae25fb6f1154ce45bdceb4a56774d6f180e15f7d067d6f78b5",
+  "status": "PASS",
+  "ended_utc": "2026-10-09T13:07:47.504068+00:00"
+}

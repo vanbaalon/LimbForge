@@ -1,0 +1,1 @@
+256 bits: 1/32-call resident batches match independent MPFR, all outputs/reports checked; no timings

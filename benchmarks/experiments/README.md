@@ -146,3 +146,8 @@ GPU tests before measuring it. Never overwrite accepted result files.
   passes, but 22 checked width/shape/residency profiles lose to composed. Complete
   source is retained as an unaccepted prototype; no installed API/default changes.
   `check_section9_gauss_measurements.py` verifies raw quantiles and gate provenance.
+
+- [Exact batched 4x4 baseline](exact_gemm4/BASELINE.md): uninstalled prototype,
+  all31-width normal/Metal and 26/19 full regressions pass; 24 checked comparisons
+  and three clock probes independently verify. Slower than composed in every
+  profile; retained for overhead optimization without public API promotion.

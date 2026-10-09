@@ -1,0 +1,33 @@
+ownership/validation PASS
+64 bits real+complex exact4 host/resident small cancellation/wide/status/ties/boundaries PASS
+96 bits real+complex exact4 host/resident small cancellation/wide/status/ties/boundaries PASS
+128 bits real+complex exact4 host/resident small cancellation/wide/status/ties/boundaries PASS
+160 bits real+complex exact4 host/resident small cancellation/wide/status/ties/boundaries PASS
+192 bits real+complex exact4 host/resident small cancellation/wide/status/ties/boundaries PASS
+224 bits real+complex exact4 host/resident small cancellation/wide/status/ties/boundaries PASS
+256 bits real+complex exact4 host/resident small cancellation/wide/status/ties/boundaries PASS
+288 bits real+complex exact4 host/resident small cancellation/wide/status/ties/boundaries PASS
+320 bits real+complex exact4 host/resident small cancellation/wide/status/ties/boundaries PASS
+352 bits real+complex exact4 host/resident small cancellation/wide/status/ties/boundaries PASS
+384 bits real+complex exact4 host/resident small cancellation/wide/status/ties/boundaries PASS
+416 bits real+complex exact4 host/resident small cancellation/wide/status/ties/boundaries PASS
+448 bits real+complex exact4 host/resident small cancellation/wide/status/ties/boundaries PASS
+480 bits real+complex exact4 host/resident small cancellation/wide/status/ties/boundaries PASS
+512 bits real+complex exact4 host/resident small cancellation/wide/status/ties/boundaries PASS
+544 bits real+complex exact4 host/resident small cancellation/wide/status/ties/boundaries PASS
+576 bits real+complex exact4 host/resident small cancellation/wide/status/ties/boundaries PASS
+608 bits real+complex exact4 host/resident small cancellation/wide/status/ties/boundaries PASS
+640 bits real+complex exact4 host/resident small cancellation/wide/status/ties/boundaries PASS
+672 bits real+complex exact4 host/resident small cancellation/wide/status/ties/boundaries PASS
+704 bits real+complex exact4 host/resident small cancellation/wide/status/ties/boundaries PASS
+736 bits real+complex exact4 host/resident small cancellation/wide/status/ties/boundaries PASS
+768 bits real+complex exact4 host/resident small cancellation/wide/status/ties/boundaries PASS
+800 bits real+complex exact4 host/resident small cancellation/wide/status/ties/boundaries PASS
+832 bits real+complex exact4 host/resident small cancellation/wide/status/ties/boundaries PASS
+864 bits real+complex exact4 host/resident small cancellation/wide/status/ties/boundaries PASS
+896 bits real+complex exact4 host/resident small cancellation/wide/status/ties/boundaries PASS
+928 bits real+complex exact4 host/resident small cancellation/wide/status/ties/boundaries PASS
+960 bits real+complex exact4 host/resident small cancellation/wide/status/ties/boundaries PASS
+992 bits real+complex exact4 host/resident small cancellation/wide/status/ties/boundaries PASS
+1024 bits real+complex exact4 host/resident small cancellation/wide/status/ties/boundaries PASS
+PASS exact GEMM4 independent MPFR gate

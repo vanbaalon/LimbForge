@@ -1,0 +1,321 @@
+{
+  "library_release": "1.3.1",
+  "production_api_major": 1,
+  "experimental_api_installed": false,
+  "promoted": false,
+  "measurement_queue_sha256": "c9ec8eb7074d573ffc2aa248f5d655f20e935931093d38b0de36359533d6809e",
+  "comparisons": [
+    {
+      "bits": 352,
+      "count": 10000,
+      "resident": false,
+      "clock": "cpu-interleaved",
+      "exact_wall_seconds": 0.007348708,
+      "composed_wall_seconds": 0.006136542,
+      "exact_over_composed": 1.1975324213539156,
+      "cpu18_over_exact_wall": 3.953608852059437,
+      "csv": "benchmarks/results/section9_exact_gemm4_measurements/exact4_352_10000_host_interleaved.csv",
+      "metadata_sha256": "2cc9bfa37305c56d7f268762bffa42668ebe0fd209caf6727f0eeb8a3d47f711"
+    },
+    {
+      "bits": 352,
+      "count": 10000,
+      "resident": false,
+      "clock": "verified-warm-call",
+      "exact_wall_seconds": 0.006176208,
+      "composed_wall_seconds": 0.005453959,
+      "exact_over_composed": 1.1324265547284091,
+      "cpu18_over_exact_wall": 5.154862012419271,
+      "csv": "benchmarks/results/section9_exact_gemm4_measurements_continued/exact4_352_10000_host_warm.csv",
+      "metadata_sha256": "96f9317f73873c039b69d8ad4922b15457e3a538a997d42d36e555d86341481f"
+    },
+    {
+      "bits": 352,
+      "count": 10000,
+      "resident": true,
+      "clock": "cpu-interleaved",
+      "exact_wall_seconds": 0.005029375,
+      "composed_wall_seconds": 0.004495334,
+      "exact_over_composed": 1.1187989590984786,
+      "cpu18_over_exact_wall": 5.94396242077793,
+      "csv": "benchmarks/results/section9_exact_gemm4_measurements_continued/exact4_352_10000_resident_interleaved.csv",
+      "metadata_sha256": "3a6769b1bd5f5184d75c0eb5b1da73a5d2b3f1ff7e0e2ededef2b46cf9abe0ff"
+    },
+    {
+      "bits": 352,
+      "count": 10000,
+      "resident": true,
+      "clock": "verified-warm-call",
+      "exact_wall_seconds": 0.003748666,
+      "composed_wall_seconds": 0.002919125,
+      "exact_over_composed": 1.2841745386031773,
+      "cpu18_over_exact_wall": 8.32272733820511,
+      "csv": "benchmarks/results/section9_exact_gemm4_measurements_continued/exact4_352_10000_resident_warm.csv",
+      "metadata_sha256": "59dae2b5beb874e1a8ffd33cc1307a4e5522fae1002da2bd11ee1b6534644eac"
+    },
+    {
+      "bits": 352,
+      "count": 100000,
+      "resident": false,
+      "clock": "cpu-interleaved",
+      "exact_wall_seconds": 0.088203833,
+      "composed_wall_seconds": 0.028464125,
+      "exact_over_composed": 3.098771980519338,
+      "cpu18_over_exact_wall": 2.9632938400760884,
+      "csv": "benchmarks/results/section9_exact_gemm4_measurements_continued/exact4_352_100000_host_interleaved.csv",
+      "metadata_sha256": "f1d0d5ae1c2f09e4639473378849d6a9cbdb6bb5d1edee12e333736d140033f7"
+    },
+    {
+      "bits": 352,
+      "count": 100000,
+      "resident": false,
+      "clock": "verified-warm-call",
+      "exact_wall_seconds": 0.057698375,
+      "composed_wall_seconds": 0.028405542,
+      "exact_over_composed": 2.03123654531922,
+      "cpu18_over_exact_wall": 4.855032745722907,
+      "csv": "benchmarks/results/section9_exact_gemm4_measurements_continued/exact4_352_100000_host_warm.csv",
+      "metadata_sha256": "7825a6e8b7dd28414d5a9d3966216f3eb93cfcf33a25fc2073a0961c5358fae2"
+    },
+    {
+      "bits": 352,
+      "count": 100000,
+      "resident": true,
+      "clock": "cpu-interleaved",
+      "exact_wall_seconds": 0.043593208,
+      "composed_wall_seconds": 0.0215845,
+      "exact_over_composed": 2.019653362366513,
+      "cpu18_over_exact_wall": 6.985803476541576,
+      "csv": "benchmarks/results/section9_exact_gemm4_measurements_continued/exact4_352_100000_resident_interleaved.csv",
+      "metadata_sha256": "2be5670aa3374fa34a811b1e297d1ea514a84bf06ce4b0a7f980c53d22b14d03"
+    },
+    {
+      "bits": 352,
+      "count": 100000,
+      "resident": true,
+      "clock": "verified-warm-call",
+      "exact_wall_seconds": 0.0332025,
+      "composed_wall_seconds": 0.019729958,
+      "exact_over_composed": 1.6828469680472713,
+      "cpu18_over_exact_wall": 8.011362096227694,
+      "csv": "benchmarks/results/section9_exact_gemm4_measurements_continued/exact4_352_100000_resident_warm.csv",
+      "metadata_sha256": "9476b8d010c1720dbf9c98666833744694484368e2df88af669bbde89ba840d0"
+    },
+    {
+      "bits": 384,
+      "count": 10000,
+      "resident": false,
+      "clock": "cpu-interleaved",
+      "exact_wall_seconds": 0.006267209,
+      "composed_wall_seconds": 0.005815542,
+      "exact_over_composed": 1.0776655039203569,
+      "cpu18_over_exact_wall": 3.901291308459635,
+      "csv": "benchmarks/results/section9_exact_gemm4_measurements_continued/exact4_384_10000_host_interleaved.csv",
+      "metadata_sha256": "446ee6f452011eea624d78295849c3c2b362f0405beac67ebe870cdf92724b64"
+    },
+    {
+      "bits": 384,
+      "count": 10000,
+      "resident": false,
+      "clock": "verified-warm-call",
+      "exact_wall_seconds": 0.0059725,
+      "composed_wall_seconds": 0.005238084,
+      "exact_over_composed": 1.1402069917168187,
+      "cpu18_over_exact_wall": 4.720712934282126,
+      "csv": "benchmarks/results/section9_exact_gemm4_measurements_continued/exact4_384_10000_host_warm.csv",
+      "metadata_sha256": "c00f2a5dcb5b896b8287e9c3f8b91a230c4e2eac70aeab4ac2c684bc091a1b2b"
+    },
+    {
+      "bits": 384,
+      "count": 10000,
+      "resident": true,
+      "clock": "cpu-interleaved",
+      "exact_wall_seconds": 0.00607875,
+      "composed_wall_seconds": 0.005338334,
+      "exact_over_composed": 1.1386979533315076,
+      "cpu18_over_exact_wall": 4.816937528274727,
+      "csv": "benchmarks/results/section9_exact_gemm4_measurements_continued/exact4_384_10000_resident_interleaved.csv",
+      "metadata_sha256": "00d28bc0ba03e8387b5fd90ac160ab9950c5b2447091a1feb89b5811994dc206"
+    },
+    {
+      "bits": 384,
+      "count": 10000,
+      "resident": true,
+      "clock": "verified-warm-call",
+      "exact_wall_seconds": 0.003604209,
+      "composed_wall_seconds": 0.002785209,
+      "exact_over_composed": 1.2940533367513893,
+      "cpu18_over_exact_wall": 7.0273971348498385,
+      "csv": "benchmarks/results/section9_exact_gemm4_measurements_continued/exact4_384_10000_resident_warm.csv",
+      "metadata_sha256": "9d8ef822ab1377f5aa26584b27f7a5a916814afc19776dd7fe3a0ad4abfe13d6"
+    },
+    {
+      "bits": 384,
+      "count": 100000,
+      "resident": false,
+      "clock": "cpu-interleaved",
+      "exact_wall_seconds": 0.044320583,
+      "composed_wall_seconds": 0.030605416,
+      "exact_over_composed": 1.4481287560345528,
+      "cpu18_over_exact_wall": 5.87544543355849,
+      "csv": "benchmarks/results/section9_exact_gemm4_measurements_continued/exact4_384_100000_host_interleaved.csv",
+      "metadata_sha256": "717650a766cef4300fec27471d1c1a4690d0c0d0e9d9b85883245d699a205da6"
+    },
+    {
+      "bits": 384,
+      "count": 100000,
+      "resident": false,
+      "clock": "verified-warm-call",
+      "exact_wall_seconds": 0.042885292,
+      "composed_wall_seconds": 0.031615292,
+      "exact_over_composed": 1.3564730637313105,
+      "cpu18_over_exact_wall": 6.40273611754818,
+      "csv": "benchmarks/results/section9_exact_gemm4_measurements_continued/exact4_384_100000_host_warm.csv",
+      "metadata_sha256": "4076445f9efaa0a531c80e8d33a4bbd6ba51a6853dee5bc15dd8361481d4d509"
+    },
+    {
+      "bits": 384,
+      "count": 100000,
+      "resident": true,
+      "clock": "cpu-interleaved",
+      "exact_wall_seconds": 0.034278916,
+      "composed_wall_seconds": 0.021723917,
+      "exact_over_composed": 1.5779344028979674,
+      "cpu18_over_exact_wall": 9.305771221003605,
+      "csv": "benchmarks/results/section9_exact_gemm4_measurements_continued/exact4_384_100000_resident_interleaved.csv",
+      "metadata_sha256": "af5e01222fbda9fe674275fac03101ce9ffee2f5197359f6ec6ab2b55dfcd880"
+    },
+    {
+      "bits": 384,
+      "count": 100000,
+      "resident": true,
+      "clock": "verified-warm-call",
+      "exact_wall_seconds": 0.098856167,
+      "composed_wall_seconds": 0.021572584,
+      "exact_over_composed": 4.5824907669846136,
+      "cpu18_over_exact_wall": 2.9611147982300388,
+      "csv": "benchmarks/results/section9_exact_gemm4_measurements_continued/exact4_384_100000_resident_warm.csv",
+      "metadata_sha256": "22979b9f0f76f91dff01b8cb339a787914fa2a64ddfea475c001f06cbb7617b9"
+    },
+    {
+      "bits": 448,
+      "count": 10000,
+      "resident": false,
+      "clock": "cpu-interleaved",
+      "exact_wall_seconds": 0.006782,
+      "composed_wall_seconds": 0.006433042,
+      "exact_over_composed": 1.0542446326325865,
+      "cpu18_over_exact_wall": 3.557787820701858,
+      "csv": "benchmarks/results/section9_exact_gemm4_measurements_continued/exact4_448_10000_host_interleaved.csv",
+      "metadata_sha256": "1346410d011326527964e43bd7df2d62a64de634c13b05ec393bb9ebc55bb383"
+    },
+    {
+      "bits": 448,
+      "count": 10000,
+      "resident": false,
+      "clock": "verified-warm-call",
+      "exact_wall_seconds": 0.00743275,
+      "composed_wall_seconds": 0.006635417,
+      "exact_over_composed": 1.1201632090341873,
+      "cpu18_over_exact_wall": 3.722298879956947,
+      "csv": "benchmarks/results/section9_exact_gemm4_measurements_continued/exact4_448_10000_host_warm.csv",
+      "metadata_sha256": "a024404494da610262ad5da63df288169640f3133cadf0f8e5177ae50d6d7de1"
+    },
+    {
+      "bits": 448,
+      "count": 10000,
+      "resident": true,
+      "clock": "cpu-interleaved",
+      "exact_wall_seconds": 0.005333166,
+      "composed_wall_seconds": 0.004545292,
+      "exact_over_composed": 1.1733384785839942,
+      "cpu18_over_exact_wall": 5.306650871171083,
+      "csv": "benchmarks/results/section9_exact_gemm4_measurements_continued/exact4_448_10000_resident_interleaved.csv",
+      "metadata_sha256": "534e31175c3c5dfb818604e34ecdf8a436b309a8ec8e3782dfa8a535078f9c54"
+    },
+    {
+      "bits": 448,
+      "count": 10000,
+      "resident": true,
+      "clock": "verified-warm-call",
+      "exact_wall_seconds": 0.005066708,
+      "composed_wall_seconds": 0.004412958,
+      "exact_over_composed": 1.1481432635434101,
+      "cpu18_over_exact_wall": 5.694895975848619,
+      "csv": "benchmarks/results/section9_exact_gemm4_measurements_continued/exact4_448_10000_resident_warm.csv",
+      "metadata_sha256": "f6790916e987da68704d008d9975a14f16b185e91ae06c4428c192160a32074f"
+    },
+    {
+      "bits": 448,
+      "count": 100000,
+      "resident": false,
+      "clock": "cpu-interleaved",
+      "exact_wall_seconds": 0.067112958,
+      "composed_wall_seconds": 0.040017209,
+      "exact_over_composed": 1.6771024186119527,
+      "cpu18_over_exact_wall": 4.641859430484349,
+      "csv": "benchmarks/results/section9_exact_gemm4_measurements_continued/exact4_448_100000_host_interleaved.csv",
+      "metadata_sha256": "06c79185c373f9e794abbc0fc98e39d9d04b7a59330a8ae99ad22bc13c69e9ee"
+    },
+    {
+      "bits": 448,
+      "count": 100000,
+      "resident": false,
+      "clock": "verified-warm-call",
+      "exact_wall_seconds": 0.04927675,
+      "composed_wall_seconds": 0.035925833,
+      "exact_over_composed": 1.3716244241295672,
+      "cpu18_over_exact_wall": 5.338274805055122,
+      "csv": "benchmarks/results/section9_exact_gemm4_measurements_continued/exact4_448_100000_host_warm.csv",
+      "metadata_sha256": "ccca4dd914148f731aadf6f491616c2da8f4416aee38e43aa11a9db0c0fe28ce"
+    },
+    {
+      "bits": 448,
+      "count": 100000,
+      "resident": true,
+      "clock": "cpu-interleaved",
+      "exact_wall_seconds": 0.041959209,
+      "composed_wall_seconds": 0.026026,
+      "exact_over_composed": 1.6122035272419886,
+      "cpu18_over_exact_wall": 8.072448219888988,
+      "csv": "benchmarks/results/section9_exact_gemm4_measurements_continued/exact4_448_100000_resident_interleaved.csv",
+      "metadata_sha256": "1adbfd9cb2556ffac905afdf95e41bf596913dacb0fbb0a36930f777412d1642"
+    },
+    {
+      "bits": 448,
+      "count": 100000,
+      "resident": true,
+      "clock": "verified-warm-call",
+      "exact_wall_seconds": 0.049015375,
+      "composed_wall_seconds": 0.025451667,
+      "exact_over_composed": 1.9258217939123594,
+      "cpu18_over_exact_wall": 6.561821163257447,
+      "csv": "benchmarks/results/section9_exact_gemm4_measurements_continued/exact4_448_100000_resident_warm.csv",
+      "metadata_sha256": "9d0e18355fa129ea880f350c28e7a94790202d02b8983d38cea8410ff35be732"
+    }
+  ],
+  "clock_probes": [
+    {
+      "bits": 352,
+      "gpu_seconds_per_call": {
+        "batch32_after_200ms_device_work": 0.000193859375941,
+        "idle_delay_100ms": 0.000232666614465
+      }
+    },
+    {
+      "bits": 384,
+      "gpu_seconds_per_call": {
+        "batch32_after_200ms_device_work": 0.000196326822334,
+        "idle_delay_100ms": 0.000234791717958
+      }
+    },
+    {
+      "bits": 448,
+      "gpu_seconds_per_call": {
+        "batch32_after_200ms_device_work": 0.000220121093662,
+        "idle_delay_100ms": 0.000247750023846
+      }
+    }
+  ],
+  "decision": "Do not promote this baseline: exact GPU wall time exceeds composed in all 24 measured configurations. Contracts differ; results do not establish an idle consumer policy."
+}

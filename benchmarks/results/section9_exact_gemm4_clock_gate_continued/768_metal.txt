@@ -1,0 +1,2 @@
+2026-10-09 09:07:46.977 wolfnum_exact_gemm4_clock_probe[41913:278587637] Metal GPU Validation Enabled
+768 bits: 1/32-call resident batches match independent MPFR, all outputs/reports checked; no timings

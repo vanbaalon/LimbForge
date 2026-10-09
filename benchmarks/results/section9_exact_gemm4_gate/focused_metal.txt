@@ -1,0 +1,4 @@
+2026-10-09 08:09:54.648 test_wolfnum_exact_gemm4[7173:271388671] Metal GPU Validation Enabled
+ownership/validation PASS
+352 bits real+complex exact4 host/resident small cancellation/wide/status/ties/boundaries PASS
+PASS exact GEMM4 independent MPFR gate

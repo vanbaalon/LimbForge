@@ -1,0 +1,43 @@
+cpu_sample,0,0,complex_composed,0.017685917
+cpu_sample,0,1,complex_fused,0.054255875
+cpu_sample,0,2,exact_batched4,0.029569041
+cpu_sample,0,3,gauss_three_real_composed,0.014116083
+gpu_sample,0,0,complex_composed,0.004073375,0.00360104162246
+gpu_sample,0,1,complex_fused,0.005933916,0.00577162497211
+gpu_sample,0,2,exact_batched4,0.003748666,0.0024312500027
+gpu_sample,0,3,gauss_three_real_composed,0.002125,0.00165970833041
+cpu_sample,1,0,complex_fused,0.058190583
+cpu_sample,1,1,exact_batched4,0.031199125
+cpu_sample,1,2,gauss_three_real_composed,0.011394916
+cpu_sample,1,3,complex_composed,0.018482333
+gpu_sample,1,0,complex_fused,0.005056167,0.00456450000638
+gpu_sample,1,1,exact_batched4,0.0038545,0.0024943749886
+gpu_sample,1,2,gauss_three_real_composed,0.002072208,0.00153175002197
+gpu_sample,1,3,complex_composed,0.002905042,0.00241750001442
+cpu_sample,2,0,exact_batched4,0.032420916
+cpu_sample,2,1,gauss_three_real_composed,0.015557042
+cpu_sample,2,2,complex_composed,0.017040167
+cpu_sample,2,3,complex_fused,0.070011083
+gpu_sample,2,0,exact_batched4,0.0034275,0.00206770835212
+gpu_sample,2,1,gauss_three_real_composed,0.001938083,0.0014341250062
+gpu_sample,2,2,complex_composed,0.002919125,0.00243887503166
+gpu_sample,2,3,complex_fused,0.004942083,0.00447862502187
+Device: Apple M5 Max; immutable MPFR references check every timed CPU/GPU output; numeric-array transfers excluded; bridge conversion excluded; exact4 comparison CPU workers=18
+        0.87 real         6.25 user         0.14 sys
+           609091584  maximum resident set size
+                   0  average shared memory size
+                   0  average unshared data size
+                   0  average unshared stack size
+               38026  page reclaims
+                   2  page faults
+                   0  swaps
+                   0  block input operations
+                   0  block output operations
+                   0  messages sent
+                   0  messages received
+                   0  signals received
+                   0  voluntary context switches
+               29387  involuntary context switches
+         71320567563  instructions retired
+         27386818995  cycles elapsed
+          1431651600  peak memory footprint
