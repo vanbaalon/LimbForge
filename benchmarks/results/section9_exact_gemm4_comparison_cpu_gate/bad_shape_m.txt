@@ -1,0 +1,1 @@
+exact4 comparison requires m=n=k=4

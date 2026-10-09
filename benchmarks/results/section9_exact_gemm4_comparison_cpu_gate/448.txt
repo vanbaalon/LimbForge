@@ -1,0 +1,1 @@
+448 bits: four CPU contracts prepared; MPFR exact dots match independent high-precision sums; no GPU or timings

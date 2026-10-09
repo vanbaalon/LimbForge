@@ -1,0 +1,442 @@
+{
+  "status": "PASS",
+  "source_sha256": "3d289c809852886e4520e6a7e3572208b47203c36792db568b3cf048ea399699",
+  "binary_sha256": "8023531e233874642766d7409a5a83d9ac8e1c93fd3c9fe1350cc22e87684db5",
+  "production_archive_sha256": "466c05404b13fc94068d02048c1af9f5ebb556162d026e333be612d3b39fc018",
+  "prototype_archive_sha256": "7da48754132a40376b9123cf3bee3372692c3e26fbca3e56b16be8751eec6c25",
+  "checks": [
+    {
+      "name": "64",
+      "args": [
+        "--bits",
+        "64",
+        "--count",
+        "3",
+        "--cpu-only"
+      ],
+      "exit": 0,
+      "log_sha256": "6a0f1b341038dd4ef44c7e6f19ee5af0f70bf4a0416308eee1bf1696cc4baf22"
+    },
+    {
+      "name": "96",
+      "args": [
+        "--bits",
+        "96",
+        "--count",
+        "3",
+        "--cpu-only"
+      ],
+      "exit": 0,
+      "log_sha256": "282e0b9de4a12ffe64378713003559b9f533ba38fd285615fcc38c9e97c0126f"
+    },
+    {
+      "name": "128",
+      "args": [
+        "--bits",
+        "128",
+        "--count",
+        "3",
+        "--cpu-only"
+      ],
+      "exit": 0,
+      "log_sha256": "fe9eb8edd205fa76f490249ef444b469e255e973ed7a5d5ebda5e85067ecec6e"
+    },
+    {
+      "name": "160",
+      "args": [
+        "--bits",
+        "160",
+        "--count",
+        "3",
+        "--cpu-only"
+      ],
+      "exit": 0,
+      "log_sha256": "18a9cad17ec280bb3f8ac9e2c41e8db7afd8dc62de0ab6e293013b93b7c8d437"
+    },
+    {
+      "name": "192",
+      "args": [
+        "--bits",
+        "192",
+        "--count",
+        "3",
+        "--cpu-only"
+      ],
+      "exit": 0,
+      "log_sha256": "c4f864ed74107b6449b00f63d26b9a0e14b319d5b17ad5d0e34d1e2086aab0c3"
+    },
+    {
+      "name": "224",
+      "args": [
+        "--bits",
+        "224",
+        "--count",
+        "3",
+        "--cpu-only"
+      ],
+      "exit": 0,
+      "log_sha256": "ef95536f0d19b74db666a746efcf014d4f11f5ab6a88540fb313bcd9ccfcdb8e"
+    },
+    {
+      "name": "256",
+      "args": [
+        "--bits",
+        "256",
+        "--count",
+        "3",
+        "--cpu-only"
+      ],
+      "exit": 0,
+      "log_sha256": "0cf3bd6ab81f2bde7636a1a6a391be7b1156923dfd9228382db0b98fd6865b71"
+    },
+    {
+      "name": "288",
+      "args": [
+        "--bits",
+        "288",
+        "--count",
+        "3",
+        "--cpu-only"
+      ],
+      "exit": 0,
+      "log_sha256": "dc00178d44fec3d0d30e132f413621aa75b9a53814dfbc523ae08c71c9b9e5c0"
+    },
+    {
+      "name": "320",
+      "args": [
+        "--bits",
+        "320",
+        "--count",
+        "3",
+        "--cpu-only"
+      ],
+      "exit": 0,
+      "log_sha256": "2294d38bd7bd1c1c18f1919a5770f50258467f0dd5a26d681b56dcb685e4ddb5"
+    },
+    {
+      "name": "352",
+      "args": [
+        "--bits",
+        "352",
+        "--count",
+        "3",
+        "--cpu-only"
+      ],
+      "exit": 0,
+      "log_sha256": "72c3d350700e6580bde05cb092c6c1d3b1e04ba4d0afe63a0862610ee13a070b"
+    },
+    {
+      "name": "384",
+      "args": [
+        "--bits",
+        "384",
+        "--count",
+        "3",
+        "--cpu-only"
+      ],
+      "exit": 0,
+      "log_sha256": "ced8ce65c50803402fc68c25b726f65c1c5d2e06d228273b1d3ab58a35e94f82"
+    },
+    {
+      "name": "416",
+      "args": [
+        "--bits",
+        "416",
+        "--count",
+        "3",
+        "--cpu-only"
+      ],
+      "exit": 0,
+      "log_sha256": "b9cb7806ecc69bb307a2e7b0aab67bf0150f1990bd32e0c386fe7358fd3ca3ae"
+    },
+    {
+      "name": "448",
+      "args": [
+        "--bits",
+        "448",
+        "--count",
+        "3",
+        "--cpu-only"
+      ],
+      "exit": 0,
+      "log_sha256": "fe5d8d7650a19e3d0dc6d3c68f6fbd32b02bcc58f58f78682ee03c26f33c8757"
+    },
+    {
+      "name": "480",
+      "args": [
+        "--bits",
+        "480",
+        "--count",
+        "3",
+        "--cpu-only"
+      ],
+      "exit": 0,
+      "log_sha256": "c03f3a88c7f4f10e8dfbd1daa3614c32c99141d29b07612fdbec783020a5fadd"
+    },
+    {
+      "name": "512",
+      "args": [
+        "--bits",
+        "512",
+        "--count",
+        "3",
+        "--cpu-only"
+      ],
+      "exit": 0,
+      "log_sha256": "cede9b013f6cce8d41ef8742a7fd892143c7f991572e7280ac831378293b77de"
+    },
+    {
+      "name": "544",
+      "args": [
+        "--bits",
+        "544",
+        "--count",
+        "3",
+        "--cpu-only"
+      ],
+      "exit": 0,
+      "log_sha256": "8cc675b9824c48f38a0e4c97a15ed6b154a5e1bbb21c8c6f28ff8c07121cabca"
+    },
+    {
+      "name": "576",
+      "args": [
+        "--bits",
+        "576",
+        "--count",
+        "3",
+        "--cpu-only"
+      ],
+      "exit": 0,
+      "log_sha256": "b8da3797c062be35f059e8144c2f297906987e259053d0866a65f723f7ce658f"
+    },
+    {
+      "name": "608",
+      "args": [
+        "--bits",
+        "608",
+        "--count",
+        "3",
+        "--cpu-only"
+      ],
+      "exit": 0,
+      "log_sha256": "d9c8c49cb327bbc0333592769c83250c7bd80ebd03c0a7f6d9b3f88c0b4f9d05"
+    },
+    {
+      "name": "640",
+      "args": [
+        "--bits",
+        "640",
+        "--count",
+        "3",
+        "--cpu-only"
+      ],
+      "exit": 0,
+      "log_sha256": "c3179ce7db7da20681027523fe1244557fdffaa5e30116daff5ce43dcbe2f3d6"
+    },
+    {
+      "name": "672",
+      "args": [
+        "--bits",
+        "672",
+        "--count",
+        "3",
+        "--cpu-only"
+      ],
+      "exit": 0,
+      "log_sha256": "2c356fca71c68e0686e46c0777a0b0d98e545852241b46b0a2e2f3773f34d209"
+    },
+    {
+      "name": "704",
+      "args": [
+        "--bits",
+        "704",
+        "--count",
+        "3",
+        "--cpu-only"
+      ],
+      "exit": 0,
+      "log_sha256": "88c8788025974175721314958adea1b7f5c43104d91545a998293ed64e054181"
+    },
+    {
+      "name": "736",
+      "args": [
+        "--bits",
+        "736",
+        "--count",
+        "3",
+        "--cpu-only"
+      ],
+      "exit": 0,
+      "log_sha256": "54ea82b63f1cc99ef9e270921ea94c7fd5617d2960e72d31872bf80f3a132384"
+    },
+    {
+      "name": "768",
+      "args": [
+        "--bits",
+        "768",
+        "--count",
+        "3",
+        "--cpu-only"
+      ],
+      "exit": 0,
+      "log_sha256": "2eb443f8cb74786697ef8a53d7c3d9eb0cd62372d6a7a7b80ceaf1d1e5f297fc"
+    },
+    {
+      "name": "800",
+      "args": [
+        "--bits",
+        "800",
+        "--count",
+        "3",
+        "--cpu-only"
+      ],
+      "exit": 0,
+      "log_sha256": "0fbfdb410da944b3d914f2f038834eafd7403db5feb21c7b076e82454813b89b"
+    },
+    {
+      "name": "832",
+      "args": [
+        "--bits",
+        "832",
+        "--count",
+        "3",
+        "--cpu-only"
+      ],
+      "exit": 0,
+      "log_sha256": "ba2a9b22ffa1a79c75248cb34cf85314c430b1961e70bee8023d7ae45eb0dc1b"
+    },
+    {
+      "name": "864",
+      "args": [
+        "--bits",
+        "864",
+        "--count",
+        "3",
+        "--cpu-only"
+      ],
+      "exit": 0,
+      "log_sha256": "a5b961a2e013ead2ddd9ebd95740f42bffe4a08c9e9203542bb25e8f12d72936"
+    },
+    {
+      "name": "896",
+      "args": [
+        "--bits",
+        "896",
+        "--count",
+        "3",
+        "--cpu-only"
+      ],
+      "exit": 0,
+      "log_sha256": "fe3de2eb22cc4c3ac28a2735cbf8a30ae8015ec3cc5a44595df972fa5dfc1d5e"
+    },
+    {
+      "name": "928",
+      "args": [
+        "--bits",
+        "928",
+        "--count",
+        "3",
+        "--cpu-only"
+      ],
+      "exit": 0,
+      "log_sha256": "e1547db2d6def9c231125a37c8f8a540589cc4e5a382cded3bc04593547af82d"
+    },
+    {
+      "name": "960",
+      "args": [
+        "--bits",
+        "960",
+        "--count",
+        "3",
+        "--cpu-only"
+      ],
+      "exit": 0,
+      "log_sha256": "d464ce0c6fdc18826d62c310be518915d24e26b176c84049da07951d63d910e8"
+    },
+    {
+      "name": "992",
+      "args": [
+        "--bits",
+        "992",
+        "--count",
+        "3",
+        "--cpu-only"
+      ],
+      "exit": 0,
+      "log_sha256": "1312b370958da49ac6fff79c34757b8b402b9ce0e2b2597fde42c69fb88eb4a7"
+    },
+    {
+      "name": "1024",
+      "args": [
+        "--bits",
+        "1024",
+        "--count",
+        "3",
+        "--cpu-only"
+      ],
+      "exit": 0,
+      "log_sha256": "8e98b6c2cae1bd4a87be3b5f854261093b15af99d0bd75c72436971f68a071b9"
+    },
+    {
+      "name": "bad_shape_m",
+      "args": [
+        "--m",
+        "5",
+        "--cpu-only"
+      ],
+      "exit": 1,
+      "log_sha256": "2d93f32a7310cdbd8647abf83a95f7c7cd3f2e72e6d0c859e97b883b3a49c022"
+    },
+    {
+      "name": "bad_shape_n",
+      "args": [
+        "--n",
+        "5",
+        "--cpu-only"
+      ],
+      "exit": 1,
+      "log_sha256": "2d93f32a7310cdbd8647abf83a95f7c7cd3f2e72e6d0c859e97b883b3a49c022"
+    },
+    {
+      "name": "bad_shape_k",
+      "args": [
+        "--k",
+        "5",
+        "--cpu-only"
+      ],
+      "exit": 1,
+      "log_sha256": "2d93f32a7310cdbd8647abf83a95f7c7cd3f2e72e6d0c859e97b883b3a49c022"
+    },
+    {
+      "name": "empty_paths",
+      "args": [
+        "--paths",
+        "",
+        "--cpu-only"
+      ],
+      "exit": 1,
+      "log_sha256": "978fa65c06a2525aeee140a5ba40334d27c5dc52707ac1505580d4cea672902d"
+    },
+    {
+      "name": "duplicate_paths",
+      "args": [
+        "--paths",
+        "exact,exact",
+        "--cpu-only"
+      ],
+      "exit": 1,
+      "log_sha256": "f9006fb5b852eea5fd4c9a465335c5f089dee2850ef598d9f32e81e46b912f15"
+    },
+    {
+      "name": "unknown_path",
+      "args": [
+        "--path",
+        "nope",
+        "--cpu-only"
+      ],
+      "exit": 1,
+      "log_sha256": "1170ff624f56656abee1e16705c9d23a57a806ef3c351f6c78819a2eaf87196b"
+    }
+  ],
+  "ended_utc": "2026-10-09T12:15:21.813270+00:00"
+}

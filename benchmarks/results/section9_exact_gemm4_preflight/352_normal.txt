@@ -1,0 +1,3 @@
+ownership/validation PASS
+352 bits real+complex exact4 host/resident small cancellation/wide/status/ties/boundaries PASS
+PASS exact GEMM4 independent MPFR gate
