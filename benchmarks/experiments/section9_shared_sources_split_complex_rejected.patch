@@ -1,0 +1,86 @@
+diff --git a/src/batched_linalg.metal b/src/batched_linalg.metal
+index 7a264e6..781eff1 100644
+--- a/src/batched_linalg.metal
++++ b/src/batched_linalg.metal
+@@ -188,3 +188,17 @@ template<class Packed> void panel_powers(device const Packed* E,device const Pac
+ }
+ kernel void batch_panel_powers_real(device const Number<N>* E [[buffer(0)]],device const Number<N>* Y [[buffer(1)]],device Number<N>* P [[buffer(2)]],constant BatchParams& p [[buffer(3)]],device Number<N>* state [[buffer(4)]],uint i [[thread_position_in_grid]]){panel_powers(E,Y,P,state,p,i);}
+ kernel void batch_panel_powers_complex(device const Complex<N>* E [[buffer(0)]],device const Complex<N>* Y [[buffer(1)]],device Complex<N>* P [[buffer(2)]],constant BatchParams& p [[buffer(3)]],device Complex<N>* state [[buffer(4)]],uint i [[thread_position_in_grid]]){panel_powers(E,Y,P,state,p,i);}
++
++// Evaluate p/q once per (step, shared group, component), then reuse Engine's vector recurrence.
++kernel void batch_polynomial_sources(device const Complex<N>* coeff [[buffer(1)]],device Complex<N>* out [[buffer(2)]],constant PolyParams& p [[buffer(3)]],device const Complex<N>* Y [[buffer(5)]],device const Complex<N>* E [[buffer(6)]],uint2 index [[thread_position_in_grid]]){
++    ulong x=index.x;if(x>=ulong(p.steps)*p.groups)return;ulong k=x/p.groups,g=x%p.groups,set=p.sets==1?0:g,a=index.y;
++    auto value=phorner(coeff,(set*4+a)*p.terms,p.terms,Y[x]);ulong dst=(k*4+a)*p.groups+g;
++    out[dst]=bm(E[dst],value);
++}
++kernel void batch_poly_pack(device const Complex<N>* start [[buffer(0)]],device Complex<N>* out [[buffer(2)]],constant BatchParams& p [[buffer(3)]],uint i [[thread_position_in_grid]]){
++    ulong x=i;if(x>=4*p.m)return;ulong a=x/p.m,l=x%p.m;out[x]=l<p.count?start[a*p.count+l]:Complex<N>{zero<N>(),zero<N>()};
++}
++kernel void batch_poly_unpack(device const Complex<N>* in [[buffer(0)]],device Complex<N>* out [[buffer(2)]],constant BatchParams& p [[buffer(3)]],uint i [[thread_position_in_grid]]){
++    // Dispatch covers exactly the active output extent (including all_steps); no padded lane is exposed.
++    ulong x=i;out[x]=in[(x/p.count)*p.m+x%p.count];
++}
+diff --git a/src/batched_linalg.mm b/src/batched_linalg.mm
+index c235b59..c117752 100644
+--- a/src/batched_linalg.mm
++++ b/src/batched_linalg.mm
+@@ -3,6 +3,9 @@
+ #include "engine_internal.hpp"
+ #include "batched_linalg_source.hpp"
+ #include <cstring>
++#include <array>
++#include <cstdio>
++#include <cstdlib>
+ #include <map>
+ #include <chrono>
+ #include <unistd.h>
+@@ -154,6 +157,21 @@ void BatchedLinalg::encode_inline(CommandBatch& b,int bits,const void* allocatio
+     [enc setBuffer:input offset:0 atIndex:0];[enc setBuffer:meta->buffer offset:0 atIndex:1];[enc setBuffer:dest->buffer offset:0 atIndex:2];Params p{count,0,0,0,0,0,0,0,0};[enc setBytes:&p length:sizeof p atIndex:3];
+     [enc dispatchThreads:MTLSizeMake(count,1,1) threadsPerThreadgroup:MTLSizeMake(state.threadExecutionWidth,1,1)];
+ }
++void BatchedLinalg::encode_sources(CommandBatch& b,int bits,const PolynomialSources& s,O cp,O cq,O Y,O Ep,O Eq,O P,O Q){
++    bits_ok(bits);if(s.coefficient_sets!=1&&s.coefficient_sets!=s.groups)throw std::invalid_argument("polynomial sources: coefficient sets must be 1 or groups");
++    auto coeff=mul_size(mul_size(s.coefficient_sets,4),s.terms),yn=mul_size(s.steps,s.groups),en=mul_size(yn,4);
++    grid_ok(yn);size_ok(cp,coeff);size_ok(cq,coeff);size_ok(Y,yn);size_ok(Ep,en);size_ok(Eq,en);size_ok(P,en);size_ok(Q,en);distinct(P,{cp,cq,Y,Ep,Eq,Q});distinct(Q,{cp,cq,Y,Ep,Eq});if(!yn)return;
++    auto cpbuf=retain(b,cp,coeff),cqbuf=retain(b,cq,coeff),ybuf=retain(b,Y,yn),ep=retain(b,Ep,en),eq=retain(b,Eq,en),p=retain(b,P,en,true),q=retain(b,Q,en,true);
++    if(I::device(b)!=impl_->device)throw std::invalid_argument("polynomial sources: foreign batch device");
++    struct PolyParams {std::uint64_t lanes,groups,sets;std::uint32_t steps,terms,share,flags;};PolyParams params{0,s.groups,s.coefficient_sets,s.steps,s.terms,0,0};
++    auto source=impl_->pipeline(bits,"batch_polynomial_sources",s.fused);I::keep(b,source);
++    for(auto operands:{std::array<S,3>{cpbuf,ep,p},std::array<S,3>{cqbuf,eq,q}}){
++        auto enc=I::compute(b);[enc setComputePipelineState:source];
++        [enc setBuffer:operands[0]->buffer offset:0 atIndex:1];[enc setBuffer:operands[2]->buffer offset:0 atIndex:2];
++        [enc setBuffer:ybuf->buffer offset:0 atIndex:5];[enc setBuffer:operands[1]->buffer offset:0 atIndex:6];[enc setBytes:&params length:sizeof params atIndex:3];
++        [enc dispatchThreads:MTLSizeMake(yn,4,1) threadsPerThreadgroup:MTLSizeMake(std::min<NSUInteger>(source.threadExecutionWidth,source.maxTotalThreadsPerThreadgroup),1,1)];
++    }
++}
+ void BatchedLinalg::encode_polynomial(CommandBatch& b,int bits,const PolynomialRecurrence& s,O start,O cp,O cq,O Y,O Ep,O Eq,O out){
+     bits_ok(bits);if(!s.lanes_per_weight)throw std::invalid_argument("polynomial recurrence: zero sharing");
+     auto groups=s.lanes/s.lanes_per_weight+(s.lanes%s.lanes_per_weight!=0);
+@@ -164,6 +182,27 @@ void BatchedLinalg::encode_polynomial(CommandBatch& b,int bits,const PolynomialR
+     if(I::device(b)!=impl_->device)throw std::invalid_argument("polynomial recurrence: foreign batch device");
+     struct PolyParams {std::uint64_t lanes,groups,sets;std::uint32_t steps,terms,share,flags;};
+     PolyParams params{s.lanes,groups,s.coefficient_sets,s.steps,s.terms,s.lanes_per_weight,std::uint32_t(s.all_steps)|(std::uint32_t(s.reverse)<<1)};
++    const char* path=std::getenv("LIMBFORGE_POLYNOMIAL_PATH");
++    if(path&&std::strcmp(path,"shared")&&std::strcmp(path,"inline"))throw std::invalid_argument("experimental polynomial path must be shared or inline");
++    const auto share=std::min<std::size_t>(s.lanes_per_weight,s.lanes),padded=mul_size(groups,share);
++    // Keep the original valid shape range: Engine's vector format has a stricter stride bound.
++    if(path&&std::strcmp(path,"shared")==0&&padded<=std::size_t(UINT32_MAX)/16&&yn<=UINT32_MAX&&s.steps<=UINT32_MAX/4-1&&(padded==s.lanes||on<=UINT32_MAX)){
++        auto element=std::size_t(bits/8+12)*2,pn=mul_size(padded,4),pout=mul_size(pn,s.all_steps?std::size_t(s.steps)+1:1);
++        auto weights_p=I::scratch(b,mul_size(en,element)),weights_q=I::scratch(b,mul_size(en,element));
++        encode_sources(b,bits,{groups,s.coefficient_sets,s.steps,s.terms,s.fused},cp,cq,Y,Ep,Eq,{weights_p,en},{weights_q,en});
++        S seed=st,result=o;
++        if(padded!=s.lanes){seed=I::scratch(b,mul_size(pn,element));result=I::scratch(b,mul_size(pout,element));
++            Params copy{s.lanes,padded,0,0,0,0,0,0,0};impl_->pass(b,bits,"batch_poly_pack",copy,{{0,st},{2,seed}},pn);}
++        VectorRecurrence vr;vr.lanes=padded;vr.steps=s.steps;vr.lanes_per_weight=unsigned(share);vr.fused=s.fused;vr.reverse=s.reverse;vr.all_steps=s.all_steps;
++        I::vector(b,bits,vr,{seed,pn},{weights_p,en},{weights_q,en},{result,pout});
++        if(const char* prefix=std::getenv("LIMBFORGE_POLY_DUMP")){std::string path=prefix;
++            I::on_completion(b,[=]{for(auto entry:{std::make_pair("p",weights_p),std::make_pair("q",weights_q),std::make_pair("seed",seed),std::make_pair("result",result)}){
++                auto file=std::fopen((path+"_"+entry.first+".bin").c_str(),"wb");if(!file)throw std::runtime_error("polynomial diagnostic dump failed");
++                auto written=std::fwrite(entry.second->buffer.contents,1,entry.second->bytes,file);std::fclose(file);if(written!=entry.second->bytes)throw std::runtime_error("polynomial diagnostic dump truncated");}});
++        }
++        if(padded!=s.lanes){Params copy{s.lanes,padded,0,0,0,0,0,0,0};impl_->pass(b,bits,"batch_poly_unpack",copy,{{0,result},{2,o}},on);}
++        return;
++    }
+     auto state=impl_->pipeline(bits,"batch_polynomial_recurrence",s.fused);I::keep(b,state);auto enc=I::compute(b);[enc setComputePipelineState:state];
+     for(auto& v:std::initializer_list<std::pair<unsigned,S>>{{0,st},{1,p},{2,o},{4,q},{5,y},{6,ep},{7,eq}})[enc setBuffer:v.second->buffer offset:0 atIndex:v.first];
+     [enc setBytes:&params length:sizeof params atIndex:3];[enc dispatchThreads:MTLSizeMake(s.lanes,1,1) threadsPerThreadgroup:MTLSizeMake(state.threadExecutionWidth,1,1)];

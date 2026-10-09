@@ -302,6 +302,15 @@ must differ from every input. Sources are evaluated on device rather than upload
 p/q tables. Sharing allows a final incomplete group. The existing Engine recurrence retains
 its separate matrix, affine and tangent modes; those are not options of this entry point.
 
+The explicit `PolynomialEvaluation::shared_sources` overload allocates p/q and two rounded
+Horner scratch tables per batch, then a lane-sized dot table. It handles partial sharing
+groups without padding the trajectory. All scratch survives through submission completion;
+no host completion arithmetic or provisional outputs are introduced. Existing calls retain
+`per_lane` evaluation. The standalone `polynomial_sources` outputs are immediately final
+for later passes of the same batch. Each output must differ from the other output and all
+inputs; inputs must be final and belong to the batch's engine. Layouts and numerical order
+are specified in Numerics.
+
 With `mpc_staging.hpp`, call `describe_inline_mpc(bits,allocation,bytes,pointers,count)`
 then `import_inline_complex(batch,allocation,bytes,records,count,out)`. The GPU reads
 the original significands and writes ordinary resident Complex values. **No host limb

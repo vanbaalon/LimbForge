@@ -116,3 +116,9 @@ GPU tests before measuring it. Never overwrite accepted result files.
   `10eb888`): separate real and imaginary GEMM outputs. The alternating-component
   variant fails at 960 bits; the uniform-component sweep was interrupted and
   establishes no acceptance. Padded local-storage follow-up is still experimental.
+
+- Section 9 shared-source variants, base `e91a215`: private/packed/split/component
+  Horner variants and the callback-sensitive vector adapter are retained in
+  `section9_shared_sources_*_rejected.patch`; failure logs and candidate status are in
+  `section9_shared_sources.md`. Standalone vector baseline does not independently
+  reproduce the expanded audit's failure. No compiler root cause is asserted.

@@ -1510,3 +1510,18 @@ Zero terms means the zero polynomial. Zero steps copies the initial state.
 
 The transpose is not conjugated. With zero terms, Horner returns canonical zero; the subsequent
 source scaling and recurrence operations still execute and propagate arithmetic statuses.
+
+The additive `PolynomialEvaluation::shared_sources` option evaluates the same p/q values
+once per weight group, storing rounded Horner states on device. Its two recurrence passes
+per step preserve the same component and rounding order. Existing calls select
+`per_lane`. Neither mode conjugates q or changes logical precision; no speedup is assumed.
+If the source grid exceeds the 32-bit dispatch limit, the explicit shared option uses the
+legacy per-lane evaluation to preserve the supported recurrence shape range.
+
+`polynomial_sources(batch, PolynomialSources{groups, coefficient_sets, steps, terms, fused},
+cp, cq, y, Ep, Eq, p, q)` exposes these sources independently of the recurrence. Coefficient
+sets are one or `groups`, coefficients remain `[sets][4][terms]`, y is `[steps][groups]`,
+and both E and outputs are `[steps][4][groups]`. Horner and source scaling have the same
+contract above. Zero steps/groups writes nothing. With zero terms, E is still multiplied
+by canonical zero, preserving statuses. Outputs contain sources in ascending step order;
+the consumer chooses their application order.

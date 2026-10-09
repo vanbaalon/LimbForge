@@ -1,0 +1,9 @@
+Auditing 64 bits (dense repeats)
+64 bits: polynomial references passed
+Auditing 96 bits (dense repeats)
+96 bits: polynomial references passed
+Auditing 128 bits (dense repeats)
+baseline vector from CPU Horner sources index 3975
+GPU: re{sign=-1 exponent=51 status=0 limbs=a887f8cd 567ade33 3f5b8ba9 5cf25109 } im{sign=-1 exponent=50 status=0 limbs=8b79c806 f9c84652 e3294077 5a11b992 }
+MPFR: re{sign=-1 exponent=51 status=0 limbs=a887f8cd 567ade33 3f5b8ba9 5cf25109 } im{sign=-1 exponent=50 status=0 limbs=c98e628c f9c84652 e3294077 5a11b992 }
+Section 9 audit: baseline vector from CPU Horner sources index 3975

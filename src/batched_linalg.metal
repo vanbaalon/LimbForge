@@ -188,3 +188,54 @@ template<class Packed> void panel_powers(device const Packed* E,device const Pac
 }
 kernel void batch_panel_powers_real(device const Number<N>* E [[buffer(0)]],device const Number<N>* Y [[buffer(1)]],device Number<N>* P [[buffer(2)]],constant BatchParams& p [[buffer(3)]],device Number<N>* state [[buffer(4)]],uint i [[thread_position_in_grid]]){panel_powers(E,Y,P,state,p,i);}
 kernel void batch_panel_powers_complex(device const Complex<N>* E [[buffer(0)]],device const Complex<N>* Y [[buffer(1)]],device Complex<N>* P [[buffer(2)]],constant BatchParams& p [[buffer(3)]],device Complex<N>* state [[buffer(4)]],uint i [[thread_position_in_grid]]){panel_powers(E,Y,P,state,p,i);}
+
+// Evaluate p/q once per (step, shared group, component).
+// Degree-by-degree Horner keeps rounded states in device memory, avoiding live complex temporaries.
+kernel void batch_source_seed(device const Complex<N>* coeff [[buffer(1)]],device Number<N>* out [[buffer(2)]],constant PolyParams& p [[buffer(3)]],uint2 index [[thread_position_in_grid]]){
+    ulong x=index.x;if(x>=ulong(p.steps)*p.groups)return;ulong k=x/p.groups,g=x%p.groups,set=p.sets==1?0:g,a=index.y/2,part=index.y%2;
+    ulong dst=2*((k*4+a)*p.groups+g)+part;auto value=zero<N>();
+    if(p.terms){auto z=coeff[(set*4+a)*p.terms+p.terms-1];value=part?z.im:z.re;}out[dst]=value;
+}
+kernel void batch_source_step(device const Complex<N>* state [[buffer(0)]],device const Complex<N>* coeff [[buffer(1)]],device Number<N>* out [[buffer(2)]],constant PolyParams& p [[buffer(3)]],device const Complex<N>* Y [[buffer(5)]],uint2 index [[thread_position_in_grid]]){
+    ulong x=index.x;if(x>=ulong(p.steps)*p.groups)return;ulong k=x/p.groups,g=x%p.groups,set=p.sets==1?0:g,a=index.y/2,part=index.y%2,dst=(k*4+a)*p.groups+g;
+    auto zr=batch_private_load(state[dst].re),zi=batch_private_load(state[dst].im),yr=batch_private_load(part?Y[x].im:Y[x].re),yi=batch_private_load(part?Y[x].re:Y[x].im);
+    ulong offset=(set*4+a)*p.terms+p.flags;auto addend=batch_private_load(part?coeff[offset].im:coeff[offset].re);PrivateNumber value;
+    if(batch_fused)value=limbforge_batched_private::dot2_add_rolled(zr,yr,part?zi:limbforge_batched_private::negate(zi),yi,addend);
+    else{auto r=limbforge_batched_private::mul<N,true>(zr,yr),i=limbforge_batched_private::mul<N,true>(zi,yi);
+        value=limbforge_batched_private::add(part?limbforge_batched_private::add(r,i):limbforge_batched_private::sub(r,i),addend);}
+    batch_private_store(out[2*dst+part],value);
+}
+kernel void batch_source_scale(device const Complex<N>* state [[buffer(0)]],device Number<N>* out [[buffer(2)]],constant PolyParams& p [[buffer(3)]],device const Complex<N>* E [[buffer(6)]],uint2 index [[thread_position_in_grid]]){
+    ulong x=index.x;if(x>=ulong(p.steps)*p.groups)return;ulong k=x/p.groups,g=x%p.groups,a=index.y/2,part=index.y%2,dst=(k*4+a)*p.groups+g;
+    auto er=batch_private_load(E[dst].re),ei=batch_private_load(E[dst].im),zr=batch_private_load(part?state[dst].im:state[dst].re),zi=batch_private_load(part?state[dst].re:state[dst].im);
+    auto r=limbforge_batched_private::mul<N,true>(er,zr),i=limbforge_batched_private::mul<N,true>(ei,zi);
+    auto value=part?limbforge_batched_private::add(r,i):limbforge_batched_private::sub(r,i);batch_private_store(out[2*dst+part],value);
+}
+// One component per SIMD group; the four-term dot retains ascending component order.
+// A separate update pass ensures no lane observes partially updated state.
+kernel void batch_source_dot(device const Complex<N>* state [[buffer(0)]],device const Complex<N>* Q [[buffer(1)]],device Number<N>* dot [[buffer(2)]],constant BatchParams& p [[buffer(3)]],uint2 index [[thread_position_in_grid]]){
+    ulong lane=index.x;if(lane>=p.count)return;uint part=index.y;ulong group=lane/p.n;
+    auto sum=limbforge_batched_private::zero<N>();
+    _Pragma("clang loop unroll(disable)") for(uint a=0;a<4;++a){
+        ulong q=(p.k*4+a)*p.m+group,v=p.sa+ulong(a)*p.count+lane;
+        auto qr=batch_private_load(Q[q].re),qi=batch_private_load(Q[q].im);
+        auto vr=batch_private_load(part?state[v].im:state[v].re),vi=batch_private_load(part?state[v].re:state[v].im);
+        if(batch_fused)sum=limbforge_batched_private::dot2_add_rolled(qr,vr,part?qi:limbforge_batched_private::negate(qi),vi,sum);
+        else{auto r=limbforge_batched_private::mul<N,true>(qr,vr),i=limbforge_batched_private::mul<N,true>(qi,vi);
+            sum=limbforge_batched_private::add(part?limbforge_batched_private::add(r,i):limbforge_batched_private::sub(r,i),sum);}
+    }
+    batch_private_store(dot[2*lane+part],sum);
+}
+kernel void batch_source_update(device const Complex<N>* state [[buffer(0)]],device const Complex<N>* P [[buffer(1)]],device Number<N>* out [[buffer(2)]],constant BatchParams& p [[buffer(3)]],device const Complex<N>* dot [[buffer(4)]],uint2 index [[thread_position_in_grid]]){
+    ulong lane=index.x;if(lane>=p.count)return;uint part=index.y;ulong group=lane/p.n;
+    auto dr=batch_private_load(part?dot[lane].im:dot[lane].re),di=batch_private_load(part?dot[lane].re:dot[lane].im);
+    _Pragma("clang loop unroll(disable)") for(uint a=0;a<4;++a){
+        ulong weight=(p.k*4+a)*p.m+group,v=ulong(a)*p.count+lane;
+        auto pr=batch_private_load(P[weight].re),pi=batch_private_load(P[weight].im);
+        auto old=batch_private_load(part?state[p.sa+v].im:state[p.sa+v].re);PrivateNumber value;
+        if(batch_fused)value=limbforge_batched_private::dot2_add_rolled(pr,dr,part?pi:limbforge_batched_private::negate(pi),di,old);
+        else{auto r=limbforge_batched_private::mul<N,true>(pr,dr),i=limbforge_batched_private::mul<N,true>(pi,di);
+            value=limbforge_batched_private::add(part?limbforge_batched_private::add(r,i):limbforge_batched_private::sub(r,i),old);}
+        batch_private_store(out[2*(p.sc+v)+part],value);
+    }
+}

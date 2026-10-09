@@ -1,0 +1,19 @@
+Auditing 64 bits (dense repeats)
+64 bits: polynomial references passed
+Auditing 96 bits (dense repeats)
+96 bits: polynomial references passed
+Auditing 128 bits (dense repeats)
+128 bits: polynomial references passed
+Auditing 160 bits (dense repeats)
+160 bits: polynomial references passed
+Auditing 192 bits (dense repeats)
+192 bits: polynomial references passed
+Auditing 224 bits (dense repeats)
+224 bits: polynomial references passed
+Auditing 256 bits (dense repeats)
+256 bits: polynomial references passed
+Auditing 288 bits (dense repeats)
+polynomial shared=1 terms=3 steps=3 fused=1 reverse=0 all_steps=0 index 62
+GPU: re{sign=1 exponent=127 status=0 limbs=97bd80bf 1896a13d 552b4a6f b91b602c 845e7af9 dc028f0b 9add8743 b848ef14 b58d371d } im{sign=-1 exponent=129 status=0 limbs=d003e60b ae97d72d a95c24aa 41447bb6 279d9305 de76085 4e0cb92e 60dcfdf dcadbe83 }
+MPFR: re{sign=1 exponent=127 status=0 limbs=97bd80bf 18937b99 e2503761 9491d024 93f97d22 81cb8e8d ca0f1d9f e92ef308 30c7c695 } im{sign=-1 exponent=129 status=0 limbs=d003e60b ae97e120 1022ef95 62558caf 16758a2f a7a32648 aa781eae 69e27d42 4e624d7a }
+Section 9 audit: polynomial shared=1 terms=3 steps=3 fused=1 reverse=0 all_steps=0 index 62

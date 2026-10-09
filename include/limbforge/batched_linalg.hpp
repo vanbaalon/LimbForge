@@ -23,11 +23,15 @@ struct PowerMoments {
 // Coefficients in ascending degree: [coefficient_sets][4][terms], sets=1 or weight_groups.
 // y: [steps][weight_groups], Ep/Eq: [steps][4][weight_groups]. Start: [4][lanes].
 // Output: [4][lanes], or [steps+1][4][lanes] in application order for all_steps.
+enum class PolynomialEvaluation { per_lane, shared_sources };
 struct PolynomialRecurrence {
     std::size_t lanes=0,coefficient_sets=1;
     unsigned steps=0,terms=0,lanes_per_weight=1;
     bool all_steps=false,reverse=false,fused=false;
 };
+// Shared p/q from polynomial coefficients: y [steps][groups], E and outputs [steps][4][groups].
+// Coefficient sets are 1 or groups; coefficients [sets][4][terms], ascending degree.
+struct PolynomialSources {std::size_t groups=0,coefficient_sets=1;unsigned steps=0,terms=0;bool fused=false;};
 // All-device Cholesky sequence: ascending column k, rounded square/mul and sub updates,
 // rounded sqrt/div. Different from Linalg's blocked exact updates. Status: 0 or failed pivot+1.
 struct CholeskyTrials {std::size_t n=0,count=0;};
@@ -62,7 +66,8 @@ class BatchedLinalg {
     void encode_inline(CommandBatch&,int,const void*,std::size_t,const InlineComplexRecord*,std::size_t,detail::Operand);
     void encode_augment(CommandBatch&,int,std::size_t,std::size_t,detail::Operand,detail::Operand,detail::Operand);
     void encode_extract(CommandBatch&,int,std::size_t,detail::Operand,detail::Operand,detail::Operand,const LinalgTicket&);
-    void encode_polynomial(CommandBatch&,int,const PolynomialRecurrence&,detail::Operand,detail::Operand,detail::Operand,detail::Operand,detail::Operand,detail::Operand,detail::Operand);
+    void encode_sources(CommandBatch&,int,const PolynomialSources&,detail::Operand,detail::Operand,detail::Operand,detail::Operand,detail::Operand,detail::Operand,detail::Operand);
+    void encode_polynomial(CommandBatch&,int,const PolynomialRecurrence&,detail::Operand,detail::Operand,detail::Operand,detail::Operand,detail::Operand,detail::Operand,detail::Operand,PolynomialEvaluation);
 public:
     explicit BatchedLinalg(Engine&); ~BatchedLinalg();
     BatchedWorkspaces workspaces() const;
@@ -74,9 +79,14 @@ public:
     Timing gemm(int bits,bool complex,const StridedGemm&,const void* A,const void* B,void* C);
     Timing power_moments(int bits,bool complex,const PowerMoments&,const void* E,const void* y,const void* W,void* out);
     Timing power_moments(int bits,bool complex,const PowerMoments&,const void* E,const void* y,const void* W,void* out,PowerStorage);
+    template<class T> void polynomial_sources(CommandBatch& b,const PolynomialSources& s,const Buffer<T>& cp,const Buffer<T>& cq,const Buffer<T>& y,const Buffer<T>& Ep,const Buffer<T>& Eq,Buffer<T>& p,Buffer<T>& q){
+        static_assert(detail::Format<T>::complex,"polynomial sources use complex buffers");
+        encode_sources(b,detail::Format<T>::bits,s,detail::Access::operand(cp),detail::Access::operand(cq),detail::Access::operand(y),detail::Access::operand(Ep),detail::Access::operand(Eq),detail::Access::operand(p),detail::Access::operand(q));}
     template<class T> void polynomial_recurrence(CommandBatch& b,const PolynomialRecurrence& s,const Buffer<T>& start,const Buffer<T>& cp,const Buffer<T>& cq,const Buffer<T>& y,const Buffer<T>& Ep,const Buffer<T>& Eq,Buffer<T>& out){
+        polynomial_recurrence(b,s,start,cp,cq,y,Ep,Eq,out,PolynomialEvaluation::per_lane);}
+    template<class T> void polynomial_recurrence(CommandBatch& b,const PolynomialRecurrence& s,const Buffer<T>& start,const Buffer<T>& cp,const Buffer<T>& cq,const Buffer<T>& y,const Buffer<T>& Ep,const Buffer<T>& Eq,Buffer<T>& out,PolynomialEvaluation evaluation){
         static_assert(detail::Format<T>::complex,"polynomial recurrence uses complex buffers");
-        encode_polynomial(b,detail::Format<T>::bits,s,detail::Access::operand(start),detail::Access::operand(cp),detail::Access::operand(cq),detail::Access::operand(y),detail::Access::operand(Ep),detail::Access::operand(Eq),detail::Access::operand(out));}
+        encode_polynomial(b,detail::Format<T>::bits,s,detail::Access::operand(start),detail::Access::operand(cp),detail::Access::operand(cq),detail::Access::operand(y),detail::Access::operand(Ep),detail::Access::operand(Eq),detail::Access::operand(out),evaluation);}
     template<class T> void gemm(CommandBatch& b,const StridedGemm& s,const Buffer<T>& A,const Buffer<T>& B,Buffer<T>& C){
         encode_gemm(b,detail::Format<T>::bits,detail::Format<T>::complex,s,detail::Access::operand(A),detail::Access::operand(B),detail::Access::operand(C));}
     // E,y: [count][steps], W: [count][steps][ncols], out: [count][nmax+1][ncols].

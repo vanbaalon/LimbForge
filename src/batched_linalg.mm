@@ -3,6 +3,8 @@
 #include "engine_internal.hpp"
 #include "batched_linalg_source.hpp"
 #include <cstring>
+#include <array>
+#include <cstdlib>
 #include <map>
 #include <mutex>
 #include <set>
@@ -233,7 +235,28 @@ void BatchedLinalg::encode_inline(CommandBatch& b,int bits,const void* allocatio
     [enc setBuffer:input offset:0 atIndex:0];[enc setBuffer:meta->buffer offset:0 atIndex:1];[enc setBuffer:dest->buffer offset:0 atIndex:2];Params p{count,0,0,0,0,0,0,0,0};[enc setBytes:&p length:sizeof p atIndex:3];
     [enc dispatchThreads:MTLSizeMake(count,1,1) threadsPerThreadgroup:MTLSizeMake(state.threadExecutionWidth,1,1)];
 }
-void BatchedLinalg::encode_polynomial(CommandBatch& b,int bits,const PolynomialRecurrence& s,O start,O cp,O cq,O Y,O Ep,O Eq,O out){
+void BatchedLinalg::encode_sources(CommandBatch& b,int bits,const PolynomialSources& s,O cp,O cq,O Y,O Ep,O Eq,O P,O Q){
+    bits_ok(bits);if(s.coefficient_sets!=1&&s.coefficient_sets!=s.groups)throw std::invalid_argument("polynomial sources: coefficient sets must be 1 or groups");
+    auto coeff=mul_size(mul_size(s.coefficient_sets,4),s.terms),yn=mul_size(s.steps,s.groups),en=mul_size(yn,4);
+    grid_ok(yn);size_ok(cp,coeff);size_ok(cq,coeff);size_ok(Y,yn);size_ok(Ep,en);size_ok(Eq,en);size_ok(P,en);size_ok(Q,en);distinct(P,{cp,cq,Y,Ep,Eq,Q});distinct(Q,{cp,cq,Y,Ep,Eq});if(!yn)return;
+    auto cpbuf=retain(b,cp,coeff),cqbuf=retain(b,cq,coeff),ybuf=retain(b,Y,yn),ep=retain(b,Ep,en),eq=retain(b,Eq,en),p=retain(b,P,en,true),q=retain(b,Q,en,true);
+    if(I::device(b)!=impl_->device)throw std::invalid_argument("polynomial sources: foreign batch device");
+    struct PolyParams {std::uint64_t lanes,groups,sets;std::uint32_t steps,terms,share,flags;};PolyParams params{0,s.groups,s.coefficient_sets,s.steps,s.terms,0,0};
+    auto state0=I::scratch(b,mul_size(en,std::size_t(bits/8+12)*2)),state1=I::scratch(b,mul_size(en,std::size_t(bits/8+12)*2));
+    auto dispatch=[&](const char* name,bool fused,S current,S next,S coeff,S weight){
+        auto pipeline=impl_->pipeline(bits,name,fused);I::keep(b,pipeline);auto enc=I::compute(b);[enc setComputePipelineState:pipeline];
+        [enc setBuffer:current->buffer offset:0 atIndex:0];[enc setBuffer:coeff->buffer offset:0 atIndex:1];[enc setBuffer:next->buffer offset:0 atIndex:2];
+        [enc setBuffer:ybuf->buffer offset:0 atIndex:5];[enc setBuffer:weight->buffer offset:0 atIndex:6];[enc setBytes:&params length:sizeof params atIndex:3];
+        [enc dispatchThreads:MTLSizeMake(yn,8,1) threadsPerThreadgroup:MTLSizeMake(std::min<NSUInteger>(pipeline.threadExecutionWidth,pipeline.maxTotalThreadsPerThreadgroup),1,1)];
+    };
+    for(auto operands:{std::array<S,3>{cpbuf,ep,p},std::array<S,3>{cqbuf,eq,q}}){
+        auto current=state0,next=state1;dispatch("batch_source_seed",false,current,current,operands[0],operands[1]);
+        for(unsigned degree=s.terms?s.terms-1:0;degree-->0;){params.flags=degree;dispatch("batch_source_step",s.fused,current,next,operands[0],operands[1]);std::swap(current,next);}
+        dispatch("batch_source_scale",false,current,operands[2],operands[0],operands[1]);
+    }
+}
+void BatchedLinalg::encode_polynomial(CommandBatch& b,int bits,const PolynomialRecurrence& s,O start,O cp,O cq,O Y,O Ep,O Eq,O out,PolynomialEvaluation evaluation){
+    if(evaluation!=PolynomialEvaluation::per_lane&&evaluation!=PolynomialEvaluation::shared_sources)throw std::invalid_argument("polynomial recurrence: invalid evaluation mode");
     bits_ok(bits);if(!s.lanes_per_weight)throw std::invalid_argument("polynomial recurrence: zero sharing");
     auto groups=s.lanes/s.lanes_per_weight+(s.lanes%s.lanes_per_weight!=0);
     if(s.coefficient_sets!=1&&s.coefficient_sets!=groups)throw std::invalid_argument("polynomial recurrence: coefficient sets must be 1 or weight groups");
@@ -243,6 +266,21 @@ void BatchedLinalg::encode_polynomial(CommandBatch& b,int bits,const PolynomialR
     if(I::device(b)!=impl_->device)throw std::invalid_argument("polynomial recurrence: foreign batch device");
     struct PolyParams {std::uint64_t lanes,groups,sets;std::uint32_t steps,terms,share,flags;};
     PolyParams params{s.lanes,groups,s.coefficient_sets,s.steps,s.terms,s.lanes_per_weight,std::uint32_t(s.all_steps)|(std::uint32_t(s.reverse)<<1)};
+    if(evaluation==PolynomialEvaluation::shared_sources&&yn<=UINT32_MAX){
+        auto element=std::size_t(bits/8+12)*2;
+        auto weights_p=I::scratch(b,mul_size(en,element)),weights_q=I::scratch(b,mul_size(en,element));
+        encode_sources(b,bits,{groups,s.coefficient_sets,s.steps,s.terms,s.fused},cp,cq,Y,Ep,Eq,{weights_p,en},{weights_q,en});
+        // Rounded state stays in device memory. A dot pass completes before its four
+        // independent component updates, including the final partial sharing group.
+        auto dot=I::scratch(b,mul_size(s.lanes,element));I::copy(b,st,o,mul_size(vn,element));
+        for(unsigned step=0;step<s.steps;++step){
+            Params update{s.lanes,groups,s.lanes_per_weight,s.reverse?s.steps-1-step:step,
+                          s.all_steps?mul_size(step,vn):0,0,s.all_steps?mul_size(std::size_t(step)+1,vn):0,0,0};
+            impl_->pass(b,bits,"batch_source_dot",update,{{0,o},{1,weights_q},{2,dot}},s.lanes,s.fused,false,true);
+            impl_->pass(b,bits,"batch_source_update",update,{{0,o},{1,weights_p},{2,o},{4,dot}},s.lanes,s.fused,false,true);
+        }
+        return;
+    }
     auto state=impl_->pipeline(bits,"batch_polynomial_recurrence",s.fused);I::keep(b,state);auto enc=I::compute(b);[enc setComputePipelineState:state];
     for(auto& v:std::initializer_list<std::pair<unsigned,S>>{{0,st},{1,p},{2,o},{4,q},{5,y},{6,ep},{7,eq}})[enc setBuffer:v.second->buffer offset:0 atIndex:v.first];
     [enc setBytes:&params length:sizeof params atIndex:3];[enc dispatchThreads:MTLSizeMake(s.lanes,1,1) threadsPerThreadgroup:MTLSizeMake(state.threadExecutionWidth,1,1)];

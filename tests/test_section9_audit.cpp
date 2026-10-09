@@ -116,10 +116,11 @@ template<int B> void trial_edges(Engine& e,BatchedLinalg& la){
     for(int i=0;i<n;++i)for(int j=0;j<nrhs;++j)require(same<B>(sol[i*nrhs+j],from_decimal<B>(i==1?"0.25":"1")),"multiple RHS solve");
     for(int i=n*nrhs;i<count*n*nrhs;++i)require(same<B>(sol[i],zero<B/32>(invalid)),"failed solve payload");
 }
-template<int B> void polynomial_variants(Engine& e,BatchedLinalg& la,bool dense=false){
-    const int lanes=dense?513:5,groups=(lanes+1)/2,maxsteps=3;std::mt19937_64 rng(B+31);
-    for(bool shared:{false,true})for(unsigned terms:{0u,3u}){
-        PolynomialRecurrence s;s.lanes=lanes;s.lanes_per_weight=2;s.coefficient_sets=shared?1:groups;s.terms=terms;
+template<int B> void polynomial_variants(Engine& e,BatchedLinalg& la,bool dense=false,unsigned share=2,unsigned degree_terms=3){
+    const int lanes=dense?513:5,groups=(lanes+share-1)/share,maxsteps=3;std::mt19937_64 rng(B+31);
+    const bool sources_only=std::getenv("LIMBFORGE_POLYNOMIAL_SOURCE_ONLY");
+    for(bool shared:{false,true})for(unsigned terms:{0u,degree_terms}){
+        PolynomialRecurrence s;s.lanes=lanes;s.lanes_per_weight=share;s.coefficient_sets=shared?1:groups;s.terms=terms;
         std::vector<C<B>> start(4*lanes),cp(s.coefficient_sets*4*terms),cq(cp.size()),Y(maxsteps*groups),Ep(maxsteps*4*groups),Eq(Ep.size());
         for(auto* v:{&start,&cp,&cq,&Y,&Ep,&Eq})for(auto& z:*v)z=randomvalue<B,C<B>>(rng);
         if(terms&&!shared)cp[terms-1]=errorvalue<B,C<B>>();
@@ -128,13 +129,34 @@ template<int B> void polynomial_variants(Engine& e,BatchedLinalg& la,bool dense=
             s.steps=steps;s.fused=fused;s.reverse=reverse;s.all_steps=all;std::vector<C<B>> want((all?steps+1:1)*4*lanes,zvalue<B,C<B>>());
             if(all)std::copy(start.begin(),start.end(),want.begin());
             auto horner=[&](const auto& c,int set,int a,C<B> yy){if(!terms)return zvalue<B,C<B>>();auto z=c[(set*4+a)*terms+terms-1];for(unsigned n=terms-1;n-->0;)z=mac<B>(z,yy,c[(set*4+a)*terms+n],fused);return z;};
-            for(int lane=0;lane<lanes;++lane){int g=lane/2,set=shared?0:g;C<B> v[4];for(int a=0;a<4;++a)v[a]=start[a*lanes+lane];
+            for(int lane=0;lane<lanes;++lane){int g=lane/share,set=shared?0:g;C<B> v[4];for(int a=0;a<4;++a)v[a]=start[a*lanes+lane];
                 for(unsigned step=0;step<steps;++step){unsigned k=reverse?steps-1-step:step;auto dot=zvalue<B,C<B>>();
                     for(int a=0;a<4;++a)dot=mac<B>(cm<B>(Eq[(k*4+a)*groups+g],horner(cq,set,a,Y[k*groups+g])),v[a],dot,fused);
                     for(int a=0;a<4;++a){v[a]=mac<B>(cm<B>(Ep[(k*4+a)*groups+g],horner(cp,set,a,Y[k*groups+g])),dot,v[a],fused);if(all)want[((step+1)*4+a)*lanes+lane]=v[a];}}
                 if(!all)for(int a=0;a<4;++a)want[a*lanes+lane]=v[a];}
+            if(std::getenv("LIMBFORGE_POLYNOMIAL_SOURCE_CHECK")){
+                std::vector<C<B>> wp(steps*4*groups),wq(wp.size());
+                for(unsigned k=0;k<steps;++k)for(int a=0;a<4;++a)for(int g=0;g<groups;++g){int set=shared?0:g;auto idx=(k*4+a)*groups+g;
+                    wp[idx]=cm<B>(Ep[idx],horner(cp,set,a,Y[k*groups+g]));wq[idx]=cm<B>(Eq[idx],horner(cq,set,a,Y[k*groups+g]));}
+                const int padded=groups*share;std::vector<C<B>> vs(4*padded,zvalue<B,C<B>>());
+                for(int a=0;a<4;++a)std::copy_n(start.data()+a*lanes,lanes,vs.data()+a*padded);
+                auto vstart=put(e,vs),vp=put(e,wp),vq=put(e,wq),vo=e.make_buffer<C<B>>((all?steps+1:1)*4*padded);
+                VectorRecurrence shape;shape.lanes=padded;shape.steps=steps;shape.lanes_per_weight=share;shape.fused=fused;shape.reverse=reverse;shape.all_steps=all;
+                if(!sources_only){auto vector=e.batch();vector.vector_recurrence(shape,vstart,vp,vq,Buffer<C<B>>(),vo);vector.submit().wait();}
+                auto raw=sources_only?std::vector<C<B>>(vo.size()):get(vo);std::vector<C<B>> trimmed(want.size());
+                for(unsigned k=0;k<(all?steps+1:1);++k)for(int a=0;a<4;++a)std::copy_n(raw.data()+(k*4+a)*padded,lanes,trimmed.data()+(k*4+a)*lanes);
+                if(!sources_only)check<B>(trimmed,want,"baseline vector from CPU Horner sources");
+                auto pb=e.make_buffer<C<B>>(wp.size()),qb=e.make_buffer<C<B>>(wq.size());auto source=e.batch();
+                la.polynomial_sources(source,{std::size_t(groups),s.coefficient_sets,steps,terms,fused},p,q,y,ep,eq,pb,qb);
+                if(!sources_only)source.vector_recurrence(shape,vstart,pb,qb,Buffer<C<B>>(),vo);source.submit().wait();
+                check<B>(get(pb),wp,"shared Horner p sources");check<B>(get(qb),wq,"shared Horner q sources");
+                if(!sources_only)raw=get(vo);for(unsigned k=0;k<(all?steps+1:1);++k)for(int a=0;a<4;++a)std::copy_n(raw.data()+(k*4+a)*padded,lanes,trimmed.data()+(k*4+a)*lanes);
+                if(!sources_only)check<B>(trimmed,want,"vector chained after shared sources");
+            }
+            if(sources_only)continue;
             const auto label=std::string("polynomial shared=")+std::to_string(shared)+" terms="+std::to_string(terms)+" steps="+std::to_string(steps)+" fused="+std::to_string(fused)+" reverse="+std::to_string(reverse)+" all_steps="+std::to_string(all);
-            auto out=put(e,std::vector<C<B>>(want.size(),errorvalue<B,C<B>>()));auto batch=e.batch();la.polynomial_recurrence(batch,s,st,p,q,y,ep,eq,out);batch.submit().wait();check<B>(get(out),want,label.c_str());
+            auto out=put(e,std::vector<C<B>>(want.size(),errorvalue<B,C<B>>()));auto batch=e.batch();la.polynomial_recurrence(batch,s,st,p,q,y,ep,eq,out,std::getenv("LIMBFORGE_POLYNOMIAL_PATH")&&std::string(std::getenv("LIMBFORGE_POLYNOMIAL_PATH"))=="shared"?PolynomialEvaluation::shared_sources:PolynomialEvaluation::per_lane);batch.submit().wait();
+            check<B>(get(out),want,label.c_str());
         }
     }
 }
@@ -183,9 +205,10 @@ template<int B> void dense_inline(Engine& e,BatchedLinalg& la){
     (void)e;(void)la;
 #endif
 }
-template<int B> void audit(Engine& e,BatchedLinalg& la,bool dense,bool spread_only,bool gemm_only,bool normal_only,bool power_only){
+template<int B> void audit(Engine& e,BatchedLinalg& la,bool dense,bool spread_only,bool gemm_only,bool normal_only,bool power_only,bool polynomial_only){
     std::cout<<"Auditing "<<B<<" bits"<<(dense?" (dense repeats)":"")<<std::endl;
     if(power_only){power_variants<B,F<B>>(e,la);power_variants<B,C<B>>(e,la);std::cout<<B<<" bits: power references passed\n";return;}
+    if(polynomial_only){polynomial_variants<B>(e,la,dense);if(dense){polynomial_variants<B>(e,la,false,1,5);polynomial_variants<B>(e,la,false,3,5);polynomial_variants<B>(e,la,false,7,17);}std::cout<<B<<" bits: "<<(std::getenv("LIMBFORGE_POLYNOMIAL_SOURCE_ONLY")?"source-only":"polynomial")<<" references passed\n";return;}
     if(normal_only){fused_normal<B>(e,la);std::cout<<B<<" bits: normal-equation references passed\n";return;}
     if(spread_only||gemm_only){gemm_variants<B,F<B>>(e,la,dense,spread_only?1000:8);gemm_variants<B,C<B>>(e,la,dense,spread_only?1000:8);
         std::cout<<B<<" bits: selected GEMM references passed\n";return;}
@@ -195,8 +218,8 @@ template<int B> void audit(Engine& e,BatchedLinalg& la,bool dense,bool spread_on
     if(dense){larger_trials<B>(e,la);dense_inline<B>(e,la);}
     std::cout<<B<<" bits: expanded reference cases passed\n";
 }
-void dispatch(int bits,Engine& e,BatchedLinalg& la,bool dense,bool spread_only,bool gemm_only,bool normal_only,bool power_only){switch(bits){
-#define LF_WIDTH(B) case B:audit<B>(e,la,dense,spread_only,gemm_only,normal_only,power_only);break;
+void dispatch(int bits,Engine& e,BatchedLinalg& la,bool dense,bool spread_only,bool gemm_only,bool normal_only,bool power_only,bool polynomial_only){switch(bits){
+#define LF_WIDTH(B) case B:audit<B>(e,la,dense,spread_only,gemm_only,normal_only,power_only,polynomial_only);break;
     LF_WIDTH(64) LF_WIDTH(96) LF_WIDTH(128) LF_WIDTH(160) LF_WIDTH(192) LF_WIDTH(224) LF_WIDTH(256) LF_WIDTH(288)
     LF_WIDTH(320) LF_WIDTH(352) LF_WIDTH(384) LF_WIDTH(416) LF_WIDTH(448) LF_WIDTH(480) LF_WIDTH(512) LF_WIDTH(544)
     LF_WIDTH(576) LF_WIDTH(608) LF_WIDTH(640) LF_WIDTH(672) LF_WIDTH(704) LF_WIDTH(736) LF_WIDTH(768) LF_WIDTH(800)
@@ -204,12 +227,12 @@ void dispatch(int bits,Engine& e,BatchedLinalg& la,bool dense,bool spread_only,b
 #undef LF_WIDTH
     default:throw std::invalid_argument("bits must be a multiple of 32 in [64,1024]");}}
 int main(int argc,char** argv){try{
-    int bits=352;bool all=false,dense=false,bits_given=false,spread_only=false,gemm_only=false,keep_going=false,normal_only=false,power_only=false;
-    for(int i=1;i<argc;++i){std::string arg=argv[i];if(arg=="--power-only")power_only=true;else if(arg=="--normal-only")normal_only=true;else if(arg=="--keep-going")keep_going=true;else if(arg=="--gemm-only")gemm_only=true;else if(arg=="--spread-only")spread_only=true;else if(arg=="--all-widths")all=true;else if(arg=="--dense")dense=true;else if(arg=="--bits"&&i+1<argc){bits_given=true;std::string value=argv[++i];std::size_t used;bits=std::stoi(value,&used);if(used!=value.size()||bits<64||bits>1024||bits%32)throw std::invalid_argument("invalid --bits");}
-        else if(arg=="--help"){std::cout<<"Usage: test_limbforge_section9_audit [--bits B | --all-widths] [--dense] [--spread-only] [--gemm-only] [--keep-going] [--normal-only] [--power-only]\nDefault: focused 352-bit cases. --dense repeats larger GEMM batches three times.\nUse MTL_SHADER_VALIDATION=1 for the validation pass.\n";return 0;}else throw std::invalid_argument("unknown/incomplete option: "+arg);}
+    int bits=352;bool all=false,dense=false,bits_given=false,spread_only=false,gemm_only=false,keep_going=false,normal_only=false,power_only=false,polynomial_only=false;
+    for(int i=1;i<argc;++i){std::string arg=argv[i];if(arg=="--polynomial-only")polynomial_only=true;else if(arg=="--power-only")power_only=true;else if(arg=="--normal-only")normal_only=true;else if(arg=="--keep-going")keep_going=true;else if(arg=="--gemm-only")gemm_only=true;else if(arg=="--spread-only")spread_only=true;else if(arg=="--all-widths")all=true;else if(arg=="--dense")dense=true;else if(arg=="--bits"&&i+1<argc){bits_given=true;std::string value=argv[++i];std::size_t used;bits=std::stoi(value,&used);if(used!=value.size()||bits<64||bits>1024||bits%32)throw std::invalid_argument("invalid --bits");}
+        else if(arg=="--help"){std::cout<<"Usage: test_limbforge_section9_audit [--bits B | --all-widths] [--dense] [--spread-only] [--gemm-only] [--keep-going] [--normal-only] [--power-only] [--polynomial-only]\nDefault: focused 352-bit cases. --dense repeats larger GEMM batches three times.\nUse MTL_SHADER_VALIDATION=1 for the validation pass.\n";return 0;}else throw std::invalid_argument("unknown/incomplete option: "+arg);}
     if(all&&bits_given)throw std::invalid_argument("choose --bits or --all-widths, not both");
     Engine e;BatchedLinalg la(e);int failures=0;
-    auto run=[&](int b){try{dispatch(b,e,la,dense,spread_only,gemm_only,normal_only,power_only);}catch(const std::exception& error){if(!keep_going)throw;std::cerr<<b<<" bits FAILED: "<<error.what()<<'\n';++failures;}};
+    auto run=[&](int b){try{dispatch(b,e,la,dense,spread_only,gemm_only,normal_only,power_only,polynomial_only);}catch(const std::exception& error){if(!keep_going)throw;std::cerr<<b<<" bits FAILED: "<<error.what()<<'\n';++failures;}};
     if(all)for(int b=64;b<=1024;b+=32)run(b);else run(bits);policy();
     if(failures){std::cerr<<failures<<" selected width(s) failed\n";return 1;}
     std::cout<<"Section 9 reference run passed; "<<(all?"all 31 widths":"selected width")<<(dense?", dense repeats":"; dense stress not run")<<".\n";return 0;

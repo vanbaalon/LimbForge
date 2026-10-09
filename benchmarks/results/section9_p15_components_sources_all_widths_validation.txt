@@ -1,0 +1,26 @@
+2026-10-08 21:14:36.991 test_limbforge_section9_audit[29546:218950862] Metal GPU Validation Enabled
+Auditing 64 bits (dense repeats)
+64 bits: source-only references passed
+Auditing 96 bits (dense repeats)
+96 bits: source-only references passed
+Auditing 128 bits (dense repeats)
+128 bits: source-only references passed
+Auditing 160 bits (dense repeats)
+160 bits: source-only references passed
+Auditing 192 bits (dense repeats)
+192 bits: source-only references passed
+Auditing 224 bits (dense repeats)
+224 bits: source-only references passed
+Auditing 256 bits (dense repeats)
+256 bits: source-only references passed
+Auditing 288 bits (dense repeats)
+288 bits: source-only references passed
+Auditing 320 bits (dense repeats)
+320 bits: source-only references passed
+Auditing 352 bits (dense repeats)
+352 bits: source-only references passed
+Auditing 384 bits (dense repeats)
+shared Horner q sources index 2925
+GPU: re{sign=-1 exponent=17 status=0 limbs=95ad68e6 65cec9a1 62be0b2f 9d9033da adb46cc6 b77f9d65 66b2096b 49e0bf5c 4ac5f1e6 8924806a 6aebe8d0 4bc0fb7c } im{sign=-1 exponent=13 status=0 limbs=bbc3c01b bc24f087 480ba884 44bff3b6 afb65484 2761438b e8b445ba 4957f065 414f6b7b 228f8bf9 fbf63af2 8ada5559 }
+MPFR: re{sign=-1 exponent=17 status=0 limbs=95ad68e6 65cec9a1 62be0b2f 9d9033da adb46cc6 b77f9d65 66b2096b 49e0bf5c 4ac5f1e6 8924806a 6aebe8d0 4bc0fb7c } im{sign=-1 exponent=15 status=0 limbs=bcd5aeed 8ad45cce 50af778f c2ab3232 3f5f43fc 5db182e 7da1c7e7 9a44b0d4 e714bdb1 f1acdba9 149ee167 6184c80 }
+Section 9 audit: shared Horner q sources index 2925

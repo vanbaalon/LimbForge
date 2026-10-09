@@ -1,0 +1,17 @@
+Auditing 64 bits (dense repeats)
+64 bits: polynomial references passed
+Auditing 96 bits (dense repeats)
+96 bits: polynomial references passed
+Auditing 128 bits (dense repeats)
+128 bits: polynomial references passed
+Auditing 160 bits (dense repeats)
+160 bits: polynomial references passed
+Auditing 192 bits (dense repeats)
+192 bits: polynomial references passed
+Auditing 224 bits (dense repeats)
+224 bits: polynomial references passed
+Auditing 256 bits (dense repeats)
+adapter p sources index 1476
+GPU: re{sign=-1 exponent=25 status=0 limbs=819ed46b c39ec719 59eadb9f 2d0e20f2 a89815a6 6fcc156c 49485ca0 72645d24 } im{sign=1 exponent=25 status=0 limbs=941b1621 565cde71 67014b3e cc50bf7d 14b5cd13 87a87a73 59eb69b5 d2a3a4ae }
+MPFR: re{sign=1 exponent=23 status=0 limbs=cc00c13b 48c42be8 5e991ab4 ef7f7a1f 520ba27f 5a43fc60 967fe074 e186b618 } im{sign=1 exponent=26 status=0 limbs=9904fc16 bb3bdb38 9a8dc773 f5304890 a8745d1d 5b660000 469e6f91 1229a4be }
+Section 9 audit: adapter p sources index 1476

@@ -1,0 +1,30 @@
+diff --git a/src/batched_linalg.metal b/src/batched_linalg.metal
+index 7a264e6..c027a5b 100644
+--- a/src/batched_linalg.metal
++++ b/src/batched_linalg.metal
+@@ -188,3 +188,25 @@ template<class Packed> void panel_powers(device const Packed* E,device const Pac
+ }
+ kernel void batch_panel_powers_real(device const Number<N>* E [[buffer(0)]],device const Number<N>* Y [[buffer(1)]],device Number<N>* P [[buffer(2)]],constant BatchParams& p [[buffer(3)]],device Number<N>* state [[buffer(4)]],uint i [[thread_position_in_grid]]){panel_powers(E,Y,P,state,p,i);}
+ kernel void batch_panel_powers_complex(device const Complex<N>* E [[buffer(0)]],device const Complex<N>* Y [[buffer(1)]],device Complex<N>* P [[buffer(2)]],constant BatchParams& p [[buffer(3)]],device Complex<N>* state [[buffer(4)]],uint i [[thread_position_in_grid]]){panel_powers(E,Y,P,state,p,i);}
++
++// Evaluate p/q once per (step, shared group, component), then reuse Engine's vector recurrence.
++inline PrivateComplex source_horner(device const Complex<N>* coeff,ulong offset,uint terms,PrivateComplex y){
++    PrivateComplex z={limbforge_batched_private::zero<N>(),limbforge_batched_private::zero<N>()};if(!terms)return z;
++    z=batch_private_load(coeff[offset+terms-1]);
++    _Pragma("clang loop unroll(disable)") for(uint n=terms-1;n-->0;){auto c=batch_private_load(coeff[offset+n]);
++        z=batch_fused?limbforge_batched_private::cfma_rolled(z,y,c):limbforge_batched_private::cadd(c,limbforge_batched_private::cmul(z,y));}
++    return z;
++}
++kernel void batch_polynomial_sources(device const Complex<N>* cp [[buffer(1)]],device Complex<N>* P [[buffer(2)]],constant PolyParams& p [[buffer(3)]],device const Complex<N>* cq [[buffer(4)]],device const Complex<N>* Y [[buffer(5)]],device const Complex<N>* Ep [[buffer(6)]],device const Complex<N>* Eq [[buffer(7)]],device Complex<N>* Q [[buffer(8)]],uint2 index [[thread_position_in_grid]]){
++    ulong x=index.x;if(x>=ulong(p.steps)*p.groups)return;ulong k=x/p.groups,g=x%p.groups,set=p.sets==1?0:g,a=index.y%4;bool q=index.y>=4;
++    auto y=batch_private_load(Y[x]);auto value=source_horner(q?cq:cp,(set*4+a)*p.terms,p.terms,y);ulong dst=(k*4+a)*p.groups+g;
++    auto weight=batch_private_load(q?Eq[dst]:Ep[dst]);auto result=limbforge_batched_private::cmul(weight,value);
++    if(q)batch_private_store(Q[dst],result);else batch_private_store(P[dst],result);
++}
++kernel void batch_poly_pack(device const Complex<N>* start [[buffer(0)]],device Complex<N>* out [[buffer(2)]],constant BatchParams& p [[buffer(3)]],uint i [[thread_position_in_grid]]){
++    ulong x=i;if(x>=4*p.m)return;ulong a=x/p.m,l=x%p.m;out[x]=l<p.count?start[a*p.count+l]:Complex<N>{zero<N>(),zero<N>()};
++}
++kernel void batch_poly_unpack(device const Complex<N>* in [[buffer(0)]],device Complex<N>* out [[buffer(2)]],constant BatchParams& p [[buffer(3)]],uint i [[thread_position_in_grid]]){
++    // Dispatch covers exactly the active output extent (including all_steps); no padded lane is exposed.
++    ulong x=i;out[x]=in[(x/p.count)*p.m+x%p.count];
++}

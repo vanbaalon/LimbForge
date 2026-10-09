@@ -107,7 +107,13 @@ template<int B> void polynomial(Engine& e,BatchedLinalg& la){
                 for(int a=0;a<4;++a){v[a]=mac(cm<B>(Ep[(k*4+a)*groups+g],horner(cp,g,a,Y[k*groups+g])),dot,v[a]);want[((step+1)*4+a)*5+lane]=v[a];}}
         }
         auto b=e.batch();la.polynomial_recurrence(b,s,st,p,q,y,ep,eq,out);b.submit().wait();check<B>(get(out),want,"polynomial recurrence");
+        auto shared=e.batch();la.polynomial_recurrence(shared,s,st,p,q,y,ep,eq,out,PolynomialEvaluation::shared_sources);shared.submit().wait();check<B>(get(out),want,"shared polynomial recurrence");
     }
+    bool rejected=false;try{auto bad=e.batch();la.polynomial_recurrence(bad,s,st,p,q,y,ep,eq,out,static_cast<PolynomialEvaluation>(99));}catch(const std::invalid_argument&){rejected=true;}require(rejected,"invalid polynomial evaluation mode accepted");
+    auto sources_p=e.make_buffer<C<B>>(s.steps*4*groups),sources_q=e.make_buffer<C<B>>(s.steps*4*groups);
+    PolynomialSources sources{groups,s.coefficient_sets,s.steps,s.terms,s.fused};
+    rejected=false;try{auto bad=e.batch();la.polynomial_sources(bad,sources,p,q,y,ep,eq,p,sources_q);}catch(const std::invalid_argument&){rejected=true;}require(rejected,"source output alias accepted");
+    rejected=false;try{auto bad=e.batch();auto invalid=sources;invalid.coefficient_sets=2;la.polynomial_sources(bad,invalid,p,q,y,ep,eq,sources_p,sources_q);}catch(const std::invalid_argument&){rejected=true;}require(rejected,"source coefficient-set mismatch accepted");
     std::cout<<B<<" bits: on-device Horner recurrence, reverse/all_steps, sharing tails, composed/fused\n";
 }
 template<int B> void real_products(Engine& e,BatchedLinalg& la){

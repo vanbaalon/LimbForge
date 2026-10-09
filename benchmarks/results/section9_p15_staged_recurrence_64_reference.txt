@@ -1,0 +1,3 @@
+Auditing 64 bits (dense repeats)
+64 bits: polynomial references passed
+Section 9 reference run passed; selected width, dense repeats.

@@ -1,0 +1,5 @@
+Auditing 192 bits (dense repeats)
+polynomial shared=0 terms=3 steps=3 fused=1 reverse=0 all_steps=0 index 60
+GPU: re{sign=-1 exponent=120 status=0 limbs=8956bafc ba5e6c63 1b02ec21 2098dfee 558075f5 ebd60182 } im{sign=1 exponent=117 status=0 limbs=c6c5df4f 1bdc5be9 8b06fb8c 4537d524 685ee580 e61e328f }
+MPFR: re{sign=-1 exponent=120 status=0 limbs=8956b1fd 1d20305d eaeb08af 675caf50 40b444d9 aecb9e23 } im{sign=1 exponent=117 status=0 limbs=c6c674e5 348588db 9e911cac 1f1062e6 c64b35ad 9e23bf3a }
+Section 9 audit: polynomial shared=0 terms=3 steps=3 fused=1 reverse=0 all_steps=0 index 60

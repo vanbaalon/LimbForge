@@ -2,6 +2,13 @@
 
 ## Unreleased
 
+- Candidate additive `polynomial_sources` API and explicit
+  `PolynomialEvaluation::shared_sources` recurrence overload. Rounded device Horner
+  states and two recurrence passes per step reuse sources across shared lanes while
+  preserving the documented order, tails, statuses and ownership. Existing calls keep
+  per-lane evaluation. Full validation and benchmark acceptance are still pending;
+  this worktree is not a production release.
+
 ## 1.2.0 — 2026-10-08
 
 - Added reusable intermediates for `BatchedLinalg::product3` and

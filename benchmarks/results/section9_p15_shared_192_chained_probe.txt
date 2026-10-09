@@ -1,0 +1,5 @@
+Auditing 192 bits (dense repeats)
+shared Horner q sources index 1155
+GPU: re{sign=1 exponent=13 status=0 limbs=c061b36b 7906be3 ae66765a f9f743c1 23355f4d 2adb1233 } im{sign=1 exponent=18 status=0 limbs=d8e6f99d f7fcfc9b a820ec2b 85139827 baa525b3 a1e2d387 }
+MPFR: re{sign=-1 exponent=17 status=0 limbs=894bd42b 23a6ccef 335ed58c 217deace 726fece7 d990d597 } im{sign=1 exponent=18 status=0 limbs=daf8b8cd 7a8d7cbe eb1195fa d63186c8 4bdfd5c9 680580f3 }
+Section 9 audit: shared Horner q sources index 1155

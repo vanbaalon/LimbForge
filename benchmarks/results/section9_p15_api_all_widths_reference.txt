@@ -1,0 +1,5 @@
+Auditing 64 bits (dense repeats)
+polynomial shared=1 terms=3 steps=3 fused=1 reverse=1 all_steps=1 index 3975
+GPU: re{sign=1 exponent=50 status=0 limbs=e82c02c0 dbbaf3f3 } im{sign=-1 exponent=7 status=0 limbs=c697122a 55875743 }
+MPFR: re{sign=1 exponent=50 status=0 limbs=e82c02c0 dbbaf3f3 } im{sign=-1 exponent=51 status=0 limbs=831f13ab 55875743 }
+Section 9 audit: polynomial shared=1 terms=3 steps=3 fused=1 reverse=1 all_steps=1 index 3975

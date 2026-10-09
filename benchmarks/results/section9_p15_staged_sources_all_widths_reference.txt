@@ -1,0 +1,11 @@
+Auditing 64 bits (dense repeats)
+Section 9 audit: batched algebra Metal compilation: program_source:1051:57: error: no matching function for call to 'batch_private_load'
+    auto c=coeff[(set*4+a)*p.terms+p.flags];auto addend=batch_private_load(part?c.im:c.re);PrivateNumber value;
+                                                        ^~~~~~~~~~~~~~~~~~
+program_source:987:22: note: candidate function not viable: cannot bind reference in default address space to object in address space 'device' in 1st argument
+inline PrivateNumber batch_private_load(device const Number<N>& x){
+                     ^
+program_source:1012:23: note: candidate function not viable: no known conversion from 'Number<2>' to 'const device Complex<N> &' for 1st argument
+inline PrivateComplex batch_private_load(device const Complex<N>& x){return {batch_private_load(x.re),batch_private_load(x.im)};}
+                      ^
+
