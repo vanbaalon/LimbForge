@@ -164,6 +164,11 @@ a row in `docs/optimizations.md`, rejected attempts kept under `benchmarks/exper
 - **Option to measure:** a device source pass that writes p and q per (step, weight group, component) into batch scratch. That scratch is small, e.g. 160 × 65 × 8 complex, and is not the host table the consumer wants to avoid. Follow it with the existing `vector_recurrence`, which also brings the matrix, affine and tangent modes.
 - **Contract:** keep the documented Horner and recurrence order, so results stay identical. Preserve incomplete weight-sharing groups: `polynomial_recurrence` permits sharing tails, which an adapter to `vector_recurrence` must handle explicitly.
 
+**P1.6 candidate:** reusable per-call slots are implemented on `round-section9-batched-workspaces`.
+Normal and shader-validation smoke checks pass, including two exact repairs in one batch,
+busy release, abandoned batches, engine ownership and unit destruction. No new numerical
+kernel or timing claim; release/merge acceptance remains pending.
+
 **P1.6: No allocation in hot paths.** `product3` and `normal_equations_exact` allocate engine buffers on every call. Reuse workspaces, and follow the `Linalg::release_workspaces` semantics: memory still used by an unwaited batch is detached, not freed.
 
 ### P2: API cohesion

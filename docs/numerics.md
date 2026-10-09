@@ -646,6 +646,31 @@ locked. Tested in `tests/test_resident_linalg.cpp` (`release`): scratch after QR
 after wait, a pending submission with host-fallback outputs released before its wait, a later call into the
 same batch, an unsubmitted batch released and destroyed, and identical results throughout.
 
+### Batched intermediate workspaces
+
+`BatchedLinalg::product3` and `normal_equations_exact` retain their intermediate Metal
+buffers between calls. `BatchedWorkspaces` reports `idle_bytes`, `busy_bytes` and
+`busy_workspaces` through `workspaces()` and `release_workspaces()`. Capacities grow
+when needed; calls of the same or smaller shape reuse them after wait. Concurrent
+pending calls need separate slots, so warm up the intended number of pending calls.
+This avoids repeated Metal buffer allocation; encoding still allocates host bookkeeping.
+
+Every exact normal-equation call keeps its own augmented matrix and Gram matrix until
+host fallback repair finishes. Two calls within one batch cannot share a Gram matrix:
+the first completion may still need its original contents. Arithmetic and the requirement
+that exact results are final only after wait are unchanged.
+
+`release_workspaces()` frees idle buffers and detaches busy slots, including already
+detached slots in its reported busy totals. An unsubmitted batch, its submission and
+completion callbacks keep detached storage alive. A repeated release does not double
+count a slot. Destruction of an unsubmitted batch or waiting a submitted one releases
+that ownership. Compiled pipelines stay cached. A batch remains valid if its
+`BatchedLinalg` object is destroyed before submission or wait.
+
+Workspace snapshots/release use a mutex. This does not make the existing algebra
+pipeline cache or simultaneous encoding on one `BatchedLinalg` thread safe; serialize
+encoding on that object. Release may run concurrently with an already-encoded batch.
+
 ## Cholesky factorization and triangular solves
 
 ```cpp

@@ -147,3 +147,12 @@ Alternate layouts remain experimental. Broader GPU validation is also pending.
 Evaluate one change per round, retain a reliable fallback, and distinguish
 small-batch latency from large-batch throughput. New primitives need explicit
 rounding contracts and independent references before performance tuning.
+
+## Section 9 P1.6 candidate: retained intermediates
+
+`product3` and `normal_equations_exact` reuse capacity-sized per-call Metal buffers.
+Busy slots are detached on release and owned by their batch until wait/destruction;
+exact Gram repair uses distinct slots for multiple calls in one batch. Existing
+numerical kernels and contracts are unchanged. Focused smoke tests pass normally and
+under shader validation. No measured speedup is claimed; this candidate has not yet
+been merged or released. [Record](../benchmarks/experiments/section9_workspace_reuse.md).

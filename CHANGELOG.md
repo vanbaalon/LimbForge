@@ -2,7 +2,11 @@
 
 ## Unreleased
 
-No changes yet.
+- Added reusable intermediates for `BatchedLinalg::product3` and
+  `normal_equations_exact`, with `workspaces()` and `release_workspaces()` queries.
+  Busy storage survives release until its owning batch is destroyed or waited.
+  The arithmetic sequence, provisional-output rules and existing signatures are unchanged.
+  This API addition is unreleased; focused normal/validation lifetime checks pass.
 
 ## 1.1.0 — 2026-10-08
 

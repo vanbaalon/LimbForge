@@ -87,7 +87,8 @@ public:
 namespace detail {
 // Type-erased buffer operand for the resident encoders of separate units (numerics.hpp, transcendental.hpp).
 struct Operand { std::shared_ptr<BufferStorage> storage; std::size_t size=0; };
-struct Access { template<class T> static Operand operand(const Buffer<T>& b){return {b.storage_,b.size()};} };
+struct Access { template<class T> static Operand operand(const Buffer<T>& b){return {b.storage_,b.size()};}
+    template<class T> static Buffer<T> buffer(Operand o){return Buffer<T>(std::move(o.storage),o.size);} };
 }
 class Submission {
     struct Impl;std::shared_ptr<Impl> impl_;

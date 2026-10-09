@@ -119,3 +119,42 @@ template<int B> void real_products(Engine& e,BatchedLinalg& la){
     std::cout<<B<<" bits: real 4x4 GEMM odd batch/broadcast and empty dots\n";
 }
 void policy(){BreakEvenTable t;DispatchKey k{"gemm_complex",352,2,4,4,4,18,false};require(t.recommend(k)==BackendRecommendation::unknown,"unmeasured policy");t.record(k,{2,1});require(t.recommend(k)==BackendRecommendation::gpu,"policy lookup");k.bits=384;require(t.recommend(k)==BackendRecommendation::unknown,"policy extrapolation");}
+
+// Lifetime checks are separate from arithmetic sweeps: gram repair must keep per-call storage.
+void workspace_lifetimes(){
+    constexpr int bits=352;using T=F<bits>;Engine e;BatchedLinalg unit(e);
+    auto one=from_decimal<bits>("1"),two=from_decimal<bits>("2"),three=from_decimal<bits>("3");
+    auto a=put(e,std::vector<T>{one,zero<bits/32>(),zero<bits/32>(),two});
+    auto id=put(e,std::vector<T>{one,zero<bits/32>(),zero<bits/32>(),one});auto out=e.make_buffer<T>(4);
+    StridedGemm shape{1,2,2,2,4,4,4};
+    auto first=e.batch();unit.product3(first,shape,shape,a,id,id,out);
+    auto busy=unit.workspaces();require(busy.busy_workspaces==1&&busy.busy_bytes>=4*sizeof(T),"workspace not held by unsubmitted batch");
+    auto detached=unit.release_workspaces();require(detached.busy_workspaces==1&&unit.workspaces().busy_bytes==busy.busy_bytes,"release freed busy scratch");
+    auto submitted=first.submit();require(unit.workspaces().busy_workspaces==1,"submission released scratch before wait");submitted.wait();
+    check<bits>(get(out),get(a),"released product workspace");require(unit.workspaces().busy_workspaces==0&&unit.workspaces().idle_bytes==0,"detached workspace retained after wait");
+    for(int rep=0;rep<3;++rep){auto b=e.batch();unit.product3(b,shape,shape,a,id,id,out);b.submit().wait();}
+    auto warmed=unit.workspaces();require(warmed.idle_bytes==4*sizeof(T)&&warmed.busy_workspaces==0,"product workspace capacity grew on reuse");
+    {auto abandoned=e.batch();unit.product3(abandoned,shape,shape,a,id,id,out);unit.release_workspaces();require(unit.workspaces().busy_workspaces==1,"abandoned batch lost scratch");}
+    require(unit.workspaces().busy_bytes==0,"unsubmitted destruction retained scratch");
+    StridedGemm empty=shape;empty.count=0;Buffer<T> unused;
+    auto empty_batch=e.batch();auto empty_done=empty_batch.submit();empty_done.wait();
+    unit.product3(empty_batch,empty,empty,unused,unused,unused,unused);
+    require(unit.workspaces().idle_bytes==0&&unit.workspaces().busy_bytes==0,"empty product allocated workspace");
+    Engine foreign;bool rejected=false;try{auto b=foreign.batch();unit.product3(b,shape,shape,a,id,id,out);}catch(const std::invalid_argument&){rejected=true;}
+    require(rejected,"foreign Engine accepted by workspace allocation");unit.release_workspaces();
+    LinalgOptions options;options.force_fallback=true;Linalg exact(e,options);
+    auto j1=put(e,std::vector<T>{one,two}),g1=put(e,std::vector<T>{three,one});
+    auto j2=put(e,std::vector<T>{two,three}),g2=put(e,std::vector<T>{one,two});
+    auto A1=e.make_buffer<T>(1),A2=e.make_buffer<T>(1),r1=e.make_buffer<T>(1),r2=e.make_buffer<T>(1);
+    auto together=e.batch();auto t1=unit.normal_equations_exact(exact,together,j1,g1,2,1,A1,r1);
+    auto t2=unit.normal_equations_exact(exact,together,j2,g2,2,1,A2,r2);
+    require(unit.workspaces().busy_workspaces==2,"exact normal calls reused a live gram");unit.release_workspaces();together.submit().wait();
+    require(t1.resolved()&&t2.resolved(),"exact normal tickets unresolved");
+    require(same<bits>(get(A1)[0],from_decimal<bits>("5"))&&same<bits>(get(r1)[0],from_decimal<bits>("5")),"first exact repair used overwritten gram");
+    require(same<bits>(get(A2)[0],from_decimal<bits>("13"))&&same<bits>(get(r2)[0],from_decimal<bits>("8")),"second exact repair");
+    require(unit.workspaces().busy_bytes==0,"released exact scratch retained");
+    // A destroyed algebra unit must not invalidate completion callbacks.
+    auto survives=e.batch();{BatchedLinalg temporary(e);temporary.normal_equations_exact(exact,survives,j1,g1,2,1,A1,r1);}survives.submit().wait();
+    require(same<bits>(get(A1)[0],from_decimal<bits>("5")),"unit destruction invalidated scratch");
+    unit.release_workspaces();std::cout<<"Batched workspace reuse, detachment, ownership and exact repair passed\n";
+}

@@ -1,0 +1,9 @@
+Test project /private/tmp/limbforge-section9-workspaces/build
+    Start 1: version_cpu
+1/2 Test #1: version_cpu ......................   Passed    0.16 sec
+    Start 2: package_version_cpu
+2/2 Test #2: package_version_cpu ..............   Passed    3.40 sec
+
+100% tests passed out of 2
+
+Total Test time (real) =   3.57 sec

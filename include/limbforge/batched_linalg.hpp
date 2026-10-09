@@ -2,6 +2,7 @@
 #include "engine.hpp"
 #include "linalg.hpp"
 #include <functional>
+#include <utility>
 namespace limbforge {
 // Row-major C_b = A_b B_b. Strides are in elements; zero input stride broadcasts one matrix.
 // A: m*k, B: k*n, C: m*n. Output matrices must not overlap. Accumulation starts from C;
@@ -38,8 +39,11 @@ struct InlineComplexRecord {
     std::int32_t real_exponent=0,imag_exponent=0,real_sign=0,imag_sign=0;
     std::uint32_t real_status=0,imag_status=0;
 };
+// Retained intermediate buffers; busy includes unsubmitted and unwaited work, even after release.
+struct BatchedWorkspaces {std::size_t idle_bytes=0,busy_bytes=0,busy_workspaces=0;};
 class BatchedLinalg {
     Engine* engine_; struct Impl; std::unique_ptr<Impl> impl_;
+    std::pair<detail::Operand,detail::Operand> workspace(CommandBatch&,int,bool,std::size_t,std::size_t);
     void encode_gemm(CommandBatch&,int,bool,const StridedGemm&,detail::Operand,detail::Operand,detail::Operand);
     void encode_power(CommandBatch&,int,bool,const PowerMoments&,detail::Operand,detail::Operand,detail::Operand,detail::Operand,PowerStorage);
     void encode_normal(CommandBatch&,int,std::size_t,std::size_t,detail::Operand,detail::Operand,detail::Operand,detail::Operand,bool);
@@ -51,6 +55,8 @@ class BatchedLinalg {
     void encode_polynomial(CommandBatch&,int,const PolynomialRecurrence&,detail::Operand,detail::Operand,detail::Operand,detail::Operand,detail::Operand,detail::Operand,detail::Operand);
 public:
     explicit BatchedLinalg(Engine&); ~BatchedLinalg();
+    BatchedWorkspaces workspaces() const;
+    BatchedWorkspaces release_workspaces();
     BatchedLinalg(const BatchedLinalg&)=delete; BatchedLinalg& operator=(const BatchedLinalg&)=delete;
     // Synchronous host-array forms, including input staging and output readback. Same kernels/contracts.
     Timing gemm(int bits,bool complex,const StridedGemm&,const void* A,const void* B,void* C);
@@ -75,7 +81,11 @@ public:
         if(first.m&&first.n>std::size_t(-1)/first.m)throw std::invalid_argument("product3: size overflow");
         first.stride_c=first.m*first.n;second.stride_a=first.stride_c;
         if(first.count&&first.stride_c>std::size_t(-1)/first.count)throw std::invalid_argument("product3: size overflow");
-        auto tmp=engine_->make_buffer<T>(first.count*first.stride_c);second.negative=negative;gemm(b,first,A,B,tmp);gemm(b,second,tmp,D,C);
+        if(!first.count||!first.m||(!first.n&&!second.n)){
+            Buffer<T> tmp;second.negative=negative;gemm(b,first,A,B,tmp);gemm(b,second,tmp,D,C);return;
+        }
+        auto slots=workspace(b,detail::Format<T>::bits,detail::Format<T>::complex,first.count*first.stride_c,0);
+        auto tmp=detail::Access::buffer<T>(slots.first);second.negative=negative;gemm(b,first,A,B,tmp);gemm(b,second,tmp,D,C);
     }
     // A = J^T J (full symmetric), rhs = J^T g in the same dispatch. Sequential composed/fused dots.
     template<class T> void normal_equations(CommandBatch& b,const Buffer<T>& J,const Buffer<T>& g,std::size_t rows,std::size_t cols,Buffer<T>& A,Buffer<T>& rhs,bool fused=false){
@@ -90,7 +100,8 @@ public:
         auto a=detail::Access::operand(A),r=detail::Access::operand(rhs),j=detail::Access::operand(J),gg=detail::Access::operand(g);
         if(a.size<cols*cols||r.size<cols||j.size<rows*cols||gg.size<rows)throw std::invalid_argument("normal equations: undersized buffer");
         if((a.storage&&(a.storage==j.storage||a.storage==gg.storage||a.storage==r.storage))||(r.storage&&(r.storage==j.storage||r.storage==gg.storage)))throw std::invalid_argument("normal equations: output alias");
-        auto augmented=engine_->make_buffer<T>(rows*(cols+1)),gram=engine_->make_buffer<T>((cols+1)*(cols+1));
+        auto slots=workspace(b,detail::Format<T>::bits,false,rows*(cols+1),(cols+1)*(cols+1));
+        auto augmented=detail::Access::buffer<T>(slots.first),gram=detail::Access::buffer<T>(slots.second);
         encode_augment(b,detail::Format<T>::bits,rows,cols,detail::Access::operand(J),detail::Access::operand(g),detail::Access::operand(augmented));
         auto ticket=la.syrk(b,augmented,rows,cols+1,gram,false);encode_extract(b,detail::Format<T>::bits,cols,detail::Access::operand(gram),detail::Access::operand(A),detail::Access::operand(rhs),ticket);return ticket;
     }

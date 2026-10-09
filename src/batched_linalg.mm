@@ -6,6 +6,8 @@
 #include <map>
 #include <chrono>
 #include <unistd.h>
+#include <mutex>
+#include <algorithm>
 namespace limbforge {
 namespace {
 using I=detail::Internal;using O=detail::Operand;using S=std::shared_ptr<detail::BufferStorage>;
@@ -19,7 +21,11 @@ void distinct(O out,std::initializer_list<O> in){for(auto a:in)if(out.storage&&o
 S retain(CommandBatch& b,O o,std::size_t n,bool written=false,bool final=true){size_ok(o,n);if(!n&&!o.storage)return I::scratch(b,16);if(!written&&final)I::require_final(b,o.storage);I::retain(b,o.storage,written);return o.storage;}
 std::string message(NSError* e){return e?std::string(e.localizedDescription.UTF8String):"unknown Metal error";}
 }
+struct BatchedWorkspace {S first,second;std::atomic<std::size_t> bytes{0};};
 struct BatchedLinalg::Impl {
+    mutable std::mutex workspace_mutex;
+    std::vector<std::shared_ptr<BatchedWorkspace>> workspaces;
+    std::vector<std::weak_ptr<BatchedWorkspace>> detached;
     id<MTLDevice> device;std::map<int,id<MTLLibrary>> libs;
     std::map<std::tuple<int,std::string,bool>,id<MTLComputePipelineState>> pipelines;
     explicit Impl(Engine& e):device(I::device(e)){}
@@ -46,6 +52,41 @@ struct BatchedLinalg::Impl {
 };
 BatchedLinalg::BatchedLinalg(Engine& e):engine_(&e),impl_(std::make_unique<Impl>(e)){}
 BatchedLinalg::~BatchedLinalg()=default;
+std::pair<O,O> BatchedLinalg::workspace(CommandBatch& b,int bits,bool complex,std::size_t first,std::size_t second){
+    bits_ok(bits);I::device(b);auto element=std::size_t(bits/8+12)*(complex?2:1);
+    const auto first_bytes=mul_size(first,element),second_bytes=mul_size(second,element);
+    std::shared_ptr<BatchedWorkspace> selected;
+    {std::lock_guard<std::mutex> lock(impl_->workspace_mutex);
+        for(auto& w:impl_->workspaces)if(w.use_count()==1&&(!w->first||!w->first->busy.load())&&(!w->second||!w->second->busy.load())){selected=w;break;}
+        if(!selected){selected=std::make_shared<BatchedWorkspace>();impl_->workspaces.push_back(selected);}}
+    // Allocate on this unit's Engine, retaining the previous foreign-engine rejection.
+    auto reserve=[&](S& storage,std::size_t bytes){if(!storage||storage->bytes<bytes){
+        auto buffer=engine_->make_buffer<std::uint32_t>(std::max<std::size_t>(bytes/4,1));storage=detail::Access::operand(buffer).storage;}};
+    reserve(selected->first,first_bytes);if(second_bytes)reserve(selected->second,second_bytes);
+    selected->bytes.store((selected->first?selected->first->bytes:0)+(selected->second?selected->second->bytes:0));
+    I::retain(b,selected->first,true);if(second_bytes)I::retain(b,selected->second,true);
+    // Each call needs its own gram until host fallback repair completes at wait().
+    I::on_completion(b,[held=selected]{});
+    return {{selected->first,first},{selected->second,second}};
+}
+BatchedWorkspaces BatchedLinalg::workspaces()const{
+    BatchedWorkspaces result;std::lock_guard<std::mutex> lock(impl_->workspace_mutex);
+    for(auto& w:impl_->workspaces){if(w.use_count()==1)result.idle_bytes+=w->bytes.load();
+        else{result.busy_bytes+=w->bytes.load();++result.busy_workspaces;}}
+    for(auto& weak:impl_->detached)if(auto w=weak.lock()){result.busy_bytes+=w->bytes.load();++result.busy_workspaces;}
+    return result;
+}
+BatchedWorkspaces BatchedLinalg::release_workspaces(){
+    BatchedWorkspaces result;std::vector<std::shared_ptr<BatchedWorkspace>> dropped;
+    {std::lock_guard<std::mutex> lock(impl_->workspace_mutex);
+        impl_->detached.erase(std::remove_if(impl_->detached.begin(),impl_->detached.end(),[](const auto& w){return w.expired();}),impl_->detached.end());
+        for(auto& weak:impl_->detached)if(auto w=weak.lock()){result.busy_bytes+=w->bytes.load();++result.busy_workspaces;}
+        for(auto& w:impl_->workspaces){if(w.use_count()==1)result.idle_bytes+=w->bytes.load();
+            else{result.busy_bytes+=w->bytes.load();++result.busy_workspaces;impl_->detached.push_back(w);}}
+        dropped.swap(impl_->workspaces);
+    }
+    return result;
+}
 namespace {
 Timing host_call(Engine& e,int bits,bool complex,const std::size_t* sizes,const void* const* pointers,bool accumulate,
                  const std::function<void(CommandBatch&,O,O,O,O)>& encode){
