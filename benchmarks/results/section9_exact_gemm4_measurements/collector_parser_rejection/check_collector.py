@@ -3,7 +3,7 @@
 from pathlib import Path
 import ast,copy,hashlib,json,math
 ROOT=Path(__file__).resolve().parents[3]
-SOURCE=ROOT/'benchmarks/experiments/exact_gemm4/measure_continued.py'
+SOURCE=ROOT/'benchmarks/experiments/exact_gemm4/measure.py'
 PATHS=['complex_composed','complex_fused','exact_batched4','gauss_three_real_composed']
 tree=ast.parse(SOURCE.read_text());definitions=[n for n in tree.body if isinstance(n,ast.FunctionDef) and n.name in {'close','verify_comparison','verify_clock'}]
 assert len(definitions)==3
@@ -13,7 +13,7 @@ def reject(name,callback):
     try:callback()
     except RuntimeError as e:checks.append({'name':name,'rejected':True,'reason':str(e)})
     else:raise AssertionError('guard accepted '+name)
-rows=[{'path':p,'bits':'352','count':'10000','m':'4','n':'4','k':'4','resident':'1','workers':'18','repeats':'3','clock':'cpu-interleaved','cpu_wall':'.4','gpu_wall':'.4','gpu_device':'.1','wall_min':'.3','wall_max':'.5','wall_p25':'.3','wall_p75':'.4','error_units_2neg_bits':'.49','different_complex_entries':'0'} for p in PATHS]
+rows=[{'path':p,'bits':'352','count':'10000','m':'4','n':'4','k':'4','resident':'1','workers':'18','repeats':'3','clock':'cpu-interleaved','cpu_wall':'.4','gpu_wall':'.4','gpu_device':'.1','wall_min':'.3','wall_max':'.5','wall_p25':'.35','wall_p75':'.45','error_units_2neg_bits':'.49','different_complex_entries':'0'} for p in PATHS]
 lines=[]
 for rep in range(3):
     for j in range(4):
