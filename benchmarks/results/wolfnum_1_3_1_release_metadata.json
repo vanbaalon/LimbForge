@@ -57,5 +57,33 @@
   "host": {
     "os": "26.6.2",
     "cpu": "Apple M5 Max"
-  }
+  },
+  "main_checkout": {
+    "full_default_build": "PASS",
+    "matching_version_and_package": "2/2 PASS",
+    "archive_sha256": "d249dc2a6af9fe08c1cdb0f524e2a270fccbc7a94348c234d94e5661488f3c47",
+    "evidence_sha256": {
+      "wolfnum_1_3_1_main_package.txt": "4568a47153181107d142131265d2c7b94a907f68612c58a259a16416f03467dd",
+      "wolfnum_1_3_1_main_build_final.txt": "6093eab436330c0f3da9f58a7bb7264c159b6c55c06374f6615bf1a951a2743b",
+      "wolfnum_1_3_1_main_build.txt": "2198a99e7ae8e92befd28a88d96e9a8ee4de76b20209ef981b6c1b09a151d2ef"
+    }
+  },
+  "final_release_gpu_smoke": {
+    "result": "2/2 PASS",
+    "manifest": "wolfnum_1_3_1_smoke_metadata.json",
+    "sha256": "91e4b1fc1f10aad34390ac005f334b1d775ddee7bcc3638c40f0be68bd1a132d"
+  },
+  "separately_scoped_experimental_regression": {
+    "source_snapshot": "05f22fa",
+    "all_widths": "31/31 normal +31/31 shader PASS",
+    "full_library": "26/26 normal +19/19 shader PASS",
+    "manifest": "section9_p22_lookahead_gate_metadata.json",
+    "experimental_api_promoted": false
+  },
+  "optional_enabled_example": {
+    "result": "2/2 PASS",
+    "manifest": "wolfnum_1_3_1_optional_example_metadata.json",
+    "sha256": "f87de94577830ecc332eff5906c9ef7f121a8b71a6df1e67bd04ec6af93a10a5"
+  },
+  "smoke_queue_guard_correction": "Initial guard expected older CTest wording; corrected parser accepted the completed passing gate and ran only the final release smokes."
 }

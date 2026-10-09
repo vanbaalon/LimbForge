@@ -1,0 +1,164 @@
+-- Configuring done (0.1s)
+-- Generating done (0.4s)
+-- Build files have been written to: /Users/k0959535/Dropbox/IntegrabilityProjects/2026 4d SoV/LimbForge/build
+[  2%] Built target tensorops_probe
+[  3%] Building OBJCXX object CMakeFiles/simd_validation_repro.dir/benchmarks/experiments/simd_validation_repro.mm.o
+[  4%] Building CXX object CMakeFiles/limbforge.dir/src/version.cpp.o
+[  5%] Building OBJCXX object CMakeFiles/limbforge.dir/src/engine.mm.o
+[  6%] Building OBJCXX object CMakeFiles/limbforge.dir/src/linalg.mm.o
+[  7%] Building OBJCXX object CMakeFiles/limbforge.dir/src/linalg_complex.mm.o
+/Users/k0959535/Dropbox/IntegrabilityProjects/2026 4d SoV/LimbForge/src/engine.mm:420:75: warning: missing field 'b_stride' initializer [-Wmissing-field-initializers]
+  420 |         Params params={std::uint32_t(count),std::uint32_t(operation),0,0,1};[encoder setBytes:&params length:sizeof(params) atIndex:3];
+      |                                                                           ^
+[  8%] Linking OBJCXX executable simd_validation_repro
+[  8%] Built target simd_validation_repro
+[  8%] Building OBJCXX object CMakeFiles/limbforge.dir/src/batched_linalg.mm.o
+1 warning generated.
+[  9%] Building OBJCXX object CMakeFiles/limbforge.dir/src/numerics.mm.o
+[ 10%] Building OBJCXX object CMakeFiles/limbforge.dir/src/transcendental.mm.o
+[ 11%] Linking CXX static library liblimbforge.a
+[ 11%] Built target limbforge
+[ 13%] Building CXX object CMakeFiles/baxter_batch.dir/benchmarks/baxter_batch.cpp.o
+[ 14%] Building CXX object CMakeFiles/test_limbforge_version.dir/tests/test_version.cpp.o
+[ 15%] Building CXX object CMakeFiles/test_limbforge.dir/tests/test_arithmetic.cpp.o
+[ 16%] Building CXX object CMakeFiles/test_limbforge_bridge.dir/tests/test_bridge.cpp.o
+[ 17%] Linking CXX executable test_limbforge_version
+[ 17%] Built target test_limbforge_version
+[ 17%] Building CXX object CMakeFiles/test_limbforge_fused.dir/tests/test_fused.cpp.o
+[ 18%] Linking CXX executable baxter_batch
+[ 18%] Built target baxter_batch
+[ 19%] Building CXX object CMakeFiles/test_limbforge_transcendental.dir/tests/test_transcendental.cpp.o
+[ 20%] Linking CXX executable test_limbforge
+[ 20%] Built target test_limbforge
+[ 21%] Building CXX object CMakeFiles/test_limbforge_linalg.dir/tests/test_linalg.cpp.o
+[ 22%] Linking CXX executable test_limbforge_bridge
+[ 22%] Built target test_limbforge_bridge
+[ 22%] Building CXX object CMakeFiles/test_limbforge_cholesky.dir/tests/test_cholesky.cpp.o
+[ 23%] Linking CXX executable test_limbforge_cholesky
+[ 23%] Built target test_limbforge_cholesky
+[ 23%] Building CXX object CMakeFiles/test_limbforge_qr.dir/tests/test_qr.cpp.o
+[ 25%] Linking CXX executable test_limbforge_fused
+[ 25%] Built target test_limbforge_fused
+[ 26%] Building CXX object CMakeFiles/test_limbforge_qr_complex.dir/tests/test_qr_complex.cpp.o
+[ 27%] Linking CXX executable test_limbforge_qr
+[ 27%] Built target test_limbforge_qr
+[ 28%] Building OBJCXX object CMakeFiles/gpu_codegen_probe.dir/tests/gpu_codegen_probe.mm.o
+[ 29%] Linking CXX executable test_limbforge_linalg
+[ 29%] Built target test_limbforge_linalg
+[ 29%] Building CXX object CMakeFiles/test_limbforge_broadcast.dir/tests/test_broadcast.cpp.o
+[ 30%] Linking CXX executable test_limbforge_broadcast
+[ 30%] Built target test_limbforge_broadcast
+[ 31%] Building CXX object CMakeFiles/test_limbforge_batched4.dir/tests/test_batched4.cpp.o
+[ 32%] Linking CXX executable test_limbforge_transcendental
+[ 32%] Built target test_limbforge_transcendental
+[ 33%] Building CXX object CMakeFiles/test_limbforge_section9.dir/tests/test_section9.cpp.o
+[ 34%] Linking CXX executable test_limbforge_batched4
+[ 34%] Built target test_limbforge_batched4
+[ 35%] Building CXX object CMakeFiles/test_limbforge_threshold.dir/tests/test_threshold.cpp.o
+[ 36%] Linking CXX executable test_limbforge_threshold
+[ 36%] Built target test_limbforge_threshold
+[ 38%] Linking CXX executable test_limbforge_section9
+[ 39%] Building CXX object CMakeFiles/test_limbforge_cast.dir/tests/test_cast.cpp.o
+[ 39%] Built target test_limbforge_section9
+[ 40%] Building CXX object CMakeFiles/test_limbforge_dot.dir/tests/test_segmented_dot.cpp.o
+[ 41%] Linking CXX executable gpu_codegen_probe
+[ 41%] Built target gpu_codegen_probe
+[ 41%] Building CXX object CMakeFiles/test_limbforge_vector.dir/tests/test_vector_recurrence.cpp.o
+[ 42%] Linking CXX executable test_limbforge_cast
+[ 42%] Built target test_limbforge_cast
+[ 43%] Linking CXX executable test_limbforge_dot
+[ 44%] Building CXX object CMakeFiles/test_limbforge_numerics.dir/tests/test_numerics.cpp.o
+[ 44%] Built target test_limbforge_dot
+[ 45%] Building CXX object CMakeFiles/test_limbforge_resident_units.dir/tests/test_resident_units.cpp.o
+[ 46%] Linking CXX executable test_limbforge_numerics
+[ 46%] Built target test_limbforge_numerics
+[ 46%] Building CXX object CMakeFiles/test_limbforge_resident_linalg.dir/tests/test_resident_linalg.cpp.o
+[ 47%] Linking CXX executable test_limbforge_resident_units
+[ 47%] Built target test_limbforge_resident_units
+[ 48%] Building CXX object CMakeFiles/test_limbforge_buffers.dir/tests/test_buffers.cpp.o
+[ 50%] Linking CXX executable test_limbforge_buffers
+[ 50%] Built target test_limbforge_buffers
+[ 51%] Building CXX object CMakeFiles/test_limbforge_reduction.dir/tests/test_reduction.cpp.o
+[ 52%] Linking CXX executable test_limbforge_resident_linalg
+[ 52%] Built target test_limbforge_resident_linalg
+[ 53%] Building CXX object CMakeFiles/limbforge_division.dir/examples/division.cpp.o
+[ 54%] Linking CXX executable test_limbforge_vector
+[ 55%] Linking CXX executable limbforge_division
+[ 55%] Built target test_limbforge_vector
+[ 55%] Built target limbforge_division
+[ 56%] Building CXX object CMakeFiles/limbforge_resident.dir/examples/resident.cpp.o
+[ 56%] Building CXX object CMakeFiles/limbforge_reduction.dir/examples/reduction.cpp.o
+[ 57%] Linking CXX executable test_limbforge_reduction
+[ 57%] Built target test_limbforge_reduction
+[ 58%] Building CXX object CMakeFiles/section9_limbforge.dir/benchmarks/section9.cpp.o
+[ 59%] Linking CXX executable limbforge_resident
+[ 60%] Linking CXX executable limbforge_reduction
+[ 60%] Built target limbforge_resident
+[ 60%] Built target limbforge_reduction
+[ 61%] Building CXX object CMakeFiles/benchmark_limbforge.dir/benchmarks/benchmark.cpp.o
+[ 61%] Building CXX object CMakeFiles/reduction_limbforge.dir/benchmarks/reduction.cpp.o
+[ 63%] Linking CXX executable reduction_limbforge
+[ 63%] Built target reduction_limbforge
+[ 63%] Building CXX object CMakeFiles/square_limbforge.dir/benchmarks/square.cpp.o
+[ 64%] Linking CXX executable benchmark_limbforge
+[ 64%] Built target benchmark_limbforge
+[ 65%] Building OBJCXX object CMakeFiles/residue_gemm.dir/benchmarks/residue_gemm.mm.o
+[ 66%] Linking CXX executable square_limbforge
+[ 66%] Built target square_limbforge
+[ 67%] Building CXX object CMakeFiles/vector_recurrence_limbforge.dir/benchmarks/vector_recurrence.cpp.o
+[ 68%] Linking CXX executable residue_gemm
+[ 68%] Built target residue_gemm
+[ 69%] Building OBJCXX object CMakeFiles/linalg_limbforge.dir/benchmarks/linalg.mm.o
+[ 70%] Linking CXX executable test_limbforge_qr_complex
+[ 70%] Built target test_limbforge_qr_complex
+[ 71%] Linking CXX executable vector_recurrence_limbforge
+[ 72%] Building CXX object CMakeFiles/segmented_dot_limbforge.dir/benchmarks/segmented_dot.cpp.o
+[ 72%] Built target vector_recurrence_limbforge
+[ 73%] Building CXX object CMakeFiles/vector_recurrence_fused.dir/benchmarks/vector_recurrence_fused.cpp.o
+[ 75%] Linking CXX executable section9_limbforge
+[ 75%] Built target section9_limbforge
+[ 75%] Building CXX object CMakeFiles/batched4_limbforge.dir/benchmarks/batched4.cpp.o
+[ 76%] Linking CXX executable linalg_limbforge
+[ 77%] Linking CXX executable segmented_dot_limbforge
+[ 77%] Built target linalg_limbforge
+[ 77%] Built target segmented_dot_limbforge
+[ 78%] Building OBJCXX object CMakeFiles/cholesky_limbforge.dir/benchmarks/cholesky.mm.o
+[ 79%] Building CXX object CMakeFiles/resident_linalg_limbforge.dir/benchmarks/resident_linalg.cpp.o
+[ 80%] Linking CXX executable batched4_limbforge
+[ 81%] Linking CXX executable vector_recurrence_fused
+[ 81%] Built target batched4_limbforge
+[ 82%] Linking CXX executable resident_linalg_limbforge
+[ 82%] Built target vector_recurrence_fused
+[ 82%] Building CXX object CMakeFiles/numerics_limbforge.dir/benchmarks/numerics.cpp.o
+[ 83%] Building OBJCXX object CMakeFiles/qr_limbforge.dir/benchmarks/qr.mm.o
+[ 83%] Built target resident_linalg_limbforge
+[ 84%] Building OBJCXX object CMakeFiles/qr_complex_limbforge.dir/benchmarks/qr_complex.mm.o
+[ 85%] Linking CXX executable cholesky_limbforge
+[ 85%] Built target cholesky_limbforge
+[ 86%] Building CXX object CMakeFiles/transcendental_limbforge.dir/benchmarks/transcendental.cpp.o
+[ 88%] Linking CXX executable numerics_limbforge
+[ 88%] Built target numerics_limbforge
+[ 89%] Building CXX object CMakeFiles/kernel_sweep.dir/benchmarks/kernel_sweep.cpp.o
+[ 90%] Linking CXX executable qr_limbforge
+[ 90%] Built target qr_limbforge
+[ 90%] Building CXX object CMakeFiles/bridge_limbforge.dir/benchmarks/bridge.cpp.o
+[ 91%] Linking CXX executable qr_complex_limbforge
+[ 91%] Built target qr_complex_limbforge
+[ 91%] Building CXX object CMakeFiles/tune_limbforge.dir/benchmarks/tune.cpp.o
+[ 92%] Linking CXX executable tune_limbforge
+[ 92%] Built target tune_limbforge
+[ 92%] Building OBJCXX object CMakeFiles/layout_limbforge.dir/benchmarks/layout.mm.o
+[ 93%] Linking CXX executable bridge_limbforge
+[ 94%] Linking CXX executable layout_limbforge
+[ 94%] Built target bridge_limbforge
+[ 94%] Built target layout_limbforge
+[ 95%] Building OBJCXX object CMakeFiles/coop_recurrence.dir/benchmarks/coop_recurrence.mm.o
+[ 95%] Building OBJCXX object CMakeFiles/coop_validation_probe.dir/benchmarks/experiments/coop_validation_probe.mm.o
+[ 96%] Linking CXX executable kernel_sweep
+[ 96%] Built target kernel_sweep
+[ 97%] Linking CXX executable transcendental_limbforge
+[ 97%] Built target transcendental_limbforge
+[ 98%] Linking CXX executable coop_validation_probe
+[ 98%] Built target coop_validation_probe
+[100%] Linking CXX executable coop_recurrence
+[100%] Built target coop_recurrence

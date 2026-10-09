@@ -215,6 +215,10 @@ before release acceptance. The target remains bit-identical factors per trial wi
 the same block; existing sequential calls and defaults stay unchanged. Consumer
 Newton histories and idle timings still require P3 checks.
 
+A separate look-ahead schedule at `05f22fa` now passes all 31 widths in both modes
+and the full 26/19 regressions, including failures during overlapped updates.
+It remains an unmeasured prototype; see [the retained experiment](../benchmarks/experiments/section9_exact_trials_lookahead.md).
+
 **P2.3: Break-even table.** Partial: 50 source-recurrence keys and 24 normal-equation
 keys cover measured host/resident contracts and clock profiles. Three factor-plus-solve
 keys retain the explicit unreleased-trial scope. Exported factories load every key;

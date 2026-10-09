@@ -1,0 +1,36 @@
+{
+  "started_utc": "2026-10-09T06:39:53.036517+00:00",
+  "finished_utc": "2026-10-09T06:40:46.808378+00:00",
+  "state": "terminal",
+  "exit": 0,
+  "scope": "Final 1.3.1 linked section9 smoke; broad experimental gates remain separately scoped and are not promoted APIs",
+  "sha256": {
+    "include/limbforge/version.hpp": "257f26894dabe6ae2a348507477f678234f7295fe510e276439ff2cf397b72f3",
+    "include/limbforge/core.hpp": "12cc4bcd199bc0957275f55f7e7462f79918ad19fb3f21b55404d08119ef2ce8",
+    "src/kernels.metal": "72dcc8f6f7fa99d09f004bc2e418d2ebd1c4a0b0ea6750f2e771458c74e8d2e0",
+    "src/batched_linalg.metal": "71b8e269d0db50a76b20d2a8df65e3d3efcc587c9812ac598ebd0a19620f5507",
+    "build/liblimbforge.a": "394a08d543fff64f6421af6918aadee636e1a13fd342f7d371a72437eb38b15a",
+    "build/test_limbforge_section9": "a875ee75bb4f59f5c651d92e7fef7db547b52625a6c924ac9dc322e3df025eb8"
+  },
+  "results": [
+    {
+      "command": [
+        "./build/test_limbforge_section9"
+      ],
+      "shader_validation": false,
+      "exit": 0,
+      "log": "wolfnum_1_3_1_section9_reference.txt",
+      "log_sha256": "fea78629359412745183c68a560b6c12b41b6da6900467f399dbe2b7b0aa18c6"
+    },
+    {
+      "command": [
+        "./build/test_limbforge_section9"
+      ],
+      "shader_validation": true,
+      "exit": 0,
+      "log": "wolfnum_1_3_1_section9_shader.txt",
+      "log_sha256": "6234ac34de769a032c8a8fbbe3c504517df1f70850df33afb0e72b11c5dbb3e7"
+    }
+  ],
+  "preceding_gate_sha256": "db826653eec0a08ff6645f0fe511000fdaaa46363eab398b3882f9945c65de87"
+}

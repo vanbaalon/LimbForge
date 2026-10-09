@@ -15,6 +15,10 @@
   three focused CPU version/package/bridge checks pass. An embedded consumer
   also confirms legacy targets and directory variables remain available. Core
   arithmetic and shader sources are byte-identical to the pre-rename baseline.
+  Final 1.3.1 validation: all seven CPU checks and both linked GPU smoke checks
+  pass, as do version/package checks after rebuilding the main checkout. Fourteen
+  numerical implementation files are byte-identical to 1.3.0. Experimental all-width
+  and 26/19 regression gates are retained separately; no prototype API is promoted.
 
 - Added opt-in normal-equation comparisons and tightened the GEMM benchmark worker
   and timing scopes. Each timed CPU/GPU output is checked against its documented

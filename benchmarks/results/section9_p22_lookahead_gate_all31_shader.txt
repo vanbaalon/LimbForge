@@ -1,0 +1,33 @@
+2026-10-09 01:56:46.376 test_limbforge_blocked_trials[92124:243529990] Metal GPU Validation Enabled
+64 bits: blocked trial factors, mixed pivots and shared GPU/exact repair match MPFR
+96 bits: blocked trial factors, mixed pivots and shared GPU/exact repair match MPFR
+128 bits: blocked trial factors, mixed pivots and shared GPU/exact repair match MPFR
+160 bits: blocked trial factors, mixed pivots and shared GPU/exact repair match MPFR
+192 bits: blocked trial factors, mixed pivots and shared GPU/exact repair match MPFR
+224 bits: blocked trial factors, mixed pivots and shared GPU/exact repair match MPFR
+256 bits: blocked trial factors, mixed pivots and shared GPU/exact repair match MPFR
+288 bits: blocked trial factors, mixed pivots and shared GPU/exact repair match MPFR
+320 bits: blocked trial factors, mixed pivots and shared GPU/exact repair match MPFR
+352 bits: blocked trial factors, mixed pivots and shared GPU/exact repair match MPFR
+384 bits: blocked trial factors, mixed pivots and shared GPU/exact repair match MPFR
+416 bits: blocked trial factors, mixed pivots and shared GPU/exact repair match MPFR
+448 bits: blocked trial factors, mixed pivots and shared GPU/exact repair match MPFR
+480 bits: blocked trial factors, mixed pivots and shared GPU/exact repair match MPFR
+512 bits: blocked trial factors, mixed pivots and shared GPU/exact repair match MPFR
+544 bits: blocked trial factors, mixed pivots and shared GPU/exact repair match MPFR
+576 bits: blocked trial factors, mixed pivots and shared GPU/exact repair match MPFR
+608 bits: blocked trial factors, mixed pivots and shared GPU/exact repair match MPFR
+640 bits: blocked trial factors, mixed pivots and shared GPU/exact repair match MPFR
+672 bits: blocked trial factors, mixed pivots and shared GPU/exact repair match MPFR
+704 bits: blocked trial factors, mixed pivots and shared GPU/exact repair match MPFR
+736 bits: blocked trial factors, mixed pivots and shared GPU/exact repair match MPFR
+768 bits: blocked trial factors, mixed pivots and shared GPU/exact repair match MPFR
+800 bits: blocked trial factors, mixed pivots and shared GPU/exact repair match MPFR
+832 bits: blocked trial factors, mixed pivots and shared GPU/exact repair match MPFR
+864 bits: blocked trial factors, mixed pivots and shared GPU/exact repair match MPFR
+896 bits: blocked trial factors, mixed pivots and shared GPU/exact repair match MPFR
+928 bits: blocked trial factors, mixed pivots and shared GPU/exact repair match MPFR
+960 bits: blocked trial factors, mixed pivots and shared GPU/exact repair match MPFR
+992 bits: blocked trial factors, mixed pivots and shared GPU/exact repair match MPFR
+1024 bits: blocked trial factors, mixed pivots and shared GPU/exact repair match MPFR
+Blocked exact damping trials reference run passed

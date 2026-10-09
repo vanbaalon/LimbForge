@@ -1,0 +1,447 @@
+diff --git a/CMakeLists.txt b/CMakeLists.txt
+index bdac00a..bee68e4 100644
+--- a/CMakeLists.txt
++++ b/CMakeLists.txt
+@@ -57,7 +57,7 @@ file(READ src/transcendental.metal TRANSCENDENTAL_SOURCE)
+ configure_file(src/transcendental_source.hpp.in generated/transcendental_source.hpp @ONLY)
+ set_property(DIRECTORY APPEND PROPERTY CMAKE_CONFIGURE_DEPENDS include/limbforge/version.hpp include/limbforge/core.hpp src/kernels.metal src/cooperative.metal src/linalg.metal src/batched_linalg.metal
+   src/numerics.metal src/transcendental_core.hpp src/transcendental.metal)
+-add_library(limbforge src/version.cpp src/engine.mm src/linalg.mm src/linalg_complex.mm src/batched_linalg.mm src/numerics.mm src/transcendental.mm)
++add_library(limbforge src/version.cpp src/engine.mm src/linalg.mm src/linalg_complex.mm src/batched_linalg.mm src/batched_factor.mm src/numerics.mm src/transcendental.mm)
+ add_library(LimbForge::limbforge ALIAS limbforge)
+ set_target_properties(limbforge PROPERTIES VERSION "${PROJECT_VERSION}")
+ target_compile_features(limbforge PUBLIC cxx_std_17)
+@@ -189,6 +189,8 @@ if(BUILD_TESTING)
+     add_test(NAME section9_smoke COMMAND test_limbforge_section9)
+     # Deliberately outside default CTest: the later all-width/dense audit is opt-in.
+     add_executable(test_limbforge_section9_audit EXCLUDE_FROM_ALL tests/test_section9_audit.cpp)
++    add_executable(test_limbforge_blocked_trials EXCLUDE_FROM_ALL tests/test_blocked_trials.cpp)
++    target_link_libraries(test_limbforge_blocked_trials PRIVATE limbforge_reference)
+     add_executable(test_limbforge_algebra_prewarm EXCLUDE_FROM_ALL tests/test_algebra_prewarm.cpp)
+     target_link_libraries(test_limbforge_algebra_prewarm PRIVATE limbforge_reference)
+     limbforge_use_mpc(test_limbforge_algebra_prewarm)
+@@ -247,6 +249,9 @@ if(LIMBFORGE_BUILD_BENCHMARK)
+   target_include_directories(section9_limbforge PRIVATE benchmarks)
+   target_compile_definitions(section9_limbforge PRIVATE LIMBFORGE_CALIBRATION_BUILD_TYPE="$<CONFIG>")
+   target_link_libraries(section9_limbforge PRIVATE limbforge_reference)
++  add_executable(section9_exact_trials_limbforge EXCLUDE_FROM_ALL benchmarks/section9_exact_trials.cpp)
++  target_include_directories(section9_exact_trials_limbforge PRIVATE benchmarks)
++  target_link_libraries(section9_exact_trials_limbforge PRIVATE limbforge_reference)
+   add_executable(section9_sources_limbforge EXCLUDE_FROM_ALL benchmarks/section9_sources.cpp)
+   target_include_directories(section9_sources_limbforge PRIVATE benchmarks)
+   target_link_libraries(section9_sources_limbforge PRIVATE limbforge_reference)
+diff --git a/benchmarks/section9_exact_trials.cpp b/benchmarks/section9_exact_trials.cpp
+new file mode 100644
+index 0000000..88cf250
+--- /dev/null
++++ b/benchmarks/section9_exact_trials.cpp
+@@ -0,0 +1,129 @@
++// Damping trials and multi-RHS solves. Every GPU sample is checked against its own MPFR contract.
++#include "limbforge/batched_linalg.hpp"
++#include "benchmark_support.hpp"
++#include <cstdlib>
++#include <atomic>
++#include <random>
++struct Options {int bits=352;std::size_t n=200,count=8,nrhs=3;unsigned workers=18,repeats=5;bool resident=false,check_only=false,warm=false;};
++template<int B> void run(const Options& o){
++    using F=Float<B>;auto n=o.n,c=o.count,r=o.nrhs,n2=n*n;
++    Engine e;BatchedLinalg batched(e);LinalgOptions exact_options;exact_options.host_threads=o.workers;Linalg exact(e,exact_options);Workers pool(o.workers);std::mt19937_64 rng(123+B);
++    std::vector<F> J((n+n/6)*n),A(n2),D(n),mu(c),rhs(n*r),expected(c*n2),solution(c*n*r);
++    for(auto& v:J)v=reference::random_number<B>(rng,2);
++    exact.syrk(B,J.data(),n+n/6,n,A.data(),false);
++    for(std::size_t i=0;i<n;++i)D[i]=A[i*n+i];
++    auto damping=from_decimal<B>("0.001");for(std::size_t t=0;t<c;++t){mu[t]=damping;mu[t].exponent-=int(t);}
++    for(auto& v:rhs)v=reference::random_number<B>(rng,2);
++    MPArray input(n2,B),diagonal(n,B),shifts(c,B),right(n*r,B),L(c*n2,B),X(c*n*r,B);
++    for(std::size_t i=0;i<n2;++i)to_mpfr<B>(input[i],A[i]);
++    for(std::size_t i=0;i<n;++i)to_mpfr<B>(diagonal[i],D[i]);
++    for(std::size_t t=0;t<c;++t)to_mpfr<B>(shifts[t],mu[t]);
++    for(std::size_t i=0;i<n*r;++i)to_mpfr<B>(right[i],rhs[i]);
++    std::atomic<bool> reference_failure{false};
++    std::vector<std::unique_ptr<MPArray>> scratch;for(std::size_t t=0;t<c;++t)scratch.emplace_back(new MPArray(34,B));
++    auto cpu=[&]{reference_failure=false;pool.run(c,[&](std::size_t first,std::size_t last){
++        for(auto t=first;t<last;++t){auto& tmp=*scratch[t];auto off=t*n2,xoff=t*n*r;
++            for(std::size_t i=0;i<n;++i)for(std::size_t j=0;j<n;++j){auto q=i*n+j;if(i>=j)mpfr_set(L[off+q],input[q],MPFR_RNDN);else mpfr_set_zero(L[off+q],1);}
++            for(std::size_t i=0;i<n;++i){mpfr_mul(tmp[0],shifts[t],diagonal[i],MPFR_RNDN);mpfr_add(L[off+i*n+i],L[off+i*n+i],tmp[0],MPFR_RNDN);}
++            for(std::size_t k=0;k<n;++k){if(mpfr_sgn(L[off+k*n+k])<=0){reference_failure=true;return;}
++                mpfr_sqrt(L[off+k*n+k],L[off+k*n+k],MPFR_RNDN);
++                for(std::size_t i=k+1;i<n;++i)mpfr_div(L[off+i*n+k],L[off+i*n+k],L[off+k*n+k],MPFR_RNDN);
++                for(std::size_t i=k+1;i<n;++i)for(std::size_t j=k+1;j<=i;++j){mpfr_mul(tmp[0],L[off+i*n+k],L[off+j*n+k],MPFR_RNDN);mpfr_sub(L[off+i*n+j],L[off+i*n+j],tmp[0],MPFR_RNDN);}}
++            for(std::size_t i=0;i<n*r;++i)mpfr_set(X[xoff+i],right[i],MPFR_RNDN);
++            for(std::size_t col=0;col<r;++col){for(std::size_t i=0;i<n;++i){for(std::size_t j=0;j<i;++j){mpfr_mul(tmp[0],L[off+i*n+j],X[xoff+j*r+col],MPFR_RNDN);mpfr_sub(X[xoff+i*r+col],X[xoff+i*r+col],tmp[0],MPFR_RNDN);}mpfr_div(X[xoff+i*r+col],X[xoff+i*r+col],L[off+i*n+i],MPFR_RNDN);}
++                for(std::size_t i=n;i-->0;){for(std::size_t j=i+1;j<n;++j){mpfr_mul(tmp[0],L[off+j*n+i],X[xoff+j*r+col],MPFR_RNDN);mpfr_sub(X[xoff+i*r+col],X[xoff+i*r+col],tmp[0],MPFR_RNDN);}mpfr_div(X[xoff+i*r+col],X[xoff+i*r+col],L[off+i*n+i],MPFR_RNDN);}}
++        }});if(reference_failure)throw std::runtime_error("benchmark fixture is not SPD");};
++    cpu();for(std::size_t i=0;i<expected.size();++i)expected[i]=from_mpfr<B>(L[i]);for(std::size_t i=0;i<solution.size();++i)solution[i]=from_mpfr<B>(X[i]);
++    // Independent left-looking replay of Linalg's block-32 exact-dot contract.
++    std::vector<F> exact_expected(c*n2,zero<B/32>()),exact_solution(c*n*r);
++    pool.run(c,[&](std::size_t first,std::size_t last){for(auto t=first;t<last;++t){auto off=t*n2,xoff=t*n*r;
++        auto value=[&](std::size_t i,std::size_t j){F v=A[i*n+j];if(i==j)v=reference::real<B>(Operation::add,v,reference::real<B>(Operation::mul,mu[t],D[i]));auto kb=j/32*32;
++            for(std::size_t block=0;block<kb;block+=32)v=reference::dot_sub<B>(v,exact_expected.data()+off+i*n+block,1,exact_expected.data()+off+j*n+block,1,32);
++            return reference::dot_sub<B>(v,exact_expected.data()+off+i*n+kb,1,exact_expected.data()+off+j*n+kb,1,j-kb);};
++        for(std::size_t j=0;j<n;++j){auto v=value(j,j);if(v.status||v.sign<=0){reference_failure=true;return;}
++            exact_expected[off+j*n+j]=reference::real<B>(Operation::sqrt,v,v);
++            for(std::size_t i=j+1;i<n;++i)exact_expected[off+i*n+j]=reference::real<B>(Operation::div,value(i,j),exact_expected[off+j*n+j]);}
++        std::copy(rhs.begin(),rhs.end(),exact_solution.begin()+xoff);
++        auto ls=exact_expected.data()+off,xx=exact_solution.data()+xoff;
++        for(std::size_t i=0;i<n;++i)for(std::size_t col=0;col<r;++col){F v=xx[i*r+col];auto kb=i/32*32;
++            for(std::size_t block=0;block<kb;block+=32)v=reference::dot_sub<B>(v,ls+i*n+block,1,xx+block*r+col,r,32);
++            v=reference::dot_sub<B>(v,ls+i*n+kb,1,xx+kb*r+col,r,i-kb);xx[i*r+col]=reference::real<B>(Operation::div,v,ls[i*n+i]);}
++        for(std::size_t i=n;i-->0;)for(std::size_t col=0;col<r;++col){F v=xx[i*r+col];auto kb=i/32*32,end=std::min(n,kb+32);
++            for(std::size_t block=(n-1)/32*32;block>=end&&block>kb;block-=32)v=reference::dot_sub<B>(v,ls+block*n+i,n,xx+block*r+col,r,std::min(n,block+32)-block);
++            if(i+1<end)v=reference::dot_sub<B>(v,ls+(i+1)*n+i,n,xx+(i+1)*r+col,r,end-i-1);xx[i*r+col]=reference::real<B>(Operation::div,v,ls[i*n+i]);}
++    }});if(reference_failure)throw std::runtime_error("exact reference fixture is not SPD");
++    // Fast timed exact-contract CPU path; independent from the Float/dot_sub replay above.
++    // mpfr_dot includes the previous entry and negated factors, rounding each block once.
++    auto cpu_exact=[&]{reference_failure=false;pool.run(c,[&](std::size_t first,std::size_t last){for(auto t=first;t<last;++t){
++        auto& tmp=*scratch[t];auto off=t*n2,xoff=t*n*r;mpfr_set_ui(tmp[0],1,MPFR_RNDN);
++        auto subtract=[&](mpfr_ptr value,std::size_t ia,std::size_t ib,std::size_t da,std::size_t db,std::size_t terms,bool solve=false){
++            mpfr_ptr a[33],b[33];a[0]=value;b[0]=tmp[0];
++            for(std::size_t j=0;j<terms;++j){mpfr_neg(tmp[j+1],L[ia+j*da],MPFR_RNDN);a[j+1]=tmp[j+1];b[j+1]=solve?X[ib+j*db]:L[ib+j*db];}
++            mpfr_dot(value,a,b,terms+1,MPFR_RNDN);
++        };
++        for(std::size_t i=0;i<n;++i)for(std::size_t j=0;j<n;++j){auto q=i*n+j;if(i>=j)mpfr_set(L[off+q],input[q],MPFR_RNDN);else mpfr_set_zero(L[off+q],1);}
++        for(std::size_t i=0;i<n;++i){mpfr_mul(tmp[33],shifts[t],diagonal[i],MPFR_RNDN);mpfr_add(L[off+i*n+i],L[off+i*n+i],tmp[33],MPFR_RNDN);}
++        auto entry=[&](std::size_t i,std::size_t j){mpfr_set(tmp[33],L[off+i*n+j],MPFR_RNDN);auto kb=j/32*32;
++            for(std::size_t block=0;block<kb;block+=32)subtract(tmp[33],off+i*n+block,off+j*n+block,1,1,32);
++            subtract(tmp[33],off+i*n+kb,off+j*n+kb,1,1,j-kb);
++        };
++        for(std::size_t j=0;j<n;++j){entry(j,j);if(mpfr_sgn(tmp[33])<=0){reference_failure=true;return;}
++            mpfr_sqrt(L[off+j*n+j],tmp[33],MPFR_RNDN);
++            for(std::size_t i=j+1;i<n;++i){entry(i,j);mpfr_div(L[off+i*n+j],tmp[33],L[off+j*n+j],MPFR_RNDN);}}
++        for(std::size_t i=0;i<n*r;++i)mpfr_set(X[xoff+i],right[i],MPFR_RNDN);
++        for(std::size_t i=0;i<n;++i)for(std::size_t col=0;col<r;++col){auto value=X[xoff+i*r+col];auto kb=i/32*32;
++            for(std::size_t block=0;block<kb;block+=32)subtract(value,off+i*n+block,xoff+block*r+col,1,r,32,true);
++            subtract(value,off+i*n+kb,xoff+kb*r+col,1,r,i-kb,true);mpfr_div(value,value,L[off+i*n+i],MPFR_RNDN);}
++        for(std::size_t i=n;i-->0;)for(std::size_t col=0;col<r;++col){auto value=X[xoff+i*r+col];auto kb=i/32*32,end=std::min(n,kb+32);
++            for(std::size_t block=(n-1)/32*32;block>=end&&block>kb;block-=32)subtract(value,off+block*n+i,xoff+block*r+col,n,r,std::min(n,block+32)-block,true);
++            if(i+1<end)subtract(value,off+(i+1)*n+i,xoff+(i+1)*r+col,n,r,end-i-1,true);mpfr_div(value,value,L[off+i*n+i],MPFR_RNDN);}
++    }});if(reference_failure)throw std::runtime_error("exact timed CPU fixture is not SPD");};
++    auto verify_cpu=[&](bool exact_contract){const auto& factor=exact_contract?exact_expected:expected;const auto& solve=exact_contract?exact_solution:solution;
++        for(std::size_t i=0;i<factor.size();++i)if(!reference::equal<B>(from_mpfr<B>(L[i]),factor[i]))throw std::runtime_error("CPU factor reference mismatch");
++        for(std::size_t i=0;i<solve.size();++i)if(!reference::equal<B>(from_mpfr<B>(X[i]),solve[i]))throw std::runtime_error("CPU solve reference mismatch");};
++    cpu_exact();verify_cpu(true);
++    auto put=[&](const std::vector<F>& values){auto b=e.make_buffer<F>(values.size());b.upload(values.data(),values.size());return b;};
++    auto a=put(A),d=put(D),u=put(mu),b=put(rhs),l=e.make_buffer<F>(c*n2),x=e.make_buffer<F>(c*n*r);auto info=e.make_buffer<std::uint32_t>(c);
++    std::vector<F> got(c*n2),sx(c*n*r);std::vector<std::uint32_t> statuses(c);
++    unsigned active=0;std::vector<F> shifted(n2),single_factor(n2);std::vector<double> cpu_times[2],wall[3],device[3],factor_wall[3],solve_wall[3];
++    const char* paths[]={"sequential_scalar","exact_linalg_loop","exact_batched_panels"};double last_factor=0,last_solve=0,loop_panel=0,loop_update=0;std::size_t loop_gpu=0,loop_host=0;BlockedTrialsInfo last_exact;
++    auto gpu=[&]{auto begin=Clock::now();double device_seconds=0;
++        if(active==1){loop_panel=loop_update=0;loop_gpu=loop_host=0;auto t0=Clock::now();for(std::size_t t=0;t<c;++t){shifted=A;for(std::size_t i=0;i<n;++i)shifted[i*n+i]=add(shifted[i*n+i],mul(mu[t],D[i]));
++                FactorOptions fo;auto factor=exact.cholesky(B,shifted.data(),n,single_factor.data(),fo);if(factor.pivot!=n)throw std::runtime_error("exact loop factor failed");
++                device_seconds+=factor.timing.gpu_seconds;loop_panel+=factor.panel_seconds;loop_update+=factor.update_seconds;loop_gpu+=factor.gpu_updates;loop_host+=factor.host_updates;std::copy(single_factor.begin(),single_factor.end(),got.begin()+t*n2);}
++            last_factor=std::chrono::duration<double>(Clock::now()-t0).count();t0=Clock::now();
++            for(std::size_t t=0;t<c;++t)device_seconds+=exact.cholesky_solve(B,got.data()+t*n2,n,rhs.data(),r,sx.data()+t*n*r).gpu_seconds;
++            last_solve=std::chrono::duration<double>(Clock::now()-t0).count();return Timing{device_seconds,std::chrono::duration<double>(Clock::now()-begin).count()};}
++        auto t0=Clock::now();if(!o.resident){a.upload(A.data(),A.size());d.upload(D.data(),D.size());u.upload(mu.data(),mu.size());}
++        if(active==2){auto factor=batched.cholesky_trials_blocked(exact,{n,c},a,d,u,l,info);device_seconds+=factor.timing.gpu_seconds;last_exact=factor;}
++        else{auto encoded=e.batch();batched.cholesky_trials(encoded,{n,c},a,d,u,l,info);device_seconds+=encoded.submit().wait().gpu_seconds;}
++        if(!o.resident){l.download(got.data(),got.size());info.download(statuses.data(),statuses.size());}
++        last_factor=std::chrono::duration<double>(Clock::now()-t0).count();t0=Clock::now();if(!o.resident)b.upload(rhs.data(),rhs.size());
++        if(active==2){auto factors=l.mapped(),result=x.mapped(),right=b.mapped();auto state=info.mapped();
++            for(std::size_t t=0;t<c;++t){if(state[t])throw std::runtime_error("batched exact factor failed");device_seconds+=exact.cholesky_solve(B,factors+t*n2,n,right,r,result+t*n*r).gpu_seconds;}}
++        else{auto encoded=e.batch();batched.cholesky_solve(encoded,l,info,c,n,b,r,x);device_seconds+=encoded.submit().wait().gpu_seconds;}
++        if(!o.resident)x.download(sx.data(),sx.size());last_solve=std::chrono::duration<double>(Clock::now()-t0).count();
++        return Timing{device_seconds,std::chrono::duration<double>(Clock::now()-begin).count()};};
++    auto verify=[&]{if(active!=1&&o.resident){l.download(got.data(),got.size());x.download(sx.data(),sx.size());info.download(statuses.data(),statuses.size());}
++        if(active!=1)for(auto s:statuses)if(s)throw std::runtime_error("GPU trial failed");const auto& factors=active?exact_expected:expected;const auto& solves=active?exact_solution:solution;
++        for(std::size_t i=0;i<got.size();++i)if(!reference::equal<B>(got[i],factors[i]))throw std::runtime_error("GPU factor reference mismatch at "+std::to_string(i));
++        for(std::size_t i=0;i<sx.size();++i)if(!reference::equal<B>(sx[i],solves[i]))throw std::runtime_error("GPU solve reference mismatch at "+std::to_string(i));};
++    for(unsigned p=0;p<3;++p){active=p;gpu();verify();}
++    if(o.check_only){std::cout<<B<<" bits: "<<c<<" trials, n="<<n<<", "<<r<<" RHS: sequential and both exact factor/solve paths match independent MPFR; no timings recorded\n";return;}
++    for(unsigned rep=0;rep<o.repeats;++rep){for(unsigned j=0;j<2;++j){auto mode=(rep+j)%2;auto start=Clock::now();if(mode)cpu_exact();else cpu();
++            cpu_times[mode].push_back(std::chrono::duration<double>(Clock::now()-start).count());verify_cpu(mode);std::cerr<<"cpu_sample,"<<rep<<','<<j<<','<<(mode?"exact_block32":"sequential")<<','<<std::setprecision(12)<<cpu_times[mode].back()<<'\n';}
++        for(unsigned j=0;j<3;++j){unsigned p=(rep+j)%3;active=p;if(o.warm){gpu();verify();}auto timing=gpu();wall[p].push_back(timing.wall_seconds);device[p].push_back(timing.gpu_seconds);
++            factor_wall[p].push_back(last_factor);solve_wall[p].push_back(last_solve);verify();std::cerr<<"sample,"<<B<<','<<n<<','<<rep<<','<<j<<','<<paths[p]<<','<<std::setprecision(12)<<cpu_times[p!=0].back()<<','<<timing.wall_seconds<<','<<timing.gpu_seconds<<','<<last_factor<<','<<last_solve<<','<<(o.warm?"verified-warm-call":"cpu-interleaved")<<'\n';
++            if(p==1)std::cerr<<"factor_profile,"<<rep<<','<<paths[p]<<','<<loop_panel<<','<<loop_update<<','<<loop_gpu<<','<<loop_host<<'\n';
++            if(p==2){std::cerr<<"factor_profile,"<<rep<<','<<paths[p]<<','<<last_exact.panel_seconds<<','<<last_exact.update_seconds<<','<<last_exact.gpu_updates<<','<<last_exact.host_updates<<','<<last_exact.submissions<<','<<last_exact.gpu_outputs<<','<<last_exact.fallback_outputs<<'\n';
++                auto bw=batched.workspaces();auto lw=exact.workspaces();std::cerr<<"workspace_profile,"<<rep<<','<<bw.idle_bytes<<','<<bw.busy_bytes<<','<<lw.scratch_bytes<<','<<lw.idle_bytes<<','<<lw.busy_bytes<<'\n';}}}
++    std::cerr<<"Device: "<<e.device_name()<<"; split factor/solve; A=J^T J K=n+n/6; mu=0.001*2^-trial; every timed CPU/GPU factor/solve checked; MPFR concurrency <= "<<std::min<std::size_t>(c,o.workers)<<"; exact-batched uses shared resident SYRK and the production blocked solve; numeric-array bridge conversion excluded\n";
++    std::cout<<"bits,n,count,nrhs,cpu_workers,repeats,resident,path,cpu_contract,cpu_wall,gpu_wall,gpu_device,factor_wall,solve_wall,wall_p25,wall_p75,wall_min,wall_max,clock,cpu_active_workers,profile\n";
++    for(unsigned p=0;p<3;++p)std::cout<<B<<','<<n<<','<<c<<','<<r<<','<<o.workers<<','<<o.repeats<<','<<(p!=1&&o.resident)<<','<<paths[p]<<','<<(p?"exact_block32":"sequential")<<','<<std::setprecision(9)<<quantile(cpu_times[p!=0],.5)<<','<<quantile(wall[p],.5)<<','<<quantile(device[p],.5)<<','<<quantile(factor_wall[p],.5)<<','<<quantile(solve_wall[p],.5)<<','<<quantile(wall[p],.25)<<','<<quantile(wall[p],.75)<<','<<quantile(wall[p],0)<<','<<quantile(wall[p],1)<<','<<(o.warm?"verified-warm-call":"cpu-interleaved")<<','<<std::min<std::size_t>(c,o.workers)<<','<<e.device_name()<<" / exact-trials-candidate / " LIMBFORGE_VERSION_STRING " / "<<(p?"exact-block32":"sequential")<<" / split-factor-solve / schedule="<<(std::getenv("WOLFNUM_EXACT_TRIAL_SCHEDULE")?std::getenv("WOLFNUM_EXACT_TRIAL_SCHEDULE"):"serialized")<<"\n";
++}
++template<int B=64> void width(const Options& o){if(o.bits==B)run<B>(o);else if constexpr(B<1024)width<B+32>(o);}
++int main(int argc,char** argv){try{Options o;for(int i=1;i<argc;++i){std::string a=argv[i];if(a=="--warm"){o.warm=true;continue;}if(a=="--resident"){o.resident=true;continue;}if(a=="--check-only"){o.check_only=true;continue;}if(a=="--help"){std::cout<<"section9_exact_trials_limbforge --bits B --n N --count C --nrhs R --workers W --repeats R [--resident] [--check-only] [--warm]\n";return 0;}
++        if(++i==argc)throw std::invalid_argument("missing value");std::string s=argv[i];std::size_t used;auto v=std::stoull(s,&used);if(used!=s.size()||s[0]=='-'||!v||v>4096)throw std::invalid_argument("invalid value");
++        if(a=="--bits")o.bits=int(v);else if(a=="--n")o.n=v;else if(a=="--count")o.count=v;else if(a=="--nrhs")o.nrhs=v;else if(a=="--workers")o.workers=unsigned(v);else if(a=="--repeats")o.repeats=unsigned(v);else throw std::invalid_argument("unknown option");}
++    if(o.bits<64||o.bits>1024||o.bits%32||o.workers>256||o.count>128||o.nrhs>128||o.repeats>1000)throw std::invalid_argument("invalid options");width(o);return 0;
++}catch(const std::exception& e){std::cerr<<e.what()<<'\n';return 1;}}
+diff --git a/include/limbforge/batched_linalg.hpp b/include/limbforge/batched_linalg.hpp
+index a54d5e2..decc2f8 100644
+--- a/include/limbforge/batched_linalg.hpp
++++ b/include/limbforge/batched_linalg.hpp
+@@ -35,6 +35,13 @@ struct PolynomialSources {std::size_t groups=0,coefficient_sets=1;unsigned steps
+ // All-device Cholesky sequence: ascending column k, rounded square/mul and sub updates,
+ // rounded sqrt/div. Different from Linalg's blocked exact updates. Status: 0 or failed pivot+1.
+ struct CholeskyTrials {std::size_t n=0,count=0;};
++// Synchronous blocked trial factorization; counters describe shared submissions, not per-trial latency.
++struct BlockedTrialsInfo {
++    Timing timing{0,0};
++    std::size_t panels=0,submissions=0,gpu_updates=0,host_updates=0;
++    std::size_t gpu_outputs=0,fallback_outputs=0;
++    double panel_seconds=0,update_seconds=0;
++};
+ // Compile only the requested operation families/specializations, on this unit's cache.
+ // No operands, dispatches or numerical workspace are needed.
+ struct BatchedPrewarm {
+@@ -73,6 +80,7 @@ class BatchedLinalg {
+     void encode_extract(CommandBatch&,int,std::size_t,detail::Operand,detail::Operand,detail::Operand,const LinalgTicket&);
+     void encode_sources(CommandBatch&,int,const PolynomialSources&,detail::Operand,detail::Operand,detail::Operand,detail::Operand,detail::Operand,detail::Operand,detail::Operand);
+     void encode_polynomial(CommandBatch&,int,const PolynomialRecurrence&,detail::Operand,detail::Operand,detail::Operand,detail::Operand,detail::Operand,detail::Operand,detail::Operand,PolynomialEvaluation);
++    BlockedTrialsInfo factor_trials(Linalg&,int,const CholeskyTrials&,detail::Operand,detail::Operand,detail::Operand,detail::Operand,detail::Operand,const FactorOptions&);
+ public:
+     explicit BatchedLinalg(Engine&); ~BatchedLinalg();
+     BatchedWorkspaces workspaces() const;
+@@ -139,6 +147,12 @@ public:
+     template<class T> void cholesky_trials(CommandBatch& b,const CholeskyTrials& s,const Buffer<T>& A,const Buffer<T>& D,const Buffer<T>& mu,Buffer<T>& L,Buffer<std::uint32_t>& status){
+         static_assert(!detail::Format<T>::complex,"Cholesky uses real buffers");
+         encode_trials(b,detail::Format<T>::bits,s,detail::Access::operand(A),detail::Access::operand(D),detail::Access::operand(mu),detail::Access::operand(L),detail::Access::operand(status));}
++    // Exact blocked contract of Linalg::cholesky on A + RN(mu[t]*D), with the same block.
++    // Synchronous outside a batch: parallel host panels and one shared GPU submission per trailing update.
++    // Inputs/outputs are idle buffers of this Engine; L/status must not alias any input or each other.
++    // Status is zero on success, otherwise failed pivot+1; completed columns are preserved.
++    template<class T> BlockedTrialsInfo cholesky_trials_blocked(Linalg& la,const CholeskyTrials& s,const Buffer<T>& A,const Buffer<T>& D,const Buffer<T>& mu,Buffer<T>& L,Buffer<std::uint32_t>& status,const FactorOptions& o={}){
++        return factor_trials(la,detail::real_bits<T>(),s,detail::Access::operand(A),detail::Access::operand(D),detail::Access::operand(mu),detail::Access::operand(L),detail::Access::operand(status),o);}
+     // L/status from cholesky_trials; shared B [n][nrhs], X [count][n][nrhs]. X must not alias inputs.
+     template<class T> void cholesky_solve(CommandBatch& b,const Buffer<T>& L,const Buffer<std::uint32_t>& status,std::size_t count,std::size_t n,const Buffer<T>& B,std::size_t nrhs,Buffer<T>& X){
+         static_assert(!detail::Format<T>::complex,"Cholesky uses real buffers");
+diff --git a/src/batched_factor.mm b/src/batched_factor.mm
+new file mode 100644
+index 0000000..2557476
+--- /dev/null
++++ b/src/batched_factor.mm
+@@ -0,0 +1,112 @@
++#import <Foundation/Foundation.h>
++#include "limbforge/batched_linalg.hpp"
++#include "engine_internal.hpp"
++#include "linalg_internal.hpp"
++#include <chrono>
++#include <cmath>
++#include <cstdlib>
++namespace limbforge {
++namespace {
++using Clock=std::chrono::steady_clock;using O=detail::Operand;using S=std::shared_ptr<detail::BufferStorage>;
++using I=detail::Internal;using H=detail::LinalgHooks;
++double elapsed(Clock::time_point t){return std::chrono::duration<double>(Clock::now()-t).count();}
++std::size_t checked_size(std::size_t a,std::size_t b){if(b&&a>std::size_t(-1)/b)throw std::invalid_argument("blocked trials: size overflow");return a*b;}
++struct Claim {
++    std::vector<S> held;
++    Claim(Engine& e,std::initializer_list<std::pair<O,std::size_t>> operands){
++        // Validate engine ownership before claiming, including buffers not used by a GPU update.
++        auto b=e.batch();for(auto& item:operands){const auto& o=item.first;if(o.size<item.second)throw std::invalid_argument("blocked trials: undersized buffer");
++            if(!item.second&&!o.storage)continue;I::retain(b,o.storage);if(std::find(held.begin(),held.end(),o.storage)==held.end())held.push_back(o.storage);}
++        std::size_t done=0;try{for(auto& s:held){bool idle=false;if(!s->busy.compare_exchange_strong(idle,true))throw std::logic_error("blocked trials: buffer belongs to an unwaited submission");++done;}}
++        catch(...){for(std::size_t i=0;i<done;++i)held[i]->busy.store(false,std::memory_order_release);throw;}
++    }
++    ~Claim(){for(auto& s:held)s->busy.store(false,std::memory_order_release);}
++};
++template<int N> Number<N>* pointer(O o){return o.storage?static_cast<Number<N>*>(o.storage->buffer.contents):nullptr;}
++// Source and trailing matrices are pooled by BatchedLinalg, one slot per simultaneously encoded trial.
++using Scratch=std::function<std::pair<O,O>(CommandBatch&,std::size_t,std::size_t)>;
++template<int N> BlockedTrialsInfo factor(Engine& engine,Linalg& la,const CholeskyTrials& s,O A,O diagonal,O mu,O output,O status,const FactorOptions& o,const Scratch& scratch,bool lookahead){@autoreleasepool{
++    using T=Number<N>;auto start=Clock::now();BlockedTrialsInfo result;if(!s.count)return result;
++    const auto n=s.n,count=s.count,n2=n*n,nb=o.block?std::min(o.block,n):n;
++    Claim claim(engine,{{A,n2},{diagonal,n},{mu,count},{output,count*n2},{status,count}});
++    auto a=pointer<N>(A),d=pointer<N>(diagonal),shifts=pointer<N>(mu),L=pointer<N>(output);auto states=static_cast<std::uint32_t*>(status.storage->buffer.contents);
++    H::each(la,count*n,[&](std::size_t q){auto t=q/n,i=q%n;auto row=L+t*n2+i*n;
++        for(std::size_t j=0;j<n;++j)row[j]=j>i?zero<N>():a[i*n+j];row[i]=add(row[i],mul(shifts[t],d[i]));});
++    std::fill(states,states+count,0);std::vector<std::size_t> end(count),first(count);std::vector<std::size_t> active;
++    auto D=[](const T& c,const T* x,const T* y,std::size_t k){return exact_dot_add<N>(&c,true,x,1,y,1,k);};
++    auto row_panel=[&](std::size_t t,std::size_t i,std::size_t k0,std::size_t ke){auto w=L+t*n2;auto row=w+i*n;
++        for(std::size_t j=k0;j<ke;++j)row[j]=div(D(row[j],row+k0,w+j*n+k0,j-k0),w[j*n+j]);};
++    auto panel=[&](std::size_t k0,std::size_t k1,const std::vector<std::size_t>& active){
++        ++result.panels;auto begin=Clock::now();
++        // Independent diagonal blocks across trials, followed by all outside rows on the same persistent worker pool.
++        H::each(la,active.size(),[&](std::size_t q){auto t=active[q];auto w=L+t*n2;std::size_t p=k1;
++            for(std::size_t i=k0;i<k1;++i){row_panel(t,i,k0,i);auto value=D(w[i*n+i],w+i*n+k0,w+i*n+k0,i-k0);
++                if(value.status||value.sign<=0){p=i;states[t]=std::uint32_t(i+1);break;}w[i*n+i]=sqrt(value);}
++            end[t]=p;first[t]=p<k1?p+1:k1;});
++        H::each(la,active.size()*(n-k0),[&](std::size_t q){auto t=active[q/(n-k0)],i=k0+q%(n-k0);if(i>=first[t])row_panel(t,i,k0,end[t]);});
++        H::each(la,active.size()*(n-k0),[&](std::size_t q){auto t=active[q/(n-k0)],i=k0+q%(n-k0);if(states[t]&&i>=end[t]){
++            auto row=L+t*n2+i*n;for(std::size_t j=end[t];j<=i;++j)row[j]=zero<N>(invalid);}});
++        result.panel_seconds+=elapsed(begin);
++    };
++    bool prepared=false;
++    for(std::size_t k0=0;k0<n;k0+=nb){const auto k1=std::min(n,k0+nb),K=k1-k0;active.clear();for(std::size_t t=0;t<count;++t)if(!states[t])active.push_back(t);
++        if(active.empty())break;
++        if(!prepared)panel(k0,k1,active);prepared=false;if(k1==n)break;
++        active.erase(std::remove_if(active.begin(),active.end(),[&](std::size_t t){return states[t]!=0;}),active.end());if(active.empty())break;
++        auto begin=Clock::now();const auto r=n-k1;const bool gpu=o.gpu&&double(active.size())*double(r)*double(r+1)/2*double(K)>=o.host_macs;
++        if(!gpu){H::each(la,active.size()*r,[&](std::size_t q){auto t=active[q/r],i=k1+q%r;auto w=L+t*n2;
++                for(std::size_t j=k1;j<=i;++j)w[i*n+j]=D(w[i*n+j],w+i*n+k0,w+j*n+k0,K);});result.host_updates+=active.size();}
++        else{
++            auto batch=engine.batch();std::vector<Buffer<T>> packed,updated;std::vector<T*> p,c;std::vector<LinalgTicket> tickets;
++            for(std::size_t q=0;q<active.size();++q){auto space=scratch(batch,K*r,r*r);packed.push_back(detail::Access::buffer<T>(space.first));updated.push_back(detail::Access::buffer<T>(space.second));
++                p.push_back(packed.back().mapped());c.push_back(updated.back().mapped());}
++            H::each(la,active.size()*r,[&](std::size_t q){auto b=q/r,i=q%r,t=active[b];auto w=L+t*n2;
++                for(std::size_t k=0;k<K;++k)p[b][k*r+i]=w[(k1+i)*n+k0+k];
++                for(std::size_t j=0;j<r;++j)c[b][i*r+j]=j<=i?w[(k1+i)*n+k1+j]:zero<N>();});
++            for(std::size_t q=0;q<active.size();++q)tickets.push_back(la.syrk(batch,packed[q],K,r,updated[q],true,true));
++            auto submission=batch.submit();std::size_t ready_columns=0;
++            if(lookahead){
++                const auto next=std::min(n,k1+nb);ready_columns=next-k1;
++                // The GPU reads packed current-panel columns and writes separate scratch.
++                // Recompute just the next-panel Schur strip on the original host matrix;
++                // then factor that panel while the full trailing SYRK is in flight.
++                // Both paths round once from the same old entry and exact K products.
++                try{
++                    H::each(la,active.size()*r,[&](std::size_t q){auto t=active[q/r],i=k1+q%r;auto w=L+t*n2;
++                        for(std::size_t j=k1;j<next&&j<=i;++j)w[i*n+j]=D(w[i*n+j],w+i*n+k0,w+j*n+k0,K);});
++                    panel(k1,next,active);prepared=true;
++                }catch(...){try{submission.wait();}catch(...){}throw;}
++            }
++            auto timing=submission.wait();result.timing.gpu_seconds+=timing.gpu_seconds;++result.submissions;result.gpu_updates+=active.size();
++            // wait resolves every repair before scatter or any dependent read of GPU scratch.
++            for(auto& ticket:tickets){if(!ticket.resolved()||ticket.provisional_reads())throw std::logic_error("blocked trials: unresolved trailing update");
++                result.gpu_outputs+=ticket.report().gpu_outputs;result.fallback_outputs+=ticket.report().fallback_outputs;}
++            H::each(la,active.size()*r,[&](std::size_t q){auto b=q/r,i=q%r,t=active[b];auto w=L+t*n2;
++                // Preserve the completed look-ahead columns and a newly failed trial's
++                // invalid tail. A successful trial still needs the remaining Schur matrix.
++                if(!prepared||!states[t])for(std::size_t j=prepared?ready_columns:0;j<=i;++j)w[(k1+i)*n+k1+j]=c[b][i*r+j];});
++        }
++        result.update_seconds+=elapsed(begin);
++    }
++    result.timing.wall_seconds=elapsed(start);return result;
++}}
++template<int N=2> BlockedTrialsInfo width(int bits,Engine& e,Linalg& la,const CholeskyTrials& s,O a,O d,O mu,O l,O status,const FactorOptions& o,const Scratch& scratch,bool lookahead){
++    if(bits==32*N)return factor<N>(e,la,s,a,d,mu,l,status,o,scratch,lookahead);if constexpr(N<32)return width<N+1>(bits,e,la,s,a,d,mu,l,status,o,scratch,lookahead);throw std::invalid_argument("blocked trials: invalid bits");}
++}
++BlockedTrialsInfo BatchedLinalg::factor_trials(Linalg& la,int bits,const CholeskyTrials& s,O A,O D,O mu,O L,O status,const FactorOptions& o){
++    if(bits<64||bits>1024||bits%32)throw std::invalid_argument("blocked trials: bits must be a multiple of 32 in [64,1024]");
++    if(s.count&&!s.n)throw std::invalid_argument("blocked trials: n must be positive");if(s.n>=std::size_t(UINT32_MAX))throw std::invalid_argument("blocked trials: pivot status exceeds 32-bit indexing");
++    auto n2=checked_size(s.n,s.n);checked_size(s.count,n2);checked_size(s.count,s.n);
++    if(n2>=(std::size_t(1)<<31))throw std::invalid_argument("blocked trials: matrix exceeds 32-bit indexing");
++    if(!std::isfinite(o.host_macs)||o.host_macs<0)throw std::invalid_argument("blocked trials: host_macs must be finite and nonnegative");
++    if((L.storage&&(L.storage==A.storage||L.storage==D.storage||L.storage==mu.storage||L.storage==status.storage))||
++       (status.storage&&(status.storage==A.storage||status.storage==D.storage||status.storage==mu.storage)))throw std::invalid_argument("blocked trials: output aliases input");
++    H::require_device(la,*engine_);
++    // Private A/B switch for this unreleased scheduling experiment; no public
++    // request layout, numerical sequence or production default is changed.
++    const char* mode=std::getenv("WOLFNUM_EXACT_TRIAL_SCHEDULE");
++    const std::string schedule=mode?mode:"serialized";
++    if(schedule!="serialized"&&schedule!="lookahead")throw std::invalid_argument("blocked trials: invalid experimental schedule");
++    return width(bits,*engine_,la,s,A,D,mu,L,status,o,[&](CommandBatch& b,std::size_t first,std::size_t second){return workspace(b,bits,false,first,second);},schedule=="lookahead");
++}
++}
+diff --git a/src/linalg.mm b/src/linalg.mm
+index d5681da..1da4f9e 100644
+--- a/src/linalg.mm
++++ b/src/linalg.mm
+@@ -833,6 +833,7 @@ void LinalgHooks::leave(Linalg& la,std::size_t mark){la.impl->resident.resize(ma
+ void* LinalgHooks::scratch(Linalg& la,const char* role,std::size_t bytes){id<MTLBuffer> b=la.impl->buffer(role,bytes);la.impl->resident.push_back(b);return b.contents;}
+ void LinalgHooks::resident(Linalg& la,void* p,std::size_t bytes){id<MTLBuffer> b=la.impl->wrap(p,bytes);if(!b)throw std::runtime_error("Metal buffer wrap failed (complex qr)");la.impl->resident.push_back(b);}
+ unsigned LinalgHooks::lanes(Linalg& la){return la.impl->pool_workers().size();}
++void LinalgHooks::require_device(Linalg& la,const Engine& engine){if(la.impl->device!=Internal::device(engine))throw std::invalid_argument("Linalg and trial Engine use different Metal devices");}
+ void LinalgHooks::each(Linalg& la,std::size_t n,const std::function<void(std::size_t)>& f){la.impl->each(n,f);}
+ void LinalgHooks::run(Linalg& la,std::size_t n,const std::function<void(std::size_t,unsigned)>& f){la.impl->pool_workers().run(n,f);}
+ void LinalgHooks::side(bool on){side_thread=on;}
+diff --git a/src/linalg_internal.hpp b/src/linalg_internal.hpp
+index 45d5ebd..b34897c 100644
+--- a/src/linalg_internal.hpp
++++ b/src/linalg_internal.hpp
+@@ -6,6 +6,7 @@
+ namespace limbforge {
+ namespace detail {
+ struct LinalgHooks {
++    static void require_device(Linalg& la,const Engine& engine);
+     // Starts a factorization or solve on the calling thread (its worker pool); returns the resident-list mark for leave().
+     static std::size_t enter(Linalg& la);
+     static void leave(Linalg& la,std::size_t mark);                       // drops the buffers made resident since enter()
+diff --git a/tests/test_blocked_trials.cpp b/tests/test_blocked_trials.cpp
+new file mode 100644
+index 0000000..7e19595
+--- /dev/null
++++ b/tests/test_blocked_trials.cpp
+@@ -0,0 +1,93 @@
++// Left-looking independent MPFR replay of shifted Linalg blocked factors.
++#include "reference.hpp"
++#include "limbforge/batched_linalg.hpp"
++#include <limits>
++#include <iostream>
++using namespace limbforge;
++void require(bool ok,const char* message){if(!ok)throw std::runtime_error(message);}
++template<class F> void reject(F f){bool bad=false;try{f();}catch(const std::invalid_argument&){bad=true;}require(bad,"invalid blocked-trial call accepted");}
++template<int B> using F=Float<B>;
++template<int B> std::uint32_t factor_reference(const std::vector<F<B>>& A,std::size_t n,const std::vector<F<B>>& diagonal,const F<B>& mu,std::size_t block,std::vector<F<B>>& out){
++    auto nb=block?std::min(block,n):n;out.assign(n*n,zero<B/32>());std::vector<F<B>> shifted=A;
++    for(std::size_t i=0;i<n;++i)shifted[i*n+i]=reference::real<B>(Operation::add,A[i*n+i],reference::real<B>(Operation::mul,mu,diagonal[i]));
++    auto value=[&](std::size_t i,std::size_t j){auto v=shifted[i*n+j];auto kb=j/nb*nb;
++        for(std::size_t k=0;k<kb;k+=nb)v=reference::dot_sub<B>(v,out.data()+i*n+k,1,out.data()+j*n+k,1,nb);
++        return reference::dot_sub<B>(v,out.data()+i*n+kb,1,out.data()+j*n+kb,1,j-kb);};
++    for(std::size_t j=0;j<n;++j){auto v=value(j,j);if(v.status||v.sign<=0){for(std::size_t i=j;i<n;++i)for(std::size_t k=j;k<=i;++k)out[i*n+k]=zero<B/32>(invalid);return std::uint32_t(j+1);}
++        out[j*n+j]=reference::real<B>(Operation::sqrt,v,v);for(std::size_t i=j+1;i<n;++i)out[i*n+j]=reference::real<B>(Operation::div,value(i,j),out[j*n+j]);}
++    return 0;
++}
++template<class T> Buffer<T> put(Engine& e,const std::vector<T>& v){auto b=e.make_buffer<T>(v.size());b.upload(v.data(),v.size());return b;}
++template<int B> void fixture(std::size_t n,std::size_t block,bool dense,bool force_fallback,bool gpu,bool spread=false){
++    constexpr auto N=B/32;Engine e;BatchedLinalg batch(e);LinalgOptions lo;lo.host_threads=8;lo.force_fallback=force_fallback;Linalg exact(e,lo);
++    std::vector<F<B>> A(n*n,zero<N>()),diagonal(n,from_decimal<B>("1")),shifts;std::mt19937_64 rng(B+21+block);
++    // Mixed trial outcomes, including failures on both sides of a panel boundary.
++    for(const auto* s:{"0","1","-1","-3","-40"})shifts.push_back(from_decimal<B>(s));
++    shifts.push_back(zero<N>(invalid));
++    if(spread){std::vector<F<B>> base(n*n,zero<N>());for(std::size_t i=0;i<n;++i)for(std::size_t j=0;j<=i;++j){auto v=reference::random_number<B>(rng,0);
++            if(i==j)v=from_decimal<B>("1");else v.exponent=-100-int(rng()%701);base[i*n+j]=v;}
++        for(std::size_t i=0;i<n;++i)for(std::size_t j=0;j<=i;++j)A[i*n+j]=reference::dot<B>(base.data()+i*n,1,base.data()+j*n,1,n);}
++    else if(dense){std::vector<F<B>> J((n+5)*n);for(auto& x:J)x=reference::random_number<B>(rng,1);
++        for(std::size_t i=0;i<n;++i)for(std::size_t j=0;j<=i;++j)A[i*n+j]=reference::dot<B>(J.data()+i,n,J.data()+j,n,n+5);
++        for(std::size_t i=0;i<n;++i)A[i*n+i]=reference::real<B>(Operation::add,A[i*n+i],from_decimal<B>("2"));}
++    else for(std::size_t i=0;i<n;++i){A[i*n+i]=from_decimal<B>(i==(block?std::min(block,n-1):n-1)?"2":"4");if(i)A[i*n+i-1]=from_decimal<B>("0.5");}
++    // Upper triangle is deliberately invalid; the factor must never read it.
++    for(std::size_t i=0;i<n;++i)for(std::size_t j=i+1;j<n;++j)A[i*n+j]=zero<N>(invalid);
++    auto a=put(e,A),d=put(e,diagonal),mu=put(e,shifts),l=e.make_buffer<F<B>>(shifts.size()*n*n+3);auto status=e.make_buffer<std::uint32_t>(shifts.size()+3);
++    auto sentinel=from_decimal<B>("777");std::fill(l.mapped(),l.mapped()+l.size(),sentinel);std::fill(status.mapped(),status.mapped()+status.size(),123456);
++    FactorOptions o;o.block=block;o.host_macs=0;o.gpu=gpu;
++    auto info=batch.cholesky_trials_blocked(exact,{n,shifts.size()},a,d,mu,l,status,o);
++    for(std::size_t t=0;t<shifts.size();++t){std::vector<F<B>> expected;auto p=factor_reference<B>(A,n,diagonal,shifts[t],block,expected);
++        require(status.mapped()[t]==p,"blocked-trial pivot differs from MPFR");for(std::size_t i=0;i<n*n;++i)if(!reference::equal<B>(l.mapped()[t*n*n+i],expected[i]))throw std::runtime_error("blocked trial MPFR factor mismatch at trial "+std::to_string(t)+", entry "+std::to_string(i));
++        // Secondary production oracle: no substituted rounding sequence.
++        std::vector<F<B>> shifted=A,one(n*n);for(std::size_t i=0;i<n;++i)shifted[i*n+i]=reference::real<B>(Operation::add,A[i*n+i],reference::real<B>(Operation::mul,shifts[t],diagonal[i]));
++        auto cpu=o;cpu.gpu=false;auto result=exact.cholesky(B,shifted.data(),n,one.data(),cpu);require((result.pivot==n?0:result.pivot+1)==p,"single factor pivot mismatch");
++        for(std::size_t i=0;i<n*n;++i)require(reference::equal<B>(l.mapped()[t*n*n+i],one[i]),"single Linalg factor differs");}
++    for(std::size_t i=shifts.size()*n*n;i<l.size();++i)require(reference::equal<B>(l.mapped()[i],sentinel),"output factor tail overwritten");
++    for(std::size_t i=shifts.size();i<status.size();++i)require(status.mapped()[i]==123456,"output status tail overwritten");
++    if(gpu&&block&&block<n){require(info.submissions>0&&info.gpu_updates>=info.submissions,"shared exact submissions missing");
++        if(force_fallback||spread)require(info.fallback_outputs>0,"exact repair not exercised");else require(info.gpu_outputs>0,"physical GPU exact output not exercised");}
++    else require(!info.submissions&&!info.gpu_updates,"host/single-block factor dispatched GPU updates");
++    auto w=batch.workspaces();require(!w.busy_workspaces,"factor left busy scratch");batch.release_workspaces();require(!batch.workspaces().idle_bytes,"factor scratch release failed");
++}
++// Guaranteed failure at the first column of the prefetched second panel, while
++// another shifted trial succeeds. Dense completed columns exercise the live SYRK.
++template<int B> void late_panel_failure(bool host_only){
++    constexpr auto N=B/32;const std::size_t n=65,count=3;Engine e;BatchedLinalg batch(e);LinalgOptions lo;lo.host_threads=8;Linalg exact(e,lo);
++    std::vector<F<B>> base(n*n,zero<N>()),A(n*n,zero<N>()),diagonal(n,from_decimal<B>("1"));
++    for(std::size_t i=0;i<n;++i)for(std::size_t j=0;j<=i;++j){
++        if(i==j&&i!=32)base[i*n+j]=from_decimal<B>("1");
++        else if(i!=j&&j<32)base[i*n+j]=from_decimal<B>("0.125");}
++    for(std::size_t i=0;i<n;++i)for(std::size_t j=0;j<=i;++j)A[i*n+j]=reference::dot<B>(base.data()+i*n,1,base.data()+j*n,1,n);
++    for(std::size_t i=0;i<n;++i)for(std::size_t j=i+1;j<n;++j)A[i*n+j]=zero<N>(invalid);
++    std::vector<F<B>> shifts={zero<N>(),from_decimal<B>("0.0625"),from_decimal<B>("-0.0009765625")};
++    auto a=put(e,A),d=put(e,diagonal),mu=put(e,shifts),l=e.make_buffer<F<B>>(count*n*n);auto status=e.make_buffer<std::uint32_t>(count);
++    FactorOptions o;o.block=32;o.host_macs=0;o.gpu=!host_only;
++    auto info=batch.cholesky_trials_blocked(exact,{n,count},a,d,mu,l,status,o);
++    for(std::size_t t=0;t<count;++t){std::vector<F<B>> expected;auto pivot=factor_reference<B>(A,n,diagonal,shifts[t],32,expected);
++        require(pivot==(t==1?0:33),"late-failure fixture lost its known pivot");require(status.mapped()[t]==pivot,"prefetched pivot status wrong");
++        for(std::size_t q=0;q<n*n;++q)require(reference::equal<B>(l.mapped()[t*n*n+q],expected[q]),"prefetched prefix or invalid tail overwritten");}
++    require(info.panels==3,"look-ahead panel accounting wrong");
++    if(!host_only)require(info.submissions==2&&info.gpu_outputs>0,"late failure did not span actual shared GPU updates");
++    require(!batch.workspaces().busy_workspaces,"look-ahead left busy scratch");
++}
++template<int B> void width(bool host_only){fixture<B>(13,4,false,false,!host_only);fixture<B>(17,8,true,false,!host_only);fixture<B>(9,0,true,false,!host_only);fixture<B>(13,4,false,true,!host_only);fixture<B>(13,4,false,false,false);fixture<B>(13,4,false,false,!host_only,true);fixture<B>(65,32,true,false,!host_only);late_panel_failure<B>(host_only);std::cout<<B<<" bits: blocked trial factors, mixed pivots and "<<(host_only?"host-only scheduling":"shared GPU/exact repair")<<" match MPFR\n";}
++void validation(bool host_only){Engine e,foreign;BatchedLinalg batch(e);Linalg exact(e);using T=F<64>;auto a=e.make_buffer<T>(9),d=e.make_buffer<T>(3),mu=e.make_buffer<T>(2),l=e.make_buffer<T>(18),small=e.make_buffer<T>(1);auto s=e.make_buffer<std::uint32_t>(2);
++    reject([&]{batch.cholesky_trials_blocked(exact,{3,2},a,d,mu,small,s);});reject([&]{batch.cholesky_trials_blocked(exact,{3,2},a,d,mu,a,s);});
++    auto wrong=foreign.make_buffer<T>(9);reject([&]{batch.cholesky_trials_blocked(exact,{3,2},wrong,d,mu,l,s);});
++    // A late invalid operand must not leave earlier operands claimed.
++    a.mapped();d.mapped();mu.mapped();l.mapped();s.mapped();
++    reject([&]{batch.cholesky_trials_blocked(exact,{std::numeric_limits<std::size_t>::max(),2},a,d,mu,l,s);});
++    reject([&]{batch.cholesky_trials_blocked(exact,{0,2},a,d,mu,l,s);});FactorOptions bad;bad.host_macs=std::numeric_limits<double>::quiet_NaN();reject([&]{batch.cholesky_trials_blocked(exact,{3,2},a,d,mu,l,s,bad);});
++    if(!host_only){auto b=e.batch();b.run(Operation::square,a,a);auto submitted=b.submit();bool busy=false;try{batch.cholesky_trials_blocked(exact,{3,2},a,d,mu,l,s);}catch(const std::logic_error&){busy=true;}
++    require(busy,"busy trial input accepted");submitted.wait();l.mapped();s.mapped();} // partial claims were released.
++    Buffer<T> empty;Buffer<std::uint32_t> no_status;auto no_trials=batch.cholesky_trials_blocked(exact,{0,0},empty,empty,empty,empty,no_status);require(!no_trials.submissions,"zero trials dispatched GPU");
++    std::fill(a.mapped(),a.mapped()+9,zero<2>());for(int i=0;i<3;++i)a.mapped()[i*3+i]=from_decimal<64>("1");std::fill(d.mapped(),d.mapped()+3,from_decimal<64>("1"));
++    FactorOptions only_host;only_host.gpu=false;batch.cholesky_trials_blocked(exact,{3,2},a,d,d,l,s,only_host);
++    auto want=reference::real<64>(Operation::sqrt,from_decimal<64>("2"),zero<2>());
++    for(int t=0;t<2;++t){require(!s.mapped()[t],"aliased read-only inputs failed");for(int i=0;i<3;++i)require(reference::equal<64>(l.mapped()[t*9+i*3+i],want),"aliased input factor wrong");}
++}
++template<int B=64> void select(int bits,bool all,bool host_only){if(all||bits==B)width<B>(host_only);if constexpr(B<1024)select<B+32>(bits,all,host_only);}
++int main(int argc,char** argv){try{check_library_version();int bits=352;bool all=false,host_only=false;for(int i=1;i<argc;++i){std::string arg=argv[i];if(arg=="--all-widths")all=true;else if(arg=="--host-only")host_only=true;else if(arg=="--bits"&&i+1<argc)bits=std::stoi(argv[++i]);else throw std::invalid_argument("--all-widths, --bits B or --host-only expected");}
++    if(bits<64||bits>1024||bits%32)throw std::invalid_argument("invalid width");validation(host_only);select(bits,all,host_only);std::cout<<"Blocked exact damping trials reference run passed\n";return 0;
++}catch(const std::exception& e){std::cerr<<e.what()<<'\n';return 1;}}

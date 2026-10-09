@@ -1,0 +1,3 @@
+2026-10-09 01:45:29.295 test_limbforge_blocked_trials[88637:243505296] Metal GPU Validation Enabled
+1024 bits: blocked trial factors, mixed pivots and shared GPU/exact repair match MPFR
+Blocked exact damping trials reference run passed

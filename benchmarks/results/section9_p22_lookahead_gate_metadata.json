@@ -1,0 +1,77 @@
+{
+  "started_utc": "2026-10-09T05:55:37.370158+00:00",
+  "scope": "Look-ahead exact factor scheduling before any new timing: expanded all31 including guaranteed late-panel failures, broad library and shader regressions",
+  "state": "terminal",
+  "schedule": "lookahead",
+  "sha256": {
+    "src/batched_factor.mm": "7b7d71487bbb493e0052706a9c25cd83a2e4ae20f46a51451b032f7b02388688",
+    "tests/test_blocked_trials.cpp": "85edf4655651aa7b27ac567ec01c22b0c5b77856639e9fcd8da91db543ec6519",
+    "benchmarks/section9_exact_trials.cpp": "916dd472603f70c500c4030529b46de937ff2dd9e3bca7b95968a7f0a5141033",
+    "include/limbforge/batched_linalg.hpp": "848655e699430ed5fc40106e2fabce98a7ef3580a4d58d3275da7c2fc73f0f75",
+    "src/linalg.mm": "028f470efb81460cbb03e20e18ccbc619ca11c4ae5c1407a533b94a6d3c73e26",
+    "src/linalg_internal.hpp": "335f5925ca231a1bd64c13c2e2f0549073bd01c7d28070cd69d11c09a92a114c",
+    "include/limbforge/core.hpp": "12cc4bcd199bc0957275f55f7e7462f79918ad19fb3f21b55404d08119ef2ce8",
+    "src/kernels.metal": "72dcc8f6f7fa99d09f004bc2e418d2ebd1c4a0b0ea6750f2e771458c74e8d2e0",
+    "src/linalg.metal": "fa7cac7ac80fab5ba5648ef2bc002c496415f4ac394e160cf52b489d7a1a65e3",
+    "src/batched_linalg.metal": "71b8e269d0db50a76b20d2a8df65e3d3efcc587c9812ac598ebd0a19620f5507",
+    "build/liblimbforge.a": "2ef9d66a16c6df1b7d0ea3a8a04dc3059f4f9552d6f78b0cb993de30aad53cb1",
+    "build/test_limbforge_blocked_trials": "36c2c5439340cba81b76924b0a229971c5c5102d880d976769f9d921a7faf264",
+    "build/section9_exact_trials_limbforge": "ef8a89ac7ed6a4948609f80680f0cc2068223482aebd707f05f3ce56adb87df4"
+  },
+  "results": [
+    {
+      "log": "section9_p22_lookahead_gate_build.txt",
+      "command": [
+        "cmake",
+        "--build",
+        "build",
+        "-j4"
+      ],
+      "shader_validation": false,
+      "exit": 0
+    },
+    {
+      "log": "section9_p22_lookahead_gate_all31.txt",
+      "command": [
+        "./build/test_limbforge_blocked_trials",
+        "--all-widths"
+      ],
+      "shader_validation": false,
+      "exit": 0
+    },
+    {
+      "log": "section9_p22_lookahead_gate_all31_shader.txt",
+      "command": [
+        "./build/test_limbforge_blocked_trials",
+        "--all-widths"
+      ],
+      "shader_validation": true,
+      "exit": 0
+    },
+    {
+      "log": "section9_p22_lookahead_gate_full26.txt",
+      "command": [
+        "ctest",
+        "--test-dir",
+        "build",
+        "--output-on-failure"
+      ],
+      "shader_validation": false,
+      "exit": 0
+    },
+    {
+      "log": "section9_p22_lookahead_gate_gpu19.txt",
+      "command": [
+        "ctest",
+        "--test-dir",
+        "build",
+        "-E",
+        "_cpu$",
+        "--output-on-failure"
+      ],
+      "shader_validation": true,
+      "exit": 0
+    }
+  ],
+  "finished_utc": "2026-10-09T06:38:58.592831+00:00"
+}

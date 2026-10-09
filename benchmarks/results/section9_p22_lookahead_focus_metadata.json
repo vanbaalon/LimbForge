@@ -1,0 +1,79 @@
+{
+  "timestamp_utc": "2026-10-09T05:45:29.596531+00:00",
+  "scope": "Refactored host scheduling all31 and focused serialized/lookahead physical GPU plus shader checks; guaranteed late-pivot failure with completed-prefix/tail assertions. Not full-width lookahead GPU certification, broad regression or timing acceptance.",
+  "cases": [
+    {
+      "log": "section9_p22_lookahead_focus_host31.txt",
+      "command": [
+        "./build/test_limbforge_blocked_trials",
+        "--all-widths",
+        "--host-only"
+      ],
+      "schedule": "lookahead",
+      "shader_validation": false,
+      "exit": 0
+    },
+    {
+      "log": "section9_p22_lookahead_focus_serialized352.txt",
+      "command": [
+        "./build/test_limbforge_blocked_trials",
+        "--bits",
+        "352"
+      ],
+      "schedule": "serialized",
+      "shader_validation": false,
+      "exit": 0
+    },
+    {
+      "log": "section9_p22_lookahead_focus_lookahead352.txt",
+      "command": [
+        "./build/test_limbforge_blocked_trials",
+        "--bits",
+        "352"
+      ],
+      "schedule": "lookahead",
+      "shader_validation": false,
+      "exit": 0
+    },
+    {
+      "log": "section9_p22_lookahead_focus_lookahead1024.txt",
+      "command": [
+        "./build/test_limbforge_blocked_trials",
+        "--bits",
+        "1024"
+      ],
+      "schedule": "lookahead",
+      "shader_validation": false,
+      "exit": 0
+    },
+    {
+      "log": "section9_p22_lookahead_focus_lookahead352_shader.txt",
+      "command": [
+        "./build/test_limbforge_blocked_trials",
+        "--bits",
+        "352"
+      ],
+      "schedule": "lookahead",
+      "shader_validation": true,
+      "exit": 0
+    },
+    {
+      "log": "section9_p22_lookahead_focus_lookahead1024_shader.txt",
+      "command": [
+        "./build/test_limbforge_blocked_trials",
+        "--bits",
+        "1024"
+      ],
+      "schedule": "lookahead",
+      "shader_validation": true,
+      "exit": 0
+    }
+  ],
+  "sha256": {
+    "src/batched_factor.mm": "7b7d71487bbb493e0052706a9c25cd83a2e4ae20f46a51451b032f7b02388688",
+    "tests/test_blocked_trials.cpp": "85edf4655651aa7b27ac567ec01c22b0c5b77856639e9fcd8da91db543ec6519",
+    "benchmarks/section9_exact_trials.cpp": "916dd472603f70c500c4030529b46de937ff2dd9e3bca7b95968a7f0a5141033",
+    "build/liblimbforge.a": "2ef9d66a16c6df1b7d0ea3a8a04dc3059f4f9552d6f78b0cb993de30aad53cb1",
+    "build/test_limbforge_blocked_trials": "36c2c5439340cba81b76924b0a229971c5c5102d880d976769f9d921a7faf264"
+  }
+}
