@@ -141,6 +141,7 @@ a row in `docs/optimizations.md`, rejected attempts kept under `benchmarks/exper
   (1.25–2.44 times the observed wall-time quantile). It is not promoted as an
   optimization or public API. A tested rotating subset selector makes large 4x4
   comparisons practical. [Full source, gates and measurements](../benchmarks/experiments/section9_native_gauss.md).
+- **Production benchmark subsets:** `--paths composed,fused,gauss` rotates selected paths while retaining all CPU references. Eight selector rejection checks, 31 CPU widths and 16 focused host/resident normal/Metal checks pass against the unchanged 1.3.1 archive. The four-path default and single `--path` remain available; further timings and fair batched exact 4x4 work stay open.
 - **Prepared comparison:** opt-in `section9_gemm_limbforge` compares composed/fused
   complex GEMM, exact real embedding and a separately documented three-real-GEMM
   Gauss sequence. All 31 CPU exact-reference checks and focused 352/1024 GPU cases

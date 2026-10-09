@@ -2,6 +2,13 @@
 
 ## Unreleased
 
+- Added a rotating `--paths` subset selector to the opt-in complex GEMM benchmark.
+  Defaults and the single `--path` selector remain available. All four CPU
+  references still run; only selected GPU layouts are allocated and timed.
+  Eight invalid-selector checks, all 31 CPU widths and 16 focused normal/Metal
+  GPU checks pass against the unchanged 1.3.1 library. No public API/version or
+  numerical default change.
+
 - Retained the native per-product Gauss experiment: all-width normal/Metal and
   broad regression checks pass, but all 22 checked Fourier/4x4 profiles lose to
   composed GEMM. Archived the complete source, rotating-subset benchmark,

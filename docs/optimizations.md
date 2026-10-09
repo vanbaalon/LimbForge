@@ -264,3 +264,14 @@ raw ranges, accuracy, load, memory and numerical-gate hashes are retained.
 No new installed API/default or minor release is accepted from this candidate.
 Further scheduling, exact small-batch products and tile work remain open.
 [Full source and measured decision](../benchmarks/experiments/section9_native_gauss.md).
+
+## Section 9 P1.3: production GEMM benchmark subsets
+
+Ported the rotating subset selector into the four-contract production benchmark.
+The four-path default and legacy single-path selector remain; selected layouts
+alone are allocated/timed while all CPU references and the exact oracle are checked.
+Eight parser rejections, 31 CPU widths and 16 focused normal/Metal checks pass
+against the unchanged 1.3.1 archive. Archived coverage and hashes independently
+verify. This enables practical 4x4 and additional-width comparisons without a
+library API/version/default change; batched exact products and further performance
+measurements remain pending. [Gate and usage](../benchmarks/experiments/section9_gemm_comparison.md#production-benchmark-subset-gate).

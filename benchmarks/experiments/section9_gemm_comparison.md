@@ -49,7 +49,10 @@ and `...validation.txt`; CPU-only all-width log: `section9_p13_gemm_cpu_referenc
 These are focused checks, not all-width certification of a new primitive.
 
 The default shape is the Fourier 66x130 times 130x3800. For large 4x4 batches, select
-`--path composed`, `fused` or `gauss` to avoid the unrelated per-matrix Linalg encoding
+`--paths composed,fused,gauss` to rotate these paths within one process, or use the
+legacy `--path composed`, `fused` or `gauss` for a single path. Only selected GPU
+layouts are allocated. All four CPU references and the independent exact oracle
+are still prepared and checked. The subset omits the per-matrix Linalg encoding
 cost and extra buffers of the exact embedding. A fair large-batch exact comparison
 still needs measurement and may motivate an exact batched API. The Fourier and resident 1e4/1e5 profiles below are measured. Other widths,
 host 4x4 batches, register blocking/TK variants and performance acceptance remain
@@ -102,3 +105,19 @@ Its JSON retains binary/archive, contract, clock and busy-host load identity.
 The generated C++ consumer checks every measured key and unknown width/profile/shape
 queries; terminal, raw-hash, idle and overwrite guards pass. This installs no default
 and does not establish consumer or idle-host acceptance. See [calibration](../../docs/calibration.md).
+
+## Production benchmark subset gate
+
+The benchmark-only change at `dd1c236` uses the unchanged published 1.3.1
+archive. Eight malformed/duplicate/multiple selectors are rejected; all 31 CPU
+reference/oracle widths pass. Sixteen focused GPU checks cover composed/Gauss
+and exact/fused subsets, the four-path default and legacy single-path Gauss at
+352-bit host and 1024-bit resident layouts, normally and under Metal validation.
+This verifies selection and allocation behavior; it introduces no new numerical
+kernel or all-width GPU certification. Historical timing records remain unchanged.
+
+Raw commands, frozen source/binary/archive identities and logs are in
+[`section9_production_gemm_subset_gate`](../results/section9_production_gemm_subset_gate).
+Run `python3 benchmarks/verify_gemm_subset_gate.py` to check coverage and hashes;
+`--live-archive build/liblimbforge.a` additionally checks the local archive identity.
+The library remains at 1.3.1; this tool change is unreleased on main.

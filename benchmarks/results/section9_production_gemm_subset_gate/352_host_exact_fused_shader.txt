@@ -1,0 +1,2 @@
+2026-10-09 07:06:00.751 wolfnum-production-gemm-subsets[70241:271108389] Metal GPU Validation Enabled
+352 bits, 2x(3x7x5): 2 selected GPU contracts match MPFR; no timings

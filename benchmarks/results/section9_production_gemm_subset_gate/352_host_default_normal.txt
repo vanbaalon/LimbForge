@@ -1,0 +1,1 @@
+352 bits, 2x(3x7x5): 4 selected GPU contracts match MPFR; no timings
