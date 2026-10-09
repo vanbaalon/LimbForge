@@ -2,6 +2,12 @@
 
 ## Unreleased
 
+- Archived a grouped exact trailing-update prototype with all 31 normal/Metal
+  direct/factor/full-band references and complete 26/19 regression gates. The
+  first checked n944/352-bit profile improves factor/solve wall time about 1.07x
+  over the exact loop and misses the 3x factor target. Source, patch, raw timings,
+  memory scopes and independent verification are retained; no API promotion.
+
 - Added a rotating `--paths` subset selector to the opt-in complex GEMM benchmark.
   Defaults and the single `--path` selector remain available. All four CPU
   references still run; only selected GPU layouts are allocated and timed.

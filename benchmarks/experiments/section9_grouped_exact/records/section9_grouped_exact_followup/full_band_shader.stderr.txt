@@ -1,0 +1,1 @@
+2026-10-09 07:02:56.410 wolfnum-grouped-band-limits[68526:271100774] Metal GPU Validation Enabled

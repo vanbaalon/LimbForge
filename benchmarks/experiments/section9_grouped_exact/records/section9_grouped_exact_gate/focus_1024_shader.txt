@@ -1,0 +1,2 @@
+2026-10-09 06:17:13.068 test_wolfnum_grouped_syrk[57890:263943038] Metal GPU Validation Enabled
+1024 bits: grouped exact SYRK MPFR, cancellation, statuses, tails and busy release passed

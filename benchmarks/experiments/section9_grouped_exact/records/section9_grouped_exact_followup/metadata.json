@@ -1,0 +1,283 @@
+{
+  "status": "PASS",
+  "predecessor_pid": 57856,
+  "predecessor_identity": "Fri Oct  9 06:17:08 2026     /opt/homebrew/Cellar/python@3.14/3.14.6/Frameworks/Python.framework/Versions/3.14/Resources/Python.app/Contents/MacOS/Python /tmp/wolfnum-grouped-run-gates.py",
+  "steps": [
+    {
+      "name": "full_band_normal",
+      "command": [
+        "/tmp/wolfnum-grouped-band-limits",
+        "--all-widths"
+      ],
+      "environment": {},
+      "load_before": [
+        4.47021484375,
+        4.9150390625,
+        5.27734375
+      ],
+      "started_utc": "2026-10-09T11:02:31.277346+00:00",
+      "exit_code": 0,
+      "elapsed_seconds": 25.077142583031673,
+      "load_after": [
+        5.17041015625,
+        5.04736328125,
+        5.314453125
+      ],
+      "stdout_sha256": "3c399ab9aa41fb7cfef93e5c4ad5ecfc47ad1a1bffde0ce911be605c25a37653",
+      "stderr_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "verified_widths": [
+        64,
+        96,
+        128,
+        160,
+        192,
+        224,
+        256,
+        288,
+        320,
+        352,
+        384,
+        416,
+        448,
+        480,
+        512,
+        544,
+        576,
+        608,
+        640,
+        672,
+        704,
+        736,
+        768,
+        800,
+        832,
+        864,
+        896,
+        928,
+        960,
+        992,
+        1024
+      ]
+    },
+    {
+      "name": "full_band_shader",
+      "command": [
+        "/tmp/wolfnum-grouped-band-limits",
+        "--all-widths"
+      ],
+      "environment": {
+        "MTL_SHADER_VALIDATION": "1"
+      },
+      "load_before": [
+        5.17041015625,
+        5.04736328125,
+        5.314453125
+      ],
+      "started_utc": "2026-10-09T11:02:56.382264+00:00",
+      "exit_code": 0,
+      "elapsed_seconds": 29.943920416000765,
+      "load_after": [
+        5.0703125,
+        5.02734375,
+        5.296875
+      ],
+      "stdout_sha256": "3c399ab9aa41fb7cfef93e5c4ad5ecfc47ad1a1bffde0ce911be605c25a37653",
+      "stderr_sha256": "b26d5d8320e8453ca381bce2343e04f10e9c459ed7c31d732406a7e8e7903caf",
+      "verified_widths": [
+        64,
+        96,
+        128,
+        160,
+        192,
+        224,
+        256,
+        288,
+        320,
+        352,
+        384,
+        416,
+        448,
+        480,
+        512,
+        544,
+        576,
+        608,
+        640,
+        672,
+        704,
+        736,
+        768,
+        800,
+        832,
+        864,
+        896,
+        928,
+        960,
+        992,
+        1024
+      ]
+    },
+    {
+      "name": "measured_352_944_8_host_interleaved",
+      "command": [
+        "/usr/bin/time",
+        "-l",
+        "./build/section9_exact_trials_limbforge",
+        "--bits",
+        "352",
+        "--n",
+        "944",
+        "--count",
+        "8",
+        "--nrhs",
+        "3",
+        "--workers",
+        "18",
+        "--repeats",
+        "3"
+      ],
+      "environment": {
+        "WOLFNUM_EXACT_TRIAL_SCHEDULE": "grouped"
+      },
+      "load_before": [
+        5.0703125,
+        5.02734375,
+        5.296875
+      ],
+      "started_utc": "2026-10-09T11:03:26.353943+00:00",
+      "exit_code": 0,
+      "elapsed_seconds": 150.7422511660261,
+      "load_after": [
+        9.517578125,
+        7.21533203125,
+        6.15673828125
+      ],
+      "stdout_sha256": "0099eed9d84f8c090525bccbc4748d0e1704617e89f80ef835a0b67b586c4bc9",
+      "stderr_sha256": "56b8851a8cc7c52c08ea09f8fc8063e02924345771098ac9fb4603d0e3deb24f",
+      "verified_rows": [
+        {
+          "bits": "352",
+          "n": "944",
+          "count": "8",
+          "nrhs": "3",
+          "cpu_workers": "18",
+          "repeats": "3",
+          "resident": "0",
+          "path": "sequential_scalar",
+          "cpu_contract": "sequential",
+          "cpu_wall": "10.3118159",
+          "gpu_wall": "8.01100696",
+          "gpu_device": "7.99783188",
+          "factor_wall": "0.939305042",
+          "solve_wall": "7.07170187",
+          "wall_p25": "7.57287158",
+          "wall_p75": "8.01100696",
+          "wall_min": "7.57287158",
+          "wall_max": "8.16725212",
+          "clock": "cpu-interleaved",
+          "cpu_active_workers": "8",
+          "profile": "Apple M5 Max / exact-trials-candidate / 1.3.1 / sequential / split-factor-solve / schedule=grouped"
+        },
+        {
+          "bits": "352",
+          "n": "944",
+          "count": "8",
+          "nrhs": "3",
+          "cpu_workers": "18",
+          "repeats": "3",
+          "resident": "0",
+          "path": "exact_linalg_loop",
+          "cpu_contract": "exact_block32",
+          "cpu_wall": "14.0007683",
+          "gpu_wall": "0.674707459",
+          "gpu_device": "0.365106958",
+          "factor_wall": "0.574930209",
+          "solve_wall": "0.0957825",
+          "wall_p25": "0.656118",
+          "wall_p75": "0.674707459",
+          "wall_min": "0.656118",
+          "wall_max": "0.691270583",
+          "clock": "cpu-interleaved",
+          "cpu_active_workers": "8",
+          "profile": "Apple M5 Max / exact-trials-candidate / 1.3.1 / exact-block32 / split-factor-solve / schedule=grouped"
+        },
+        {
+          "bits": "352",
+          "n": "944",
+          "count": "8",
+          "nrhs": "3",
+          "cpu_workers": "18",
+          "repeats": "3",
+          "resident": "0",
+          "path": "exact_batched_panels",
+          "cpu_contract": "exact_block32",
+          "cpu_wall": "14.0007683",
+          "gpu_wall": "0.628796",
+          "gpu_device": "0.302916083",
+          "factor_wall": "0.501112167",
+          "solve_wall": "0.126780417",
+          "wall_p25": "0.615982417",
+          "wall_p75": "0.628796",
+          "wall_min": "0.615982417",
+          "wall_max": "0.629637208",
+          "clock": "cpu-interleaved",
+          "cpu_active_workers": "8",
+          "profile": "Apple M5 Max / exact-trials-candidate / 1.3.1 / exact-block32 / split-factor-solve / schedule=grouped"
+        }
+      ],
+      "grouped_factor_profiles": [
+        [
+          "factor_profile",
+          "0",
+          "exact_batched_panels",
+          "0.195929416",
+          "0.478560667",
+          "224",
+          "8",
+          "28",
+          "33341952",
+          "0",
+          "224"
+        ],
+        [
+          "factor_profile",
+          "1",
+          "exact_batched_panels",
+          "0.191968497",
+          "0.476074209",
+          "224",
+          "8",
+          "28",
+          "33341952",
+          "0",
+          "224"
+        ],
+        [
+          "factor_profile",
+          "2",
+          "exact_batched_panels",
+          "0.187819082",
+          "0.471086539",
+          "224",
+          "8",
+          "28",
+          "33341952",
+          "0",
+          "224"
+        ]
+      ]
+    }
+  ],
+  "benchmark_acceptance": "No production acceptance; first busy-host checked profile only",
+  "preceding_gate_metadata_sha256": "c5cbd4782d105174a9b8773f69966a261645926db32581428dca770e264b7513",
+  "source_snapshot": "25c88529832cee1abb692d64a89001d5a61157c3",
+  "sha256": {
+    "build/liblimbforge.a": "071fd5e2a965437db4419cc210a175a908035a656f8e6c4ccf8fb9a7eace2cac",
+    "build/section9_exact_trials_limbforge": "7f192d575006b1cd2aa1242ba97e410c37effacc4f411e54e19d693cb8055efb",
+    "benchmarks/section9_exact_trials.cpp": "3e5a60a911236f4cc1c83e27cb5e8df0a6195980880959ee28c89b880b8d4c7c",
+    "benchmarks/experiments/grouped_exact/band_limits_reference.cpp": "dc1a795448cd46678c79a229fe82927bca203b1dfa51dc3c1e0436750185011f"
+  },
+  "supplement_binary_sha256": "ddeb1987d48956b206240e97f9593a71c8eb9253dc8275403b7dc27b8d452c32",
+  "correctness_complete": true,
+  "finished_utc": "2026-10-09T11:05:57.125415+00:00"
+}

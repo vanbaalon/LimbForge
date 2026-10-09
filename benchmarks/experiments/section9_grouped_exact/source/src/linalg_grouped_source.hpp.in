@@ -1,0 +1,8 @@
+#pragma once
+static const char* wolfnum_linalg_grouped_source=R"LIMBFORGE(
+#include <metal_stdlib>
+#include <metal_tensor>
+#include <MetalPerformancePrimitives/MetalPerformancePrimitives.h>
+@CORE_SOURCE@
+@LINALG_GROUPED_SOURCE@
+)LIMBFORGE";

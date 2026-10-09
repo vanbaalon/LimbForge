@@ -1,0 +1,442 @@
+{
+  "source_snapshot": "25c88529832cee1abb692d64a89001d5a61157c3",
+  "release_api": "1.3.1 plus isolated unreleased trial prototype",
+  "status": "PASS",
+  "source_and_binary_sha256": {
+    "include/limbforge/core.hpp": "12cc4bcd199bc0957275f55f7e7462f79918ad19fb3f21b55404d08119ef2ce8",
+    "include/limbforge/batched_linalg.hpp": "f6481d3a4f0894556184f89cbbef28be3e5b304adadeb741f547514b97b7af5e",
+    "src/batched_factor.mm": "602d2f7ffd4e734ca4c6913d0a67fdd7558a4805c7c5f6bff4fcd701d4bd8dbe",
+    "src/linalg.mm": "44bc445e44ff2a27d345f06bd248083a75a7ed4840af772dbf71de96099c45ec",
+    "src/linalg_internal.hpp": "e2c9d03952f932735ed1a3ecfd500f87ca3a4e9cd6b6669f188f40090fa61cff",
+    "src/linalg.metal": "fa7cac7ac80fab5ba5648ef2bc002c496415f4ac394e160cf52b489d7a1a65e3",
+    "src/linalg_grouped.metal": "1d44df49eb1837f145142858eabe221620848839b7de520d1a5a07c5d690f21c",
+    "src/linalg_grouped_source.hpp.in": "c2a7c83dd3dd1afb97fe0f028dd03af9d5dea996a6d39d9ee3f3432d800c4d4c",
+    "tests/test_grouped_syrk.cpp": "7c48232b567c1f3bfbf7407de00f65e59949a6799a82343df0ad60458ca0744d",
+    "tests/test_blocked_trials.cpp": "f5713e6faa0a640b4bc9e825bd9a088de71ecea4981e7251b64db0136c9baf8c",
+    "build/liblimbforge.a": "071fd5e2a965437db4419cc210a175a908035a656f8e6c4ccf8fb9a7eace2cac",
+    "build/test_wolfnum_grouped_syrk": "976a379338b210cff8fca3c8afc187c3945e373b8c5e6380c236e7bcf39d45ec",
+    "build/test_limbforge_blocked_trials": "179cb80f6f93f70eca072ee869e015558bb454e945fa3c6abd41f46e3742ef8b"
+  },
+  "steps": [
+    {
+      "name": "focus_352",
+      "command": [
+        "./build/test_wolfnum_grouped_syrk",
+        "--bits",
+        "352"
+      ],
+      "environment": {},
+      "started_utc": "2026-10-09T10:17:09.047802+00:00",
+      "exit_code": 0,
+      "elapsed_seconds": 0.8608546659816056,
+      "log_sha256": "db1ff9c9bd1132093cd2aefe0feecca6c3a0220ed3e9504aecd6038eaee7b5ba"
+    },
+    {
+      "name": "focus_352_shader",
+      "command": [
+        "./build/test_wolfnum_grouped_syrk",
+        "--bits",
+        "352"
+      ],
+      "environment": {
+        "MTL_SHADER_VALIDATION": "1"
+      },
+      "started_utc": "2026-10-09T10:17:09.923512+00:00",
+      "exit_code": 0,
+      "elapsed_seconds": 0.7918452090234496,
+      "log_sha256": "cd5b308099b50333d3cbb3d8cf9b3572ddddd512959d6b3fc7291c273054ab18"
+    },
+    {
+      "name": "factor_352",
+      "command": [
+        "./build/test_limbforge_blocked_trials",
+        "--bits",
+        "352"
+      ],
+      "environment": {
+        "WOLFNUM_EXACT_TRIAL_SCHEDULE": "grouped"
+      },
+      "started_utc": "2026-10-09T10:17:10.730546+00:00",
+      "exit_code": 0,
+      "elapsed_seconds": 0.4301452499930747,
+      "log_sha256": "ff11a0cb91aa4ee8a8fc188fc2a79ec062b79b9bc36d51d0b2fd0bc81b8ee322"
+    },
+    {
+      "name": "factor_352_shader",
+      "command": [
+        "./build/test_limbforge_blocked_trials",
+        "--bits",
+        "352"
+      ],
+      "environment": {
+        "MTL_SHADER_VALIDATION": "1",
+        "WOLFNUM_EXACT_TRIAL_SCHEDULE": "grouped"
+      },
+      "started_utc": "2026-10-09T10:17:11.175559+00:00",
+      "exit_code": 0,
+      "elapsed_seconds": 0.7110596249694936,
+      "log_sha256": "5a19a522024652c66077449bf4d2e1ec2226be4d3fec0a9720992c22f4a9ccc1"
+    },
+    {
+      "name": "focus_1024",
+      "command": [
+        "./build/test_wolfnum_grouped_syrk",
+        "--bits",
+        "1024"
+      ],
+      "environment": {},
+      "started_utc": "2026-10-09T10:17:11.901639+00:00",
+      "exit_code": 0,
+      "elapsed_seconds": 1.1292155830306,
+      "log_sha256": "aa211ded6e8136c871af289500c97646d38307f06f70e007a53ae73c92746e13"
+    },
+    {
+      "name": "focus_1024_shader",
+      "command": [
+        "./build/test_wolfnum_grouped_syrk",
+        "--bits",
+        "1024"
+      ],
+      "environment": {
+        "MTL_SHADER_VALIDATION": "1"
+      },
+      "started_utc": "2026-10-09T10:17:13.045971+00:00",
+      "exit_code": 0,
+      "elapsed_seconds": 1.7559956669574603,
+      "log_sha256": "2210ea55ea841cefd9fde5dac4488dad50f930bcda426a7560f2988c3820390c"
+    },
+    {
+      "name": "factor_1024",
+      "command": [
+        "./build/test_limbforge_blocked_trials",
+        "--bits",
+        "1024"
+      ],
+      "environment": {
+        "WOLFNUM_EXACT_TRIAL_SCHEDULE": "grouped"
+      },
+      "started_utc": "2026-10-09T10:17:14.816410+00:00",
+      "exit_code": 0,
+      "elapsed_seconds": 0.3441973750013858,
+      "log_sha256": "c882588e7f3f07789a9a08942624052c568dcd4924d6ce2f67e22ebba14ab2f9"
+    },
+    {
+      "name": "factor_1024_shader",
+      "command": [
+        "./build/test_limbforge_blocked_trials",
+        "--bits",
+        "1024"
+      ],
+      "environment": {
+        "MTL_SHADER_VALIDATION": "1",
+        "WOLFNUM_EXACT_TRIAL_SCHEDULE": "grouped"
+      },
+      "started_utc": "2026-10-09T10:17:15.175608+00:00",
+      "exit_code": 0,
+      "elapsed_seconds": 0.2932472500251606,
+      "log_sha256": "f34543623262a1e5b375b887c0b5fb3fd138501ff921ae9ded20397c16aa0acd"
+    },
+    {
+      "name": "all_widths_grouped_normal",
+      "command": [
+        "./build/test_wolfnum_grouped_syrk",
+        "--all-widths"
+      ],
+      "environment": {},
+      "started_utc": "2026-10-09T10:17:15.483902+00:00",
+      "exit_code": 0,
+      "elapsed_seconds": 27.001464165979996,
+      "log_sha256": "01853a60aac00abce9f37fff81d35153c687291e23a4d6655bb432feaf51e0a8",
+      "verified_widths": [
+        64,
+        96,
+        128,
+        160,
+        192,
+        224,
+        256,
+        288,
+        320,
+        352,
+        384,
+        416,
+        448,
+        480,
+        512,
+        544,
+        576,
+        608,
+        640,
+        672,
+        704,
+        736,
+        768,
+        800,
+        832,
+        864,
+        896,
+        928,
+        960,
+        992,
+        1024
+      ]
+    },
+    {
+      "name": "all_widths_factor_normal",
+      "command": [
+        "./build/test_limbforge_blocked_trials",
+        "--all-widths"
+      ],
+      "environment": {
+        "WOLFNUM_EXACT_TRIAL_SCHEDULE": "grouped"
+      },
+      "started_utc": "2026-10-09T10:17:42.500975+00:00",
+      "exit_code": 0,
+      "elapsed_seconds": 6.864860708010383,
+      "log_sha256": "0585b7c0696721a5aaabf1b7352dcad066e4b6082a714c872dbb53a5be4e44f1",
+      "verified_widths": [
+        64,
+        96,
+        128,
+        160,
+        192,
+        224,
+        256,
+        288,
+        320,
+        352,
+        384,
+        416,
+        448,
+        480,
+        512,
+        544,
+        576,
+        608,
+        640,
+        672,
+        704,
+        736,
+        768,
+        800,
+        832,
+        864,
+        896,
+        928,
+        960,
+        992,
+        1024
+      ]
+    },
+    {
+      "name": "all_widths_grouped_shader",
+      "command": [
+        "./build/test_wolfnum_grouped_syrk",
+        "--all-widths"
+      ],
+      "environment": {
+        "MTL_SHADER_VALIDATION": "1"
+      },
+      "started_utc": "2026-10-09T10:17:49.381259+00:00",
+      "exit_code": 0,
+      "elapsed_seconds": 45.212701125012245,
+      "log_sha256": "858fb52878bdd90f72eb764b8aa81f1868b69b28c7491233e8a1fc1b709e4bb3",
+      "verified_widths": [
+        64,
+        96,
+        128,
+        160,
+        192,
+        224,
+        256,
+        288,
+        320,
+        352,
+        384,
+        416,
+        448,
+        480,
+        512,
+        544,
+        576,
+        608,
+        640,
+        672,
+        704,
+        736,
+        768,
+        800,
+        832,
+        864,
+        896,
+        928,
+        960,
+        992,
+        1024
+      ]
+    },
+    {
+      "name": "all_widths_factor_shader",
+      "command": [
+        "./build/test_limbforge_blocked_trials",
+        "--all-widths"
+      ],
+      "environment": {
+        "MTL_SHADER_VALIDATION": "1",
+        "WOLFNUM_EXACT_TRIAL_SCHEDULE": "grouped"
+      },
+      "started_utc": "2026-10-09T10:18:34.609536+00:00",
+      "exit_code": 0,
+      "elapsed_seconds": 7.857457541977055,
+      "log_sha256": "4ad1443cc33c529477c44d8d4dbfc3bee9116a9cbc7880e480c99b63b765a583",
+      "verified_widths": [
+        64,
+        96,
+        128,
+        160,
+        192,
+        224,
+        256,
+        288,
+        320,
+        352,
+        384,
+        416,
+        448,
+        480,
+        512,
+        544,
+        576,
+        608,
+        640,
+        672,
+        704,
+        736,
+        768,
+        800,
+        832,
+        864,
+        896,
+        928,
+        960,
+        992,
+        1024
+      ]
+    },
+    {
+      "name": "ctest_normal",
+      "command": [
+        "ctest",
+        "--test-dir",
+        "build",
+        "--output-on-failure"
+      ],
+      "environment": {},
+      "started_utc": "2026-10-09T10:18:42.517763+00:00",
+      "exit_code": 0,
+      "elapsed_seconds": 1127.4743256669608,
+      "log_sha256": "f025b30f6d9862157f7ff29c31a678d00c9c541e1aec799f78d5143d055ded1a",
+      "passed_tests": [
+        "version_cpu",
+        "package_version_cpu",
+        "arithmetic_cpu",
+        "bridge_cpu",
+        "fused_cpu",
+        "fused_gpu",
+        "transcendental_cpu",
+        "linalg_cpu",
+        "linalg_gpu",
+        "linalg_cholesky",
+        "linalg_qr",
+        "linalg_qr_complex",
+        "arithmetic_gpu",
+        "broadcast_gpu",
+        "batched4_gpu",
+        "section9_smoke",
+        "threshold_gpu",
+        "cast_gpu",
+        "segmented_dot_gpu",
+        "vector_recurrence_gpu",
+        "numerics_gpu",
+        "resident_units_gpu",
+        "resident_linalg_gpu",
+        "resident_buffers",
+        "transcendental_gpu",
+        "tree_reduction"
+      ]
+    },
+    {
+      "name": "ctest_shader",
+      "command": [
+        "ctest",
+        "--test-dir",
+        "build",
+        "--output-on-failure",
+        "-R",
+        "^(fused_gpu|linalg_gpu|linalg_cholesky|linalg_qr|linalg_qr_complex|arithmetic_gpu|broadcast_gpu|batched4_gpu|section9_smoke|threshold_gpu|cast_gpu|segmented_dot_gpu|vector_recurrence_gpu|numerics_gpu|resident_units_gpu|resident_linalg_gpu|resident_buffers|transcendental_gpu|tree_reduction)$"
+      ],
+      "environment": {
+        "MTL_SHADER_VALIDATION": "1"
+      },
+      "started_utc": "2026-10-09T10:37:30.028523+00:00",
+      "exit_code": 0,
+      "elapsed_seconds": 1500.6702128340257,
+      "log_sha256": "787f5da3bed6f600a168ed88155978624cf1e4536e9d2293c3dfaa895fa76397",
+      "passed_tests": [
+        "fused_gpu",
+        "linalg_gpu",
+        "linalg_cholesky",
+        "linalg_qr",
+        "linalg_qr_complex",
+        "arithmetic_gpu",
+        "broadcast_gpu",
+        "batched4_gpu",
+        "section9_smoke",
+        "threshold_gpu",
+        "cast_gpu",
+        "segmented_dot_gpu",
+        "vector_recurrence_gpu",
+        "numerics_gpu",
+        "resident_units_gpu",
+        "resident_linalg_gpu",
+        "resident_buffers",
+        "transcendental_gpu",
+        "tree_reduction"
+      ]
+    }
+  ],
+  "all_widths": [
+    64,
+    96,
+    128,
+    160,
+    192,
+    224,
+    256,
+    288,
+    320,
+    352,
+    384,
+    416,
+    448,
+    480,
+    512,
+    544,
+    576,
+    608,
+    640,
+    672,
+    704,
+    736,
+    768,
+    800,
+    832,
+    864,
+    896,
+    928,
+    960,
+    992,
+    1024
+  ],
+  "finished_utc": "2026-10-09T11:02:30.718074+00:00"
+}

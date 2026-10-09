@@ -229,6 +229,13 @@ and the full 26/19 regressions, including failures during overlapped updates.
 Its first checked n944/352 median is 0.528 s versus the exact loop's 0.612 s,
 with overlapping ranges; the 3x target remains unmet. See [the retained experiment](../benchmarks/experiments/section9_exact_trials_lookahead.md).
 
+A private grouped single-band trailing-update candidate at `25c8852` now passes
+all 31 direct/factor/full-band widths in both modes and full 26/19 regressions.
+Its first checked n944/352 profile has factor median 0.501s versus 0.575s for the
+exact loop, and factor+solve 0.629s versus 0.675s. The 3x factor target is still unmet;
+full width/size performance comparisons and consumer acceptance remain open.
+No public API/default is promoted. [Frozen source, raw gates, memory and timing](../benchmarks/experiments/section9_grouped_exact/README.md).
+
 **P2.3: Break-even table.** Partial: 50 source-recurrence keys and 24 normal-equation
 keys cover measured host/resident contracts and clock profiles; 14 GEMM keys cover
 the checked 352-bit Fourier host/resident and resident 4x4 measurements. Three factor-plus-solve

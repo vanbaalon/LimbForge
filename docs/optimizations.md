@@ -275,3 +275,16 @@ against the unchanged 1.3.1 archive. Archived coverage and hashes independently
 verify. This enables practical 4x4 and additional-width comparisons without a
 library API/version/default change; batched exact products and further performance
 measurements remain pending. [Gate and usage](../benchmarks/experiments/section9_gemm_comparison.md#production-benchmark-subset-gate).
+
+## Section 9 P2.2: grouped exact trailing updates
+
+A private grouped single-band SYRK hook preserves once-rounded exact updates
+while combining independent host-packed trials. All 31 direct/factor widths and
+maximum-band supplements pass normally and under Metal validation; 26 normal
+and 19 Metal regression suites pass before timing. The first checked n944/352
+profile has a 0.501s factor and 0.629s factor+solve versus the exact loop's 0.575s
+and 0.675s. Each factor exercises 28 grouped calls/224 trial updates. The 3x target
+remains unmet, with the full size/width grid and consumer work open. Retained
+source/patch, raw gates/timing, memory scopes and independent verification are
+[archived here](../benchmarks/experiments/section9_grouped_exact/README.md).
+No installed API/version/default change is accepted.
