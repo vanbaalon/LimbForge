@@ -74,8 +74,8 @@ benchmark inputs do not exercise the baseline's known exponent-boundary bug.
 | Section 9 P1.3 comparison preparation | Composed/fused complex GEMM, once-rounded exact real embedding and an explicit Gauss three-real-GEMM sequence, each with an MPFR reference; reused buffers, interleaved order and every-sample checks | No library or default change. All 31 CPU exact-dot references and focused 352-bit host/1024-bit resident normal/shader-validation cases pass. Real-shape timings, tile experiments and acceptance remain pending; no speed claim. |
 
 | Section 9 P0 correction (1.0.1) | Private padded local arithmetic, uniform real-component threads and explicit packed loads/stores for complex batched GEMM; expanded MPFR/MPC coverage and every-sample benchmark checks | Accepted correctness fix. The serialized baseline fails at 11 widths despite passing ordinary tests. The corrected backend passes all 31 dense/wide-exponent widths and complete expanded cases, normally and with shader validation; rebuilt 26/26 CTest and 19/19 GPU-validation suites pass. Separate all-width sweeps check valid/status RHS and negative powers. Public precision, layouts, defaults and rounding sequences are preserved. Rejected/incomplete probes and raw logs are retained; root cause is not isolated. No new speed claim. |
-| Section 9 P3 algebra prewarm candidate | Owning-unit pipeline/cache preparation with safe async lifetime and shared cache locking | Built; 2/2 version/package checks pass. Focused MPFR/concurrency/lifetime and shader-validation checks pending. Metal/arithmetic sources unchanged; no timing or production acceptance. |
-| Section 9 P2.1 contract names | Additive exact/sequential product names and blocked/sequential Cholesky/solve names; contract/accuracy/speed/residency table | Built, 2/2 package checks pass; focused cancellation/GPU checks pending. No backend or numerical changes; old entry points/defaults retained. |
+| Section 9 P3 algebra prewarm (1.2.0) | Owning-unit pipeline/cache preparation with safe async lifetime and shared cache locking | Combined focused MPFR/concurrency/lifetime checks pass normally and under shader validation; 2/2 version/package checks pass. Metal/arithmetic sources unchanged; consumer wiring and timings remain pending. |
+| Section 9 P2.1 contract names | Additive exact/sequential product names and blocked/sequential Cholesky/solve names; contract/accuracy/speed/residency table | Delivered in 1.2.0; combined cancellation/GPU checks pass normally and under shader validation; 2/2 package checks pass. No backend or numerical changes; old entry points/defaults retained. |
 
 ## Exact arithmetic retained
 
@@ -150,11 +150,10 @@ Evaluate one change per round, retain a reliable fallback, and distinguish
 small-batch latency from large-batch throughput. New primitives need explicit
 rounding contracts and independent references before performance tuning.
 
-## Section 9 P1.6 candidate: retained intermediates
+## Section 9 P1.6 (1.2.0): retained intermediates
 
 `product3` and `normal_equations_exact` reuse capacity-sized per-call Metal buffers.
 Busy slots are detached on release and owned by their batch until wait/destruction;
 exact Gram repair uses distinct slots for multiple calls in one batch. Existing
 numerical kernels and contracts are unchanged. Focused smoke tests pass normally and
-under shader validation. No measured speedup is claimed; this candidate has not yet
-been merged or released. [Record](../benchmarks/experiments/section9_workspace_reuse.md).
+under shader validation. Combined 1.2.0 API checks also pass in both modes. No measured speedup is claimed. [Record](../benchmarks/experiments/section9_workspace_reuse.md).

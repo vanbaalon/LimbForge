@@ -1,7 +1,7 @@
 # Section 9 P1.6: intermediate reuse candidate
 
 Base: `e91a215` / 1.1.0. Branch: `round-section9-batched-workspaces`.
-Unreleased additive workspace queries require a minor release if accepted.
+Accepted in 1.2.0 after combined focused normal/shader and package checks.
 
 No shader arithmetic changed. `product3` caches its intermediate; exact normals cache
 augmentation and Gram separately for each live call. Completion closures own slots,
@@ -21,3 +21,7 @@ allocates completion/bookkeeping objects. Pending concurrency needs one slot per
 retention increases idle memory until explicitly released. No timing claim is accepted.
 
 Version/package checks pass 2/2 (`section9_p16_version_package.txt`).
+
+Combined release records: `section9_host_api_1_2_*`, including source/archive hashes
+and the explicit focused validation scope. No full arithmetic sweep was repeated
+for these unchanged shaders.

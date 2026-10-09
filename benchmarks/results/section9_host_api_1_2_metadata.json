@@ -40,5 +40,11 @@
     "build/liblimbforge.a": "bf2d5f0f8eeca575109abf7e832763de10114d0b8b1ef81bccdf537860a7bb31"
   },
   "unchanged_numeric_sources": true,
-  "validation_scope": "combined host/cache/workspace changes and inline aliases; not a repeated full arithmetic audit"
+  "validation_scope": "combined host/cache/workspace changes and inline aliases; not a repeated full arithmetic audit",
+  "rebase_verification": {
+    "onto": "de65a60",
+    "recorded_utc": "2026-10-09T03:00:19.336636+00:00",
+    "tested_source_and_archive_hashes": "unchanged",
+    "numeric_shader_core_engine_sources": "unchanged"
+  }
 }

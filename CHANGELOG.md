@@ -2,24 +2,28 @@
 
 ## Unreleased
 
+## 1.2.0 — 2026-10-08
+
 - Added reusable intermediates for `BatchedLinalg::product3` and
   `normal_equations_exact`, with `workspaces()` and `release_workspaces()` queries.
   Busy storage survives release until its owning batch is destroyed or waited.
   The arithmetic sequence, provisional-output rules and existing signatures are unchanged.
-  This API addition is unreleased; focused normal/validation lifetime checks pass.
-- Candidate additive operation-aware `BatchedPrewarm` and shape-aware `LinalgPrewarm`
+- Added operation-aware `BatchedPrewarm` and shape-aware `LinalgPrewarm`
   requests, with synchronous and asynchronous preparation on the owning algebra cache.
   Background tasks retain pipeline/table state and the Metal device, while Linalg host
   scratch/worker lifetime stays on its owner thread. Cache access is synchronized;
   numerical shader sources, public layouts, defaults and rounding sequences are unchanged.
-  Version/package checks pass; focused reference/concurrency/lifetime checks are pending.
-  This is not a released feature.
-- Candidate additive explicit contract names: Linalg exact GEMM/SYRK and blocked
+- Added explicit contract names: Linalg exact GEMM/SYRK and blocked
   Cholesky/solve; BatchedLinalg sequential GEMM, normal equations and damping
   factor/solve. Existing entry points remain supported with identical defaults,
   validation, status and completion behavior. No arithmetic/backend changes.
-  Build and version/package checks pass; focused cancellation and shader checks
-  remain pending before a compatible minor release.
+- Validation: all three additions pass their combined focused physical-GPU checks
+  normally and under shader validation, including busy workspace release, distinct
+  exact fallback repairs, prewarm/encode overlap, detached cache lifetime and an
+  independent cancellation example distinguishing exact from sequential dots.
+  Matching 1.2.0 header/archive and installed-package checks pass 2/2. No numerical
+  shader or core arithmetic changed; these are focused host/API checks, not a new
+  full arithmetic audit. Raw logs and build hashes are retained. No speedup claim.
 
 ## 1.1.0 — 2026-10-08
 

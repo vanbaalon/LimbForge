@@ -15,4 +15,8 @@ compiles all additive host/resident signatures and checks the 64-bit dot
 [2^100,1,-2^100] · [1,1,1]: exact result1, composed/fused sequential0. Physical normal
 and shader-validation checks both pass (`section9_p2_contract_reference.txt` and
 `...validation.txt`). The opt-in target is excluded from default builds/CTest.
-Final combined API checks and a compatible minor release remain pending.
+Accepted in 1.2.0 after combined normal/shader API and package checks.
+
+Combined release records: `section9_host_api_1_2_*`, including source/archive hashes
+and the explicit focused validation scope. No full arithmetic sweep was repeated
+for these unchanged shaders.

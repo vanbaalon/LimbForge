@@ -1,7 +1,7 @@
 # Section 9 P3: algebra prewarm candidate
 
 Base `e2d7c15` / compatible numerical baseline 1.1.0, local branch
-`round-section9-algebra-prewarm`. No production acceptance or timing claim.
+`round-section9-algebra-prewarm`. Accepted in 1.2.0 after combined API checks; no timing claim.
 
 The API prepares the caches actually used by BatchedLinalg power moments and Linalg
 SYRK/Cholesky updates, rather than a separate Engine arithmetic cache. Requests select
@@ -19,8 +19,7 @@ encoding, repeats requests, checks host/resident exact SYRK and GPU-updated Chol
 real compact 4-row tails, composed/fused polynomial/normal paths and malformed requests,
 and waits after both units and the Engine are destroyed. Widths 64/352 exercise numerics;
 224 exercises detached-cache lifetime. No shader body or arithmetic sequence changed;
-these focused lifetime/concurrency checks cover the host/cache addition. Final combined
-API checks and consumer wiring remain required before release/integration acceptance.
+these focused lifetime/concurrency checks cover the host/cache addition. Combined 1.2.0 API checks also pass; consumer wiring remains pending.
 
 Build explicitly:
 
@@ -31,6 +30,10 @@ cmake --build build --target test_limbforge_algebra_prewarm -j4
 MTL_SHADER_VALIDATION=1 ./build/test_limbforge_algebra_prewarm
 ```
 
-The opt-in target is excluded from routine builds/CTest while this is a candidate.
-Consumer startup wiring and a compatible minor release remain pending; do not relink the
-production solver to this unreleased branch or claim first-Jacobian timing improvements.
+The opt-in target remains excluded from routine builds/CTest. Consumer startup wiring
+and first-Jacobian timing acceptance remain pending. Rebuild consumers with matching
+1.2.0 headers/archive when selecting this feature.
+
+Combined release records: `section9_host_api_1_2_*`, including source/archive hashes
+and the explicit focused validation scope. No full arithmetic sweep was repeated
+for these unchanged shaders.

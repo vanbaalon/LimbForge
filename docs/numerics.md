@@ -1420,12 +1420,13 @@ Shapes and buffer/completion rules are in [Execution](execution.md#batched-numer
 | `cholesky_trials` / `BatchedLinalg::cholesky_solve` | Scalar-column updates / sequential multiply-subtract-divide | Final within batch |
 | `Linalg::cholesky` / `Linalg::cholesky_solve` | Existing blocked exact-update / triangular-solve contracts above | Synchronous |
 
-### Explicit contract names (candidate)
+### Explicit contract names (since 1.2.0)
 
 Additive names make the sequence visible at call sites. Existing names stay available
 through 1.x with their original defaults; these aliases forward to the same entry points,
-including buffer ownership, validation, statuses and ticket finality. This is an unreleased
-candidate; focused physical-GPU checks and a compatible minor release remain pending.
+including buffer ownership, validation, statuses and ticket finality. Combined focused
+physical-GPU checks pass normally and under shader validation, with independent exact
+and sequential cancellation references. No arithmetic implementation changed.
 
 | Explicit name | Existing name | Accuracy/rounding | Speed evidence | Residency/completion |
 |---|---|---|---|---|

@@ -322,12 +322,13 @@ future, or wait on it. The helper drains every submission even if one fails, the
 the first error. It preserves the usual rule: buffers become available after submission
 completion and host repair. It is not a GPU event that bypasses those completion steps.
 
-## Algebra pipeline preparation (candidate)
+## Algebra pipeline preparation (since 1.2.0)
 
 `BatchedLinalg::prewarm` / `prewarm_async` and `Linalg::prewarm` / `prewarm_async`
 prepare the owning unit's algebra cache. An Engine arithmetic prewarm remains separate.
-These additive APIs are an unreleased candidate; focused physical-GPU lifetime and
-reference checks remain pending in `benchmarks/experiments/section9_algebra_prewarm.md`.
+These additive APIs pass focused physical-GPU lifetime and reference checks normally
+and under shader validation, including combined 1.2.0 API checks. See
+`benchmarks/experiments/section9_algebra_prewarm.md` for the validation scope.
 
 ```cpp
 Engine engine;

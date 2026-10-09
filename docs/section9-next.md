@@ -164,23 +164,28 @@ a row in `docs/optimizations.md`, rejected attempts kept under `benchmarks/exper
 - **Option to measure:** a device source pass that writes p and q per (step, weight group, component) into batch scratch. That scratch is small, e.g. 160 × 65 × 8 complex, and is not the host table the consumer wants to avoid. Follow it with the existing `vector_recurrence`, which also brings the matrix, affine and tangent modes.
 - **Contract:** keep the documented Horner and recurrence order, so results stay identical. Preserve incomplete weight-sharing groups: `polynomial_recurrence` permits sharing tails, which an adapter to `vector_recurrence` must handle explicitly.
 
-**P1.6 candidate:** reusable per-call slots are implemented on `round-section9-batched-workspaces`.
+**P1.6 delivered in 1.2.0:** reusable per-call slots cache `product3` and exact-normal scratch.
 Normal and shader-validation smoke checks pass, including two exact repairs in one batch,
 busy release, abandoned batches, engine ownership and unit destruction. No new numerical
-kernel or timing claim; release/merge acceptance remains pending.
+kernel or timing claim. Combined API checks also pass in both modes; busy storage
+survives release and is freed only after its owning work is finished.
 
-**P1.6: No allocation in hot paths.** `product3` and `normal_equations_exact` allocate engine buffers on every call. Reuse workspaces, and follow the `Linalg::release_workspaces` semantics: memory still used by an unwaited batch is detached, not freed.
+**P1.6 scope:** warm calls reuse intermediate Metal buffers. Host encoding still
+allocates bookkeeping, and concurrent live calls need distinct slots. Workspace
+queries and release follow the existing Linalg ownership semantics.
 
 ### P2: API cohesion
 
 **P2.1: Two contracts, similar names.**
-- **Local candidate `18bc32b`:** explicit exact GEMM/SYRK, sequential batched
+- **Delivered in 1.2.0:** explicit exact GEMM/SYRK, sequential batched
   products/normals/trials/solves, and blocked Cholesky/solve aliases. Old names and
   defaults remain supported. The Numerics table compares accuracy, speed-evidence
   limits and residency/finality. Build and version/package checks pass; focused
   cancellation/physical-GPU checks pass normally and under shader validation.
-  Combined API integration checks and a compatible minor release remain pending.
- `Linalg` products and factorizations round once per entry from the exact value. `BatchedLinalg` uses sequential composed or fused dot products, and a different Cholesky sequence.
+  Combined API integration checks pass normally and under shader validation.
+  Linalg products round an exact dot once; blocked factorizations have multiple
+  rounded panel/update steps. BatchedLinalg uses sequential composed/fused dots
+  and a different Cholesky sequence.
 - Make the contract visible through documentation and additive names or a contract enum.
 - Clarify same-named methods with different meanings (`cholesky_solve`); preserve existing entry points through 1.x.
 - Add a comparison table (contract, accuracy, speed, residency) to `docs/numerics.md`.
@@ -212,7 +217,7 @@ candidate or an unconverged diagnostic as accepted production behavior.
 |---|---|
 | Catch GPU/bridge errors and fall back to CPU; warn once | Implemented locally; focused helper check passes, including transactional output preservation and worker exception propagation |
 | One shared Engine for algebra units | Implemented locally; matching 1.1.0 headers/archive checked at startup; pipeline caches remain separate |
-| Algebra prewarm | Local API candidate `d672cc1`: operation/shape-aware synchronous and asynchronous preparation on the owning units, with detached cache lifetime and synchronized cache access. Build, version/package and focused normal/shader lifetime/numerical checks pass; combined API integration checks, minor release and consumer wiring pending |
+| Algebra prewarm | Delivered in 1.2.0: operation/shape-aware synchronous and asynchronous preparation on the owning units, with detached cache lifetime and synchronized cache access. Combined focused normal/shader and package checks pass; consumer startup wiring pending |
 | Keep `adj_prep` CPU-only; select stage 2 after the glue | Preserved; do not move the glue or invoke GPU work inside stage 1 |
 | Relative MPFR adjoint check in units of `2^-prec` | Implemented; finite, nonempty checks require <=65536 normalized units; report finite-difference amplification separately |
 | Converged CPU/GPU g=.1/.2/.5 checks | Pending: componentwise Delta agreement <=1e-25, equal iteration counts and matching residual histories; save inputs and both logs |
@@ -230,7 +235,7 @@ For each new consumer switch, keep CPU fallback and a `QSC_GPU` sub-switch, then
 both converged-history verification and idle-host measurements. Time stage 1, stage 2,
 MPC/MPFR packing and unpacking, SYRK, `J^T G`, Cholesky and total separately. An ordinary
 arithmetic `Engine::Prewarm` does not prepare algebra pipelines and must not stand in
-for the pending algebra preparation API.
+for the algebra preparation API.
 
 The combined-normal candidate computes its RHS with a once-rounded exact dot instead
 of the CPU's sequential MPFR FMA. Its focused helper checks pass normally and under
