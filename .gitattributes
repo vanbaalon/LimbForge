@@ -1,0 +1,2 @@
+# Preserve the exact diagnostic bytes in this raw rejected-selector record.
+benchmarks/results/section9_exact_gemm4_comparison_cpu_gate/empty_paths.txt whitespace=-blank-at-eol
