@@ -1,0 +1,6 @@
+[ 75%] Built target limbforge
+[ 87%] Building CXX object CMakeFiles/section9_gemm_limbforge.dir/benchmarks/section9_gemm.cpp.o
+[100%] Linking CXX executable section9_gemm_limbforge
+ld: warning: building for macOS-15.0, but linking with dylib '/opt/homebrew/opt/mpfr/lib/libmpfr.6.dylib' which was built for newer version 26.0
+ld: warning: building for macOS-15.0, but linking with dylib '/opt/homebrew/opt/gmp/lib/libgmp.10.dylib' which was built for newer version 26.0
+[100%] Built target section9_gemm_limbforge

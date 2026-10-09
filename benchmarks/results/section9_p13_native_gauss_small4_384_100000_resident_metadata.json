@@ -1,0 +1,93 @@
+{
+  "started_utc": "2026-10-09T09:37:17.416949+00:00",
+  "commit": "e1ed7426f1f290f251fc2611ea081b66b68fcb4a",
+  "command": [
+    "./build/section9_gemm_limbforge",
+    "--bits",
+    "384",
+    "--workers",
+    "18",
+    "--repeats",
+    "4",
+    "--resident",
+    "--count",
+    "100000",
+    "--m",
+    "4",
+    "--n",
+    "4",
+    "--k",
+    "4",
+    "--paths",
+    "composed,fused,gauss,native"
+  ],
+  "cwd": "/private/tmp/wolfnum-section9-native-gauss",
+  "clock": "cpu-interleaved",
+  "scope": "Checked numeric-array library benchmark; every initial/warm/timed CPU and GPU output verified by the executable. CPU ratios on busy host are not idle consumer acceptance. RSS covers whole benchmark process including MPFR oracles and staging, not isolated API scratch.",
+  "state": "terminal",
+  "sha256": {
+    "build/section9_gemm_limbforge": "30240a9699faeac0e82d93578f1e65e8e05ff8e4e5cae8515e9b54f411b2cd0a",
+    "build/liblimbforge.a": "36f9e28e1a0bd836898d21a2f82ed037cfa79da3ec63993966fe1cb18706d3d4",
+    "benchmarks/section9_gemm.cpp": "06df81e957bc60d56e0412c5633ce422cf237b0784e9f81f6b210d4d744e288f",
+    "benchmarks/benchmark_support.hpp": "9facbdc33083514f06ff4c868926adcc65545b5b4d32cc175fc74d9d4874522d",
+    "tests/reference.hpp": "0d34dc8c3b4e7bcbc5129849df92a1c684a000bdefcaddfad3b41b28fd539f12",
+    "include/limbforge/version.hpp": "257f26894dabe6ae2a348507477f678234f7295fe510e276439ff2cf397b72f3",
+    "src/batched_linalg.mm": "2488c881e44125b8be0e19ddac8dddd61106ec2bf6c57bd255dee67adc282e79",
+    "benchmarks/section9_normal.cpp": "e8563eb4c373e43c22983c56e0cd07f5b75cbc659f572c08c037744ddac14927",
+    "include/limbforge/batched_linalg.hpp": "bab756bf6f7d38a91bb8616879c093afbd6c5ec523de0d07e041d07b8fdc361a",
+    "src/linalg.mm": "3a5c8362c125b506fbb9bf9ef76da766eea52c88eb75cb07bf1626f64a8a18e0",
+    "include/limbforge/core.hpp": "12cc4bcd199bc0957275f55f7e7462f79918ad19fb3f21b55404d08119ef2ce8",
+    "src/kernels.metal": "72dcc8f6f7fa99d09f004bc2e418d2ebd1c4a0b0ea6750f2e771458c74e8d2e0",
+    "src/linalg.metal": "fa7cac7ac80fab5ba5648ef2bc002c496415f4ac394e160cf52b489d7a1a65e3",
+    "src/batched_linalg.metal": "5b5116f9572f2f6f68f15dd1466dbd25cfc0319e33386387fef4b856f494a8a8"
+  },
+  "load_samples": [
+    {
+      "seconds": 0.0014538749819621444,
+      "loadavg": [
+        35.25537109375,
+        22.20654296875,
+        12.3798828125
+      ]
+    },
+    {
+      "seconds": 5.011645374994259,
+      "loadavg": [
+        41.16064453125,
+        23.64697265625,
+        12.94580078125
+      ]
+    }
+  ],
+  "correctness_provenance": [
+    {
+      "manifest": "section9_p13_native_gauss_full_gate_metadata.json",
+      "sha256": "a4dd5ada0c6e8fa47bc16e4d89fcb2f420c5cfcbae9feeff1bfd6a680e42f8e8"
+    },
+    {
+      "manifest": "section9_p13_native_gauss_host31_gate_metadata.json",
+      "sha256": "f7c442a30356257cc4a98a59ed638cd20e1031eb1b0a6a62c7c5ea5fffb568e0"
+    },
+    {
+      "manifest": "section9_p13_native_gauss_selector_gate_metadata.json",
+      "sha256": "f5b9275f214b11ab5a62a4d4525afd8e46919bd5997319aedae6a9506fdf9e8f"
+    }
+  ],
+  "environment": {},
+  "hardware": {
+    "hw.memsize": "137438953472",
+    "hw.ncpu": "18",
+    "machdep.cpu.brand_string": "Apple M5 Max"
+  },
+  "pid": 48934,
+  "elapsed_seconds": 10.02066029200796,
+  "exit": 0,
+  "finished_utc": "2026-10-09T09:37:27.497397+00:00",
+  "artifacts_sha256": {
+    "section9_p13_native_gauss_small4_384_100000_resident.csv": "dc6243bc982f4c0f5e21fb99509e6d77f523f743e96498104cf2b52f1dec4987",
+    "section9_p13_native_gauss_small4_384_100000_resident.txt": "a3cbb4c4923c51fd62e57f8915caf95f9500100baae1488d9773bdde3e86ad6c"
+  },
+  "maximum_resident_set_size_bytes": 6484639744,
+  "checked_csv_rows": 4,
+  "all_recorded_loadavg_below_4": false
+}

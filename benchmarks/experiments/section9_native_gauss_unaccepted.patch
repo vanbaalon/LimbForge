@@ -1,0 +1,382 @@
+diff --git a/CMakeLists.txt b/CMakeLists.txt
+index bdac00a..808fe09 100644
+--- a/CMakeLists.txt
++++ b/CMakeLists.txt
+@@ -188,6 +188,10 @@ if(BUILD_TESTING)
+     limbforge_use_mpc(test_limbforge_section9)
+     add_test(NAME section9_smoke COMMAND test_limbforge_section9)
+     # Deliberately outside default CTest: the later all-width/dense audit is opt-in.
++    add_executable(test_limbforge_section9_gauss EXCLUDE_FROM_ALL tests/test_section9_gauss.cpp)
++    target_link_libraries(test_limbforge_section9_gauss PRIVATE limbforge_reference)
++    limbforge_use_mpc(test_limbforge_section9_gauss)
++
+     add_executable(test_limbforge_section9_audit EXCLUDE_FROM_ALL tests/test_section9_audit.cpp)
+     add_executable(test_limbforge_algebra_prewarm EXCLUDE_FROM_ALL tests/test_algebra_prewarm.cpp)
+     target_link_libraries(test_limbforge_algebra_prewarm PRIVATE limbforge_reference)
+diff --git a/benchmarks/section9_gemm.cpp b/benchmarks/section9_gemm.cpp
+index 9c85cf6..95f6270 100644
+--- a/benchmarks/section9_gemm.cpp
++++ b/benchmarks/section9_gemm.cpp
+@@ -4,14 +4,36 @@
+ #include <random>
+ #include <array>
+ #include <cmath>
++#include <algorithm>
+ 
+ struct Options {
+     int bits=352;
+     std::size_t count=1,m=66,n=3800,k=130;
+     unsigned workers=18,repeats=5;
+-    int path=-1; // -1: all; 0: composed; 1: fused; 2: exact embedding; 3: Gauss.
++    std::vector<unsigned> paths{0,1,2,3,4}; // composed, fused, exact embedding, matrix Gauss, native per-product Gauss.
+     bool resident=false,warm=false,check_only=false,cpu_only=false;
+ };
++unsigned path_number(const std::string& name) {
++    if(name=="composed")return 0;
++    if(name=="fused")return 1;
++    if(name=="exact")return 2;
++    if(name=="gauss")return 3;
++    if(name=="native")return 4;
++    throw std::invalid_argument("unknown path: "+name);
++}
++std::vector<unsigned> selected_paths(const std::string& names) {
++    std::vector<unsigned> result;
++    std::size_t first=0;
++    do {
++        auto end=names.find(',',first);
++        auto path=path_number(names.substr(first,end==std::string::npos?end:end-first));
++        if(std::find(result.begin(),result.end(),path)!=result.end())throw std::invalid_argument("duplicate path");
++        result.push_back(path);
++        if(end==std::string::npos)break;
++        first=end+1;
++    } while(true);
++    return result;
++}
+ std::size_t checked(std::size_t a,std::size_t b) {
+     if(b&&a>std::size_t(-1)/b)throw std::invalid_argument("shape overflow");
+     return a*b;
+@@ -21,13 +43,13 @@ template<int B> void run(const Options& o) {
+     const auto ac=checked(checked(o.count,o.m),o.k);
+     const auto bc=checked(checked(o.count,o.k),o.n);
+     const auto oc=checked(checked(o.count,o.m),o.n);
+-    std::vector<unsigned> paths;if(o.path<0)paths={0,1,2,3};else paths={unsigned(o.path)};
++    const auto& paths=o.paths;
+     Workers pool(o.workers);std::mt19937_64 rng(B+137);
+     std::vector<C> A(ac),BB(bc),got(oc);
+     MPArray am(2*ac,B),bm(2*bc,B),as(ac,B),bs(bc,B),neg_ai(ac,B),truth(2*oc,2*B+64);
+-    std::array<std::unique_ptr<MPArray>,4> results;
+-    std::array<std::vector<C>,4> expected;
+-    for(unsigned p=0;p<4;++p){results[p]=std::make_unique<MPArray>(2*oc,B);expected[p].resize(oc);}
++    std::array<std::unique_ptr<MPArray>,5> results;
++    std::array<std::vector<C>,5> expected;
++    for(unsigned p=0;p<5;++p){results[p]=std::make_unique<MPArray>(2*oc,B);expected[p].resize(oc);}
+     auto fill=[&](std::vector<C>& v,MPArray& mp){for(std::size_t j=0;j<v.size();++j){
+         v[j]={reference::random_number<B>(rng,4),reference::random_number<B>(rng,4)};
+         to_mpfr<B>(mp[2*j],v[j].re);to_mpfr<B>(mp[2*j+1],v[j].im);}};
+@@ -47,7 +69,7 @@ template<int B> void run(const Options& o) {
+     // Most temporaries round at B. Slots 10/11 retain an independent exact oracle.
+     for(auto& s:scratch)for(unsigned j=0;j<10;++j)mpfr_set_prec((*s)[j],B);
+     auto cpu=[&](unsigned mode,bool oracle=false){
+-        if(mode==3)pool.run(o.workers,[&](std::size_t first,std::size_t last){for(auto w=first;w<last;++w){
++        if(mode==3||mode==4)pool.run(o.workers,[&](std::size_t first,std::size_t last){for(auto w=first;w<last;++w){
+             for(auto i=ac*w/o.workers;i<ac*(w+1)/o.workers;++i)mpfr_add(as[i],am[2*i],am[2*i+1],MPFR_RNDN);
+             for(auto i=bc*w/o.workers;i<bc*(w+1)/o.workers;++i)mpfr_add(bs[i],bm[2*i],bm[2*i+1],MPFR_RNDN);}});
+         pool.run(o.workers,[&](std::size_t first,std::size_t last){for(auto w=first;w<last;++w){auto& s=*scratch[w];
+@@ -71,6 +93,10 @@ template<int B> void run(const Options& o) {
+                         mpfr_ptr x[]={ar,s[3],s[0]},y[]={br,bi,s[5]};mpfr_set_ui(s[5],1,MPFR_RNDN);
+                         mpfr_dot(s[0],x,y,3,MPFR_RNDN);
+                         mpfr_ptr xi[]={ar,ai,s[1]},yi[]={bi,br,s[5]};mpfr_dot(s[1],xi,yi,3,MPFR_RNDN);}
++                    else if(mode==4){mpfr_mul(s[3],ar,br,MPFR_RNDN);mpfr_mul(s[4],ai,bi,MPFR_RNDN);
++                        mpfr_mul(s[5],as[a],bs[b],MPFR_RNDN);mpfr_sub(s[6],s[3],s[4],MPFR_RNDN);
++                        mpfr_sub(s[5],s[5],s[3],MPFR_RNDN);mpfr_sub(s[5],s[5],s[4],MPFR_RNDN);
++                        mpfr_add(s[0],s[0],s[6],MPFR_RNDN);mpfr_add(s[1],s[1],s[5],MPFR_RNDN);}
+                     else{mpfr_mul(s[3],ar,br,MPFR_RNDN);mpfr_add(s[0],s[0],s[3],MPFR_RNDN);
+                         mpfr_mul(s[3],ai,bi,MPFR_RNDN);mpfr_add(s[1],s[1],s[3],MPFR_RNDN);
+                         mpfr_mul(s[3],as[a],bs[b],MPFR_RNDN);mpfr_add(s[2],s[2],s[3],MPFR_RNDN);}}
+@@ -81,18 +107,19 @@ template<int B> void run(const Options& o) {
+             }}});
+     };
+     for(auto& s:scratch)mpfr_set_prec((*s)[8],2*B+64);
+-    for(unsigned p=0;p<4;++p){cpu(p,p==2);for(std::size_t i=0;i<oc;++i)expected[p][i]={from_mpfr<B>((*results[p])[2*i]),from_mpfr<B>((*results[p])[2*i+1])};}
++    for(unsigned p=0;p<5;++p){cpu(p,p==2);for(std::size_t i=0;i<oc;++i)expected[p][i]={from_mpfr<B>((*results[p])[2*i]),from_mpfr<B>((*results[p])[2*i+1])};}
+     auto check_cpu=[&](unsigned p){for(std::size_t i=0;i<oc;++i){C value{from_mpfr<B>((*results[p])[2*i]),from_mpfr<B>((*results[p])[2*i+1])};
+         if(!reference::equal_complex<B>(value,expected[p][i]))throw std::runtime_error("CPU reference mismatch: path "+std::to_string(p)+" index "+std::to_string(i));}};
+     cpu(2);check_cpu(2);
+-    if(o.cpu_only){std::cout<<B<<" bits: four CPU contracts prepared; MPFR exact dots match independent high-precision sums; no GPU or timings\n";return;}
+-    std::size_t differs[4]={};double error[4]={};reference::MP scale(2*B+64),diff(2*B+64),maximum(2*B+64),value(2*B+64);
++    if(o.cpu_only){std::cout<<B<<" bits: five CPU contracts prepared; MPFR exact dots match independent high-precision sums; no GPU or timings\n";return;}
++    std::size_t differs[5]={};double error[5]={};reference::MP scale(2*B+64),diff(2*B+64),maximum(2*B+64),value(2*B+64);
+     mpfr_set_zero(scale.x,1);for(std::size_t i=0;i<2*oc;++i){mpfr_abs(value.x,truth[i],MPFR_RNDN);if(mpfr_cmp(value.x,scale.x)>0)mpfr_set(scale.x,value.x,MPFR_RNDN);}
+-    for(unsigned p=0;p<4;++p){mpfr_set_zero(maximum.x,1);for(std::size_t i=0;i<oc;++i){if(!reference::equal_complex<B>(expected[p][i],expected[2][i]))++differs[p];
++    for(unsigned p=0;p<5;++p){mpfr_set_zero(maximum.x,1);for(std::size_t i=0;i<oc;++i){if(!reference::equal_complex<B>(expected[p][i],expected[2][i]))++differs[p];
+         for(unsigned c=0;c<2;++c){to_mpfr<B>(value.x,c?expected[p][i].im:expected[p][i].re);mpfr_sub(diff.x,value.x,truth[2*i+c],MPFR_RNDN);mpfr_abs(diff.x,diff.x,MPFR_RNDN);if(mpfr_cmp(diff.x,maximum.x)>0)mpfr_set(maximum.x,diff.x,MPFR_RNDN);}}
+         if(!mpfr_zero_p(scale.x)){mpfr_div(maximum.x,maximum.x,scale.x,MPFR_RNDN);mpfr_mul_2ui(maximum.x,maximum.x,B,MPFR_RNDN);}error[p]=mpfr_get_d(maximum.x,MPFR_RNDN);}
+     Engine engine;BatchedLinalg seq(engine);LinalgOptions exact_options;exact_options.host_threads=o.workers;Linalg exact(engine,exact_options);
+-    bool use_complex=o.path<2,use_exact=o.path<0||o.path==2,use_gauss=o.path<0||o.path==3;
++    auto selected=[&](unsigned p){return std::find(paths.begin(),paths.end(),p)!=paths.end();};
++    bool use_complex=selected(0)||selected(1)||selected(4),use_exact=selected(2),use_gauss=selected(3);
+     std::vector<F> ar(use_gauss?ac:0),ai(ar.size()),br(use_gauss?bc:0),bi(br.size());
+     std::vector<F> embedded_a(use_exact?4*ac:0),embedded_b(use_exact?2*bc:0),embedded_c(use_exact?2*oc:0),real(use_gauss?oc:0),imag(real.size());
+     auto pack=[&](unsigned p){if(p==2){for(std::size_t batch=0;batch<o.count;++batch){
+@@ -108,17 +135,18 @@ template<int B> void run(const Options& o) {
+     if(use_gauss){rar=engine.make_buffer<F>(ac);rai=engine.make_buffer<F>(ac);rbr=engine.make_buffer<F>(bc);rbi=engine.make_buffer<F>(bc);
+         ras=engine.make_buffer<F>(ac);rbs=engine.make_buffer<F>(bc);rp=engine.make_buffer<F>(oc);rq=engine.make_buffer<F>(oc);rs=engine.make_buffer<F>(oc);rr=engine.make_buffer<F>(oc);ri=engine.make_buffer<F>(oc);}
+     std::vector<Buffer<F>> ea,eb,ec;if(use_exact)for(std::size_t batch=0;batch<o.count;++batch){ea.push_back(engine.make_buffer<F>(4*o.m*o.k));eb.push_back(engine.make_buffer<F>(2*o.k*o.n));ec.push_back(engine.make_buffer<F>(2*o.m*o.n));}
+-    auto upload=[&](unsigned p){if(p<2){ca.upload(A.data(),ac);cb.upload(BB.data(),bc);}
++    auto upload=[&](unsigned p){if(p<2||p==4){ca.upload(A.data(),ac);cb.upload(BB.data(),bc);}
+         else if(p==2){for(std::size_t b=0;b<o.count;++b){ea[b].upload(embedded_a.data()+b*4*o.m*o.k,4*o.m*o.k);eb[b].upload(embedded_b.data()+b*2*o.k*o.n,2*o.k*o.n);}}
+         else{rar.upload(ar.data(),ac);rai.upload(ai.data(),ac);rbr.upload(br.data(),bc);rbi.upload(bi.data(),bc);}};
+     if(use_complex)upload(0);if(use_exact)upload(2);if(use_gauss)upload(3);
+-    auto download=[&](unsigned p){if(p<2)cc.download(got.data(),oc);
++    auto download=[&](unsigned p){if(p<2||p==4)cc.download(got.data(),oc);
+         else if(p==2){for(std::size_t b=0;b<o.count;++b)ec[b].download(embedded_c.data()+b*2*o.m*o.n,2*o.m*o.n);
+             for(std::size_t b=0;b<o.count;++b)for(std::size_t row=0;row<o.m;++row)for(std::size_t col=0;col<o.n;++col){auto i=(b*o.m+row)*o.n+col,base=(b*2*o.m+row*2)*o.n+col;got[i]={embedded_c[base],embedded_c[base+o.n]};}}
+         else{rr.download(real.data(),oc);ri.download(imag.data(),oc);for(std::size_t i=0;i<oc;++i)got[i]={real[i],imag[i]};}};
+     auto gpu=[&](unsigned p){auto start=Clock::now();if(!o.resident){pack(p);upload(p);}auto batch=engine.batch();
+         StridedGemm shape{o.count,o.m,o.n,o.k,o.m*o.k,o.k*o.n,o.m*o.n};
+-        if(p<2){shape.fused=p==1;seq.gemm(batch,shape,ca,cb,cc);}
++        if(p==4)seq.gemm_gauss(batch,shape,ca,cb,cc);
++        else if(p<2){shape.fused=p==1;seq.gemm(batch,shape,ca,cb,cc);}
+         else if(p==2){for(std::size_t b=0;b<o.count;++b)exact.gemm(batch,false,ea[b],eb[b],2*o.m,o.n,2*o.k,ec[b]);}
+         else{batch.run(Operation::add,rar,rai,ras);batch.run(Operation::add,rbr,rbi,rbs);
+             seq.gemm(batch,shape,rar,rbr,rp);seq.gemm(batch,shape,rai,rbi,rq);seq.gemm(batch,shape,ras,rbs,rs);
+@@ -126,10 +154,10 @@ template<int B> void run(const Options& o) {
+         auto timing=batch.submit().wait();if(!o.resident)download(p);timing.wall_seconds=std::chrono::duration<double>(Clock::now()-start).count();return timing;};
+     auto verify=[&](unsigned p){if(o.resident)download(p);for(std::size_t i=0;i<oc;++i)if(!reference::equal_complex<B>(got[i],expected[p][i]))
+         throw std::runtime_error("GPU mismatch: path "+std::to_string(p)+" index "+std::to_string(i));};
+-    const char* names[]={"complex_composed","complex_fused","exact_real_embedding","gauss_three_real_composed"};
++    const char* names[]={"complex_composed","complex_fused","exact_real_embedding","gauss_three_real_composed","native_gauss_per_product"};
+     for(auto p:paths){gpu(p);verify(p);}
+     if(o.check_only){std::cout<<B<<" bits, "<<o.count<<"x("<<o.m<<"x"<<o.k<<"x"<<o.n<<"): "<<paths.size()<<" selected GPU contracts match MPFR; no timings\n";return;}
+-    std::vector<double> cpu_times[4],wall[4],device[4];
++    std::vector<double> cpu_times[5],wall[5],device[5];
+     for(unsigned rep=0;rep<o.repeats;++rep){for(unsigned j=0;j<paths.size();++j){auto p=paths[(rep+j)%paths.size()];auto start=Clock::now();cpu(p);auto seconds=std::chrono::duration<double>(Clock::now()-start).count();cpu_times[p].push_back(seconds);check_cpu(p);
+             std::cerr<<"cpu_sample,"<<rep<<','<<j<<','<<names[p]<<','<<std::setprecision(12)<<seconds<<'\n';}
+         for(unsigned j=0;j<paths.size();++j){auto p=paths[(rep+j)%paths.size()];if(o.warm){gpu(p);verify(p);}auto t=gpu(p);wall[p].push_back(t.wall_seconds);device[p].push_back(t.gpu_seconds);verify(p);
+@@ -139,11 +167,13 @@ template<int B> void run(const Options& o) {
+     for(auto p:paths)std::cout<<B<<','<<o.count<<','<<o.m<<','<<o.n<<','<<o.k<<','<<names[p]<<','<<o.resident<<','<<o.workers<<','<<o.repeats<<','<<(o.warm?"verified-warm-call":"cpu-interleaved")<<','<<std::setprecision(12)<<quantile(cpu_times[p],.5)<<','<<quantile(wall[p],.5)<<','<<quantile(device[p],.5)<<','<<quantile(wall[p],.25)<<','<<quantile(wall[p],.75)<<','<<quantile(wall[p],0)<<','<<quantile(wall[p],1)<<','<<differs[p]<<','<<error[p]<<','<<engine.device_name()<<" / " LIMBFORGE_VERSION_STRING " / complex-gemm-contracts\n";
+ }
+ template<int B=64> void width(const Options& o){if(o.bits==B)run<B>(o);else if constexpr(B<1024)width<B+32>(o);}
+-int main(int argc,char** argv){try{Options o;for(int i=1;i<argc;++i){std::string a=argv[i];
++int main(int argc,char** argv){try{Options o;bool selection_given=false;for(int i=1;i<argc;++i){std::string a=argv[i];
+     if(a=="--resident"){o.resident=true;continue;}if(a=="--warm"){o.warm=true;continue;}if(a=="--check-only"){o.check_only=true;continue;}if(a=="--cpu-only"){o.cpu_only=true;continue;}
+-    if(a=="--help"){std::cout<<"section9_gemm_limbforge --bits B --count C --m M --n N --k K --workers W --repeats R [--path composed|fused|exact|gauss] [--resident] [--warm] [--check-only] [--cpu-only]\n";return 0;}
++    if(a=="--help"){std::cout<<"section9_gemm_limbforge --bits B --count C --m M --n N --k K --workers W --repeats R [--path composed|fused|exact|gauss|native | --paths composed,gauss,native] [--resident] [--warm] [--check-only] [--cpu-only]\n";return 0;}
+     if(++i==argc)throw std::invalid_argument("missing value");std::string s=argv[i];
+-    if(a=="--path"){if(s=="composed")o.path=0;else if(s=="fused")o.path=1;else if(s=="exact")o.path=2;else if(s=="gauss")o.path=3;else throw std::invalid_argument("unknown path");continue;}
++    if(a=="--path"||a=="--paths"){
++        if(selection_given)throw std::invalid_argument("specify only one path selector");
++        selection_given=true;o.paths=a=="--path"?std::vector<unsigned>{path_number(s)}:selected_paths(s);continue;}
+     std::size_t used;auto v=std::stoull(s,&used);
+     if(used!=s.size()||s[0]=='-'||!v||v>100000)throw std::invalid_argument("invalid positive integer");
+     if(a=="--bits")o.bits=int(v);else if(a=="--count")o.count=v;else if(a=="--m")o.m=v;else if(a=="--n")o.n=v;else if(a=="--k")o.k=v;else if(a=="--workers")o.workers=unsigned(v);else if(a=="--repeats")o.repeats=unsigned(v);else throw std::invalid_argument("unknown option");}
+diff --git a/docs/numerics.md b/docs/numerics.md
+index efcb36b..d803b56 100644
+--- a/docs/numerics.md
++++ b/docs/numerics.md
+@@ -1533,3 +1533,35 @@ and both E and outputs are `[steps][4][groups]`. Horner and source scaling have
+ contract above. Zero steps/groups writes nothing. With zero terms, E is still multiplied
+ by canonical zero, preserving statuses. Outputs contain sources in ascending step order;
+ the consumer chooses their application order.
++
++## Experimental per-product Gauss GEMM (unreleased)
++
++The isolated P1.3 prototype `gemm_gauss` is not part of a published API. It accepts
++complex `StridedGemm` inputs and the existing host/resident layouts, broadcast,
++accumulation and final negation rules. `fused=true` is rejected. Existing GEMM calls
++and defaults are unchanged. Any accepted addition requires a minor release.
++
++At each ascending inner index, with RN the precision-B ties-to-even operation:
++
++```
++p = RN(ar * br)
++q = RN(ai * bi)
++s = RN(RN(ar + ai) * RN(br + bi))
++r = RN(p - q)
++i = RN(RN(s - p) - q)
++acc_re = RN(r + acc_re)
++acc_im = RN(i + acc_im)
++```
++
++Start each accumulator from zero or its corresponding C component. Negate both
++components after the complete dot when requested. Status propagation follows each
++scalar operation in this sequence. Output padding is preserved. Empty dots still
++apply accumulation and final negation. This differs from composing the usual four
++real products and from the matrix-level Gauss experiment, which first accumulates
++three separate real dots and reconstructs each complex entry only once afterward.
++Cancellation can magnify the rounded input sums and reconstruction error.
++
++The native shader computes three real products once per complex entry and keeps
++private significands padded to 33 storage words at logical precision N. It uses
++no new public buffer layout. This new compiler context needs independent MPFR,
++all-width dense/wide/shader checks and broad regressions before timing or acceptance.
+diff --git a/include/limbforge/batched_linalg.hpp b/include/limbforge/batched_linalg.hpp
+index a54d5e2..2407145 100644
+--- a/include/limbforge/batched_linalg.hpp
++++ b/include/limbforge/batched_linalg.hpp
+@@ -64,6 +64,7 @@ class BatchedLinalg {
+     Engine* engine_; struct Impl; std::unique_ptr<Impl> impl_;
+     std::pair<detail::Operand,detail::Operand> workspace(CommandBatch&,int,bool,std::size_t,std::size_t);
+     void encode_gemm(CommandBatch&,int,bool,const StridedGemm&,detail::Operand,detail::Operand,detail::Operand);
++    void encode_gemm_sequence(CommandBatch&,int,bool,const StridedGemm&,detail::Operand,detail::Operand,detail::Operand,bool);
+     void encode_power(CommandBatch&,int,bool,const PowerMoments&,detail::Operand,detail::Operand,detail::Operand,detail::Operand,PowerStorage);
+     void encode_normal(CommandBatch&,int,std::size_t,std::size_t,detail::Operand,detail::Operand,detail::Operand,detail::Operand,bool);
+     void encode_trials(CommandBatch&,int,const CholeskyTrials&,detail::Operand,detail::Operand,detail::Operand,detail::Operand,detail::Operand);
+@@ -84,6 +85,9 @@ public:
+     std::future<void> prewarm_polynomial_async(PolynomialPrewarm);
+     // Synchronous host-array forms, including input staging and output readback. Same kernels/contracts.
+     Timing gemm(int bits,bool complex,const StridedGemm&,const void* A,const void* B,void* C);
++    // Experimental explicit Gauss product per inner term; fused=true is rejected.
++    Timing gemm_gauss(int bits,const StridedGemm&,const void* A,const void* B,void* C);
++    void prewarm_gauss(const std::vector<int>& bits);
+     Timing power_moments(int bits,bool complex,const PowerMoments&,const void* E,const void* y,const void* W,void* out);
+     Timing power_moments(int bits,bool complex,const PowerMoments&,const void* E,const void* y,const void* W,void* out,PowerStorage);
+     template<class T> void polynomial_sources(CommandBatch& b,const PolynomialSources& s,const Buffer<T>& cp,const Buffer<T>& cq,const Buffer<T>& y,const Buffer<T>& Ep,const Buffer<T>& Eq,Buffer<T>& p,Buffer<T>& q){
+@@ -96,6 +100,9 @@ public:
+         encode_polynomial(b,detail::Format<T>::bits,s,detail::Access::operand(start),detail::Access::operand(cp),detail::Access::operand(cq),detail::Access::operand(y),detail::Access::operand(Ep),detail::Access::operand(Eq),detail::Access::operand(out),evaluation);}
+     template<class T> void gemm(CommandBatch& b,const StridedGemm& s,const Buffer<T>& A,const Buffer<T>& B,Buffer<T>& C){
+         encode_gemm(b,detail::Format<T>::bits,detail::Format<T>::complex,s,detail::Access::operand(A),detail::Access::operand(B),detail::Access::operand(C));}
++    template<class T> void gemm_gauss(CommandBatch& b,const StridedGemm& s,const Buffer<T>& A,const Buffer<T>& B,Buffer<T>& C){
++        static_assert(detail::Format<T>::complex,"Gauss GEMM uses complex buffers");
++        encode_gemm_sequence(b,detail::Format<T>::bits,true,s,detail::Access::operand(A),detail::Access::operand(B),detail::Access::operand(C),true);}
+     // E,y: [count][steps], W: [count][steps][ncols], out: [count][nmax+1][ncols].
+     // Powers start at powi(y,n0), then multiply by y for each ascending n; E is multiplied afterwards.
+     template<class T> void power_moments(CommandBatch& b,const PowerMoments& s,const Buffer<T>& E,const Buffer<T>& y,const Buffer<T>& W,Buffer<T>& out){
+diff --git a/src/batched_linalg.metal b/src/batched_linalg.metal
+index f61bcc5..e210efb 100644
+--- a/src/batched_linalg.metal
++++ b/src/batched_linalg.metal
+@@ -239,3 +239,27 @@ kernel void batch_source_update(device const Complex<N>* state [[buffer(0)]],dev
+         batch_private_store(out[2*(p.sc+v)+part],value);
+     }
+ }
++
++// Gauss is per product, with rounded reconstruction before each sequential dot update.
++// Three real products are computed once per complex output, not once per component.
++kernel void batch_private_gauss(device const Complex<N>* A [[buffer(0)]],device const Complex<N>* B [[buffer(1)]],device Number<N>* C [[buffer(2)]],constant BatchParams& p [[buffer(3)]],uint index [[thread_position_in_grid]]){
++    ulong entry=index,t=entry/(p.m*p.n),cell=entry%(p.m*p.n),row=cell/p.n,col=cell%p.n;
++    if(t>=p.count)return;ulong o=2*(t*p.sc+cell);
++    PrivateNumber real=(p.flags&1)?batch_private_load(C[o]):limbforge_batched_private::zero<N>();
++    PrivateNumber imag=(p.flags&1)?batch_private_load(C[o+1]):limbforge_batched_private::zero<N>();
++    _Pragma("clang loop unroll(disable)") for(ulong k=0;k<p.k;++k){
++        PrivateNumber ar=batch_private_load(A[t*p.sa+row*p.k+k].re),ai=batch_private_load(A[t*p.sa+row*p.k+k].im);
++        PrivateNumber br=batch_private_load(B[t*p.sb+k*p.n+col].re),bi=batch_private_load(B[t*p.sb+k*p.n+col].im);
++        PrivateNumber products[3];
++        _Pragma("clang loop unroll(disable)") for(uint j=0;j<3;++j){
++            PrivateNumber left=j==0?ar:j==1?ai:limbforge_batched_private::add(ar,ai);
++            PrivateNumber right=j==0?br:j==1?bi:limbforge_batched_private::add(br,bi);
++            products[j]=limbforge_batched_private::mul<N,true>(left,right);
++        }
++        PrivateNumber r=limbforge_batched_private::sub(products[0],products[1]);
++        PrivateNumber i=limbforge_batched_private::sub(limbforge_batched_private::sub(products[2],products[0]),products[1]);
++        real=limbforge_batched_private::add(r,real);imag=limbforge_batched_private::add(i,imag);
++    }
++    if(p.flags&2){real=limbforge_batched_private::negate(real);imag=limbforge_batched_private::negate(imag);}
++    batch_private_store(C[o],real);batch_private_store(C[o+1],imag);
++}
+diff --git a/src/batched_linalg.mm b/src/batched_linalg.mm
+index 83d2000..d10979e 100644
+--- a/src/batched_linalg.mm
++++ b/src/batched_linalg.mm
+@@ -152,6 +152,14 @@ Timing BatchedLinalg::gemm(int bits,bool complex,const StridedGemm& s,const void
+     // Preserve padding between output matrices even in overwrite mode.
+     return host_call(*engine_,bits,complex,sizes,pointers,true,[&](CommandBatch& b,O a,O bb,O,O c){encode_gemm(b,bits,complex,s,a,bb,c);});
+ }
++void BatchedLinalg::prewarm_gauss(const std::vector<int>& bits){
++    for(int width:bits)bits_ok(width);prepare(impl_->cache,bits,{{"batch_private_gauss",false}});
++}
++Timing BatchedLinalg::gemm_gauss(int bits,const StridedGemm& s,const void* A,const void* B,void* C){
++    if(s.fused)throw std::invalid_argument("Gauss GEMM: fused mode is not defined");
++    std::size_t sizes[4]={extent(s.count,s.stride_a,mul_size(s.m,s.k)),extent(s.count,s.stride_b,mul_size(s.k,s.n)),0,extent(s.count,s.stride_c,mul_size(s.m,s.n))};const void* pointers[4]={A,B,nullptr,C};
++    return host_call(*engine_,bits,true,sizes,pointers,true,[&](CommandBatch& b,O a,O bb,O,O c){encode_gemm_sequence(b,bits,true,s,a,bb,c,true);});
++}
+ Timing BatchedLinalg::power_moments(int bits,bool complex,const PowerMoments& s,const void* E,const void* y,const void* W,void* out){
+     return power_moments(bits,complex,s,E,y,W,out,PowerStorage::full_table);
+ }
+@@ -161,6 +169,10 @@ Timing BatchedLinalg::power_moments(int bits,bool complex,const PowerMoments& s,
+     return host_call(*engine_,bits,complex,sizes,pointers,s.accumulate,[&](CommandBatch& b,O e,O yy,O w,O c){encode_power(b,bits,complex,s,e,yy,w,c,storage);});
+ }
+ void BatchedLinalg::encode_gemm(CommandBatch& b,int bits,bool complex,const StridedGemm& s,O A,O B,O C){
++    encode_gemm_sequence(b,bits,complex,s,A,B,C,false);
++}
++void BatchedLinalg::encode_gemm_sequence(CommandBatch& b,int bits,bool complex,const StridedGemm& s,O A,O B,O C,bool gauss){
++    if(gauss&&(!complex||s.fused))throw std::invalid_argument("Gauss GEMM: composed complex inputs required");
+     bits_ok(bits);auto as=mul_size(s.m,s.k),bs=mul_size(s.k,s.n),cs=mul_size(s.m,s.n);grid_ok(mul_size(s.count,cs));
+     if(s.count>1&&s.stride_c<cs)throw std::invalid_argument("batched GEMM: output matrices overlap");
+     size_ok(A,extent(s.count,s.stride_a,as));size_ok(B,extent(s.count,s.stride_b,bs));size_ok(C,extent(s.count,s.stride_c,cs));distinct(C,{A,B});
+@@ -168,7 +180,8 @@ void BatchedLinalg::encode_gemm(CommandBatch& b,int bits,bool complex,const Stri
+     auto a=retain(b,A,extent(s.count,s.stride_a,as)),bb=retain(b,B,extent(s.count,s.stride_b,bs)),c=retain(b,C,extent(s.count,s.stride_c,cs),true);
+     Params p{s.count,s.m,s.n,s.k,s.stride_a,s.stride_b,s.stride_c,0,std::uint32_t(s.accumulate)|(std::uint32_t(s.negative)<<1)};
+     const bool small=s.m==4&&s.n==4&&s.k==4;
+-    if(complex)impl_->pass(b,bits,"batch_private_complex",p,{{0,a},{1,bb},{2,c}},s.count*cs,s.fused,false,true);
++    if(gauss)impl_->pass(b,bits,"batch_private_gauss",p,{{0,a},{1,bb},{2,c}},s.count*cs);
++    else if(complex)impl_->pass(b,bits,"batch_private_complex",p,{{0,a},{1,bb},{2,c}},s.count*cs,s.fused,false,true);
+     else impl_->pass(b,bits,small?"batch_gemm4_real":"batch_gemm_real",p,{{0,a},{1,bb},{2,c}},s.count*cs,s.fused,true);
+ }
+ void BatchedLinalg::encode_power(CommandBatch& b,int bits,bool complex,const PowerMoments& s,O E,O y,O W,O out,PowerStorage storage){
+diff --git a/tests/reference.hpp b/tests/reference.hpp
+index 4785c45..cb2c166 100644
+--- a/tests/reference.hpp
++++ b/tests/reference.hpp
+@@ -53,6 +53,13 @@ template<int Bits> limbforge::Complex<Bits/32> complex(limbforge::Operation op,l
+     return {real<Bits>(O::div,plus(times(a.re,b.re),times(a.im,b.im)),d),
+             real<Bits>(O::div,minus(times(a.im,b.re),times(a.re,b.im)),d)};
+ }
++// Independent per-product Gauss sequence, every scalar primitive rounded at Bits.
++template<int Bits> limbforge::Complex<Bits/32> complex_gauss(limbforge::Complex<Bits/32> a,limbforge::Complex<Bits/32> b){
++    using O=limbforge::Operation;
++    auto p=real<Bits>(O::mul,a.re,b.re),q=real<Bits>(O::mul,a.im,b.im);
++    auto s=real<Bits>(O::mul,real<Bits>(O::add,a.re,a.im),real<Bits>(O::add,b.re,b.im));
++    return {real<Bits>(O::sub,p,q),real<Bits>(O::sub,real<Bits>(O::sub,s,p),q)};
++}
+ // RN(a*b + c) or RN(a*b - c) with one rounding: mpfr_fma / mpfr_fms.
+ template<int Bits> limbforge::Float<Bits> fused(const limbforge::Float<Bits>& a,const limbforge::Float<Bits>& b,const limbforge::Float<Bits>& c,bool subtract=false){
+     if(a.status|b.status|c.status)return limbforge::zero<Bits/32>(a.status|b.status|c.status);
+diff --git a/tests/test_section9_gauss.cpp b/tests/test_section9_gauss.cpp
+new file mode 100644
+index 0000000..fa96def
+--- /dev/null
++++ b/tests/test_section9_gauss.cpp
+@@ -0,0 +1,42 @@
++#include "section9_cases.hpp"
++#include <memory>
++// The oracle performs MPFR scalar operations at B, including every intermediate sum.
++template<int B> std::vector<C<B>> gauss_reference(const StridedGemm& s,const std::vector<C<B>>& a,const std::vector<C<B>>& b,std::vector<C<B>> out){
++    for(std::size_t t=0;t<s.count;++t)for(std::size_t i=0;i<s.m;++i)for(std::size_t j=0;j<s.n;++j){
++        C<B> sum=s.accumulate?out[t*s.stride_c+i*s.n+j]:C<B>{zero<B/32>(),zero<B/32>()};
++        for(std::size_t k=0;k<s.k;++k)sum=reference::complex<B>(Operation::complex_add,sum,reference::complex_gauss<B>(a[t*s.stride_a+i*s.k+k],b[t*s.stride_b+k*s.n+j]));
++        if(s.negative){sum.re=negate(sum.re);sum.im=negate(sum.im);}out[t*s.stride_c+i*s.n+j]=sum;
++    }return out;
++}
++template<int B> void audit(Engine* engine,bool dense){
++    std::mt19937_64 rng(B+501);std::unique_ptr<BatchedLinalg> unit;if(engine){unit=std::make_unique<BatchedLinalg>(*engine);unit->prewarm_gauss({B});}
++    for(bool small:{false,true})for(int span:{8,1000})for(bool acc:{false,true})for(unsigned broadcast:{0u,1u,2u}){
++        StridedGemm s;s.count=dense?(small?4097:257):3;s.m=small?4:9;s.n=small?4:5;s.k=small?4:17;
++        s.stride_a=broadcast==1?0:s.m*s.k+2;s.stride_b=broadcast==2?0:s.k*s.n+3;s.stride_c=s.m*s.n+3;s.accumulate=acc;s.negative=acc;
++        std::vector<C<B>> a(s.stride_a?(s.count-1)*s.stride_a+s.m*s.k:s.m*s.k),b(s.stride_b?(s.count-1)*s.stride_b+s.k*s.n:s.k*s.n),initial(s.count*s.stride_c);
++        for(auto* v:{&a,&b,&initial})for(auto& z:*v)z={reference::random_number<B>(rng,span),reference::random_number<B>(rng,span)};
++        a[1]={negate(a[0].re),negate(a[0].im)};for(std::size_t j=0;j<s.n;++j)b[s.n+j]=b[j];
++        a[s.k+2].im=zero<B/32>(invalid);b.back().re=zero<B/32>(exponent_overflow);
++        auto expected=gauss_reference<B>(s,a,b,initial);
++        if(!engine)continue;
++        auto ab=put(*engine,a),bb=put(*engine,b),out=put(*engine,initial);
++        for(int repeat=0;repeat<(dense?3:1);++repeat){out.upload(initial.data(),initial.size());auto batch=engine->batch();unit->gemm_gauss(batch,s,ab,bb,out);batch.submit().wait();check<B>(get(out),expected,"native per-product Gauss resident");}
++        if(!dense){auto host=initial;unit->gemm_gauss(B,s,a.data(),b.data(),host.data());check<B>(host,expected,"native per-product Gauss host");}
++    }
++    if(engine){StridedGemm s{3,4,4,0,0,0,19,true,false,true};std::vector<C<B>> initial(57);for(auto& z:initial)z={reference::random_number<B>(rng),reference::random_number<B>(rng)};
++        auto expected=gauss_reference<B>(s,{}, {},initial);auto out=put(*engine,initial);Buffer<C<B>> unused;auto batch=engine->batch();unit->gemm_gauss(batch,s,unused,unused,out);batch.submit().wait();check<B>(get(out),expected,"native Gauss empty accumulated dot");
++        s.fused=true;bool rejected=false;try{auto reject=engine->batch();unit->gemm_gauss(reject,s,unused,unused,out);}catch(const std::invalid_argument&){rejected=true;}if(!rejected)throw std::runtime_error("Gauss fused request was accepted");
++    }
++    std::cout<<B<<" bits: native Gauss "<<(engine?"host/resident references passed":"MPFR fixtures prepared; no GPU")<<std::endl;
++}
++int main(int argc,char** argv){try{bool all=false,dense=false,cpu=false,bits_given=false;int bits=352;
++    for(int i=1;i<argc;++i){std::string a=argv[i];if(a=="--all-widths")all=true;else if(a=="--dense")dense=true;else if(a=="--cpu-only")cpu=true;else if(a=="--bits"&&i+1<argc){bits_given=true;std::string value=argv[++i];std::size_t used;bits=std::stoi(value,&used);if(used!=value.size()||bits<64||bits>1024||bits%32)throw std::invalid_argument("invalid width");}else throw std::invalid_argument("unknown option");}
++    if(all&&bits_given)throw std::invalid_argument("choose --bits or --all-widths");
++    std::unique_ptr<Engine> engine;if(!cpu)engine=std::make_unique<Engine>();
++    auto run=[&](int b){switch(b){
++#define LF_WIDTH(B) case B:audit<B>(engine.get(),dense);break;
++LF_WIDTH(64) LF_WIDTH(96) LF_WIDTH(128) LF_WIDTH(160) LF_WIDTH(192) LF_WIDTH(224) LF_WIDTH(256) LF_WIDTH(288) LF_WIDTH(320) LF_WIDTH(352) LF_WIDTH(384) LF_WIDTH(416) LF_WIDTH(448) LF_WIDTH(480) LF_WIDTH(512) LF_WIDTH(544) LF_WIDTH(576) LF_WIDTH(608) LF_WIDTH(640) LF_WIDTH(672) LF_WIDTH(704) LF_WIDTH(736) LF_WIDTH(768) LF_WIDTH(800) LF_WIDTH(832) LF_WIDTH(864) LF_WIDTH(896) LF_WIDTH(928) LF_WIDTH(960) LF_WIDTH(992) LF_WIDTH(1024)
++#undef LF_WIDTH
++        default:throw std::invalid_argument("unsupported width");}};
++    if(all){for(int b=64;b<=1024;b+=32)run(b);}else run(bits);return 0;
++}catch(const std::exception& e){std::cerr<<e.what()<<'\n';return 1;}}

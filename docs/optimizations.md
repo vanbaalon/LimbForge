@@ -252,3 +252,15 @@ both CPU results match the recorded baseline exactly. The runner controls every
 candidate switch and requires all selected GPU markers. Existing binaries are
 retained. Requested g=.1/.2/.5, idle timing, memory and damping/base work remains
 open. [Complete patch and independently checked records](../benchmarks/experiments/section9_consumer_integrated.md).
+
+## Section 9 P1.3: native Gauss passes correctness, fails speed acceptance
+
+The isolated three-product kernel passes all 31 small/dense/wide normal/Metal
+checks and 26 normal/19 Metal regression suites. A benchmark subset selector
+also passes 16 focused checks with an unchanged numerical archive. All 22 checked
+352/384/448-bit Fourier/4x4 host/resident profiles lose to composed: native needs
+1.25–2.44 times its observed wall-time quantile. Every timed output is checked;
+raw ranges, accuracy, load, memory and numerical-gate hashes are retained.
+No new installed API/default or minor release is accepted from this candidate.
+Further scheduling, exact small-batch products and tile work remain open.
+[Full source and measured decision](../benchmarks/experiments/section9_native_gauss.md).

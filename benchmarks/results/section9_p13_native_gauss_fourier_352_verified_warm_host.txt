@@ -1,0 +1,69 @@
+cpu_sample,0,0,complex_composed,0.593569542
+cpu_sample,0,1,complex_fused,2.062450333
+cpu_sample,0,2,exact_real_embedding,1.295168417
+cpu_sample,0,3,gauss_three_real_composed,0.520570417
+cpu_sample,0,4,native_gauss_per_product,0.619278625
+gpu_sample,0,0,complex_composed,0.09965825,0.0978169166483
+gpu_sample,0,1,complex_fused,0.212324167,0.209661500005
+gpu_sample,0,2,exact_real_embedding,0.011048125,0.00648987502791
+gpu_sample,0,3,gauss_three_real_composed,0.085033666,0.0806775416131
+gpu_sample,0,4,native_gauss_per_product,0.219867875,0.21778175002
+cpu_sample,1,0,complex_fused,2.327584708
+cpu_sample,1,1,exact_real_embedding,1.278561458
+cpu_sample,1,2,gauss_three_real_composed,0.549419541
+cpu_sample,1,3,native_gauss_per_product,0.617745708
+cpu_sample,1,4,complex_composed,0.6649795
+gpu_sample,1,0,complex_fused,0.207717,0.205598375003
+gpu_sample,1,1,exact_real_embedding,0.010516458,0.00624241668265
+gpu_sample,1,2,gauss_three_real_composed,0.081138709,0.0766918333247
+gpu_sample,1,3,native_gauss_per_product,0.217478,0.215359624999
+gpu_sample,1,4,complex_composed,0.114500375,0.112355541671
+cpu_sample,2,0,exact_real_embedding,1.343613166
+cpu_sample,2,1,gauss_three_real_composed,0.564099
+cpu_sample,2,2,native_gauss_per_product,0.700996917
+cpu_sample,2,3,complex_composed,0.6803035
+cpu_sample,2,4,complex_fused,2.13512975
+gpu_sample,2,0,exact_real_embedding,0.011134041,0.00658129167277
+gpu_sample,2,1,gauss_three_real_composed,0.079283292,0.0745339999557
+gpu_sample,2,2,native_gauss_per_product,0.205138292,0.202953500033
+gpu_sample,2,3,complex_composed,0.107058375,0.104957208328
+gpu_sample,2,4,complex_fused,0.22411375,0.222010000027
+cpu_sample,3,0,gauss_three_real_composed,0.531997458
+cpu_sample,3,1,native_gauss_per_product,0.636025875
+cpu_sample,3,2,complex_composed,0.723155208
+cpu_sample,3,3,complex_fused,2.131646291
+cpu_sample,3,4,exact_real_embedding,1.310255167
+gpu_sample,3,0,gauss_three_real_composed,0.078804167,0.0746775000007
+gpu_sample,3,1,native_gauss_per_product,0.20421175,0.202077833295
+gpu_sample,3,2,complex_composed,0.108296375,0.10607525002
+gpu_sample,3,3,complex_fused,0.227742208,0.225646166655
+gpu_sample,3,4,exact_real_embedding,0.011255583,0.00706795835868
+cpu_sample,4,0,native_gauss_per_product,0.634010791
+cpu_sample,4,1,complex_composed,0.718790625
+cpu_sample,4,2,complex_fused,2.224288292
+cpu_sample,4,3,exact_real_embedding,1.288292667
+cpu_sample,4,4,gauss_three_real_composed,0.534754875
+gpu_sample,4,0,native_gauss_per_product,0.20545775,0.203202583361
+gpu_sample,4,1,complex_composed,0.105343292,0.103158833343
+gpu_sample,4,2,complex_fused,0.225892792,0.223748999997
+gpu_sample,4,3,exact_real_embedding,0.011540459,0.00701441668207
+gpu_sample,4,4,gauss_three_real_composed,0.091397417,0.0868843750213
+Device: Apple M5 Max; immutable MPFR references check every timed CPU/GPU output; numeric-array transfers included; bridge conversion excluded; exact Linalg host workers=18
+       40.92 real       504.07 user         1.21 sys
+          1157496832  maximum resident set size
+                   0  average shared memory size
+                   0  average unshared data size
+                   0  average unshared stack size
+               71494  page reclaims
+                   2  page faults
+                   0  swaps
+                   0  block input operations
+                   0  block output operations
+                   0  messages sent
+                   0  messages received
+                   0  signals received
+                   0  voluntary context switches
+              252600  involuntary context switches
+       5593620955820  instructions retired
+       2047460440061  cycles elapsed
+          2443577024  peak memory footprint

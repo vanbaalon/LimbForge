@@ -1,0 +1,99 @@
+{
+  "state": "terminal",
+  "exit": 0,
+  "benchmark_sha256": "06df81e957bc60d56e0412c5633ce422cf237b0784e9f81f6b210d4d744e288f",
+  "binary_sha256": "30240a9699faeac0e82d93578f1e65e8e05ff8e4e5cae8515e9b54f411b2cd0a",
+  "checks": [
+    {
+      "command": [
+        "./build/section9_gemm_limbforge",
+        "--paths",
+        "native,native"
+      ],
+      "exit": 1,
+      "stderr": "duplicate path\n"
+    },
+    {
+      "command": [
+        "./build/section9_gemm_limbforge",
+        "--paths",
+        "native,"
+      ],
+      "exit": 1,
+      "stderr": "unknown path: \n"
+    },
+    {
+      "command": [
+        "./build/section9_gemm_limbforge",
+        "--paths",
+        ",composed"
+      ],
+      "exit": 1,
+      "stderr": "unknown path: \n"
+    },
+    {
+      "command": [
+        "./build/section9_gemm_limbforge",
+        "--paths",
+        "unknown"
+      ],
+      "exit": 1,
+      "stderr": "unknown path: unknown\n"
+    },
+    {
+      "command": [
+        "./build/section9_gemm_limbforge",
+        "--path",
+        "native",
+        "--paths",
+        "composed"
+      ],
+      "exit": 1,
+      "stderr": "specify only one path selector\n"
+    },
+    {
+      "command": [
+        "./build/section9_gemm_limbforge",
+        "--bits",
+        "352",
+        "--count",
+        "3",
+        "--m",
+        "7",
+        "--n",
+        "11",
+        "--k",
+        "5",
+        "--workers",
+        "2",
+        "--paths",
+        "composed,gauss,native",
+        "--cpu-only"
+      ],
+      "exit": 0,
+      "stdout": "352 bits: five CPU contracts prepared; MPFR exact dots match independent high-precision sums; no GPU or timings\n"
+    },
+    {
+      "command": [
+        "./build/section9_gemm_limbforge",
+        "--bits",
+        "1024",
+        "--count",
+        "3",
+        "--m",
+        "7",
+        "--n",
+        "11",
+        "--k",
+        "5",
+        "--workers",
+        "2",
+        "--paths",
+        "composed,gauss,native",
+        "--cpu-only"
+      ],
+      "exit": 0,
+      "stdout": "1024 bits: five CPU contracts prepared; MPFR exact dots match independent high-precision sums; no GPU or timings\n"
+    }
+  ]
+}

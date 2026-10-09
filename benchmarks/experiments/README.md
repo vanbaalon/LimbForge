@@ -141,3 +141,8 @@ GPU tests before measuring it. Never overwrite accepted result files.
   source patch applies the three checked off-default adapters locally. A separate
   matching 1.3.1 build passes focused normal/Metal and J3 default/combined checks.
   Full g sweep, idle timings and remaining damping/base work are still pending.
+
+- [Native per-product Gauss](section9_native_gauss.md): all-width/full correctness
+  passes, but 22 checked width/shape/residency profiles lose to composed. Complete
+  source is retained as an unaccepted prototype; no installed API/default changes.
+  `check_section9_gauss_measurements.py` verifies raw quantiles and gate provenance.

@@ -2,6 +2,12 @@
 
 ## Unreleased
 
+- Retained the native per-product Gauss experiment: all-width normal/Metal and
+  broad regression checks pass, but all 22 checked Fourier/4x4 profiles lose to
+  composed GEMM. Archived the complete source, rotating-subset benchmark,
+  correctness provenance and verified raw measurements; no production API or
+  default change is accepted.
+
 - Archived isolated Fourier, tangent product3 and batched LU4 consumer prototypes
   with completed MPFR/Metal checks and independently verified saved J3 GPU
   replays. LU4 covers all supported widths plus 374-bit consumer precision.

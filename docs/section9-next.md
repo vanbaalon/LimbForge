@@ -135,6 +135,12 @@ a row in `docs/optimizations.md`, rejected attempts kept under `benchmarks/exper
 - **Benchmark:** commit one for the trials (shape above), including `cholesky_solve` with several right-hand sides (the chord steps).
 
 **P1.3: GEMM kernel.**
+- **Native three-product decision:** the isolated per-product Gauss kernel passes
+  all 31 small/dense/wide normal/Metal checks and 26 normal/19 Metal regressions,
+  but loses to composed in all 22 checked 352/384/448-bit Fourier/4x4 profiles
+  (1.25–2.44 times the observed wall-time quantile). It is not promoted as an
+  optimization or public API. A tested rotating subset selector makes large 4x4
+  comparisons practical. [Full source, gates and measurements](../benchmarks/experiments/section9_native_gauss.md).
 - **Prepared comparison:** opt-in `section9_gemm_limbforge` compares composed/fused
   complex GEMM, exact real embedding and a separately documented three-real-GEMM
   Gauss sequence. All 31 CPU exact-reference checks and focused 352/1024 GPU cases

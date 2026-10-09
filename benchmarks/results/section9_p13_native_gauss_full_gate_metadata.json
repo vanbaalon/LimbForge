@@ -1,0 +1,88 @@
+{
+  "state": "terminal",
+  "scope": "Native Gauss all31 dense/wide and broad normal/shader; no timings",
+  "sha256": {
+    "include/limbforge/batched_linalg.hpp": "bab756bf6f7d38a91bb8616879c093afbd6c5ec523de0d07e041d07b8fdc361a",
+    "src/batched_linalg.mm": "2488c881e44125b8be0e19ddac8dddd61106ec2bf6c57bd255dee67adc282e79",
+    "src/batched_linalg.metal": "5b5116f9572f2f6f68f15dd1466dbd25cfc0319e33386387fef4b856f494a8a8",
+    "tests/reference.hpp": "0d34dc8c3b4e7bcbc5129849df92a1c684a000bdefcaddfad3b41b28fd539f12",
+    "tests/test_section9_gauss.cpp": "f4ebca2c85679c1bc3eeae513b45c268019f3ce325122b5cf73a6a330fbbe404",
+    "benchmarks/section9_gemm.cpp": "2cc9b3a7d3b040953c4bfd2c7283ca0f51b05059ee27c4a41c6fd9c70579c0f2",
+    "build/liblimbforge.a": "36f9e28e1a0bd836898d21a2f82ed037cfa79da3ec63993966fe1cb18706d3d4",
+    "build/test_limbforge_section9_gauss": "372b0aa7765ce5feeca59d94211db184ad686439acbc0dae5fa8057367f8f7dd",
+    "build/section9_gemm_limbforge": "d772de7ab479df3bb72ad22068e0f6a4932c2cec1736da65e20046d1a5255a86"
+  },
+  "steps": [
+    {
+      "command": [
+        "cmake",
+        "--build",
+        "build",
+        "-j4"
+      ],
+      "shader_validation": false,
+      "state": "terminal",
+      "log": "section9_p13_native_gauss_gate_build.txt",
+      "pid": 27553,
+      "exit": 0,
+      "log_sha256": "7ef110811dcd8e59ace7615e29a0515ea7c6684edcda994efa49dd9e46c54e6a"
+    },
+    {
+      "command": [
+        "./build/test_limbforge_section9_gauss",
+        "--all-widths",
+        "--dense"
+      ],
+      "shader_validation": false,
+      "state": "terminal",
+      "log": "section9_p13_native_gauss_gate_dense_normal.txt",
+      "pid": 28410,
+      "exit": 0,
+      "log_sha256": "dfc6c52b790dce584d31d870844ab226f6b499e37ceb879d9ce505dfbc2630ec"
+    },
+    {
+      "command": [
+        "./build/test_limbforge_section9_gauss",
+        "--all-widths",
+        "--dense"
+      ],
+      "shader_validation": true,
+      "state": "terminal",
+      "log": "section9_p13_native_gauss_gate_dense_shader.txt",
+      "pid": 29176,
+      "exit": 0,
+      "log_sha256": "030eb953a72036c6b8e67acbd4ece817a532962af010a5aaa8903b43914b6726"
+    },
+    {
+      "command": [
+        "ctest",
+        "--test-dir",
+        "build",
+        "--output-on-failure"
+      ],
+      "shader_validation": false,
+      "state": "terminal",
+      "log": "section9_p13_native_gauss_gate_full_normal.txt",
+      "pid": 30121,
+      "exit": 0,
+      "log_sha256": "9f56195e78c5be6d34d0cd39e6d41e029c82fbbd33d88db8676150696daa1bf7"
+    },
+    {
+      "command": [
+        "ctest",
+        "--test-dir",
+        "build",
+        "-E",
+        "_cpu$",
+        "--output-on-failure"
+      ],
+      "shader_validation": true,
+      "state": "terminal",
+      "log": "section9_p13_native_gauss_gate_full_shader.txt",
+      "pid": 36034,
+      "exit": 0,
+      "log_sha256": "34926dd991a40466d4667080059338c842e8738b1b0ee290f4e812e31bdbeeeb"
+    }
+  ],
+  "exit": 0
+}

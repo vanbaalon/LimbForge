@@ -1,0 +1,51 @@
+cpu_sample,0,0,complex_composed,0.017502625
+cpu_sample,0,1,complex_fused,0.059110917
+cpu_sample,0,2,gauss_three_real_composed,0.016778208
+cpu_sample,0,3,native_gauss_per_product,0.017196625
+gpu_sample,0,0,complex_composed,0.01071375,0.00912116665859
+gpu_sample,0,1,complex_fused,0.013093917,0.0115186666953
+gpu_sample,0,2,gauss_three_real_composed,0.008165666,0.00283424998634
+gpu_sample,0,3,native_gauss_per_product,0.006769,0.00515495828586
+cpu_sample,1,0,complex_fused,0.0634065
+cpu_sample,1,1,gauss_three_real_composed,0.014398375
+cpu_sample,1,2,native_gauss_per_product,0.016417875
+cpu_sample,1,3,complex_composed,0.018760792
+gpu_sample,1,0,complex_fused,0.013162625,0.0114772500237
+gpu_sample,1,1,gauss_three_real_composed,0.00659,0.00292599998647
+gpu_sample,1,2,native_gauss_per_product,0.008247875,0.00671487499494
+gpu_sample,1,3,complex_composed,0.006584375,0.005066624959
+cpu_sample,2,0,gauss_three_real_composed,0.014604958
+cpu_sample,2,1,native_gauss_per_product,0.016926833
+cpu_sample,2,2,complex_composed,0.01715375
+cpu_sample,2,3,complex_fused,0.059192292
+gpu_sample,2,0,gauss_three_real_composed,0.010038292,0.00652045838069
+gpu_sample,2,1,native_gauss_per_product,0.012553333,0.0110822499846
+gpu_sample,2,2,complex_composed,0.005739708,0.00419954169774
+gpu_sample,2,3,complex_fused,0.008443458,0.00691462500254
+cpu_sample,3,0,native_gauss_per_product,0.016999959
+cpu_sample,3,1,complex_composed,0.017666708
+cpu_sample,3,2,complex_fused,0.067082958
+cpu_sample,3,3,gauss_three_real_composed,0.015389417
+gpu_sample,3,0,native_gauss_per_product,0.015678291,0.0142000000342
+gpu_sample,3,1,complex_composed,0.006614208,0.00509337498806
+gpu_sample,3,2,complex_fused,0.009773542,0.00827774999198
+gpu_sample,3,3,gauss_three_real_composed,0.006508084,0.00285062502371
+Device: Apple M5 Max; immutable MPFR references check every timed CPU/GPU output; numeric-array transfers included; bridge conversion excluded; exact Linalg host workers=18
+        1.24 real         6.03 user         0.09 sys
+           679460864  maximum resident set size
+                   0  average shared memory size
+                   0  average unshared data size
+                   0  average unshared stack size
+               41877  page reclaims
+                   2  page faults
+                   0  swaps
+                   0  block input operations
+                   0  block output operations
+                   0  messages sent
+                   0  messages received
+                   0  signals received
+                   0  voluntary context switches
+                2777  involuntary context switches
+         84181957324  instructions retired
+         25557919780  cycles elapsed
+          1452246312  peak memory footprint

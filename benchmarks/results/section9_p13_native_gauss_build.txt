@@ -1,0 +1,22 @@
+[  0%] Building CXX object CMakeFiles/limbforge.dir/src/version.cpp.o
+[ 14%] Building OBJCXX object CMakeFiles/limbforge.dir/src/linalg_complex.mm.o
+[ 28%] Building OBJCXX object CMakeFiles/limbforge.dir/src/engine.mm.o
+[ 42%] Building OBJCXX object CMakeFiles/limbforge.dir/src/linalg.mm.o
+[ 57%] Building OBJCXX object CMakeFiles/limbforge.dir/src/batched_linalg.mm.o
+/private/tmp/wolfnum-section9-native-gauss/src/engine.mm:420:75: warning: missing field 'b_stride' initializer [-Wmissing-field-initializers]
+  420 |         Params params={std::uint32_t(count),std::uint32_t(operation),0,0,1};[encoder setBytes:&params length:sizeof(params) atIndex:3];
+      |                                                                           ^
+1 warning generated.
+[ 71%] Building OBJCXX object CMakeFiles/limbforge.dir/src/numerics.mm.o
+[ 71%] Building OBJCXX object CMakeFiles/limbforge.dir/src/transcendental.mm.o
+[ 85%] Linking CXX static library liblimbforge.a
+[ 85%] Built target limbforge
+[ 85%] Building CXX object CMakeFiles/test_limbforge_section9_gauss.dir/tests/test_section9_gauss.cpp.o
+/private/tmp/wolfnum-section9-native-gauss/tests/test_section9_gauss.cpp:38:10: fatal error: 'limbforge/widths.inc' file not found
+   38 | #include "limbforge/widths.inc"
+      |          ^~~~~~~~~~~~~~~~~~~~~~
+1 error generated.
+gmake[3]: *** [CMakeFiles/test_limbforge_section9_gauss.dir/build.make:79: CMakeFiles/test_limbforge_section9_gauss.dir/tests/test_section9_gauss.cpp.o] Error 1
+gmake[2]: *** [CMakeFiles/Makefile2:1645: CMakeFiles/test_limbforge_section9_gauss.dir/all] Error 2
+gmake[1]: *** [CMakeFiles/Makefile2:1652: CMakeFiles/test_limbforge_section9_gauss.dir/rule] Error 2
+gmake: *** [Makefile:738: test_limbforge_section9_gauss] Error 2

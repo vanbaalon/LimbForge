@@ -1,0 +1,2 @@
+2026-10-09 05:30:15.428 section9_gemm_limbforge[47770:263750522] Metal GPU Validation Enabled
+1024 bits, 3x(7x5x11): 1 selected GPU contracts match MPFR; no timings
