@@ -1,0 +1,109 @@
+{
+  "status": "PASS",
+  "synthetic_data": true,
+  "gpu_work": false,
+  "source_sha256": "27aae13bff4d9421f1e087eb8bdb2abbd4b3b8f3f832c2b076a9727f8b2b7c2e",
+  "positive_comparison_and_clock": true,
+  "guards": [
+    {
+      "name": "missing_contract_row",
+      "rejected": true,
+      "reason": "missing/duplicate comparison contract rows"
+    },
+    {
+      "name": "duplicate_contract_row",
+      "rejected": true,
+      "reason": "missing/duplicate comparison contract rows"
+    },
+    {
+      "name": "wrong_shape",
+      "rejected": true,
+      "reason": "comparison scope differs from command"
+    },
+    {
+      "name": "wrong_clock",
+      "rejected": true,
+      "reason": "comparison scope differs from command"
+    },
+    {
+      "name": "wrong_cpu_median",
+      "rejected": true,
+      "reason": "raw median mismatch cpu_wall"
+    },
+    {
+      "name": "wrong_gpu_median",
+      "rejected": true,
+      "reason": "raw median mismatch gpu_wall"
+    },
+    {
+      "name": "wrong_device_median",
+      "rejected": true,
+      "reason": "raw median mismatch gpu_device"
+    },
+    {
+      "name": "wrong_quartile",
+      "rejected": true,
+      "reason": "raw quantile mismatch wall_p25"
+    },
+    {
+      "name": "negative_device",
+      "rejected": true,
+      "reason": "nonfinite/negative gpu_device"
+    },
+    {
+      "name": "nonfinite_error",
+      "rejected": true,
+      "reason": "nonfinite/negative error_units_2neg_bits"
+    },
+    {
+      "name": "inexact_exact_contract",
+      "rejected": true,
+      "reason": "exact contract differs from exact oracle"
+    },
+    {
+      "name": "missing_raw_sample",
+      "rejected": true,
+      "reason": "missing raw cpu_sample"
+    },
+    {
+      "name": "wrong_path_rotation",
+      "rejected": true,
+      "reason": "raw selected-path rotation mismatch"
+    },
+    {
+      "name": "missing_clock_sample",
+      "rejected": true,
+      "reason": "clock phase/repetition coverage mismatch"
+    },
+    {
+      "name": "duplicate_clock_repetition",
+      "rejected": true,
+      "reason": "clock phase/repetition coverage mismatch"
+    },
+    {
+      "name": "wrong_clock_count",
+      "rejected": true,
+      "reason": "clock scope mismatch"
+    },
+    {
+      "name": "wrong_clock_calls",
+      "rejected": true,
+      "reason": "clock scope mismatch"
+    },
+    {
+      "name": "zero_clock_device",
+      "rejected": true,
+      "reason": "invalid clock timing"
+    },
+    {
+      "name": "nonfinite_clock_wall",
+      "rejected": true,
+      "reason": "invalid clock timing"
+    },
+    {
+      "name": "missing_clock_verification_marker",
+      "rejected": true,
+      "reason": "missing checked clock output marker"
+    }
+  ]
+}
