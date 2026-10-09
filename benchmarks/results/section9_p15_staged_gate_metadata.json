@@ -1,0 +1,43 @@
+{
+  "recorded_utc": "2026-10-09T01:56:48.976901+00:00",
+  "revision": "f21cafb5066282a81a2b667cc8c712e881679287",
+  "device": "Apple M5 Max",
+  "load_before": [
+    7.416015625,
+    11.53515625,
+    13.26904296875
+  ],
+  "sha256": {
+    "include/limbforge/batched_linalg.hpp": "92875a2a8ad1657429205a1100ef174b5e13907b4f4960e7a4a49ac6936a0a9e",
+    "src/batched_linalg.mm": "b4e28e05107490b7a0bb0660a045ae3da0494dde0781d7156ded43ddc1d8ca33",
+    "src/batched_linalg.metal": "71b8e269d0db50a76b20d2a8df65e3d3efcc587c9812ac598ebd0a19620f5507",
+    "tests/test_section9_audit.cpp": "5f4cdf9e8aedee303c3927d7d8b9af8b80788401de23a2e558bbcf2d5e353400",
+    "tests/section9_cases.hpp": "93a5443e784c2f3687ca05e221d5a91276c269a8314b8d3505ac5336fe1673c7",
+    "build/liblimbforge.a": "ee131892a5c0c0a115a95ce119a676d07d72bbd13fe21f9cc71f788804bf304c",
+    "build/test_limbforge_section9_audit": "a960a33f23a8aeebeb6f80a486792ea6fb8476d43b124f4eef83e8522b685103"
+  },
+  "expanded_recurrence_normal": "31/31 PASS",
+  "expanded_recurrence_shader_validation": "31/31 PASS",
+  "standalone_source_final_recheck": {
+    "normal": "31/31 PASS",
+    "shader_validation": "31/31 PASS",
+    "logs": [
+      "section9_p15_staged_sources_final_reference.txt",
+      "section9_p15_staged_sources_final_validation.txt"
+    ]
+  },
+  "full_suite": "pending",
+  "gpu_validation_suite": "pending",
+  "benchmark_acceptance": "pending",
+  "benchmark_target_build": {
+    "recorded_utc": "2026-10-09T02:05:05.895073+00:00",
+    "note": "Adding an excluded benchmark target caused CMake to rebuild the archive after a prior rebase. Numerical source and audit/test binaries were unchanged. Original gate hashes are retained; this archive is recorded separately and will need final linked-consumer checks before acceptance.",
+    "archive_sha256": "b0a28c9b335f09c8f7672afd9c45a9b55bc74670bfa547a093299f18865c07e1"
+  },
+  "prepared_benchmark": {
+    "cpu_helper_reference": "31/31 PASS; independent exact-product/mpfr_sum check; no GPU timing",
+    "gpu_fixture_checks": "pending full-suite gates",
+    "archive_sha256": "b0a28c9b335f09c8f7672afd9c45a9b55bc74670bfa547a093299f18865c07e1",
+    "benchmark_sha256": "4000d26f55809fb9703e7a87ea2b78359b4a7b22f3ab411db8f9880c0aa36756"
+  }
+}

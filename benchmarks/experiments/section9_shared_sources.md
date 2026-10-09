@@ -60,8 +60,48 @@ sharing factors 1, 3 and 7 (the last exceeds the five-lane input), up to 17 Horn
 and the dense 513-lane fixture, composed/fused, reverse/all_steps, empty inputs and statuses.
 Records: `section9_p15_staged_recurrence_expanded_reference.txt` / `...validation.txt`.
 
-The standalone source API's final expanded all-width recheck and the complete 26/19
-suite gates remain pending. No benchmark acceptance yet.
+The standalone source API's final expanded all-width normal and shader-validation
+rechecks also pass, `section9_p15_staged_sources_final_reference.txt` / `...validation.txt`.
+The complete 26/19 suite gates are running. No benchmark acceptance yet.
+
+## Prepared benchmark (no timings yet)
+
+`section9_sources_limbforge` compares the legacy per-lane path with the explicit shared
+candidate. Its CPU baseline also evaluates each group's sources only once, then applies
+sequential MPFR recurrence updates on an 18-worker pool. MPFR objects and packed inputs
+are prepared outside timing; source evaluation and every recurrence update are timed on
+both CPU and GPU. The CPU uses four rounded products in composed mode and `mpfr_dot`
+for each exact fused component. A separate CPU-only check compares that helper with
+exact-product/`mpfr_sum` references at all 31 widths, including aliasing, zeros, exact
+cancellation and wide exponent gaps (all pass). No GPU or benchmark timings are involved
+in that helper check.
+
+GPU path order alternates per repetition, with every initial, warm-up and timed output
+checked against MPFR. `--resident` excludes input upload and output download from wall
+time; the default includes them using already allocated buffers. MPFR/MPC bridge
+conversion is outside this numeric-array benchmark and must be timed separately by the
+consumer. CPU timed results are checked again outside timing. Raw sample order/device/wall
+values go to stderr; CSV gives medians, quartiles and range. `--warm` performs one verified
+untimed call immediately before each sample, labelled `verified-warm-call`; it is not a
+claim of continuously warm clocks. The default is labelled `cpu-interleaved`, not a
+controlled cold-clock experiment. Scratch bytes are logical p/q + two Horner tables +
+one lane-dot table; minimum Metal allocation granularity is excluded.
+
+Build first with `cmake -S . -B build`, then
+`cmake --build build --target section9_sources_limbforge -j4`. The target is excluded
+from default builds and CTest. Run shape/contract checks before recording measurements:
+
+```sh
+./build/section9_sources_limbforge --bits 352 --lanes 513 --steps 3 --terms 3 --share 2 --fused --reverse --all-steps --check-only
+./build/section9_sources_limbforge --bits 1024 --lanes 17 --steps 7 --terms 17 --share 7 --resident --per-group --fused --check-only
+```
+
+Measure 352/384/448-bit point/column workloads with terms 24/60/100, steps 100/160/250,
+and sharing factors 1/16/60, including sharing tails. Start at practical shapes before
+attempting the largest workload. Repeated interleaved host/resident runs, load metadata
+and solver-size fixture checks remain pending. Keep source tables reusable by other
+consumers; the recurrence helper remains rank-one, while Engine provides the other modes.
+
 
 The initial staged source build had an address-space mismatch on a copied coefficient;
 the compile-error log is retained and the device-load expression is corrected.
