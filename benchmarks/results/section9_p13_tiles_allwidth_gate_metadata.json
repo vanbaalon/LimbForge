@@ -1,0 +1,265 @@
+{
+  "state": "terminal",
+  "started_utc": "2026-10-09T07:26:48.897211+00:00",
+  "commit": "e84473f71b710c6656750ef1acd6542ae2cdd448",
+  "sha256": {
+    "src/batched_linalg.mm": "331e5fd6391bffbd1a498ac6380c3f38085b4bd82c9d619fe315c91c03d9eea7",
+    "src/batched_linalg.metal": "4269ea0334cf851fc6454f27660264f1d055d54d12370386634b4cca2e0d1994",
+    "include/limbforge/core.hpp": "12cc4bcd199bc0957275f55f7e7462f79918ad19fb3f21b55404d08119ef2ce8",
+    "build/liblimbforge.a": "df6bfa0d06b2a6f124aa4574ba501aea405beae29c8c9b0fb10bda63d0deea41",
+    "build/test_limbforge_section9_audit": "03c09c9dd5fa9a12bf13ea8eb842565050828416ee8404625c42ef4b12a0a14b"
+  },
+  "scope": "Private complex tiles; all 31 widths, composed/fused, wide exponents and dense cross-thread cases, normal plus shader validation. No timing.",
+  "steps": [
+    {
+      "tile": "8x4auto",
+      "shader_validation": false,
+      "command": [
+        "./build/test_limbforge_section9_audit",
+        "--all-widths",
+        "--gemm-only"
+      ],
+      "log": "section9_p13_tiles_allwidth_gate_8x4auto_normal_gemm.txt",
+      "state": "terminal",
+      "pid": 16919,
+      "exit": 0,
+      "elapsed_seconds": 120.53293570899405,
+      "log_sha256": "d9df94ac29b85a0f1001cc1bdde6ac8cae9c52fde9da1a11458ec931f6eed3e8"
+    },
+    {
+      "tile": "8x4auto",
+      "shader_validation": false,
+      "command": [
+        "./build/test_limbforge_section9_audit",
+        "--all-widths",
+        "--spread-only",
+        "--dense"
+      ],
+      "log": "section9_p13_tiles_allwidth_gate_8x4auto_normal_dense_spread.txt",
+      "state": "terminal",
+      "pid": 17281,
+      "exit": 0,
+      "elapsed_seconds": 116.21582800004398,
+      "log_sha256": "d77e805efbd3c85afad308ea8999d7b7c516415ff4294d3dd0a7f0f508b48377"
+    },
+    {
+      "tile": "8x4auto",
+      "shader_validation": true,
+      "command": [
+        "./build/test_limbforge_section9_audit",
+        "--all-widths",
+        "--gemm-only"
+      ],
+      "log": "section9_p13_tiles_allwidth_gate_8x4auto_shader_gemm.txt",
+      "state": "terminal",
+      "pid": 17596,
+      "exit": 0,
+      "elapsed_seconds": 231.76590874994872,
+      "log_sha256": "020fd528105ea008479159fb5b1d8b8e529510ba209652fc64a3ea88f9efab22"
+    },
+    {
+      "tile": "8x4auto",
+      "shader_validation": true,
+      "command": [
+        "./build/test_limbforge_section9_audit",
+        "--all-widths",
+        "--spread-only",
+        "--dense"
+      ],
+      "log": "section9_p13_tiles_allwidth_gate_8x4auto_shader_dense_spread.txt",
+      "state": "terminal",
+      "pid": 18630,
+      "exit": 0,
+      "elapsed_seconds": 128.00813520798692,
+      "log_sha256": "2a84d19e35a80dd5c8b1a082fac2787aa7b4b637d0e723b3e6f15307677271ed"
+    },
+    {
+      "tile": "8x4k4",
+      "shader_validation": false,
+      "command": [
+        "./build/test_limbforge_section9_audit",
+        "--all-widths",
+        "--gemm-only"
+      ],
+      "log": "section9_p13_tiles_allwidth_gate_8x4k4_normal_gemm.txt",
+      "state": "terminal",
+      "pid": 19579,
+      "exit": 0,
+      "elapsed_seconds": 73.84600433299784,
+      "log_sha256": "d9df94ac29b85a0f1001cc1bdde6ac8cae9c52fde9da1a11458ec931f6eed3e8"
+    },
+    {
+      "tile": "8x4k4",
+      "shader_validation": false,
+      "command": [
+        "./build/test_limbforge_section9_audit",
+        "--all-widths",
+        "--spread-only",
+        "--dense"
+      ],
+      "log": "section9_p13_tiles_allwidth_gate_8x4k4_normal_dense_spread.txt",
+      "state": "terminal",
+      "pid": 20437,
+      "exit": 0,
+      "elapsed_seconds": 140.24832033301936,
+      "log_sha256": "d77e805efbd3c85afad308ea8999d7b7c516415ff4294d3dd0a7f0f508b48377"
+    },
+    {
+      "tile": "8x4k4",
+      "shader_validation": true,
+      "command": [
+        "./build/test_limbforge_section9_audit",
+        "--all-widths",
+        "--gemm-only"
+      ],
+      "log": "section9_p13_tiles_allwidth_gate_8x4k4_shader_gemm.txt",
+      "state": "terminal",
+      "pid": 21140,
+      "exit": 0,
+      "elapsed_seconds": 128.45247591700172,
+      "log_sha256": "37845ce055c8bd749a18a05fbec18b87dd9b8accaf0e2f3200b8808900649a53"
+    },
+    {
+      "tile": "8x4k4",
+      "shader_validation": true,
+      "command": [
+        "./build/test_limbforge_section9_audit",
+        "--all-widths",
+        "--spread-only",
+        "--dense"
+      ],
+      "log": "section9_p13_tiles_allwidth_gate_8x4k4_shader_dense_spread.txt",
+      "state": "terminal",
+      "pid": 21636,
+      "exit": 0,
+      "elapsed_seconds": 124.79565474996343,
+      "log_sha256": "e3ccbea2def639abbcfa180ddf9b1cf963fac27a77bbcd1d55d7152c0192adf2"
+    },
+    {
+      "tile": "8x4k8",
+      "shader_validation": false,
+      "command": [
+        "./build/test_limbforge_section9_audit",
+        "--all-widths",
+        "--gemm-only"
+      ],
+      "log": "section9_p13_tiles_allwidth_gate_8x4k8_normal_gemm.txt",
+      "state": "terminal",
+      "pid": 21972,
+      "exit": 0,
+      "elapsed_seconds": 53.12137991696363,
+      "log_sha256": "d9df94ac29b85a0f1001cc1bdde6ac8cae9c52fde9da1a11458ec931f6eed3e8"
+    },
+    {
+      "tile": "8x4k8",
+      "shader_validation": false,
+      "command": [
+        "./build/test_limbforge_section9_audit",
+        "--all-widths",
+        "--spread-only",
+        "--dense"
+      ],
+      "log": "section9_p13_tiles_allwidth_gate_8x4k8_normal_dense_spread.txt",
+      "state": "terminal",
+      "pid": 23256,
+      "exit": 0,
+      "elapsed_seconds": 116.7461026670062,
+      "log_sha256": "d77e805efbd3c85afad308ea8999d7b7c516415ff4294d3dd0a7f0f508b48377"
+    },
+    {
+      "tile": "8x4k8",
+      "shader_validation": true,
+      "command": [
+        "./build/test_limbforge_section9_audit",
+        "--all-widths",
+        "--gemm-only"
+      ],
+      "log": "section9_p13_tiles_allwidth_gate_8x4k8_shader_gemm.txt",
+      "state": "terminal",
+      "pid": 23614,
+      "exit": 0,
+      "elapsed_seconds": 104.69060891598929,
+      "log_sha256": "99a81b8d5afcadcba7ecd19b380993b4944a62955fd3a457421af37a2f2c21e3"
+    },
+    {
+      "tile": "8x4k8",
+      "shader_validation": true,
+      "command": [
+        "./build/test_limbforge_section9_audit",
+        "--all-widths",
+        "--spread-only",
+        "--dense"
+      ],
+      "log": "section9_p13_tiles_allwidth_gate_8x4k8_shader_dense_spread.txt",
+      "state": "terminal",
+      "pid": 23907,
+      "exit": 0,
+      "elapsed_seconds": 123.2839182500029,
+      "log_sha256": "069ddccaf2a4115dff7e218bf5e7941f68ab1cd76b882668f79a82984f16dc8b"
+    },
+    {
+      "tile": "8x8k4",
+      "shader_validation": false,
+      "command": [
+        "./build/test_limbforge_section9_audit",
+        "--all-widths",
+        "--gemm-only"
+      ],
+      "log": "section9_p13_tiles_allwidth_gate_8x8k4_normal_gemm.txt",
+      "state": "terminal",
+      "pid": 24258,
+      "exit": 0,
+      "elapsed_seconds": 65.6472369999974,
+      "log_sha256": "d9df94ac29b85a0f1001cc1bdde6ac8cae9c52fde9da1a11458ec931f6eed3e8"
+    },
+    {
+      "tile": "8x8k4",
+      "shader_validation": false,
+      "command": [
+        "./build/test_limbforge_section9_audit",
+        "--all-widths",
+        "--spread-only",
+        "--dense"
+      ],
+      "log": "section9_p13_tiles_allwidth_gate_8x8k4_normal_dense_spread.txt",
+      "state": "terminal",
+      "pid": 24452,
+      "exit": 0,
+      "elapsed_seconds": 118.32806808303576,
+      "log_sha256": "d77e805efbd3c85afad308ea8999d7b7c516415ff4294d3dd0a7f0f508b48377"
+    },
+    {
+      "tile": "8x8k4",
+      "shader_validation": true,
+      "command": [
+        "./build/test_limbforge_section9_audit",
+        "--all-widths",
+        "--gemm-only"
+      ],
+      "log": "section9_p13_tiles_allwidth_gate_8x8k4_shader_gemm.txt",
+      "state": "terminal",
+      "pid": 24816,
+      "exit": 0,
+      "elapsed_seconds": 127.39533295796718,
+      "log_sha256": "011a3258cabb0031d4f1993d8093c8b47666be7bb62f5dd280d4237ceddb4fef"
+    },
+    {
+      "tile": "8x8k4",
+      "shader_validation": true,
+      "command": [
+        "./build/test_limbforge_section9_audit",
+        "--all-widths",
+        "--spread-only",
+        "--dense"
+      ],
+      "log": "section9_p13_tiles_allwidth_gate_8x8k4_shader_dense_spread.txt",
+      "state": "terminal",
+      "pid": 25723,
+      "exit": 1,
+      "elapsed_seconds": 0.589069124951493,
+      "log_sha256": "694dd3ddc2eef36b08b4e0fe2c5e560681ab1b5cec128e770aa0f6769a08510c"
+    }
+  ],
+  "exit": 1,
+  "finished_utc": "2026-10-09T07:56:23.051356+00:00"
+}

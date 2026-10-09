@@ -1,0 +1,21 @@
+{
+  "state": "terminal",
+  "exit": 1,
+  "command": [
+    "env",
+    "WOLFNUM_COMPLEX_GEMM_TILE=8x8k4",
+    "MTL_SHADER_VALIDATION=1",
+    "./build/test_limbforge_section9_audit",
+    "--bits",
+    "64",
+    "--spread-only",
+    "--dense"
+  ],
+  "result": "Named accumulators still fail dense64 shader, different index184 imaginary high word lost",
+  "sha256": {
+    "src/batched_linalg.metal": "660438c21bc5485d2659ed67fc245327aa3cb02e719ef57e4e1c0b209a1adfcf",
+    "build/liblimbforge.a": "b48f550b52cae5d774541cd15753e3ea873026f1659343534b9a56111eaedca6",
+    "build/test_limbforge_section9_audit": "0395da9ca362e286f06e6a3ffc3dc43997a2c36d23279d72065540fb0bedbeca",
+    "benchmarks/results/section9_p13_static_accum_8x8_64_shader.txt": "39d811f318aa8765182c621c900f367f3f77c159fc1b4b6e6861baaad6a622d8"
+  }
+}

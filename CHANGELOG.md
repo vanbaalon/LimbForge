@@ -2,6 +2,9 @@
 
 ## Unreleased
 
+- Retained rejected 8x8 complex register-blocking attempts and all-width tile
+  evidence; no numerical kernel/default or performance acceptance.
+
 - Archived and independently verified matching 1.3.1 qscmx replay records: J=3
   g=.202 converges at its input tolerance; the historical J=2 g=.2 diagnostic
   remains stalled. No new consumer switch, complete g sweep or timing acceptance.

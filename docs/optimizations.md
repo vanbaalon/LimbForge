@@ -161,7 +161,7 @@ under shader validation. Combined 1.2.0 API checks also pass in both modes. No m
 
 ## Section 9 P1.2: rejected sequential block trials
 
-The three-pass panel candidate passed all31 factor/solve widths normally and under
+The three-pass panel candidate passed all 31 factor/solve widths normally and under
 shader validation, the full26 normal and19 validation suites, and six corrected-backend
 benchmark comparisons. It nevertheless lost to scalar at n=200/400/944 and to the exact
 Linalg loop for factor plus three-RHS solve. No production selector or default change
@@ -172,7 +172,7 @@ objective and actual batched exact-contract implementation remain pending.
 
 ## Section 9 P2.2: exact batched baseline, target unmet
 
-An isolated shared-SYRK/parallel-panel driver passes all31 normal/shader references,
+An isolated shared-SYRK/parallel-panel driver passes all 31 normal/shader references,
 26 normal suites,19 distinct shader suites and four rebuilt linked fixtures. Its
 first n944/count8/352-bit factor measurement loses about11% to the production exact
 loop (0.685s vs0.619s), so no numerical API/default change or3x improvement is accepted.
@@ -200,3 +200,11 @@ binary identities, the converged J=3 g=.202 fixture and the still-stalled J=2 g=
 fixture. Delta/history/residual values and GPU/adjoint markers match raw outputs.
 No new switch or idle timing is accepted; requested g=.1/.2/.5 coverage remains
 open. [Raw evidence and scope](../benchmarks/experiments/section9_consumer_replay.md).
+
+## Section 9 P1.3: rejected register-blocked tile attempts
+
+Three 8x4 configurations with one output per thread and varying K tiles configurations pass all 31 small, dense and wide-exponent sweeps in
+normal/shader modes. The 8x8 configuration with two outputs per thread passes normal and small shader cases but fails
+dense 64-bit shader validation; named accumulators also fail. The 16x8 all-width sweep did not run.
+No production kernel/default or speed claim is accepted. Remaining power/broad
+gates and timings are still required for valid candidates. [Records and patches](../benchmarks/experiments/section9_complex_tiles.md).

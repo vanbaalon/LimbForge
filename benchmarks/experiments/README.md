@@ -124,3 +124,7 @@ GPU tests before measuring it. Never overwrite accepted result files.
   reproduce the expanded audit's failure. No compiler root cause is asserted.
 
 - `section9_blocked_trials_rejected.patch` (base `02bca53`): all-width correctness passed, but the checked sequential block trial candidate lost to scalar and the exact Linalg loop. See `section9_blocked_trials.md` and `section9_p12_*` evidence. Private selectors and benchmarks in this patch apply only to the retained candidate, not production main.
+
+- Section 9 private complex tiling, base `deee518`: three 8x4 candidates pass all 31
+  normal/shader small, dense and wide-exponent sweeps; register-blocked 8x8 and named-accumulator
+  correction fail dense 64-bit shader checks. [Report and retained patches](section9_complex_tiles.md).

@@ -1,0 +1,157 @@
+diff --git a/src/batched_linalg.metal b/src/batched_linalg.metal
+index f61bcc5..d6ee660 100644
+--- a/src/batched_linalg.metal
++++ b/src/batched_linalg.metal
+@@ -157,6 +157,63 @@ kernel void batch_private_complex(device const Complex<N>* A [[buffer(0)]],devic
+     if(p.flags&2)sum=limbforge_batched_private::negate(sum);batch_private_store(C[o],sum);
+ }
+ 
++// Private experiment: logical storage and padded scalar arithmetic stay unchanged.
++#if WOLFNUM_TILE_REGISTERS != 0
++constant uint WTREG=WOLFNUM_TILE_REGISTERS,WTM=WTREG==4?16:8,WTN=WTREG==1?4:8;
++constant uint WTK=WOLFNUM_TILE_K?WOLFNUM_TILE_K:TK;
++inline PrivateNumber batch_private_load_tg(threadgroup const Number<N>& x){
++    PrivateNumber r=limbforge_batched_private::zero<N>();for(int j=0;j<N;++j)r.limb[j]=x.limb[j];
++    r.exponent=x.exponent;r.sign=x.sign;r.status=x.status;return r;
++}
++inline PrivateNumber batch_private_mac(PrivateNumber ar,PrivateNumber ai,PrivateNumber br,PrivateNumber bi,PrivateNumber sum,uint part){
++    if(batch_fused)return limbforge_batched_private::dot2_add_rolled(ar,br,part?ai:limbforge_batched_private::negate(ai),bi,sum);
++    PrivateNumber x=limbforge_batched_private::mul<N,true>(ar,br),y=limbforge_batched_private::mul<N,true>(ai,bi);
++    return limbforge_batched_private::add(part?limbforge_batched_private::add(x,y):limbforge_batched_private::sub(x,y),sum);
++}
++kernel void batch_private_complex_tiled(device const Complex<N>* A [[buffer(0)]],device const Complex<N>* B [[buffer(1)]],device Number<N>* C [[buffer(2)]],constant BatchParams& p [[buffer(3)]],uint3 tid [[thread_position_in_threadgroup]],uint3 tile [[threadgroup_position_in_grid]]){
++    threadgroup Complex<N> a[WTM*WTK],b[WTK*WTN];uint lane=tid.y*32+tid.x,part=tid.y;
++    ulong base=tile.z;PrivateNumber sum[WTREG];Complex<N> z=bz(Complex<N>{});
++    _Pragma("clang loop unroll(disable)") for(uint q=0;q<WTREG;++q){
++        ulong row=ulong(tile.y)*WTM+tid.x/4+(q/2)*8,col=ulong(tile.x)*WTN+tid.x%4+(q%2)*4;
++        bool valid=row<p.m&&col<p.n;ulong o=2*(base*p.sc+(row+p.row_offset)*p.n+col)+part;
++        sum[q]=valid&&(p.flags&1)?batch_private_load(C[o]):limbforge_batched_private::zero<N>();
++    }
++    _Pragma("clang loop unroll(disable)") for(ulong k0=0;k0<p.k;k0+=WTK){
++        for(uint j=lane;j<WTM*WTK;j+=64){ulong row=ulong(tile.y)*WTM+j/WTK,k=k0+j%WTK;a[j]=row<p.m&&k<p.k?A[base*p.sa+row*p.k+k]:z;}
++        for(uint j=lane;j<WTK*WTN;j+=64){ulong k=k0+j/WTN,col=ulong(tile.x)*WTN+j%WTN;b[j]=k<p.k&&col<p.n?B[base*p.sb+k*p.n+col]:z;}
++        threadgroup_barrier(mem_flags::mem_threadgroup);
++        _Pragma("clang loop unroll(disable)") for(uint k=0;k<min(ulong(WTK),p.k-k0);++k){
++            _Pragma("clang loop unroll(disable)") for(uint q=0;q<WTREG;++q){
++                uint row=tid.x/4+(q/2)*8,col=tid.x%4+(q%2)*4;
++                PrivateNumber ar=batch_private_load_tg(a[row*WTK+k].re),ai=batch_private_load_tg(a[row*WTK+k].im);
++                PrivateNumber br=batch_private_load_tg(part?b[k*WTN+col].im:b[k*WTN+col].re),bi=batch_private_load_tg(part?b[k*WTN+col].re:b[k*WTN+col].im);
++                sum[q]=batch_private_mac(ar,ai,br,bi,sum[q],part);
++            }
++        }
++        threadgroup_barrier(mem_flags::mem_threadgroup);
++    }
++    _Pragma("clang loop unroll(disable)") for(uint q=0;q<WTREG;++q){
++        ulong row=ulong(tile.y)*WTM+tid.x/4+(q/2)*8,col=ulong(tile.x)*WTN+tid.x%4+(q%2)*4;
++        if(row<p.m&&col<p.n){if(p.flags&2)sum[q]=limbforge_batched_private::negate(sum[q]);batch_private_store(C[2*(base*p.sc+(row+p.row_offset)*p.n+col)+part],sum[q]);}
++    }
++}
++kernel void batch_private_complex4_tiled(device const Complex<N>* A [[buffer(0)]],device const Complex<N>* B [[buffer(1)]],device Number<N>* C [[buffer(2)]],constant BatchParams& p [[buffer(3)]],uint3 tid [[thread_position_in_threadgroup]],uint3 group [[threadgroup_position_in_grid]]){
++    threadgroup Complex<N> a[32],b[32];uint lane=tid.y*32+tid.x,cell=tid.x%16,part=tid.y;
++    ulong base=ulong(group.x)*2+tid.x/16;Complex<N> z=bz(Complex<N>{});
++    for(uint j=lane;j<64;j+=64){uint item=j%32;ulong t=ulong(group.x)*2+item/16;
++        if(j<32)a[item]=t<p.count?A[t*p.sa+item%16]:z;else b[item]=t<p.count?B[t*p.sb+item%16]:z;}
++    threadgroup_barrier(mem_flags::mem_threadgroup);ulong o=2*(base*p.sc+p.row_offset*p.n+cell)+part;
++    PrivateNumber sum=base<p.count&&(p.flags&1)?batch_private_load(C[o]):limbforge_batched_private::zero<N>();
++    _Pragma("clang loop unroll(disable)") for(uint k=0;k<4;++k){
++        uint av=(tid.x/16)*16+(cell/4)*4+k,bv=(tid.x/16)*16+k*4+cell%4;
++        PrivateNumber ar=batch_private_load_tg(a[av].re),ai=batch_private_load_tg(a[av].im);
++        PrivateNumber br=batch_private_load_tg(part?b[bv].im:b[bv].re),bi=batch_private_load_tg(part?b[bv].re:b[bv].im);
++        sum=batch_private_mac(ar,ai,br,bi,sum,part);
++    }
++    if(base<p.count){if(p.flags&2)sum=limbforge_batched_private::negate(sum);batch_private_store(C[o],sum);}
++}
++#endif
++
+ // Compact power panels preserve the unscaled repeated-multiplication state.
+ // Requires BatchParams::row_offset and private cmul using padded product workspaces.
+ using PrivateComplex=limbforge_batched_private::Complex<N>;
+diff --git a/src/batched_linalg.mm b/src/batched_linalg.mm
+index 83d2000..b00f084 100644
+--- a/src/batched_linalg.mm
++++ b/src/batched_linalg.mm
+@@ -30,11 +30,21 @@ struct BatchedPipelines {
+     id<MTLDevice> device;std::map<int,id<MTLLibrary>> libs;
+     std::map<std::tuple<int,std::string,bool>,id<MTLComputePipelineState>> pipelines;
+     std::mutex mutex;
+-    explicit BatchedPipelines(id<MTLDevice> d):device(d){}
++    unsigned tile_registers=0,tile_k=0;
++    explicit BatchedPipelines(id<MTLDevice> d):device(d){
++        const char* mode=std::getenv("WOLFNUM_COMPLEX_GEMM_TILE");if(!mode||std::strcmp(mode,"scalar")==0)return;
++        if(std::strcmp(mode,"8x4auto")==0)tile_registers=1;
++        else if(std::strcmp(mode,"8x4k4")==0){tile_registers=1;tile_k=4;}
++        else if(std::strcmp(mode,"8x4k8")==0){tile_registers=1;tile_k=8;}
++        else if(std::strcmp(mode,"8x8k4")==0){tile_registers=2;tile_k=4;}
++        else if(std::strcmp(mode,"16x8k4")==0){tile_registers=4;tile_k=4;}
++        else throw std::invalid_argument("private complex GEMM tile selector: unknown mode");
++    }
++    const char* complex_name(std::size_t m,std::size_t n,std::size_t k)const{return !tile_registers?"batch_private_complex":m==4&&n==4&&k==4?"batch_private_complex4_tiled":"batch_private_complex_tiled";}
+     id<MTLComputePipelineState> pipeline(int bits,const char* name,bool fused=false){
+         std::lock_guard<std::mutex> lock(mutex);auto key=std::make_tuple(bits,std::string(name),fused);auto it=pipelines.find(key);if(it!=pipelines.end())return it->second;
+         @autoreleasepool {auto& lib=libs[bits];NSError* error=nil;if(!lib){auto options=[MTLCompileOptions new];options.languageVersion=MTLLanguageVersion3_1;options.mathMode=MTLMathModeSafe;
+-            NSString* source=[NSString stringWithFormat:@"#define LF_BITS %d\n%s",bits,limbforge_batched_linalg_source];lib=[device newLibraryWithSource:source options:options error:&error];
++            NSString* source=[NSString stringWithFormat:@"#define LF_BITS %d\n#define WOLFNUM_TILE_REGISTERS %u\n#define WOLFNUM_TILE_K %u\n%s",bits,tile_registers,tile_k,limbforge_batched_linalg_source];lib=[device newLibraryWithSource:source options:options error:&error];
+             if(!lib)throw std::runtime_error("batched algebra Metal compilation: "+message(error));}
+         auto constants=[MTLFunctionConstantValues new];[constants setConstantValue:&fused type:MTLDataTypeBool atIndex:0];
+         auto f=[lib newFunctionWithName:[NSString stringWithUTF8String:name] constantValues:constants error:&error];
+@@ -53,7 +63,13 @@ struct BatchedLinalg::Impl {
+         if(!count)return;if(I::device(b)!=device)throw std::invalid_argument("batched algebra: foreign batch device");
+         auto state=pipeline(bits,name,fused);I::keep(b,state);auto encoder=I::compute(b);[encoder setComputePipelineState:state];
+         for(auto& bind:buffers)[encoder setBuffer:bind.second->buffer offset:0 atIndex:bind.first];[encoder setBytes:&p length:sizeof p atIndex:3];
+-        if(tiled){if(state.maxTotalThreadsPerThreadgroup<32)throw std::runtime_error("batched GEMM cannot fit a SIMD group");
++        if(std::strcmp(name,"batch_private_complex_tiled")==0||std::strcmp(name,"batch_private_complex4_tiled")==0){
++            if(state.maxTotalThreadsPerThreadgroup<64)throw std::runtime_error("private complex GEMM tile cannot fit two SIMD groups");
++            const bool small=p.m==4&&p.n==4&&p.k==4;auto rows=cache->tile_registers==4?16:8,cols=cache->tile_registers==1?4:8;
++            auto grid=small?MTLSizeMake((p.count+1)/2,1,1):MTLSizeMake((p.n+cols-1)/cols,(p.m+rows-1)/rows,p.count);
++            [encoder dispatchThreadgroups:grid threadsPerThreadgroup:MTLSizeMake(32,2,1)];
++        }
++        else if(tiled){if(state.maxTotalThreadsPerThreadgroup<32)throw std::runtime_error("batched GEMM cannot fit a SIMD group");
+             auto grid=p.m==4&&p.n==4&&p.k==4?MTLSizeMake((p.count+1)/2,1,1):MTLSizeMake((p.n+3)/4,(p.m+7)/8,p.count);
+             [encoder dispatchThreadgroups:grid threadsPerThreadgroup:MTLSizeMake(32,1,1)];}
+         else{NSUInteger tg=std::min<NSUInteger>(state.threadExecutionWidth,state.maxTotalThreadsPerThreadgroup);
+@@ -99,14 +115,14 @@ BatchedWorkspaces BatchedLinalg::release_workspaces(){
+ }
+ namespace {
+ using WarmKeys=std::set<std::pair<std::string,bool>>;
+-WarmKeys prewarm_keys(const BatchedPrewarm& r){
++WarmKeys prewarm_keys(const BatchedPrewarm& r,const BatchedPipelines& cache){
+     for(int bits:r.bits)bits_ok(bits);
+     if(r.power_storage!=PowerStorage::full_table&&r.power_storage!=PowerStorage::compact)throw std::invalid_argument("prewarm: invalid power storage mode");
+     WarmKeys keys;
+     auto gemm=[&](const StridedGemm& s,bool complex){auto cs=mul_size(s.m,s.n);grid_ok(mul_size(s.count,cs));
+         if(s.count>1&&s.stride_c<cs)throw std::invalid_argument("prewarm GEMM: output matrices overlap");
+         extent(s.count,s.stride_a,mul_size(s.m,s.k));extent(s.count,s.stride_b,mul_size(s.k,s.n));extent(s.count,s.stride_c,cs);
+-        if(s.count&&cs)keys.emplace(complex?"batch_private_complex":s.m==4&&s.n==4&&s.k==4?"batch_gemm4_real":"batch_gemm_real",s.fused);
++        if(s.count&&cs)keys.emplace(complex?cache.complex_name(s.m,s.n,s.k):s.m==4&&s.n==4&&s.k==4?"batch_gemm4_real":"batch_gemm_real",s.fused);
+     };
+     for(auto& s:r.real_gemm)gemm(s,false);for(auto& s:r.complex_gemm)gemm(s,true);
+     auto power=[&](const PowerMoments& s,bool complex){auto rows=std::size_t(s.nmax)+1,ek=mul_size(s.count,s.steps);grid_ok(ek);mul_size(ek,rows);mul_size(ek,s.ncols);grid_ok(mul_size(mul_size(s.count,rows),s.ncols));
+@@ -125,8 +141,8 @@ WarmKeys prewarm_keys(const BatchedPrewarm& r){
+ }
+ void prepare(const std::shared_ptr<BatchedPipelines>& cache,const std::vector<int>& bits,const WarmKeys& keys){@autoreleasepool{for(int width:bits)for(auto& key:keys)cache->pipeline(width,key.first.c_str(),key.second);}}
+ }
+-void BatchedLinalg::prewarm(const BatchedPrewarm& r){auto keys=prewarm_keys(r);prepare(impl_->cache,r.bits,keys);}
+-std::future<void> BatchedLinalg::prewarm_async(BatchedPrewarm r){auto keys=prewarm_keys(r);auto cache=impl_->cache;return std::async(std::launch::async,[cache,bits=std::move(r.bits),keys=std::move(keys)]{prepare(cache,bits,keys);});}
++void BatchedLinalg::prewarm(const BatchedPrewarm& r){auto keys=prewarm_keys(r,*impl_->cache);prepare(impl_->cache,r.bits,keys);}
++std::future<void> BatchedLinalg::prewarm_async(BatchedPrewarm r){auto keys=prewarm_keys(r,*impl_->cache);auto cache=impl_->cache;return std::async(std::launch::async,[cache,bits=std::move(r.bits),keys=std::move(keys)]{prepare(cache,bits,keys);});}
+ namespace {
+ WarmKeys polynomial_prewarm_keys(const PolynomialPrewarm& r){
+     for(int bits:r.bits)bits_ok(bits);WarmKeys keys;
+@@ -168,7 +184,7 @@ void BatchedLinalg::encode_gemm(CommandBatch& b,int bits,bool complex,const Stri
+     auto a=retain(b,A,extent(s.count,s.stride_a,as)),bb=retain(b,B,extent(s.count,s.stride_b,bs)),c=retain(b,C,extent(s.count,s.stride_c,cs),true);
+     Params p{s.count,s.m,s.n,s.k,s.stride_a,s.stride_b,s.stride_c,0,std::uint32_t(s.accumulate)|(std::uint32_t(s.negative)<<1)};
+     const bool small=s.m==4&&s.n==4&&s.k==4;
+-    if(complex)impl_->pass(b,bits,"batch_private_complex",p,{{0,a},{1,bb},{2,c}},s.count*cs,s.fused,false,true);
++    if(complex)impl_->pass(b,bits,impl_->cache->complex_name(s.m,s.n,s.k),p,{{0,a},{1,bb},{2,c}},s.count*cs,s.fused,false,true);
+     else impl_->pass(b,bits,small?"batch_gemm4_real":"batch_gemm_real",p,{{0,a},{1,bb},{2,c}},s.count*cs,s.fused,true);
+ }
+ void BatchedLinalg::encode_power(CommandBatch& b,int bits,bool complex,const PowerMoments& s,O E,O y,O W,O out,PowerStorage storage){
+@@ -192,7 +208,7 @@ void BatchedLinalg::encode_power(CommandBatch& b,int bits,bool complex,const Pow
+     for(std::size_t first=0;first<rows;first+=tile_rows){p.m=std::min(tile_rows,rows-first);p.row_offset=first;
+         impl_->pass(b,bits,complex?"batch_panel_powers_complex":"batch_panel_powers_real",p,{{0,e},{1,yy},{2,work},{4,state}},ek);
+         Params g{s.count,p.m,s.ncols,s.steps,p.m*s.steps,std::size_t(s.steps)*s.ncols,shape.stride_c,0,std::uint32_t(s.accumulate),first};
+-        if(complex)impl_->pass(b,bits,"batch_private_complex",g,{{0,work},{1,w},{2,c}},s.count*p.m*s.ncols,s.fused,false,true);
++        if(complex)impl_->pass(b,bits,impl_->cache->complex_name(g.m,g.n,g.k),g,{{0,work},{1,w},{2,c}},s.count*p.m*s.ncols,s.fused,false,true);
+         else impl_->pass(b,bits,p.m==4&&s.ncols==4&&s.steps==4?"batch_gemm4_real":"batch_gemm_real",g,{{0,work},{1,w},{2,c}},s.count*p.m*s.ncols,s.fused,true);
+     }
+ }

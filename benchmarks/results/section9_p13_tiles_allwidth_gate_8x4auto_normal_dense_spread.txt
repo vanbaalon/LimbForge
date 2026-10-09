@@ -1,0 +1,63 @@
+Auditing 64 bits (dense repeats)
+64 bits: selected GEMM references passed
+Auditing 96 bits (dense repeats)
+96 bits: selected GEMM references passed
+Auditing 128 bits (dense repeats)
+128 bits: selected GEMM references passed
+Auditing 160 bits (dense repeats)
+160 bits: selected GEMM references passed
+Auditing 192 bits (dense repeats)
+192 bits: selected GEMM references passed
+Auditing 224 bits (dense repeats)
+224 bits: selected GEMM references passed
+Auditing 256 bits (dense repeats)
+256 bits: selected GEMM references passed
+Auditing 288 bits (dense repeats)
+288 bits: selected GEMM references passed
+Auditing 320 bits (dense repeats)
+320 bits: selected GEMM references passed
+Auditing 352 bits (dense repeats)
+352 bits: selected GEMM references passed
+Auditing 384 bits (dense repeats)
+384 bits: selected GEMM references passed
+Auditing 416 bits (dense repeats)
+416 bits: selected GEMM references passed
+Auditing 448 bits (dense repeats)
+448 bits: selected GEMM references passed
+Auditing 480 bits (dense repeats)
+480 bits: selected GEMM references passed
+Auditing 512 bits (dense repeats)
+512 bits: selected GEMM references passed
+Auditing 544 bits (dense repeats)
+544 bits: selected GEMM references passed
+Auditing 576 bits (dense repeats)
+576 bits: selected GEMM references passed
+Auditing 608 bits (dense repeats)
+608 bits: selected GEMM references passed
+Auditing 640 bits (dense repeats)
+640 bits: selected GEMM references passed
+Auditing 672 bits (dense repeats)
+672 bits: selected GEMM references passed
+Auditing 704 bits (dense repeats)
+704 bits: selected GEMM references passed
+Auditing 736 bits (dense repeats)
+736 bits: selected GEMM references passed
+Auditing 768 bits (dense repeats)
+768 bits: selected GEMM references passed
+Auditing 800 bits (dense repeats)
+800 bits: selected GEMM references passed
+Auditing 832 bits (dense repeats)
+832 bits: selected GEMM references passed
+Auditing 864 bits (dense repeats)
+864 bits: selected GEMM references passed
+Auditing 896 bits (dense repeats)
+896 bits: selected GEMM references passed
+Auditing 928 bits (dense repeats)
+928 bits: selected GEMM references passed
+Auditing 960 bits (dense repeats)
+960 bits: selected GEMM references passed
+Auditing 992 bits (dense repeats)
+992 bits: selected GEMM references passed
+Auditing 1024 bits (dense repeats)
+1024 bits: selected GEMM references passed
+Section 9 reference run passed; all 31 widths, dense repeats.

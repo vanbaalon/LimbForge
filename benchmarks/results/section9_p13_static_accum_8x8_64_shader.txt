@@ -1,0 +1,6 @@
+2026-10-09 04:02:20.397 test_limbforge_section9_audit[27188:254255330] Metal GPU Validation Enabled
+Auditing 64 bits (dense repeats)
+complex GEMM tiled fused=0 accumulate=0 index 184
+GPU: re{sign=1 exponent=1668 status=0 limbs=c740f91f df358c3e } im{sign=-1 exponent=1561 status=0 limbs=0 b144ee73 }
+MPFR: re{sign=1 exponent=1668 status=0 limbs=c740f91f df358c3e } im{sign=-1 exponent=1561 status=0 limbs=9b997320 b144ee73 }
+Section 9 audit: complex GEMM tiled fused=0 accumulate=0 index 184

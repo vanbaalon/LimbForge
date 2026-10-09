@@ -139,7 +139,9 @@ a row in `docs/optimizations.md`, rejected attempts kept under `benchmarks/exper
   complex GEMM, exact real embedding and a separately documented three-real-GEMM
   Gauss sequence. All 31 CPU exact-reference checks and focused 352/1024 GPU cases
   pass normally and under validation. 352-bit Fourier host/resident and 10,000/100,000 resident 4x4 timings
-  now pass every output check; tile/native-product work remains pending; see `benchmarks/experiments/section9_gemm_comparison.md`.
+  now pass every output check. Three private 8x4 tile configurations pass their all 31
+  normal/shader GEMM sweeps; register-blocked 8x8 and a named-accumulator correction
+  fail dense 64-bit shader validation. Remaining tile gates/timing and native-product acceptance remain pending; see `benchmarks/experiments/section9_gemm_comparison.md`.
 - **Historical baseline:** the pre-1.0.1 composed tiled GEMM measured 7.9× MPFR at
   the Fourier shape; remeasure the corrected backend before using that ratio.
 - **Compare it against:**
