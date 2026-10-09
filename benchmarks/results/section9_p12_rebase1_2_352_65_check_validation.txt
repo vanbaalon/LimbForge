@@ -1,0 +1,2 @@
+2026-10-08 23:25:54.545 section9_trials_limbforge[15419:234849259] Metal GPU Validation Enabled
+352 bits: 2 trials, n=65, 3 RHS: scalar, deferred panel, block panel and exact block-32 factors/solves match their MPFR references; no timings recorded

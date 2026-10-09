@@ -1,0 +1,19 @@
+cpu_sample,0,0,sequential,12.239790917
+cpu_sample,0,1,exact_block32,15.102400416
+sample,352,944,0,0,scalar,12.239790917,7.78812275,7.74205945834,cpu-interleaved
+sample,352,944,0,1,panel,12.239790917,8.028042209,8.01584800001,cpu-interleaved
+sample,352,944,0,2,block,12.239790917,8.069018125,8.0493910833,cpu-interleaved
+sample,352,944,0,3,exact_linalg_block32,15.102400416,1.099992167,0.436253750522,cpu-interleaved
+cpu_sample,1,0,exact_block32,17.31483225
+cpu_sample,1,1,sequential,13.856724167
+sample,352,944,1,0,panel,13.856724167,8.224017292,8.1912809583,cpu-interleaved
+sample,352,944,1,1,block,13.856724167,8.55313525,8.53078866669,cpu-interleaved
+sample,352,944,1,2,exact_linalg_block32,17.31483225,0.76142475,0.369141791249,cpu-interleaved
+sample,352,944,1,3,scalar,13.856724167,8.300589875,8.28847745835,cpu-interleaved
+cpu_sample,2,0,sequential,11.678021167
+cpu_sample,2,1,exact_block32,15.062213791
+sample,352,944,2,0,block,11.678021167,8.602292667,8.56595204165,cpu-interleaved
+sample,352,944,2,1,exact_linalg_block32,15.062213791,0.7633145,0.357691375772,cpu-interleaved
+sample,352,944,2,2,scalar,11.678021167,7.8926035,7.88393362501,cpu-interleaved
+sample,352,944,2,3,panel,11.678021167,8.012073833,7.99591950001,cpu-interleaved
+Device: Apple M5 Max; A=J^T J, K=n+n/6; mu=0.001*2^-trial; matched MPFR sequential/exact-block32 contracts; every timed CPU/GPU factor/solve checked; CPU concurrency <= 8; reused buffers, transfers included

@@ -1,0 +1,1 @@
+1024 bits: 4 trials, n=65, 3 RHS: scalar, deferred panel, block panel and exact block-32 factors/solves match their MPFR references; no timings recorded

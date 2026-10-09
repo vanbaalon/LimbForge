@@ -1,0 +1,22 @@
+{
+  "recorded_utc": "2026-10-09T03:29:58.819698+00:00",
+  "base": "02bca53",
+  "revision_before_records": "86b2d10477a42c2d70c0fcd9032b0913df322da5",
+  "logs": [
+    "section9_p12_rebase1_2_352_65_check_reference.txt",
+    "section9_p12_rebase1_2_1024_17_check_reference.txt",
+    "section9_p12_rebase1_2_352_65_check_validation.txt",
+    "section9_p12_rebase1_2_1024_17_check_validation.txt",
+    "section9_p12_rebase1_2_package.txt"
+  ],
+  "result": "four physical reference/validation fixtures and package2 PASS; optimized exact MPFR timing helper matches independent block32 replay",
+  "sha256": {
+    "src/batched_linalg.mm": "6fed7d74bb581ee45fd01ed9f3749cb93eedc60c64dd357395e7d85009751ddb",
+    "src/batched_linalg.metal": "1a5fea642b80d62477c67cfd92a1d8a80b7767233b3d1e2d8ebe930379c6391c",
+    "benchmarks/section9_trials.cpp": "20cfd8a73cf30ecce942299739917383b628b2f360156380d05b29fa9922cb58",
+    "build/liblimbforge.a": "860ab581956c733cbc5b829802ce5f6f4be72f00edd97d777ea8b88b0de79d83",
+    "build/section9_trials_limbforge": "e845062cd536017981b78ab8398fb3c3346e47c9a40dd5459da3514cbe659d85"
+  },
+  "unchanged_math": "Metal shader and trial encoder body unchanged from all-width/full26+19 gated candidate",
+  "scope": "focused integration checks after host cache/workspace rebase; not a repeat arithmetic audit; no timings yet"
+}

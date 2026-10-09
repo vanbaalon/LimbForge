@@ -1,0 +1,43 @@
+{
+  "base": "02bca53",
+  "candidate": "3e30d47",
+  "scope": "completed first checked large-shape library comparison; candidate not accepted, remaining live measurements excluded",
+  "sha256": {
+    "build/section9_trials_limbforge": "e845062cd536017981b78ab8398fb3c3346e47c9a40dd5459da3514cbe659d85",
+    "build/liblimbforge.a": "860ab581956c733cbc5b829802ce5f6f4be72f00edd97d777ea8b88b0de79d83",
+    "src/batched_linalg.metal": "1a5fea642b80d62477c67cfd92a1d8a80b7767233b3d1e2d8ebe930379c6391c",
+    "benchmarks/section9_trials.cpp": "20cfd8a73cf30ecce942299739917383b628b2f360156380d05b29fa9922cb58"
+  },
+  "samples": [
+    {
+      "label": "section9_p12_measured_352_944_8_interleaved",
+      "command": [
+        "./build/section9_trials_limbforge",
+        "--bits",
+        "352",
+        "--n",
+        "944",
+        "--count",
+        "8",
+        "--nrhs",
+        "3",
+        "--workers",
+        "18",
+        "--repeats",
+        "3"
+      ],
+      "exit": 0,
+      "load_before": [
+        23.56689453125,
+        15.39306640625,
+        12.1904296875
+      ],
+      "load_after": [
+        17.41552734375,
+        16.90234375,
+        13.61767578125
+      ],
+      "recorded_utc": "2026-10-09T03:47:21.995496+00:00"
+    }
+  ]
+}

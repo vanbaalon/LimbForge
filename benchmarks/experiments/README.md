@@ -122,3 +122,5 @@ GPU tests before measuring it. Never overwrite accepted result files.
   `section9_shared_sources_*_rejected.patch`; failure logs and candidate status are in
   `section9_shared_sources.md`. Standalone vector baseline does not independently
   reproduce the expanded audit's failure. No compiler root cause is asserted.
+
+- `section9_blocked_trials_rejected.patch` (base `02bca53`): all-width correctness passed, but the checked sequential block trial candidate lost to scalar and the exact Linalg loop. See `section9_blocked_trials.md` and `section9_p12_*` evidence. Private selectors and benchmarks in this patch apply only to the retained candidate, not production main.

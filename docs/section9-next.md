@@ -118,17 +118,16 @@ a row in `docs/optimizations.md`, rejected attempts kept under `benchmarks/exper
 - **Measure:** 400–900 batches, steps 100–250, nmax 40–100, ncols 16, at 352/384/448 bits, against the current kernel and 18-worker MPFR.
 
 **P1.2: Blocked `cholesky_trials`.**
-- **Candidate validation complete:** local branch `round-section9-blocked-trials`
-  (`3e30d47`, based on 1.2.0/main `02bca53`) preserves the existing scalar sequence through
-  three passes per block panel. All 31 factor/solve widths pass normally and under
-  shader validation, 26/26 library suites and all 19 unique GPU-validation suites
-  pass. Solver-size independent MPFR fixtures also pass. The first three-repeat
-  352-bit n=944/eight-trial/three-RHS host comparison is unfavorable: factor plus
-  solve takes 8.55 s for block panels versus 7.89 s scalar and 0.76 s for the exact
-  Linalg block32 loop. Each matches its own contract; these are busy-host library
-  observations, not idle consumer timing. The candidate is not accepted; production
-  retains scalar columns. Other width/shape comparisons are queued. The 3x target
-  and optimized exact-contract batched design (P2.2) remain open.
+- **Sequential block candidate rejected:** `f15ad1f`, based on 1.2.0/main
+  `02bca53`, passes all 31 factor/solve widths in both modes, 26 normal suites and
+  all 19 GPU-validation suites. All six three-repeat comparisons pass their independent
+  CPU/GPU references, but block panels lose to scalar at n=200/400/944 and take
+  5.9–11.2x longer than the exact Linalg loop for factor plus three-RHS solve.
+  The historical small-matrix advantage is not reproduced; retain production defaults.
+  Busy-host library results do not establish consumer timing or a matrix-size cutoff.
+  The patch, full grid and raw records are preserved in
+  [the rejection record](../benchmarks/experiments/section9_blocked_trials.md).
+  The 3x target remains open; the new exact-contract batched design is P2.2.
 - **Problem:** the column-by-column passes (≈ 3n small dispatches with shrinking grids) lose to eight sequential `Linalg::cholesky` calls at n = 944 (1.54 s vs 1.23 s).
 - **Change:** use a blocked algorithm, with per-trial panels and trailing updates as batched GEMM over all trials.
 - **Target:** ≥ 3× over 8 × `Linalg::cholesky` at n ≈ 1000, and keep the n ≤ 400 advantage.
@@ -193,7 +192,14 @@ queries and release follow the existing Linalg ownership semantics.
 - Clarify same-named methods with different meanings (`cholesky_solve`); preserve existing entry points through 1.x.
 - Add a comparison table (contract, accuracy, speed, residency) to `docs/numerics.md`.
 
-**P2.2: Exact-contract damping trials.** A batched variant reproducing `Linalg::cholesky` bit for bit per trial, so Newton histories stay identical to the current exact GPU path.
+**P2.2: Exact-contract damping trials.** An isolated candidate on
+`round-section9-exact-trials` adds synchronous `cholesky_trials_blocked`: shared
+exact SYRK submissions, parallel host panels and repaired outputs before dependent
+panels. Host-only all31 and focused 352/1024 physical GPU/shader checks pass against
+independent MPFR and the production Linalg contract. Expanded all-width GPU gates,
+broad regressions, solver-size measurements and release acceptance remain pending.
+The target is bit-identical factors per trial with the same block; existing all-device
+sequential calls remain unchanged. Consumer Newton histories still require P3 checks.
 
 **P2.3: Break-even table.** Partial: the source-recurrence exporter and 50 verified
 profile-specific keys cover host/resident, composed/fused and measured clock modes.
@@ -232,7 +238,7 @@ candidate or an unconverged diagnostic as accepted production behavior.
 | Fold `J^T G` into exact augmented SYRK | Local candidate behind explicit `QSC_GPU_NORMAL=1`; default off, CPU fallback and `QSC_GPU_SYRK` gate retained; full converged-history and timing acceptance pending |
 | Fourier residual -> complex GEMM | Pending; measure 66x130 times 130x3800 on the corrected backend (P1.3) |
 | Per-column 4x4 products and LU4 | Pending; batched GEMM/product3 plus lu4, with an independent switch/fallback and repeated consumer checks |
-| Remaining damping trials | Pending; preserve the first exact factor path, use batched trials only after P1.2/P2.2 numerical/performance acceptance; retain the large-matrix guard meanwhile |
+| Remaining damping trials | Pending; preserve the first exact factor path, use batched trials only after P1.2/P2.2 numerical/performance acceptance; keep the new switch off until current-backend acceptance; historical small-matrix ratios are insufficient |
 | Optional base polynomial recurrence | Pending; measure shared Horner sources (P1.5) before switching the solver |
 | Large-shape memory | Pending consumer measurement: host W remains; compact 1.1.0 power storage is available explicitly, with a latency trade-off; chunk count if needed |
 | >1024-bit fallback and precision rounding | Preserved; helpers refuse unsupported widths after rounding up to a multiple of 32 |

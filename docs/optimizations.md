@@ -158,3 +158,13 @@ Busy slots are detached on release and owned by their batch until wait/destructi
 exact Gram repair uses distinct slots for multiple calls in one batch. Existing
 numerical kernels and contracts are unchanged. Focused smoke tests pass normally and
 under shader validation. Combined 1.2.0 API checks also pass in both modes. No measured speedup is claimed. [Record](../benchmarks/experiments/section9_workspace_reuse.md).
+
+## Section 9 P1.2: rejected sequential block trials
+
+The three-pass panel candidate passed all31 factor/solve widths normally and under
+shader validation, the full26 normal and19 validation suites, and six corrected-backend
+benchmark comparisons. It nevertheless lost to scalar at n=200/400/944 and to the exact
+Linalg loop for factor plus three-RHS solve. No production selector or default change
+is accepted. The full patch, source identities and checked raw records are retained in
+[the experiment report](../benchmarks/experiments/section9_blocked_trials.md). The 3x
+objective and actual batched exact-contract implementation remain pending.

@@ -1,0 +1,194 @@
+{
+  "base": "02bca53",
+  "candidate": "3e30d47",
+  "scope": "verified library contract comparisons under measured host load, not idle solver acceptance",
+  "sha256": {
+    "build/section9_trials_limbforge": "e845062cd536017981b78ab8398fb3c3346e47c9a40dd5459da3514cbe659d85",
+    "build/liblimbforge.a": "860ab581956c733cbc5b829802ce5f6f4be72f00edd97d777ea8b88b0de79d83",
+    "src/batched_linalg.metal": "1a5fea642b80d62477c67cfd92a1d8a80b7767233b3d1e2d8ebe930379c6391c",
+    "benchmarks/section9_trials.cpp": "20cfd8a73cf30ecce942299739917383b628b2f360156380d05b29fa9922cb58"
+  },
+  "samples": [
+    {
+      "label": "section9_p12_measured_352_944_8_interleaved",
+      "command": [
+        "./build/section9_trials_limbforge",
+        "--bits",
+        "352",
+        "--n",
+        "944",
+        "--count",
+        "8",
+        "--nrhs",
+        "3",
+        "--workers",
+        "18",
+        "--repeats",
+        "3"
+      ],
+      "exit": 0,
+      "load_before": [
+        23.56689453125,
+        15.39306640625,
+        12.1904296875
+      ],
+      "load_after": [
+        17.41552734375,
+        16.90234375,
+        13.61767578125
+      ],
+      "recorded_utc": "2026-10-09T03:47:21.995496+00:00"
+    },
+    {
+      "label": "section9_p12_measured_352_944_8_verified_warm",
+      "command": [
+        "./build/section9_trials_limbforge",
+        "--bits",
+        "352",
+        "--n",
+        "944",
+        "--count",
+        "8",
+        "--nrhs",
+        "3",
+        "--workers",
+        "18",
+        "--repeats",
+        "3",
+        "--warm"
+      ],
+      "exit": 0,
+      "load_before": [
+        17.41552734375,
+        16.90234375,
+        13.61767578125
+      ],
+      "load_after": [
+        12.4970703125,
+        15.2060546875,
+        13.88134765625
+      ],
+      "recorded_utc": "2026-10-09T03:52:20.191827+00:00"
+    },
+    {
+      "label": "section9_p12_measured_384_944_8_interleaved",
+      "command": [
+        "./build/section9_trials_limbforge",
+        "--bits",
+        "384",
+        "--n",
+        "944",
+        "--count",
+        "8",
+        "--nrhs",
+        "3",
+        "--workers",
+        "18",
+        "--repeats",
+        "3"
+      ],
+      "exit": 0,
+      "load_before": [
+        12.4970703125,
+        15.2060546875,
+        13.88134765625
+      ],
+      "load_after": [
+        24.15087890625,
+        17.828125,
+        15.2099609375
+      ],
+      "recorded_utc": "2026-10-09T03:56:22.184354+00:00"
+    },
+    {
+      "label": "section9_p12_measured_448_944_8_interleaved",
+      "command": [
+        "./build/section9_trials_limbforge",
+        "--bits",
+        "448",
+        "--n",
+        "944",
+        "--count",
+        "8",
+        "--nrhs",
+        "3",
+        "--workers",
+        "18",
+        "--repeats",
+        "3"
+      ],
+      "exit": 0,
+      "load_before": [
+        24.15087890625,
+        17.828125,
+        15.2099609375
+      ],
+      "load_after": [
+        12.263671875,
+        17.24267578125,
+        16.0595703125
+      ],
+      "recorded_utc": "2026-10-09T04:01:01.538905+00:00"
+    },
+    {
+      "label": "section9_p12_measured_352_200_8_interleaved",
+      "command": [
+        "./build/section9_trials_limbforge",
+        "--bits",
+        "352",
+        "--n",
+        "200",
+        "--count",
+        "8",
+        "--nrhs",
+        "3",
+        "--workers",
+        "18",
+        "--repeats",
+        "3"
+      ],
+      "exit": 0,
+      "load_before": [
+        12.263671875,
+        17.24267578125,
+        16.0595703125
+      ],
+      "load_after": [
+        12.001953125,
+        17.10546875,
+        16.01806640625
+      ],
+      "recorded_utc": "2026-10-09T04:01:08.468151+00:00"
+    },
+    {
+      "label": "section9_p12_measured_352_400_8_interleaved",
+      "command": [
+        "./build/section9_trials_limbforge",
+        "--bits",
+        "352",
+        "--n",
+        "400",
+        "--count",
+        "8",
+        "--nrhs",
+        "3",
+        "--workers",
+        "18",
+        "--repeats",
+        "3"
+      ],
+      "exit": 0,
+      "load_before": [
+        12.001953125,
+        17.10546875,
+        16.01806640625
+      ],
+      "load_after": [
+        16.35302734375,
+        17.67041015625,
+        16.25927734375
+      ],
+      "recorded_utc": "2026-10-09T04:01:38.054117+00:00"
+    }
+  ]
+}

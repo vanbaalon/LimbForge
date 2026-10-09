@@ -1,0 +1,64 @@
+2026-10-08 20:50:38.865 test_limbforge_section9_audit[16750:215305983] Metal GPU Validation Enabled
+Auditing 64 bits
+64 bits: damping trial references passed
+Auditing 96 bits
+96 bits: damping trial references passed
+Auditing 128 bits
+128 bits: damping trial references passed
+Auditing 160 bits
+160 bits: damping trial references passed
+Auditing 192 bits
+192 bits: damping trial references passed
+Auditing 224 bits
+224 bits: damping trial references passed
+Auditing 256 bits
+256 bits: damping trial references passed
+Auditing 288 bits
+288 bits: damping trial references passed
+Auditing 320 bits
+320 bits: damping trial references passed
+Auditing 352 bits
+352 bits: damping trial references passed
+Auditing 384 bits
+384 bits: damping trial references passed
+Auditing 416 bits
+416 bits: damping trial references passed
+Auditing 448 bits
+448 bits: damping trial references passed
+Auditing 480 bits
+480 bits: damping trial references passed
+Auditing 512 bits
+512 bits: damping trial references passed
+Auditing 544 bits
+544 bits: damping trial references passed
+Auditing 576 bits
+576 bits: damping trial references passed
+Auditing 608 bits
+608 bits: damping trial references passed
+Auditing 640 bits
+640 bits: damping trial references passed
+Auditing 672 bits
+672 bits: damping trial references passed
+Auditing 704 bits
+704 bits: damping trial references passed
+Auditing 736 bits
+736 bits: damping trial references passed
+Auditing 768 bits
+768 bits: damping trial references passed
+Auditing 800 bits
+800 bits: damping trial references passed
+Auditing 832 bits
+832 bits: damping trial references passed
+Auditing 864 bits
+864 bits: damping trial references passed
+Auditing 896 bits
+896 bits: damping trial references passed
+Auditing 928 bits
+928 bits: damping trial references passed
+Auditing 960 bits
+960 bits: damping trial references passed
+Auditing 992 bits
+992 bits: damping trial references passed
+Auditing 1024 bits
+1024 bits: damping trial references passed
+Section 9 reference run passed; all 31 widths; dense stress not run.

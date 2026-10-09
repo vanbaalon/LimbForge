@@ -1,0 +1,35 @@
+Test project /private/tmp/limbforge-section9-cholesky-release/build
+      Start  6: fused_gpu
+ 1/15 Test  #6: fused_gpu ........................   Passed  337.91 sec
+      Start  9: linalg_gpu
+ 2/15 Test  #9: linalg_gpu .......................   Passed   27.52 sec
+      Start 13: arithmetic_gpu
+ 3/15 Test #13: arithmetic_gpu ...................   Passed  106.27 sec
+      Start 14: broadcast_gpu
+ 4/15 Test #14: broadcast_gpu ....................   Passed   15.30 sec
+      Start 15: batched4_gpu
+ 5/15 Test #15: batched4_gpu .....................   Passed  343.46 sec
+      Start 16: section9_smoke
+ 6/15 Test #16: section9_smoke ...................   Passed   39.11 sec
+      Start 17: threshold_gpu
+ 7/15 Test #17: threshold_gpu ....................   Passed    2.43 sec
+      Start 18: cast_gpu
+ 8/15 Test #18: cast_gpu .........................   Passed    0.96 sec
+      Start 19: segmented_dot_gpu
+ 9/15 Test #19: segmented_dot_gpu ................   Passed   24.73 sec
+      Start 20: vector_recurrence_gpu
+10/15 Test #20: vector_recurrence_gpu ............   Passed   30.90 sec
+      Start 21: numerics_gpu
+11/15 Test #21: numerics_gpu .....................   Passed  107.96 sec
+      Start 22: resident_units_gpu
+12/15 Test #22: resident_units_gpu ...............   Passed  295.98 sec
+      Start 23: resident_linalg_gpu
+13/15 Test #23: resident_linalg_gpu ..............   Passed   49.76 sec
+      Start 25: transcendental_gpu
+14/15 Test #25: transcendental_gpu ...............   Passed  183.19 sec
+      Start 26: tree_reduction
+15/15 Test #26: tree_reduction ...................   Passed    9.57 sec
+
+100% tests passed out of 15
+
+Total Test time (real) = 1575.05 sec

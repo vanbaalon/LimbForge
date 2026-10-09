@@ -1,0 +1,5 @@
+bits,n,count,nrhs,cpu_workers,repeats,resident,path,cpu_contract,cpu_wall,gpu_wall,gpu_device,wall_p25,wall_p75,wall_min,wall_max,clock,cpu_active_workers,profile
+448,944,8,3,18,3,0,scalar,sequential,12.8887644,11.374544,11.3227643,11.0072579,11.374544,11.0072579,11.6770725,cpu-interleaved,8,Apple M5 Max / section9-trials / 1.2.0 / sequential / scalar
+448,944,8,3,18,3,0,panel,sequential,12.8887644,11.5546835,11.5363097,11.2732518,11.5546835,11.2732518,11.7144763,cpu-interleaved,8,Apple M5 Max / section9-trials / 1.2.0 / sequential / panel
+448,944,8,3,18,3,0,block,sequential,12.8887644,11.7377636,11.7144657,11.641986,11.7377636,11.641986,11.8651719,cpu-interleaved,8,Apple M5 Max / section9-trials / 1.2.0 / sequential / block
+448,944,8,3,18,3,0,exact_linalg_block32,exact_block32,15.8322778,1.04923958,0.668459291,1.03126221,1.04923958,1.03126221,1.37218696,cpu-interleaved,8,Apple M5 Max / section9-trials / 1.2.0 / exact-block32 / exact_linalg_block32

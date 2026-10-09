@@ -1,0 +1,19 @@
+Auditing 352 bits
+Section 9 audit: batched algebra Metal compilation: program_source:1038:1: error: expected expression
+kernel void batch_chol_panel_update(device Number<N>* L [[buffer(2)]],constant BatchParams& p [[buffer(3)]],device const uint* status [[buffer(5)]],uint x [[thread_position_in_grid]]){
+^
+program_source:1057:64: error: function definition is not allowed here
+inline PrivateNumber block_load(threadgroup const Number<N>& x){
+                                                               ^
+program_source:1060:82: error: function definition is not allowed here
+inline void block_store(threadgroup Number<N>& out,thread const PrivateNumber& x){
+                                                                                 ^
+program_source:1063:1: error: expected expression
+kernel void batch_chol_block_factor(device Number<N>* L [[buffer(2)]],constant BatchParams& p [[buffer(3)]],device uint* status [[buffer(5)]],uint tid [[thread_index_in_threadgroup]],uint3 group [[threadgroup_position_in_grid]]){
+^
+program_source:1098:1: error: expected '}'
+^
+program_source:1029:157: note: to match this '{'
+template<class Packed> void panel_powers(device const Packed* E,device const Packed* Y,device Packed* P,device Packed* state,constant BatchParams& p,uint i){
+                                                                                                                                                            ^
+
