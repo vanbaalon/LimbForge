@@ -150,13 +150,15 @@ a row in `docs/optimizations.md`, rejected attempts kept under `benchmarks/exper
 
 **P1.5: `polynomial_recurrence` sources.**
 - **Candidate recurrence correctness:** local branch `round-section9-shared-sources`
-  (`f21cafb`, rebased on current main) adds an independent `polynomial_sources` API
+  (`7019a3c`; rebase on current main before acceptance) adds an independent `polynomial_sources` API
   and explicit shared-source recurrence selection. Rounded Horner states, then a
   dot pass before each update, preserve the original order and partial groups.
   The expanded recurrence sweeps pass all 31 widths normally and under shader
   validation, including 17-term Horner and sharing factors 1/2/3/7. The earlier
   vector adapter fails its final API check and remains rejected. The final standalone
-  source API recheck and 26/19 suite gates are running; speed acceptance is pending.
+  source API recheck passes at all 31 widths in both modes; 26/26 normal and 19/19
+  shader-validation suites pass, as do three final benchmark-linked fixtures.
+  Speed acceptance is pending.
   Existing production calls retain per-lane evaluation. These candidates are not released.
 - **Problem:** every lane re-evaluates 8 Horner polynomials of degree ≈ Nc per step, and lanes sharing a weight group repeat identical work. Horner dominates, at roughly 60× the arithmetic of the recurrence update itself.
 - **Option to measure:** a device source pass that writes p and q per (step, weight group, component) into batch scratch. That scratch is small, e.g. 160 × 65 × 8 complex, and is not the host table the consumer wants to avoid. Follow it with the existing `vector_recurrence`, which also brings the matrix, affine and tangent modes.
@@ -167,11 +169,12 @@ a row in `docs/optimizations.md`, rejected attempts kept under `benchmarks/exper
 ### P2: API cohesion
 
 **P2.1: Two contracts, similar names.**
-- **Local candidate `1326370`:** explicit exact GEMM/SYRK, sequential batched
+- **Local candidate `18bc32b`:** explicit exact GEMM/SYRK, sequential batched
   products/normals/trials/solves, and blocked Cholesky/solve aliases. Old names and
   defaults remain supported. The Numerics table compares accuracy, speed-evidence
   limits and residency/finality. Build and version/package checks pass; focused
-  cancellation/physical-GPU checks and a compatible minor release remain pending.
+  cancellation/physical-GPU checks pass normally and under shader validation.
+  Combined API integration checks and a compatible minor release remain pending.
  `Linalg` products and factorizations round once per entry from the exact value. `BatchedLinalg` uses sequential composed or fused dot products, and a different Cholesky sequence.
 - Make the contract visible through documentation and additive names or a contract enum.
 - Clarify same-named methods with different meanings (`cholesky_solve`); preserve existing entry points through 1.x.
@@ -204,7 +207,7 @@ candidate or an unconverged diagnostic as accepted production behavior.
 |---|---|
 | Catch GPU/bridge errors and fall back to CPU; warn once | Implemented locally; focused helper check passes, including transactional output preservation and worker exception propagation |
 | One shared Engine for algebra units | Implemented locally; matching 1.1.0 headers/archive checked at startup; pipeline caches remain separate |
-| Algebra prewarm | Local API candidate `870adfe`: operation/shape-aware synchronous and asynchronous preparation on the owning units, with detached cache lifetime and synchronized cache access. Build + version/package checks pass; focused normal/shader lifetime and numerical checks, minor release and consumer wiring pending |
+| Algebra prewarm | Local API candidate `d672cc1`: operation/shape-aware synchronous and asynchronous preparation on the owning units, with detached cache lifetime and synchronized cache access. Build, version/package and focused normal/shader lifetime/numerical checks pass; combined API integration checks, minor release and consumer wiring pending |
 | Keep `adj_prep` CPU-only; select stage 2 after the glue | Preserved; do not move the glue or invoke GPU work inside stage 1 |
 | Relative MPFR adjoint check in units of `2^-prec` | Implemented; finite, nonempty checks require <=65536 normalized units; report finite-difference amplification separately |
 | Converged CPU/GPU g=.1/.2/.5 checks | Pending: componentwise Delta agreement <=1e-25, equal iteration counts and matching residual histories; save inputs and both logs |
