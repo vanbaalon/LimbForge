@@ -62,7 +62,12 @@ Records: `section9_p15_staged_recurrence_expanded_reference.txt` / `...validatio
 
 The standalone source API's final expanded all-width normal and shader-validation
 rechecks also pass, `section9_p15_staged_sources_final_reference.txt` / `...validation.txt`.
-The complete 26/19 suite gates are running. No benchmark acceptance yet.
+The complete 26/26 normal and 19/19 shader-validation suite gates pass (1238.38 s
+and 1975.83 s respectively). Raw logs and source/archive identities are retained in
+`section9_p15_staged_gate_metadata.json`. The final benchmark-linked archive also
+passes three check-only fixtures: 352-bit dense/reverse/all-steps, 1024-bit resident
+17-term per-group fused sources, and 64-bit zero-step/zero-term inputs. No timings
+or performance acceptance follow from these correctness checks.
 
 ## Prepared benchmark (no timings yet)
 

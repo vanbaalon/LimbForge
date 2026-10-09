@@ -31,7 +31,11 @@
     "seconds": 1238.38,
     "log": "section9_p15_staged_full_suite.txt"
   },
-  "gpu_validation_suite": "pending",
+  "gpu_validation_suite": {
+    "tests": "19/19 PASS",
+    "seconds": 1975.83,
+    "log": "section9_p15_staged_gpu_validation_suite.txt"
+  },
   "benchmark_acceptance": "pending",
   "benchmark_target_build": {
     "recorded_utc": "2026-10-09T02:05:05.895073+00:00",
@@ -40,8 +44,16 @@
   },
   "prepared_benchmark": {
     "cpu_helper_reference": "31/31 PASS; independent exact-product/mpfr_sum check; no GPU timing",
-    "gpu_fixture_checks": "pending full-suite gates",
+    "gpu_fixture_checks": {
+      "status": "3/3 PASS; default 352, wide resident 1024 and zero-step/zero-term 64; check-only",
+      "logs": [
+        "section9_p15_benchmark_352_check.txt",
+        "section9_p15_benchmark_1024_check.txt",
+        "section9_p15_benchmark_empty_check.txt"
+      ]
+    },
     "archive_sha256": "b0a28c9b335f09c8f7672afd9c45a9b55bc74670bfa547a093299f18865c07e1",
     "benchmark_sha256": "4000d26f55809fb9703e7a87ea2b78359b4a7b22f3ab411db8f9880c0aa36756"
-  }
+  },
+  "last_updated_utc": "2026-10-09T02:53:10.112091+00:00"
 }
