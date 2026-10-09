@@ -1,0 +1,13 @@
+{
+  "recorded_utc": "2026-10-09T03:02:26.313826+00:00",
+  "revision": "f0705589fb7efdef54f13629ed6aa4aa60f29b08",
+  "version": "1.2.0",
+  "result": "2/2 main-checkout version/installed-package PASS",
+  "sha256": {
+    "include/limbforge/version.hpp": "c3f535d25198ea8ac5729a98c7c38198c4cde31c7958d7a8ba7491b0dff63e22",
+    "src/version.cpp": "abb55b3aff62573f5f8840956534ca73cc5c94092f02d8b91e061fc2546f8732",
+    "build/liblimbforge.a": "1fa61d4deb83fc91e4d3bff0296a7ef2963a9f9ad419e335754eaca5b1a2294c",
+    "build/test_limbforge_version": "69e1aa034c119b2831ec84c22c124510bd1db7b0f93d892cc4d7690956402f4f"
+  },
+  "scope": "matching main-checkout headers/archive; combined focused GPU/API proof recorded separately in section9_host_api_1_2_metadata.json"
+}
