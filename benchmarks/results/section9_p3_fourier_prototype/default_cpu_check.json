@@ -1,0 +1,12 @@
+{
+  "state": "terminal",
+  "exit": 0,
+  "scope": "Default switch disabled; no new Fourier GPU path checked",
+  "default_delta_history_residual_identical": true,
+  "sha256": {
+    "include/mx.hpp": "8268dadf39eebc40ac2391a3f6f5976641a8a90143679ea0bd6b0dc3b6808327",
+    "build/qscmx": "1cdf03dc9a4edc3f942e0a4b53599ff344c4a4fb9ca035d40c849fe33a777ea6",
+    "prototype-results/j3_default_cpu.m": "18d3ac37d372a9eb89e7e03b2827e42d1aec322b24b646ecf740b547142da6b9",
+    "prototype-results/j3_default_cpu.log": "2447e181d8263e70564d3b7aeebe16911ed33b1727c02492728ee4350f24601f"
+  }
+}

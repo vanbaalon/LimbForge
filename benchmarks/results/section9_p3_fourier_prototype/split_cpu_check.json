@@ -1,0 +1,15 @@
+{
+  "state": "terminal",
+  "exit": 0,
+  "scope": "Explicit split projection replay entirely on CPU; no Fourier GPU acceptance",
+  "delta_history_residual_identical": true,
+  "sha256": {
+    "include/mx.hpp": "3b0a0bf6cd71af4de3876d8eb4c513633c809ad97a08f105f9db2f3955cd7a04",
+    "build/qscmx": "38dd33e04c665a20968346304eebddf76c5a01994507f2c5a2193848212e2b7f",
+    "build/qscmx_fourier_check": "a61b9a23fb873830ea340be68c460190f92213240cb425f5e746322b12dbc204",
+    "tools/test_fourier_candidate.cpp": "33b86491268eae5c599ec32210bae7261ba36362b5ad8a7e3731300b10da814a",
+    "prototype-results/helper_cpu.txt": "b51da35731456b4affe118f9a42c01c207af33f8295f33ebf9542741d5d4fc54",
+    "prototype-results/j3_split_cpu.m": "7b068fb5eaf1a30a8aa54318bc8cb01d751fb316c18c3e2b063175574b4445a5",
+    "prototype-results/j3_split_cpu.log": "da845937a3ae9802f7cb7a70679fb1e61b3964305e1fd76b6df0406c302f8c8c"
+  }
+}

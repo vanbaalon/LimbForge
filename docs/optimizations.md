@@ -208,3 +208,11 @@ normal/shader modes. The 8x8 configuration with two outputs per thread passes no
 dense 64-bit shader validation; named accumulators also fail. The 16x8 all-width sweep did not run.
 No production kernel/default or speed claim is accepted. Remaining power/broad
 gates and timings are still required for valid candidates. [Records and patches](../benchmarks/experiments/section9_complex_tiles.md).
+
+## Section 9 P3: batched Fourier adapter preparation
+
+An isolated adapter stages all Jacobian directions for one exact real-embedding
+projection, with explicit opt-in, transactional publication and sequential MPC
+fallback. It builds; default and split-CPU J3 replays exactly match recorded
+Delta/history/residual values. GPU and acceptance gates are pending; no consumer
+source/default or speed claim is promoted. [Prototype](../benchmarks/experiments/section9_fourier_consumer.md).

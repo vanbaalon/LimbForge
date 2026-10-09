@@ -1,0 +1,3 @@
+352 bits: CPU projection fixtures and disabled GPU guard pass
+374 bits: CPU projection fixtures and disabled GPU guard pass
+448 bits: CPU projection fixtures and disabled GPU guard pass

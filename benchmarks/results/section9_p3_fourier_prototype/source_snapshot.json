@@ -1,0 +1,9 @@
+{
+  "scope": "Isolated consumer snapshot for P3 batched Fourier candidate; original source/build/jobs untouched",
+  "original": "/Users/k0959535/Dropbox/IntegrabilityProjects/2026 Near N=4/qsccpp",
+  "sha256": {
+    "CMakeLists.txt": "f3c0e004bf5520f84133a1b89b0194489267b7f5137c4530a5c691f290aa1af1",
+    "include/mx.hpp": "e88a0498fe417f3a5fb7f126b1f9164b17e4beddf70469a40c9b3e4248d13010",
+    "src/qscmx.cpp": "679b75e38054dde0747499583814f52d9ad57c848ce5fd728ef3f3b25be104e4"
+  }
+}

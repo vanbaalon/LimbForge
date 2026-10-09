@@ -1,0 +1,29 @@
+{
+  "state": "terminal",
+  "exit": 0,
+  "scope": "Isolated adapter compilation, default CPU and forced split CPU replay only; physical-GPU helper/history/timing pending",
+  "library_source": "55d11a5, numeric1.3.1 unchanged",
+  "prototype": "/tmp/wolfnum-qsc-section9-fourier",
+  "original_consumer_untouched": true,
+  "cpu_comparison": "Delta/history/residual exactly match J3 g.202 recorded CPU baseline",
+  "sha256": {
+    "helper_cpu.txt": "b51da35731456b4affe118f9a42c01c207af33f8295f33ebf9542741d5d4fc54",
+    "default_cpu_check.json": "03d941c2aa39a9977801b928390ef12e632538f4a94d260ed78ca7d3f6bf70ce",
+    "helper_fixed_build.txt": "43069a5ce7964d45d31a3dd6ecea0b8fc3b1b6f867d6f42d94c86a53018e5e6c",
+    "j3_default_cpu.m": "18d3ac37d372a9eb89e7e03b2827e42d1aec322b24b646ecf740b547142da6b9",
+    "build.txt": "f17b170ff0a7582e1dbefdda3c078a115759444f467f2628c23882a9421f7f7b",
+    "j3_split_cpu.log": "da845937a3ae9802f7cb7a70679fb1e61b3964305e1fd76b6df0406c302f8c8c",
+    "helper_configure.txt": "6a9bf28c7da06898fba9f3bab184701c0d70dd69f77005187704a783786e3260",
+    "helper_build.txt": "fcf7bf988c5c0cc94d848e66746fb8b0994a265800306610f6a464eb1884e378",
+    "configure.txt": "a0e9753eabb095c60af6442ec60201666796c6aa0fb33c289477387be7eab0ac",
+    "j3_split_cpu.m": "7b068fb5eaf1a30a8aa54318bc8cb01d751fb316c18c3e2b063175574b4445a5",
+    "split_helper_build.txt": "96604258997912a846c4138f3a13f23e5352d48b79ea2bad72d6887d8af18b27",
+    "split_cpu_check.json": "461c5af5e7317f43b8bc5ed312202a3bea82c0fe52127f828552e223919d3da1",
+    "j3_default_cpu.log": "2447e181d8263e70564d3b7aeebe16911ed33b1727c02492728ee4350f24601f",
+    "source_snapshot.json": "24adc4ba478715c8f3ba3c5f600e2ef16efaf69a5def76551956b1f2fe8e2d20"
+  },
+  "candidate_source_sha256": "3b0a0bf6cd71af4de3876d8eb4c513633c809ad97a08f105f9db2f3955cd7a04",
+  "candidate_binary_sha256": "38dd33e04c665a20968346304eebddf76c5a01994507f2c5a2193848212e2b7f",
+  "helper_binary_sha256": "a61b9a23fb873830ea340be68c460190f92213240cb425f5e746322b12dbc204",
+  "prototype_archive_sha256": "45410807e80a686ff9c0cc7780e34832d52ccbfef4b9f3721bcbdb0f485257d3"
+}

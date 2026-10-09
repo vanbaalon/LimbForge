@@ -304,3 +304,9 @@ contains the old J=2 g=.2 diagnostic, which still stalls at 5.34e-14 and therefo
 returns overall exit 2. Preserve that unsuccessful acceptance result.
 
 [Archived raw records and independent check](../benchmarks/experiments/section9_consumer_replay.md).
+
+An isolated batched Fourier Jacobian adapter now compiles and reproduces the J3
+default and split-CPU Delta/history/residual exactly. It gathers both directions
+from all columns into one exact real-embedding GEMM; GPU, converged-history and
+idle gates are pending. Existing consumer sources/jobs are untouched.
+[Prepared adapter and scope](../benchmarks/experiments/section9_fourier_consumer.md).

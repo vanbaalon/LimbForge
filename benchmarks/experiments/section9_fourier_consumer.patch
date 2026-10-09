@@ -1,0 +1,180 @@
+--- a/include/mx.hpp
++++ b/include/mx.hpp
+@@ -766,6 +766,66 @@
+   out.norm = absd(sqrt(n2)); out.acc = absd(sqrt(a2)); out.accNeg = absd(sqrt(an2)); out.accPos = absd(sqrt(ap2));
+   return out;
+ }
++// Store only the point samples and fitted M, then project all Jacobian columns together.
++struct ModeProjection {Mat M;std::vector<C> samples;};
++inline Mat mode_projection_cpu(const Setup& S,const ModeProjection& data){
++  int N2=2*S.nPts,nm=S.Nc+2*S.modeK+1;Mat projection(nm,Vec(8));C t;
++  for(int r=0;r<N2;++r)for(int a=0;a<8;++a)for(int q=0;q<nm;++q)
++    fma_(projection[q][a],data.samples[size_t(r)*8+a],S.mph[size_t(r)*nm+q],t);
++  return projection;
++}
++inline ModeProjection mode_projection_prepare(const Setup& S, const Rows& W, const CD& X) {
++  Glue Gl = glue_fit(S, W, X.Delta, true);
++  ModeProjection data; data.M = Gl.M;
++  const Mat& M = Gl.M; Mat Mi = inverse(M);
++  int nP = S.nPts, N2 = 2 * nP, Nc = S.Nc, nlo = -S.modeK, nhi = Nc + S.modeK, nm = nhi - nlo + 1;
++  C I = C::imag_unit(), g = S.g, g2 = g * g, ig = C(1) / g, t;
++  data.samples.assign(size_t(N2)*8, C());
++  for (int j = 0; j < nP; ++j) {
++    for (int s = 0; s < 2; ++s) {
++      int r = 2 * j + s;
++      const Vec& rl = W.L[r]; const Vec& rr = W.R[r]; const Mat& Q = W.Q[j]; const Mat& Qi = W.Qi[j];
++      std::array<C, 4> qu, mq;
++      for (int i = 0; i < 4; ++i) { C a1, a2; for (int k = 0; k < 4; ++k) { fma_(a1, Mi[i][k], rl[k], t); fma_(a2, M[i][k], rr[k], t); } qu[i] = conj(a1); mq[i] = a2; }
++      const C* ph = &S.mph[(size_t(j) * 2 + s) * nm];
++      for (int a = 0; a < 4; ++a) {
++        C Pa, Pua;
++        for (int i = 0; i < 4; ++i) { fma_(Pa, Q[a][i], qu[i], t); fma_(Pua, Qi[i][a], mq[i], t); }
++        C f = -(Pa * S.mfl[(size_t(j) * 2 + s) * 4 + a]);
++        C h = -(Pua * S.mfu[(size_t(j) * 2 + s) * 4 + a]);
++        data.samples[size_t(r)*8+a] = f; data.samples[size_t(r)*8+4+a] = h;
++      }
++    }
++  }
++  return data;
++}
++inline Glue mode_projection_finish(const Setup& S,const CD& X,const ModeProjection& data,const Mat& projection){
++  Glue out;out.M=data.M;int N2=2*S.nPts,Nc=S.Nc,nlo=-S.modeK,nm=Nc+2*S.modeK+1;
++  C ig=C(1)/S.g;
++  C iN = C(1) / C(N2), n2, a2, an2, ap2;
++  for (int typ = 0; typ < 2; ++typ)
++    for (int a = 0; a < 4; ++a) {
++      const std::vector<C>& co = typ == 0 ? X.c[a] : X.d[a];
++      C nrm = C(1) / C(absd(co[0]) > 0 ? absd(co[0]) : 1.0);
++      C gp = ipow(ig, nlo);
++      for (int q = 0; q < nm; ++q) {
++        int n = nlo + q;
++        C val = (typ == 0 ? projection[q][a] : projection[q][4+a]) * iN;
++        if (n >= 0 && n <= Nc) { val -= co[n] * gp; val *= nrm; out.r.push_back(val); n2 += norm2(val); }
++        else { val *= nrm; a2 += norm2(val); if (n < 0) an2 += norm2(val); else ap2 += norm2(val); }
++        gp *= ig;
++      }
++    }
++  out.norm = absd(sqrt(n2)); out.acc = absd(sqrt(a2)); out.accNeg = absd(sqrt(an2)); out.accPos = absd(sqrt(ap2));
++  return out;
++}
++#ifdef QSC_LIMBFORGE
++namespace lfx {
++inline bool fourier_enabled();
++inline bool fourier_batch(const Setup&,const std::vector<ModeProjection>&,std::vector<Mat>&,int);
++}
++#endif
++
+ inline Glue resid(const Setup& S, const Rows& W, const CD& X) { return S.modes ? glue_modes(S, W, X) : glue_fit(S, W, X.Delta); }
+ inline Glue glue(const Setup& S, const CD& X, const TData* T = nullptr, int thr = 1) {
+   if (T && same(T->Delta, X.Delta)) return resid(S, glue_rows(S, X, T, nullptr, nullptr, thr), X);
+@@ -953,7 +1013,7 @@
+       task.requested = true;
+     }
+     // Current exact helpers use host-array products/factors; no resident K tables needed.
+-    if (task.width >= 256 && (operation_enabled("QSC_GPU_SYRK") || operation_enabled("QSC_GPU_CHOL"))) {
++    if (task.width >= 256 && (operation_enabled("QSC_GPU_SYRK") || operation_enabled("QSC_GPU_CHOL") || (S.modes&&fourier_enabled()))) {
+       task.exact = la().prewarm_async({{task.width}, {}, false});
+       task.requested = true;
+     }
+@@ -1035,6 +1095,47 @@
+       << " s (device " << timing.gpu_seconds << " s), unpack " << (nowns()-t2)*1e-9 << " s\n";
+     return true;
+   } catch (const std::exception& e) { static std::atomic_flag warned = ATOMIC_FLAG_INIT; warning("power moments", e, warned); return false; }
++}
++// Explicit exact-dot candidate; existing sequential MPC residuals stay the default.
++inline bool fourier_enabled(){const char* v=std::getenv("QSC_GPU_FOURIER");return v&&!std::strcmp(v,"1")&&operation_enabled("QSC_GPU_FOURIER")&&bits()>=256&&bits()<=1024;}
++inline bool fourier_batch(const Setup& S,const std::vector<ModeProjection>& data,std::vector<Mat>& out,int thr){
++  if(!fourier_enabled())return false;
++  try{
++    if(S.nPts<=0||S.Nc<0||S.modeK<0||data.empty())throw std::invalid_argument("Fourier: invalid shape");
++    auto multiply=[](size_t a,size_t b){if(b&&a>size_t(-1)/b)throw std::invalid_argument("Fourier: size overflow");return a*b;};
++    size_t points=multiply(size_t(S.nPts),2),modes=size_t(S.Nc)+2*size_t(S.modeK)+1,cols=multiply(data.size(),8);
++    size_t inner=multiply(points,2),rows=multiply(modes,2),eb=limbforge::bridge_element_bytes(bits(),false);
++    if(S.mph.size()!=multiply(points,modes))throw std::invalid_argument("Fourier: invalid phase table");
++    for(auto& item:data)if(item.samples.size()!=multiply(points,8))throw std::invalid_argument("Fourier: short sample table");
++    size_t as=multiply(rows,inner),bs=multiply(inner,cols),cs=multiply(rows,cols);
++    auto groups=[](size_t n){size_t count=n/4096+(n%4096!=0);if(count>size_t(INT_MAX))throw std::invalid_argument("Fourier: bridge grid overflow");return int(count);};
++    const int B=bits();const long long t0=nowns();std::vector<unsigned char> A(multiply(as,eb)),BB(multiply(bs,eb)),Cout(multiply(cs,eb));
++    bridge_par_for(groups(multiply(modes,points)),thr,[&](int group){C negative;
++      size_t last=std::min(multiply(modes,points),size_t(group+1)*4096);
++      for(size_t x=size_t(group)*4096;x<last;++x){size_t q=x/points,r=x%points;const C& phase=S.mph[r*modes+q];
++        limbforge::from_mpfr(B,mpc_realref(phase.v),A.data()+((2*q)*inner+r)*eb);
++        mpfr_neg(mpc_realref(negative.v),mpc_imagref(phase.v),MPFR_RNDN);
++        limbforge::from_mpfr(B,mpc_realref(negative.v),A.data()+((2*q)*inner+points+r)*eb);
++        limbforge::from_mpfr(B,mpc_imagref(phase.v),A.data()+((2*q+1)*inner+r)*eb);
++        limbforge::from_mpfr(B,mpc_realref(phase.v),A.data()+((2*q+1)*inner+points+r)*eb);
++      }});
++    bridge_par_for(groups(multiply(points,cols)),thr,[&](int group){size_t last=std::min(multiply(points,cols),size_t(group+1)*4096);
++      for(size_t x=size_t(group)*4096;x<last;++x){size_t r=x/cols,c=x%cols;const C& sample=data[c/8].samples[r*8+c%8];
++        limbforge::from_mpfr(B,mpc_realref(sample.v),BB.data()+x*eb);
++        limbforge::from_mpfr(B,mpc_imagref(sample.v),BB.data()+((points+r)*cols+c)*eb);
++      }});
++    const long long t1=nowns();auto timing=la().gemm(B,false,A.data(),BB.data(),rows,cols,inner,Cout.data());const long long t2=nowns();
++    std::vector<Mat> result(data.size(),Mat(modes,Vec(8)));
++    bridge_par_for(groups(multiply(modes,cols)),thr,[&](int group){size_t last=std::min(multiply(modes,cols),size_t(group+1)*4096);
++      for(size_t x=size_t(group)*4096;x<last;++x){size_t q=x/cols,c=x%cols;C& value=result[c/8][q][c%8];
++        limbforge::to_mpfr(B,mpc_realref(value.v),Cout.data()+((2*q)*cols+c)*eb);
++        limbforge::to_mpfr(B,mpc_imagref(value.v),Cout.data()+((2*q+1)*cols+c)*eb);
++      }});
++    out.swap(result);
++    if(std::getenv("QSC_GPU_PROFILE"))std::cerr<<"  exact Fourier: pack "<<(t1-t0)*1e-9<<" s, library wall "<<(t2-t1)*1e-9
++      <<" s (device "<<timing.gpu_seconds<<" s), unpack "<<(nowns()-t2)*1e-9<<" s\n";
++    return true;
++  }catch(const std::exception& e){static std::atomic_flag warned=ATOMIC_FLAG_INIT;warning("Fourier",e,warned);return false;}
+ }
+ #define QSC_LF_WIDTHS(X) X(256) X(288) X(320) X(352) X(384) X(416) X(448) X(480) X(512) X(544) X(576) X(608) X(640) X(672) X(704) X(736) X(768) X(800) X(832) X(864) X(896) X(928) X(960) X(992) X(1024)
+ // A = J^T J from the rows JtT[p][r] (real parts); false if the width is not supported (caller falls back to the CPU)
+@@ -1365,6 +1466,15 @@
+         std::cerr << "  adjoint check: " << (pass ? "PASS" : "FAIL") << " relative max difference " << absd(relative)
+                   << ", " << absd(units) << " units of 2^-" << prec_ref() << " (limit 65536; scale max |rows|; " << checked_columns << " columns), relative to max |dRows| " << absd(change_relative) << "\n";
+       }
++      bool batch_modes=false;
++#ifdef QSC_LIMBFORGE
++      batch_modes=S.modes&&lfx::fourier_enabled();
++#endif
++      // Private prototype audit switch: replay the split path entirely on the CPU.
++      const char* split_audit=std::getenv("QSC_FOURIER_CPU_SPLIT");
++      if(S.modes&&split_audit&&!std::strcmp(split_audit,"1"))batch_modes=true;
++      std::vector<ModeProjection> mode_data(batch_modes?size_t(nFD)*2:0);
++      std::vector<CD> mode_states(batch_modes?size_t(nFD)*2:0);
+       Mat JGre(mG, Vec(nFD)), JGim(mG, Vec(nFD));
+       par_for(nFD, S.threads, [&](int col) {
+         Vec zz = z; zz[FD[col]] += h;
+@@ -1375,7 +1485,9 @@
+         else if (sp >= 0 && !noUpd) { Amats A1 = amats_upd(S, X1, A0, sp, &t); R1 = glue_rows(S, X1, &t, &A1); }
+         else R1 = glue_rows(S, X1, &t);
+         long long tr0n = nowns();
+-        Vec g1 = revec(resid(S, R1, X1).r);
++        Vec g1;
++        if(batch_modes){mode_data[size_t(col)*2]=mode_projection_prepare(S,R1,X1);mode_states[size_t(col)*2]=X1;}
++        else g1=revec(resid(S,R1,X1).r);
+         Rows R2 = R0;  // R0 + i (R1 - R0): rows L, Q, Qi and c, d are holomorphic in z, rows R antiholomorphic
+         for (size_t r = 0; r < R2.L.size(); ++r)
+           for (int k = 0; k < 4; ++k) { R2.L[r][k] += I * (R1.L[r][k] - R0.L[r][k]); R2.R[r][k] += conj(I) * (R1.R[r][k] - R0.R[r][k]); }
+@@ -1385,11 +1497,26 @@
+             for (int a = 0; a < 4; ++a) for (int b = 0; b < 4; ++b) { R2.Q[j][a][b] += I * (R1.Q[j][a][b] - R0.Q[j][a][b]); R2.Qi[j][a][b] += I * (R1.Qi[j][a][b] - R0.Qi[j][a][b]); }
+           for (int a = 0; a < 4; ++a) for (int n = 0; n <= S.Nc; ++n) { X2.c[a][n] += I * (X1.c[a][n] - X0.c[a][n]); X2.d[a][n] += I * (X1.d[a][n] - X0.d[a][n]); }
+         }
++        if(batch_modes){mode_data[size_t(col)*2+1]=mode_projection_prepare(S,R2,X2);mode_states[size_t(col)*2+1]=X2;
++          jgprof().res+=nowns()-tr0n;return;}
+         Vec g2 = revec(resid(S, R2, X2).r);
+         jgprof().res += nowns() - tr0n;
+         C ih = C(1) / h;
+         for (size_t i = 0; i < mG; ++i) { JGre[i][col] = (g1[i] - Gr[i]) * ih; JGim[i][col] = (g2[i] - Gr[i]) * ih; }
+       });
++      if(batch_modes){std::vector<Mat> projected;bool gpu_fourier=false;
++#ifdef QSC_LIMBFORGE
++        gpu_fourier=lfx::fourier_batch(S,mode_data,projected,S.threads);
++#endif
++        if(!gpu_fourier){projected.resize(mode_data.size());par_for(int(mode_data.size()),S.threads,[&](int q){projected[q]=mode_projection_cpu(S,mode_data[q]);});}
++        par_for(nFD,S.threads,[&](int col){long long tr0n=nowns();
++          Vec g1=revec(mode_projection_finish(S,mode_states[size_t(col)*2],mode_data[size_t(col)*2],projected[size_t(col)*2]).r);
++          Vec g2=revec(mode_projection_finish(S,mode_states[size_t(col)*2+1],mode_data[size_t(col)*2+1],projected[size_t(col)*2+1]).r);
++          C ih=C(1)/h;for(size_t i=0;i<mG;++i){JGre[i][col]=(g1[i]-Gr[i])*ih;JGim[i][col]=(g2[i]-Gr[i])*ih;}
++          jgprof().res+=nowns()-tr0n;
++        });
++        if(std::getenv("QSC_GPU_PROFILE"))std::cerr<<"  Fourier Jacobian ("<<(gpu_fourier?"GPU":"CPU fallback")<<"): "<<mode_data.size()<<" projections\n";
++      }
+       tJG += dt(ta); ta = tick();
+       // chain rule through the constraint manifold. All entries are real (revec'd residual rows): real MPFR fma on the
+       // real parts, Re/Im of Mh taken once, the result stored transposed (JtT[col][r], contiguous per column)
