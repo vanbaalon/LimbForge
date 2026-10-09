@@ -26,7 +26,11 @@
       "section9_p15_staged_sources_final_validation.txt"
     ]
   },
-  "full_suite": "pending",
+  "full_suite": {
+    "tests": "26/26 PASS",
+    "seconds": 1238.38,
+    "log": "section9_p15_staged_full_suite.txt"
+  },
   "gpu_validation_suite": "pending",
   "benchmark_acceptance": "pending",
   "benchmark_target_build": {
