@@ -1,0 +1,123 @@
+{
+  "state": "terminal",
+  "wait_for_pid": 35880,
+  "scope": "All31 plus nonmultiple consumer precision LU4 MPFR checks normal/MTL and saved J3 GPU/combined replay acceptance; no timings",
+  "sha256": {
+    "include/mx.hpp": "3f987442d37fe62ae6f30502991604012795ecebba3420885368ccf58524b6fb",
+    "tools/test_lu4_candidate.cpp": "12ddc8e20fa073f03e1d2e44c3ccc5eb547d74fb8d00f5d631ad9c16ce26fa1b",
+    "CMakeLists.txt": "d110301e3a2a4776934de601479ce17fc7b2d17058fa61b2110c6ad939b7a400",
+    "build/qscmx": "8428f4decc52d9d76de355fcf148474c2431600f13e8d062193b1e5d36872259",
+    "build/qscmx_lu4_check": "0cba7d7b94f411e5f17e126d5753769911e692d3b435e3f42f5705e009102095",
+    "build/limbforge/liblimbforge.a": "a9f3ec3ff4168b8e513ca07c7ac1e457c9ad6ad8d55145e8c77fd0948a72983c"
+  },
+  "steps": [
+    {
+      "command": [
+        "./build/qscmx_lu4_check",
+        "--all-widths"
+      ],
+      "shader_validation": false,
+      "combined_candidates": false,
+      "state": "terminal",
+      "log": "helper_all31_gpu.log",
+      "pid": 42188,
+      "exit": 0,
+      "log_sha256": "19aa9cc4be787bcedf590fdb465e3e8969d6fc33b6bfdad9e5b4d27bab5bea4c"
+    },
+    {
+      "command": [
+        "./build/qscmx_lu4_check",
+        "--all-widths"
+      ],
+      "shader_validation": true,
+      "combined_candidates": false,
+      "state": "terminal",
+      "log": "helper_all31_shader.log",
+      "pid": 42461,
+      "exit": 0,
+      "log_sha256": "7b7e171988c8624c175bc2d4404bc248c0a61a4bb344b8f27bfa1af05ac48d61"
+    },
+    {
+      "command": [
+        "./build/qscmx",
+        "/Users/k0959535/Dropbox/IntegrabilityProjects/2026 Near N=4/qsccpp/runs/wolfnum_1_3_1/inputs/j3_X2Y_g0.202_nc21.txt",
+        "prototype-results/j3_lu4_gpu.m"
+      ],
+      "shader_validation": false,
+      "combined_candidates": false,
+      "state": "terminal",
+      "log": "j3_lu4_gpu.log",
+      "pid": 42826,
+      "exit": 0,
+      "log_sha256": "4082f1b6d768ac02f8a90cea8480ee6e83181f7090fd36c2436390d7bbaabe36",
+      "output_check": {
+        "Delta_max_component_error": "1.787604346388709787E-92",
+        "history_max_relative_error": "0",
+        "cpu_iterations": 3,
+        "gpu_iterations": 3,
+        "cpu_residual": "5.57752179966997436E-25",
+        "gpu_residual": "5.57752179966997436E-25",
+        "gtol": "1E-22",
+        "required_gpu_markers": [
+          "stage 2 (GPU)",
+          "normal matrix (GPU)",
+          "first Cholesky (GPU)",
+          "adjoint check: PASS",
+          "descent inverses4 (GPU)",
+          "gluing inverses4 (GPU)",
+          "inverse4 LU:"
+        ],
+        "all_paths_exercised": true,
+        "converged": true,
+        "timing_accepted": false,
+        "acceptance_pass": true
+      },
+      "output_sha256": "1364d552c36b50f94f804ef121da0b5d483e54d35de9f56272b6092848e92b9d"
+    },
+    {
+      "command": [
+        "./build/qscmx",
+        "/Users/k0959535/Dropbox/IntegrabilityProjects/2026 Near N=4/qsccpp/runs/wolfnum_1_3_1/inputs/j3_X2Y_g0.202_nc21.txt",
+        "prototype-results/j3_lu4_combined_gpu.m"
+      ],
+      "shader_validation": false,
+      "combined_candidates": true,
+      "state": "terminal",
+      "log": "j3_lu4_combined_gpu.log",
+      "pid": 42830,
+      "exit": 0,
+      "log_sha256": "7e18a7d7bb6d5257380009faba4732889a3abedaf10f6411898429c71f7a8504",
+      "output_check": {
+        "Delta_max_component_error": "2.307675812432015830E-92",
+        "history_max_relative_error": "0",
+        "cpu_iterations": 3,
+        "gpu_iterations": 3,
+        "cpu_residual": "5.57752179966997436E-25",
+        "gpu_residual": "5.57752179966997436E-25",
+        "gtol": "1E-22",
+        "required_gpu_markers": [
+          "stage 2 (GPU)",
+          "normal matrix (GPU)",
+          "first Cholesky (GPU)",
+          "adjoint check: PASS",
+          "descent inverses4 (GPU)",
+          "gluing inverses4 (GPU)",
+          "inverse4 LU:",
+          "tangent 4x4 Jacobian (GPU)",
+          "Fourier Jacobian (GPU)",
+          "tangent products4:",
+          "exact Fourier:"
+        ],
+        "all_paths_exercised": true,
+        "converged": true,
+        "timing_accepted": false,
+        "acceptance_pass": true
+      },
+      "output_sha256": "f3701796549003ccfd7d092c253b055851ecd447286bebf5795114762c8d260b"
+    }
+  ],
+  "reference_sha256": "c840246a9b187881aef16603c52070ec1e000335f8252dee5c3d4c7a3c5ca7bc",
+  "input_sha256": "4545c163d78f20017d5626019a3530dab7897a368a3765c5661220137d38a6b2",
+  "exit": 0,
+  "remaining": "Requested g=.1/.2/.5, idle-host timings and production consumer integration remain open"
+}

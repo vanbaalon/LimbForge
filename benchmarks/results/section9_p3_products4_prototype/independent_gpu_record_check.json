@@ -1,0 +1,64 @@
+{
+  "candidate": "small4",
+  "live_frozen_hashes_checked": true,
+  "reference_sha256": "c840246a9b187881aef16603c52070ec1e000335f8252dee5c3d4c7a3c5ca7bc",
+  "input_sha256": "4545c163d78f20017d5626019a3530dab7897a368a3765c5661220137d38a6b2",
+  "records": [
+    {
+      "log": "helper_gpu.log",
+      "checked_precisions": [
+        352,
+        374,
+        448
+      ],
+      "shader_validation": false
+    },
+    {
+      "log": "helper_shader.log",
+      "checked_precisions": [
+        352,
+        374,
+        448
+      ],
+      "shader_validation": true
+    },
+    {
+      "log": "j3_products4_gpu.log",
+      "output_sha256": "1f06ec9ed2018c7b494a8ac0ef9f61ed073e1ef3092ff191719475a59847271d",
+      "Delta_max_component_error": "7.10245197342712E-125",
+      "history_max_relative_error": "0",
+      "residual": "5.57752179966997436E-25",
+      "gtol": "1E-22",
+      "required_gpu_markers": [
+        "stage 2 (GPU)",
+        "normal matrix (GPU)",
+        "first Cholesky (GPU)",
+        "adjoint check: PASS",
+        "tangent 4x4 Jacobian (GPU)",
+        "tangent products4:"
+      ],
+      "acceptance_pass": true
+    },
+    {
+      "log": "j3_combined_gpu.log",
+      "output_sha256": "3c32e8a2ad1617365108dd2b27e68fc7df92857bacd9b019e2faa80fb9414cdc",
+      "Delta_max_component_error": "1.539673154646756417E-92",
+      "history_max_relative_error": "0",
+      "residual": "5.57752179966997436E-25",
+      "gtol": "1E-22",
+      "required_gpu_markers": [
+        "stage 2 (GPU)",
+        "normal matrix (GPU)",
+        "first Cholesky (GPU)",
+        "adjoint check: PASS",
+        "Fourier Jacobian (GPU)",
+        "exact Fourier:",
+        "tangent 4x4 Jacobian (GPU)",
+        "tangent products4:"
+      ],
+      "acceptance_pass": true
+    }
+  ],
+  "scope": "Saved J3 g=.202 only; g=.1/.2/.5, idle timing and production integration remain open",
+  "timing_accepted": false
+}

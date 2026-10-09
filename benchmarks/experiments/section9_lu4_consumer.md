@@ -43,14 +43,25 @@ and binaries; preliminary records retain their earlier identities.
 The prepared GPU helper independently replays the scalar MPFR LU sequence. It
 checks inverses, row swaps, exact pivot ties, scaled rows, rounded-up width,
 malformed/NaN input, a singular companion matrix, transactional publication,
-empty batches, sub-switches and >1024-bit fallback. All-width normal/Metal checks
-are queued after the current gates, then J3 LU4-only and combined GPU replays.
-The runner parses Delta, histories, residuals and all required GPU markers after
-each solve; command exit alone does not establish acceptance.
+empty batches, sub-switches and >1024-bit fallback. All 31 supported widths and
+374-bit consumer precision pass normally and under Metal shader validation.
+The J3 LU4-only and combined LU4/products/Fourier GPU replays pass: maximum Delta
+component differences are `1.787604346388709787e-92` and
+`2.307675812432015830e-92`. Both retain the three serialized CPU history entries
+and residual `5.57752179966997436e-25`, below the input tolerance `1e-22`.
+All required GPU and adjoint markers occur without fallback. A separate verifier
+checks terminal status, frozen source/binary identities, raw hashes and output
+acceptance independently of the runner.
 
 [Incremental patch](section9_lu4_consumer.patch),
 [helper](section9_lu4_consumer_check.cpp) and raw/hash records under
-`benchmarks/results/section9_p3_lu4_prototype` remain unmerged. Apply only to the
+`benchmarks/results/section9_p3_lu4_prototype` archive this consumer prototype. Apply only to the
 recorded base after checking drift. Requested converged g=.1/.2/.5 comparisons,
 idle timings and production consumer integration remain open. No speed claim,
-cutoff or new production library release is accepted by this preparation.
+cutoff or new production library release is accepted by these correctness checks.
+
+Verify all three archived GPU record sets without rerunning a solver or GPU test:
+
+```sh
+python3 benchmarks/experiments/check_section9_consumer_records.py
+```

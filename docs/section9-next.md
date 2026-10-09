@@ -259,8 +259,8 @@ candidate or an unconverged diagnostic as accepted production behavior.
 | Converged CPU/GPU g=.1/.2/.5 checks | Pending: componentwise Delta agreement <=1e-25, equal iteration counts and matching residual histories; save inputs and both logs |
 | Idle-host Jacobian timings | Pending: all load averages <4 before each solve; 352 bits, Nc=23/31/59, with the large case Nsh=160 and nPts=65 |
 | Fold `J^T G` into exact augmented SYRK | Local candidate behind explicit `QSC_GPU_NORMAL=1`; default off, CPU fallback and `QSC_GPU_SYRK` gate retained; full converged-history and timing acceptance pending |
-| Fourier residual -> complex GEMM | Pending; measure 66x130 times 130x3800 on the corrected backend (P1.3) |
-| Per-column 4x4 products and LU4 | Isolated product3 and LU4 candidates batch tangent products and descent/gluing inverses, with explicit off-default switches, CPU fallback and matching final CPU replays. GPU/consumer gates are queued; original integration and full acceptance remain pending. See [products](../benchmarks/experiments/section9_products4_consumer.md) and [LU4](../benchmarks/experiments/section9_lu4_consumer.md) |
+| Fourier residual -> complex GEMM | Isolated opt-in adapter passes 352/374/448-bit MPFR normal/Metal checks and saved J3 GPU replay; full g sweep, original integration and idle timings pending |
+| Per-column 4x4 products and LU4 | Isolated product3 and batched LU4 adapters pass MPFR normal/Metal checks and saved J3 individual/combined GPU replays; full g sweep, original integration and idle timings pending. See [products](../benchmarks/experiments/section9_products4_consumer.md) and [LU4](../benchmarks/experiments/section9_lu4_consumer.md) |
 | Remaining damping trials | Pending; preserve the first exact factor path, use batched trials only after P1.2/P2.2 numerical/performance acceptance; keep the new switch off until current-backend acceptance; historical small-matrix ratios are insufficient |
 | Optional base polynomial recurrence | Pending; measure shared Horner sources (P1.5) before switching the solver |
 | Large-shape memory | Pending consumer measurement: host W remains; compact 1.1.0 power storage is available explicitly, with a latency trade-off; chunk count if needed |
@@ -307,6 +307,15 @@ returns overall exit 2. Preserve that unsuccessful acceptance result.
 
 An isolated batched Fourier Jacobian adapter now compiles and reproduces the J3
 default and split-CPU Delta/history/residual exactly. It gathers both directions
-from all columns into one exact real-embedding GEMM; GPU, converged-history and
-idle gates are pending. Existing consumer sources/jobs are untouched.
+from all columns into one exact real-embedding GEMM; its GPU helper and saved J3
+converged replay now pass. Existing consumer sources/jobs are untouched.
 [Prepared adapter and scope](../benchmarks/experiments/section9_fourier_consumer.md).
+
+The isolated product3 and LU4 adapters also pass normal/Metal MPFR helpers and
+saved J3 individual/combined GPU replays. LU4 covers all 31 widths plus 374-bit
+consumer precision. Every replay retains the three serialized CPU history values
+and converges below its original input tolerance, with all requested GPU paths
+and adjoint checks passing. Frozen source/binary and raw output hashes have been
+independently verified. These checks cover g=.202 only; the requested g=.1/.2/.5
+cases, idle Nc=23/31/59 timings, original consumer integration and remaining
+damping/base switches are still pending.

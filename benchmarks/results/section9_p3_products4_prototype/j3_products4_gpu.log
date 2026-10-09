@@ -1,0 +1,15 @@
+WolfNum algebra prewarm: 1.3.1, 384 bits, startup wait 7.7459000000000005e-05 s (outside solve timing)
+Dset: rank 32 of 168  (1.9399409999999999 s)
+  start |G| = 1.0243522681269547e-10  |cons| = 4.1028220842960933e-94  (0.38735566700000001 s)
+  power moments: pack 0.011214167000000001 s, library wall 0.12952950000000002 s (device 0.10293879167875275 s), unpack 0.0015656670000000002 s
+  adjoint tables: stage 1 0.080674375000000006 s, stage 2 (GPU) 0.16036620800000001 s
+  adjoint check: PASS relative max difference 0, 0 units of 2^-374 (limit 65536; scale max |rows|; 12 columns), relative to max |dRows| 0
+  tangent products4: 4536 matrices, pack/upload 0.0029455840000000002 s, library wall 0.012959125 s (device 0.0084932083263993263 s), download/unpack 0.0028426660000000002 s
+  tangent 4x4 Jacobian (GPU)
+  normal matrix (GPU): 0.018390750000000001 s, CPU J^T G: 0.00083966600000000009 s
+  first Cholesky (GPU): 0.017810958000000002 s
+  it 1  |G| = 1.2649616737754718e-21  mu = 1.0000000000000001e-21  Delta = 2 + 1.0012726137914625 + 2.069011156244995e-31 i  (3.3333983329999999 s)
+  it 2 (chord)  |G| = 5.5775217996699744e-25  Delta = 2 + 1.0012726137914625 + -1.2665295352789159e-29 i  (3.5033123750000001 s)
+  timing: Jc 0.31257554100000001  JG 2.3791659169999999  lin 0.070599084000000006  LM 0.18359716700000001  chord 0.163132625 s (1 chord steps)
+  JG split (thread-summed s): dB 0.39950805  descent 3.4320626190000003  residual 2.6394774160000001
+done (5.5544927079999997 s)

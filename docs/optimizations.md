@@ -214,7 +214,10 @@ gates and timings are still required for valid candidates. [Records and patches]
 An isolated adapter stages all Jacobian directions for one exact real-embedding
 projection, with explicit opt-in, transactional publication and sequential MPC
 fallback. It builds; default and split-CPU J3 replays exactly match recorded
-Delta/history/residual values. GPU and acceptance gates are pending; no consumer
+Delta/history/residual values. MPFR helper checks pass normally and under Metal
+validation at 352/374/448 bits; the saved J3 GPU replay passes independently checked
+Delta/history/convergence and all-path markers. The requested g sweep and idle
+timings remain open; no original consumer
 source/default or speed claim is promoted. [Prototype](../benchmarks/experiments/section9_fourier_consumer.md).
 
 ## Section 9 P3: batched tangent 4x4 adapter preparation
@@ -222,7 +225,9 @@ source/default or speed claim is promoted. [Prototype](../benchmarks/experiments
 An isolated consumer stages all tangent columns for one composed product3
 submission, with explicit opt-in, status checks and MPC fallback. Matching default,
 staged-CPU and combined Fourier/staged-CPU J3 replays exactly reproduce recorded
-Delta/history/residual values. Physical GPU and consumer gates are queued; LU4,
+Delta/history/residual values. Physical GPU helper checks pass normally and under
+Metal validation at 352/374/448 bits; saved J3 product-only and combined Fourier
+GPU replays pass independent output checks. Original consumer integration,
 the requested g sweep and idle timings remain open. No production API/default
 or speed claim is changed. [Prototype](../benchmarks/experiments/section9_products4_consumer.md).
 
@@ -231,6 +236,9 @@ or speed claim is changed. [Prototype](../benchmarks/experiments/section9_produc
 An isolated consumer batches descent and fitted gluing inverses with explicit
 opt-in, transactional failure handling, serialized shared host staging and owning
 prewarm. Final default, staged-CPU and combined adapter replays exactly match the
-recorded J3 Delta/history/residual values. Physical-GPU all-width/Metal and solver
-checks are queued; no original consumer/default, speed claim or library release
+recorded J3 Delta/history/residual values. Physical-GPU all 31 widths plus 374 bits
+pass normally and under Metal validation. LU4-only and combined J3 GPU replays
+pass independently checked Delta/history/convergence and all-path markers.
+The requested g sweep, idle timings and original consumer integration remain open;
+no original consumer/default, speed claim or library release
 is promoted. [Prototype](../benchmarks/experiments/section9_lu4_consumer.md).

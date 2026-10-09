@@ -33,20 +33,23 @@ The matching 1.3.1 consumer and helper build. CPU helper fixtures at 352/374/448
 bits exercise the global GPU guard. Default, forced staged-CPU, and combined
 Fourier/products staged-CPU J=3 g=.202 replays exactly match the recorded Delta,
 three-entry history and residual `5.57752179966997436e-25`. The staged run's adjoint
-check passes. These are CPU staging checks; none establishes GPU arithmetic or
-timing acceptance for this switch.
+check passes. These establish CPU staging correctness; GPU evidence is separate.
 
 The GPU helper independently replays both products with MPFR scalar operations
 and covers an odd point count, skipped-column mapping, high-precision decimal
 inputs, cancellation, large exponent spread, malformed/nonfinite inputs,
 transactional output, the sub-switch and >1024-bit fallback. Normal and Metal
-validation runs are queued after the existing independent gates, followed by a
-saved J3 GPU replay and, if the preceding Fourier gate succeeds, a combined replay.
-Solver command success alone is insufficient: independently parse Delta, residual
-histories and all-path markers before accepting those outputs.
+validation runs pass at 352/374/448 bits. The saved J3 product-only and combined
+Fourier/product GPU replays pass independently parsed acceptance checks. Maximum
+component Delta differences are `7.10245197342712e-125` and
+`1.539673154646756417e-92`, respectively. Both retain the three serialized CPU
+history entries and residual `5.57752179966997436e-25`, below input tolerance
+`1e-22`. Requested GPU paths and adjoint checks run without fallback. Terminal
+status, frozen source/binary identities and raw log/output hashes are verified.
 
 [Source patch](section9_products4_consumer.patch) and
-[helper](section9_products4_consumer_check.cpp) remain unmerged consumer changes.
-LU4 integration, the requested converged g=.1/.2/.5 cases and idle-host timings
+[helper](section9_products4_consumer_check.cpp) remain archived consumer prototypes.
+The subsequent [LU4 prototype](section9_lu4_consumer.md) also passes its saved J3
+combined replay. Original consumer integration, the requested converged g=.1/.2/.5 cases and idle-host timings
 remain open. This preparation does not change the production library or its
 version and does not complete the full P3 checklist.

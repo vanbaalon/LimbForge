@@ -1,0 +1,69 @@
+{
+  "state": "terminal",
+  "wait_for_pid": 34087,
+  "scope": "Consumer product3 MPFR helper normal/MTL, then saved J3 GPU and combined Fourier/product replay; no timing acceptance",
+  "sha256": {
+    "include/mx.hpp": "9cf8afa03ba01e41541ad9ddae4802abc5e562acc32ce16a9cac17b7dfecfbab",
+    "tools/test_products4_candidate.cpp": "e3c888dd3920aaf1cdfeaf4f06f229807033a90af3d5fae3e66b9b6508b6892f",
+    "CMakeLists.txt": "752ef4f57e073b2412e567d98776b79fd6753dcf6634855189d77566a310bf69",
+    "build/qscmx": "4388cdf78a6113152bad3c88ec8e99412b3a0f8e53bf72be4f900822afa74897",
+    "build/qscmx_products4_check": "ed52de94a2b89795401d963f9704234637a6405adfdb9198223004e3437849f2",
+    "build/limbforge/liblimbforge.a": "3da167f754e5242eb3430e7c5f52f34807a1a1551bfaea3bc272992043470018"
+  },
+  "steps": [
+    {
+      "command": [
+        "./build/qscmx_products4_check"
+      ],
+      "shader_validation": false,
+      "combined_fourier": false,
+      "state": "terminal",
+      "log": "helper_gpu.log",
+      "pid": 42058,
+      "exit": 0,
+      "log_sha256": "323c029d1caa18ac7667125355e0c51ef7b69fdce1a0a1e9a735691f7c8e86af"
+    },
+    {
+      "command": [
+        "./build/qscmx_products4_check"
+      ],
+      "shader_validation": true,
+      "combined_fourier": false,
+      "state": "terminal",
+      "log": "helper_shader.log",
+      "pid": 42061,
+      "exit": 0,
+      "log_sha256": "9cf05dfb2dcc48e8bda8acac6eed56e0b86e94eeb57a9303c24f2a54c7f23105"
+    },
+    {
+      "command": [
+        "./build/qscmx",
+        "/Users/k0959535/Dropbox/IntegrabilityProjects/2026 Near N=4/qsccpp/runs/wolfnum_1_3_1/inputs/j3_X2Y_g0.202_nc21.txt",
+        "prototype-results/j3_products4_gpu.m"
+      ],
+      "shader_validation": false,
+      "combined_fourier": false,
+      "state": "terminal",
+      "log": "j3_products4_gpu.log",
+      "pid": 42065,
+      "exit": 0,
+      "log_sha256": "cfe449620aa37a0c47b92b1d823ebb5a6a208d0bd179f80ef27146aed0191c38"
+    },
+    {
+      "command": [
+        "./build/qscmx",
+        "/Users/k0959535/Dropbox/IntegrabilityProjects/2026 Near N=4/qsccpp/runs/wolfnum_1_3_1/inputs/j3_X2Y_g0.202_nc21.txt",
+        "prototype-results/j3_combined_gpu.m"
+      ],
+      "shader_validation": false,
+      "combined_fourier": true,
+      "state": "terminal",
+      "log": "j3_combined_gpu.log",
+      "pid": 42077,
+      "exit": 0,
+      "log_sha256": "84c71bb93c7a2551ddf36ec6a273ae0fcce731f403b7ea604a5a5b4fa369926a"
+    }
+  ],
+  "exit": 0,
+  "remaining": "Independently parse solver Delta/history/residual and confirm all-path markers; required g=.1/.2/.5 and idle timings remain open"
+}

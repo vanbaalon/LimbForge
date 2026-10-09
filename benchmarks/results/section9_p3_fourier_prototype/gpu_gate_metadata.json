@@ -1,0 +1,52 @@
+{
+  "state": "terminal",
+  "wait_for_pid": 27551,
+  "scope": "Serialized independent Fourier adapter helper and J3 fixture checks; no timings accepted",
+  "sha256": {
+    "include/mx.hpp": "3b0a0bf6cd71af4de3876d8eb4c513633c809ad97a08f105f9db2f3955cd7a04",
+    "tools/test_fourier_candidate.cpp": "33b86491268eae5c599ec32210bae7261ba36362b5ad8a7e3731300b10da814a",
+    "build/qscmx": "38dd33e04c665a20968346304eebddf76c5a01994507f2c5a2193848212e2b7f",
+    "build/qscmx_fourier_check": "a61b9a23fb873830ea340be68c460190f92213240cb425f5e746322b12dbc204",
+    "build/limbforge/liblimbforge.a": "45410807e80a686ff9c0cc7780e34832d52ccbfef4b9f3721bcbdb0f485257d3"
+  },
+  "steps": [
+    {
+      "command": [
+        "./build/qscmx_fourier_check"
+      ],
+      "shader_validation": false,
+      "state": "terminal",
+      "log": "helper_gpu.log",
+      "pid": 41544,
+      "exit": 0,
+      "log_sha256": "68d942cda5375bc473cbbb20cb768179abe1118f8e3ffe42400f26f91f622629"
+    },
+    {
+      "command": [
+        "./build/qscmx_fourier_check"
+      ],
+      "shader_validation": true,
+      "state": "terminal",
+      "log": "helper_shader.log",
+      "pid": 41547,
+      "exit": 0,
+      "log_sha256": "29b4f4f75e05d633c058717a61908246ab2ff451a9a0688dc2d47d21767a5476"
+    },
+    {
+      "command": [
+        "./build/qscmx",
+        "/Users/k0959535/Dropbox/IntegrabilityProjects/2026 Near N=4/qsccpp/runs/wolfnum_1_3_1/inputs/j3_X2Y_g0.202_nc21.txt",
+        "prototype-results/j3_fourier_gpu.m"
+      ],
+      "shader_validation": false,
+      "state": "terminal",
+      "log": "j3_fourier_gpu.log",
+      "pid": 41549,
+      "exit": 0,
+      "log_sha256": "7394da46174f40fa24df26c0849652324b1405b7c5239705fa33417098b5f6bd"
+    }
+  ],
+  "preceding_independent_experiment_exit": 0,
+  "exit": 0,
+  "remaining": "Independently compare J3 output Delta/histories/residual and all-path markers before any acceptance; no timing acceptance"
+}

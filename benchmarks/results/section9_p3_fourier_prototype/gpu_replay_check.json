@@ -1,0 +1,25 @@
+{
+  "scope": "Only saved J3 g=.202 fixture; requested g=.1/.2/.5 and idle timing acceptance remain open",
+  "Delta_max_component_error": "1.539673154646756417E-92",
+  "history_max_relative_error": "0",
+  "cpu_iterations": 3,
+  "gpu_iterations": 3,
+  "cpu_residual": "5.57752179966997436E-25",
+  "gpu_residual": "5.57752179966997436E-25",
+  "gtol": "1E-22",
+  "all_gpu_paths_exercised": true,
+  "converged": true,
+  "timing_accepted": false,
+  "reference_sha256": "c840246a9b187881aef16603c52070ec1e000335f8252dee5c3d4c7a3c5ca7bc",
+  "input_sha256": "4545c163d78f20017d5626019a3530dab7897a368a3765c5661220137d38a6b2",
+  "output_sha256": "13177a7f32767310e43868f181964ecdbcbb28ba0b9de653cafa6d79f288c428",
+  "required_markers": [
+    "stage 2 (GPU)",
+    "normal matrix (GPU)",
+    "first Cholesky (GPU)",
+    "adjoint check: PASS",
+    "Fourier Jacobian (GPU)",
+    "exact Fourier:"
+  ],
+  "acceptance_pass": true
+}

@@ -1,0 +1,45 @@
+{
+  "candidate": "fourier",
+  "live_frozen_hashes_checked": true,
+  "reference_sha256": "c840246a9b187881aef16603c52070ec1e000335f8252dee5c3d4c7a3c5ca7bc",
+  "input_sha256": "4545c163d78f20017d5626019a3530dab7897a368a3765c5661220137d38a6b2",
+  "records": [
+    {
+      "log": "helper_gpu.log",
+      "checked_precisions": [
+        352,
+        374,
+        448
+      ],
+      "shader_validation": false
+    },
+    {
+      "log": "helper_shader.log",
+      "checked_precisions": [
+        352,
+        374,
+        448
+      ],
+      "shader_validation": true
+    },
+    {
+      "log": "j3_fourier_gpu.log",
+      "output_sha256": "13177a7f32767310e43868f181964ecdbcbb28ba0b9de653cafa6d79f288c428",
+      "Delta_max_component_error": "1.539673154646756417E-92",
+      "history_max_relative_error": "0",
+      "residual": "5.57752179966997436E-25",
+      "gtol": "1E-22",
+      "required_gpu_markers": [
+        "stage 2 (GPU)",
+        "normal matrix (GPU)",
+        "first Cholesky (GPU)",
+        "adjoint check: PASS",
+        "Fourier Jacobian (GPU)",
+        "exact Fourier:"
+      ],
+      "acceptance_pass": true
+    }
+  ],
+  "scope": "Saved J3 g=.202 only; g=.1/.2/.5, idle timing and production integration remain open",
+  "timing_accepted": false
+}

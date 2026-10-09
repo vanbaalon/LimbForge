@@ -1,0 +1,65 @@
+  inverse4 LU: 17 matrices, pack 3.7833e-05 s, library wall 0.627822 s (device 0.002522 s), unpack 0.000116 s
+WolfNum inverse4 LU: inverse4: row shape; using CPU fallback
+64 bits: MPFR LU4 inverse, row swaps/ties/scales, rounded width and failure guards pass
+  inverse4 LU: 17 matrices, pack 3.3916e-05 s, library wall 0.908605 s (device 0.00372387 s), unpack 9.3208e-05 s
+96 bits: MPFR LU4 inverse, row swaps/ties/scales, rounded width and failure guards pass
+  inverse4 LU: 17 matrices, pack 2.8958e-05 s, library wall 1.08811 s (device 0.00471175 s), unpack 9.2875e-05 s
+128 bits: MPFR LU4 inverse, row swaps/ties/scales, rounded width and failure guards pass
+  inverse4 LU: 17 matrices, pack 3.8417e-05 s, library wall 1.25502 s (device 0.00564263 s), unpack 0.00010475 s
+160 bits: MPFR LU4 inverse, row swaps/ties/scales, rounded width and failure guards pass
+  inverse4 LU: 17 matrices, pack 3.225e-05 s, library wall 1.49361 s (device 0.00686125 s), unpack 9.7166e-05 s
+192 bits: MPFR LU4 inverse, row swaps/ties/scales, rounded width and failure guards pass
+  inverse4 LU: 17 matrices, pack 2.9458e-05 s, library wall 1.56197 s (device 0.00837025 s), unpack 0.000133167 s
+224 bits: MPFR LU4 inverse, row swaps/ties/scales, rounded width and failure guards pass
+  inverse4 LU: 17 matrices, pack 4.0458e-05 s, library wall 1.76841 s (device 0.009015 s), unpack 0.000112 s
+256 bits: MPFR LU4 inverse, row swaps/ties/scales, rounded width and failure guards pass
+  inverse4 LU: 17 matrices, pack 4.5125e-05 s, library wall 1.92528 s (device 0.010038 s), unpack 9.9083e-05 s
+288 bits: MPFR LU4 inverse, row swaps/ties/scales, rounded width and failure guards pass
+  inverse4 LU: 17 matrices, pack 3.3167e-05 s, library wall 2.15966 s (device 0.0106888 s), unpack 9.8708e-05 s
+320 bits: MPFR LU4 inverse, row swaps/ties/scales, rounded width and failure guards pass
+  inverse4 LU: 17 matrices, pack 3.1208e-05 s, library wall 2.26229 s (device 0.0108212 s), unpack 9.4041e-05 s
+352 bits: MPFR LU4 inverse, row swaps/ties/scales, rounded width and failure guards pass
+  inverse4 LU: 17 matrices, pack 3.1708e-05 s, library wall 2.51489 s (device 0.0114688 s), unpack 0.000125458 s
+384 bits: MPFR LU4 inverse, row swaps/ties/scales, rounded width and failure guards pass
+  inverse4 LU: 17 matrices, pack 3.6375e-05 s, library wall 2.64869 s (device 0.0124229 s), unpack 9.8833e-05 s
+416 bits: MPFR LU4 inverse, row swaps/ties/scales, rounded width and failure guards pass
+  inverse4 LU: 17 matrices, pack 2.8292e-05 s, library wall 2.87095 s (device 0.012864 s), unpack 9.1208e-05 s
+448 bits: MPFR LU4 inverse, row swaps/ties/scales, rounded width and failure guards pass
+  inverse4 LU: 17 matrices, pack 3.3375e-05 s, library wall 3.05264 s (device 0.0129998 s), unpack 0.000124625 s
+480 bits: MPFR LU4 inverse, row swaps/ties/scales, rounded width and failure guards pass
+  inverse4 LU: 17 matrices, pack 3.1709e-05 s, library wall 2.55362 s (device 0.013501 s), unpack 9.9875e-05 s
+512 bits: MPFR LU4 inverse, row swaps/ties/scales, rounded width and failure guards pass
+  inverse4 LU: 17 matrices, pack 2.9042e-05 s, library wall 2.95094 s (device 0.0142657 s), unpack 0.000106459 s
+544 bits: MPFR LU4 inverse, row swaps/ties/scales, rounded width and failure guards pass
+  inverse4 LU: 17 matrices, pack 3.6709e-05 s, library wall 2.91819 s (device 0.0148256 s), unpack 9.9541e-05 s
+576 bits: MPFR LU4 inverse, row swaps/ties/scales, rounded width and failure guards pass
+  inverse4 LU: 17 matrices, pack 3.0583e-05 s, library wall 3.15665 s (device 0.0152225 s), unpack 0.000112125 s
+608 bits: MPFR LU4 inverse, row swaps/ties/scales, rounded width and failure guards pass
+  inverse4 LU: 17 matrices, pack 2.9125e-05 s, library wall 3.25514 s (device 0.0156636 s), unpack 9.7791e-05 s
+640 bits: MPFR LU4 inverse, row swaps/ties/scales, rounded width and failure guards pass
+  inverse4 LU: 17 matrices, pack 4.3875e-05 s, library wall 3.54584 s (device 0.0163856 s), unpack 0.000110333 s
+672 bits: MPFR LU4 inverse, row swaps/ties/scales, rounded width and failure guards pass
+  inverse4 LU: 17 matrices, pack 3.1625e-05 s, library wall 3.88407 s (device 0.0166291 s), unpack 9.5125e-05 s
+704 bits: MPFR LU4 inverse, row swaps/ties/scales, rounded width and failure guards pass
+  inverse4 LU: 17 matrices, pack 2.9292e-05 s, library wall 3.89663 s (device 0.0169602 s), unpack 0.000104417 s
+736 bits: MPFR LU4 inverse, row swaps/ties/scales, rounded width and failure guards pass
+  inverse4 LU: 17 matrices, pack 3.5541e-05 s, library wall 4.39169 s (device 0.0150512 s), unpack 9.8292e-05 s
+768 bits: MPFR LU4 inverse, row swaps/ties/scales, rounded width and failure guards pass
+  inverse4 LU: 17 matrices, pack 3.575e-05 s, library wall 4.46216 s (device 0.0181469 s), unpack 8.8833e-05 s
+800 bits: MPFR LU4 inverse, row swaps/ties/scales, rounded width and failure guards pass
+  inverse4 LU: 17 matrices, pack 3.5583e-05 s, library wall 4.74154 s (device 0.0185613 s), unpack 8.175e-05 s
+832 bits: MPFR LU4 inverse, row swaps/ties/scales, rounded width and failure guards pass
+  inverse4 LU: 17 matrices, pack 3.3708e-05 s, library wall 5.12674 s (device 0.0191373 s), unpack 0.000101667 s
+864 bits: MPFR LU4 inverse, row swaps/ties/scales, rounded width and failure guards pass
+  inverse4 LU: 17 matrices, pack 3.5917e-05 s, library wall 5.26251 s (device 0.0194186 s), unpack 0.000155333 s
+896 bits: MPFR LU4 inverse, row swaps/ties/scales, rounded width and failure guards pass
+  inverse4 LU: 17 matrices, pack 3.1e-05 s, library wall 5.45126 s (device 0.0201221 s), unpack 8.9542e-05 s
+928 bits: MPFR LU4 inverse, row swaps/ties/scales, rounded width and failure guards pass
+  inverse4 LU: 17 matrices, pack 3.4416e-05 s, library wall 5.75473 s (device 0.0206703 s), unpack 0.000106292 s
+960 bits: MPFR LU4 inverse, row swaps/ties/scales, rounded width and failure guards pass
+  inverse4 LU: 17 matrices, pack 3.6e-05 s, library wall 6.1996 s (device 0.020971 s), unpack 0.0001045 s
+992 bits: MPFR LU4 inverse, row swaps/ties/scales, rounded width and failure guards pass
+  inverse4 LU: 17 matrices, pack 3.5083e-05 s, library wall 6.40808 s (device 0.021369 s), unpack 9.9542e-05 s
+1024 bits: MPFR LU4 inverse, row swaps/ties/scales, rounded width and failure guards pass
+  inverse4 LU: 17 matrices, pack 3.3417e-05 s, library wall 0.00363596 s (device 0.00336996 s), unpack 6.8917e-05 s
+374 bits: MPFR LU4 inverse, row swaps/ties/scales, rounded width and failure guards pass

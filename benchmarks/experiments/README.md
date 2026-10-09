@@ -128,3 +128,10 @@ GPU tests before measuring it. Never overwrite accepted result files.
 - Section 9 private complex tiling, base `deee518`: three 8x4 candidates pass all 31
   normal/shader small, dense and wide-exponent sweeps; register-blocked 8x8 and named-accumulator
   correction fail dense 64-bit shader checks. [Report and retained patches](section9_complex_tiles.md).
+
+- Section 9 isolated consumer adapters: [Fourier](section9_fourier_consumer.md),
+  [tangent product3](section9_products4_consumer.md) and [batched LU4](section9_lu4_consumer.md).
+  Incremental patches use the recorded consumer snapshots and production WolfNum
+  1.3.1. MPFR normal/Metal helpers and saved J3 individual/combined GPU replays
+  pass; original integration, the requested g sweep and idle timings remain open.
+  `check_section9_consumer_records.py` verifies the archived outputs without GPU execution.

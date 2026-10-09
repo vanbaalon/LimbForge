@@ -24,11 +24,19 @@ The split replay exercises sample extraction, CPU projection and postprocessing;
 it is numerical evidence for the staging refactor, not GPU acceptance. CPU helper
 fixtures at352/374/448 and disabled-GPU/output-preservation guards pass. The physical-
 GPU helper independently compares each result against MPFR exact dots and checks
-malformed-input preservation, but its GPU runs remain pending.
+malformed-input preservation. It passes at 352/374/448 bits normally and with
+Metal shader validation.
+
+The saved J3 GPU replay also passes: Delta differs from the recorded CPU result
+by at most `1.539673154646756417e-92`, the three history entries match exactly at
+their serialized precision, and both residuals are `5.57752179966997436e-25`,
+below the input tolerance `1e-22`. Existing GPU paths, the Fourier path and the
+adjoint check run without fallback. Terminal status, frozen source/binary hashes,
+raw logs and output values have been independently verified.
 
 [Prepared patch](section9_fourier_consumer.patch) and
-[helper source](section9_fourier_consumer_check.cpp) are unmerged. Raw CPU evidence
+[helper source](section9_fourier_consumer_check.cpp) are archived consumer prototypes. Raw CPU/GPU evidence
 and hashes are in `benchmarks/results/section9_p3_fourier_prototype`. Reapply only to
-the recorded consumer baseline after checking source drift. GPU/reference/shader,
-converged-history and idle-timing acceptance are still required. This does not
+the recorded consumer baseline after checking source drift. Original consumer
+integration, the requested converged g sweep and idle-timing acceptance remain open. This does not
 complete the requested g=.1/.2/.5 checks or any remaining 4x4/damping/base switches.

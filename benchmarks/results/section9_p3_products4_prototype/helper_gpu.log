@@ -1,0 +1,9 @@
+  tangent products4: 28 matrices, pack/upload 0.02577 s, library wall 0.576323 s (device 0.00113817 s), download/unpack 0.000177833 s
+WolfNum tangent products4: tangent products4: derivative shape; using CPU fallback
+352 bits: MPFR product3, rounded width, cancellation/wide data, mapping and failure guards pass
+  tangent products4: 28 matrices, pack/upload 0.00010425 s, library wall 0.555759 s (device 0.00126387 s), download/unpack 9.9e-05 s
+WolfNum tangent products4: tangent products4: derivative shape; using CPU fallback
+374 bits: MPFR product3, rounded width, cancellation/wide data, mapping and failure guards pass
+  tangent products4: 28 matrices, pack/upload 0.000100709 s, library wall 0.83498 s (device 0.00149737 s), download/unpack 0.000153792 s
+WolfNum tangent products4: tangent products4: derivative shape; using CPU fallback
+448 bits: MPFR product3, rounded width, cancellation/wide data, mapping and failure guards pass

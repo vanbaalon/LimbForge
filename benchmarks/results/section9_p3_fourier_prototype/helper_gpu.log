@@ -1,0 +1,7 @@
+  exact Fourier: pack 9.3209e-05 s, library wall 0.236164 s (device 0.000787375 s), unpack 0.000127708 s
+WolfNum Fourier: Fourier: short sample table; using CPU fallback
+352 bits: Fourier MPFR exact-dot, packing, output and failure guards pass
+  exact Fourier: pack 6.8292e-05 s, library wall 0.161972 s (device 0.000901625 s), unpack 0.000225792 s
+374 bits: Fourier MPFR exact-dot, packing, output and failure guards pass
+  exact Fourier: pack 6.9833e-05 s, library wall 0.172432 s (device 0.00118192 s), unpack 0.0002395 s
+448 bits: Fourier MPFR exact-dot, packing, output and failure guards pass

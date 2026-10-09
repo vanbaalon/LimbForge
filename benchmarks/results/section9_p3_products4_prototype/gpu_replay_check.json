@@ -1,0 +1,54 @@
+{
+  "scope": "Saved J3 g=.202 only; requested g=.1/.2/.5 and idle timings remain open",
+  "reference_sha256": "c840246a9b187881aef16603c52070ec1e000335f8252dee5c3d4c7a3c5ca7bc",
+  "records": [
+    {
+      "label": "j3_products4_gpu",
+      "Delta_max_component_error": "7.10245197342712E-125",
+      "history_max_relative_error": "0",
+      "cpu_iterations": 3,
+      "gpu_iterations": 3,
+      "cpu_residual": "5.57752179966997436E-25",
+      "gpu_residual": "5.57752179966997436E-25",
+      "gtol": "1e-22",
+      "all_gpu_paths_exercised": true,
+      "converged": true,
+      "timing_accepted": false,
+      "required_markers": [
+        "stage 2 (GPU)",
+        "normal matrix (GPU)",
+        "first Cholesky (GPU)",
+        "adjoint check: PASS",
+        "tangent 4x4 Jacobian (GPU)",
+        "tangent products4:"
+      ],
+      "output_sha256": "1f06ec9ed2018c7b494a8ac0ef9f61ed073e1ef3092ff191719475a59847271d",
+      "acceptance_pass": true
+    },
+    {
+      "label": "j3_combined_gpu",
+      "Delta_max_component_error": "1.539673154646756417E-92",
+      "history_max_relative_error": "0",
+      "cpu_iterations": 3,
+      "gpu_iterations": 3,
+      "cpu_residual": "5.57752179966997436E-25",
+      "gpu_residual": "5.57752179966997436E-25",
+      "gtol": "1e-22",
+      "all_gpu_paths_exercised": true,
+      "converged": true,
+      "timing_accepted": false,
+      "required_markers": [
+        "stage 2 (GPU)",
+        "normal matrix (GPU)",
+        "first Cholesky (GPU)",
+        "adjoint check: PASS",
+        "tangent 4x4 Jacobian (GPU)",
+        "tangent products4:",
+        "Fourier Jacobian (GPU)",
+        "exact Fourier:"
+      ],
+      "output_sha256": "3c32e8a2ad1617365108dd2b27e68fc7df92857bacd9b019e2faa80fb9414cdc",
+      "acceptance_pass": true
+    }
+  ]
+}
