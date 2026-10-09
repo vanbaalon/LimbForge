@@ -1,6 +1,6 @@
 # Section 9 P1.3: complex GEMM contract comparison
 
-Base `70ec257` / numerical release 1.1.0. No library arithmetic, API or default change.
+Original base `70ec257` / 1.1.0, now rebased on `bffa58b` / WolfNum 1.3.0. No library arithmetic, API or default change.
 `section9_gemm_limbforge` is an opt-in benchmark excluded from routine builds/CTest.
 No timings have been recorded or speed claims accepted.
 
@@ -53,3 +53,8 @@ cost and extra buffers of the exact embedding. A fair large-batch exact comparis
 still needs measurement and may motivate an exact batched API. Fourier/other §9.2
 shapes, 1e4/1e5 batches, register blocking/TK variants and performance acceptance
 remain pending; the historical 7.9x ratio is not a current baseline.
+
+The current harness explicitly matches Linalg host-worker count to the MPFR
+worker count. Clock labels are `cpu-interleaved` and `verified-warm-call`; neither
+proves controlled cold or continuously warm clocks. Rebuilt focused physical-GPU
+checks are required before measuring this updated 1.3.0-linked harness.

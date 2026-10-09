@@ -91,7 +91,7 @@ template<int B> void run(const Options& o) {
     for(unsigned p=0;p<4;++p){mpfr_set_zero(maximum.x,1);for(std::size_t i=0;i<oc;++i){if(!reference::equal_complex<B>(expected[p][i],expected[2][i]))++differs[p];
         for(unsigned c=0;c<2;++c){to_mpfr<B>(value.x,c?expected[p][i].im:expected[p][i].re);mpfr_sub(diff.x,value.x,truth[2*i+c],MPFR_RNDN);mpfr_abs(diff.x,diff.x,MPFR_RNDN);if(mpfr_cmp(diff.x,maximum.x)>0)mpfr_set(maximum.x,diff.x,MPFR_RNDN);}}
         if(!mpfr_zero_p(scale.x)){mpfr_div(maximum.x,maximum.x,scale.x,MPFR_RNDN);mpfr_mul_2ui(maximum.x,maximum.x,B,MPFR_RNDN);}error[p]=mpfr_get_d(maximum.x,MPFR_RNDN);}
-    Engine engine;BatchedLinalg seq(engine);Linalg exact(engine);
+    Engine engine;BatchedLinalg seq(engine);LinalgOptions exact_options;exact_options.host_threads=o.workers;Linalg exact(engine,exact_options);
     bool use_complex=o.path<2,use_exact=o.path<0||o.path==2,use_gauss=o.path<0||o.path==3;
     std::vector<F> ar(use_gauss?ac:0),ai(ar.size()),br(use_gauss?bc:0),bi(br.size());
     std::vector<F> embedded_a(use_exact?4*ac:0),embedded_b(use_exact?2*bc:0),embedded_c(use_exact?2*oc:0),real(use_gauss?oc:0),imag(real.size());
@@ -134,8 +134,9 @@ template<int B> void run(const Options& o) {
             std::cerr<<"cpu_sample,"<<rep<<','<<j<<','<<names[p]<<','<<std::setprecision(12)<<seconds<<'\n';}
         for(unsigned j=0;j<paths.size();++j){auto p=paths[(rep+j)%paths.size()];if(o.warm){gpu(p);verify(p);}auto t=gpu(p);wall[p].push_back(t.wall_seconds);device[p].push_back(t.gpu_seconds);verify(p);
             std::cerr<<"gpu_sample,"<<rep<<','<<j<<','<<names[p]<<','<<std::setprecision(12)<<t.wall_seconds<<','<<t.gpu_seconds<<'\n';}}
+    std::cerr<<"Device: "<<engine.device_name()<<"; immutable MPFR references check every timed CPU/GPU output; numeric-array transfers "<<(o.resident?"excluded":"included")<<"; bridge conversion excluded; exact Linalg host workers="<<o.workers<<'\n';
     std::cout<<"bits,count,m,n,k,path,resident,workers,repeats,clock,cpu_wall,gpu_wall,gpu_device,wall_p25,wall_p75,wall_min,wall_max,different_complex_entries,error_units_2neg_bits,profile\n";
-    for(auto p:paths)std::cout<<B<<','<<o.count<<','<<o.m<<','<<o.n<<','<<o.k<<','<<names[p]<<','<<o.resident<<','<<o.workers<<','<<o.repeats<<','<<(o.warm?"verified_warm_call":"cpu_interleaved")<<','<<std::setprecision(12)<<quantile(cpu_times[p],.5)<<','<<quantile(wall[p],.5)<<','<<quantile(device[p],.5)<<','<<quantile(wall[p],.25)<<','<<quantile(wall[p],.75)<<','<<quantile(wall[p],0)<<','<<quantile(wall[p],1)<<','<<differs[p]<<','<<error[p]<<','<<engine.device_name()<<" / " LIMBFORGE_VERSION_STRING " / complex-gemm-contracts\n";
+    for(auto p:paths)std::cout<<B<<','<<o.count<<','<<o.m<<','<<o.n<<','<<o.k<<','<<names[p]<<','<<o.resident<<','<<o.workers<<','<<o.repeats<<','<<(o.warm?"verified-warm-call":"cpu-interleaved")<<','<<std::setprecision(12)<<quantile(cpu_times[p],.5)<<','<<quantile(wall[p],.5)<<','<<quantile(device[p],.5)<<','<<quantile(wall[p],.25)<<','<<quantile(wall[p],.75)<<','<<quantile(wall[p],0)<<','<<quantile(wall[p],1)<<','<<differs[p]<<','<<error[p]<<','<<engine.device_name()<<" / " LIMBFORGE_VERSION_STRING " / complex-gemm-contracts\n";
 }
 template<int B=64> void width(const Options& o){if(o.bits==B)run<B>(o);else if constexpr(B<1024)width<B+32>(o);}
 int main(int argc,char** argv){try{Options o;for(int i=1;i<argc;++i){std::string a=argv[i];
