@@ -1,0 +1,43 @@
+{
+  "scope": "CPU staging parity only; physical GPU arithmetic/reference and solver acceptance pending",
+  "reference_sha256": "c840246a9b187881aef16603c52070ec1e000335f8252dee5c3d4c7a3c5ca7bc",
+  "records": [
+    {
+      "label": "default",
+      "Delta_history_residual_exactly_equal": true,
+      "residual": "5.57752179966997436E-25",
+      "history_entries": 3,
+      "adjoint_pass": false
+    },
+    {
+      "label": "split",
+      "Delta_history_residual_exactly_equal": true,
+      "residual": "5.57752179966997436E-25",
+      "history_entries": 3,
+      "adjoint_pass": true
+    },
+    {
+      "label": "combined_split",
+      "Delta_history_residual_exactly_equal": true,
+      "residual": "5.57752179966997436E-25",
+      "history_entries": 3,
+      "adjoint_pass": true
+    }
+  ],
+  "sha256": {
+    "include/mx.hpp": "a8702627643ddd33d406580df13c4513047653bca852cf76f21d606b9b855299",
+    "tools/test_lu4_candidate.cpp": "b80e59bb25701e4329521466f0417f485156e046fd08c07e9dc03cd5b5397d19",
+    "CMakeLists.txt": "d110301e3a2a4776934de601479ce17fc7b2d17058fa61b2110c6ad939b7a400",
+    "build/qscmx": "1658f9eebfacf779071d60a86687f482f96264f00247c7b7dee50ce362fb983b",
+    "build/qscmx_lu4_check": "ce3fc401d2ba696de6bee41afa5b66bf481f2dbfae52d63aec2b07b2268c52b9",
+    "build/limbforge/liblimbforge.a": "a9f3ec3ff4168b8e513ca07c7ac1e457c9ad6ad8d55145e8c77fd0948a72983c",
+    "prototype-results/j3_lu4_default_cpu.m": "8b19c1345d5c652ad47e452375d47aadb5a5931d5e947df82410c70764fd3d20",
+    "prototype-results/j3_lu4_default_cpu.log": "e88a798ce04cbf8e4910160e41d1ee095f13056b1f12d00c53029513b579c5ba",
+    "prototype-results/j3_lu4_split_cpu.m": "f29303f9a9653cf024e2dc52f22a704d6e6459ba41c201fd51a8131f9f47d861",
+    "prototype-results/j3_lu4_split_cpu.log": "ca82d96203a30c24cd394416486352cf9b114914718e4e6334bf3dbb5817dde2",
+    "prototype-results/j3_lu4_combined_split_cpu.m": "af583ccb453d10a018ca18f843d60f7a0a242a4302d6a6a93f2ed736827ae283",
+    "prototype-results/j3_lu4_combined_split_cpu.log": "60d813a684d237f58ee89ff4340e61380c626832137927fca817a2f7ed3a6859",
+    "prototype-results/helper_cpu.log": "3d8816d86ee10f553898a9cf7675f3c50e1f37462db25f30adda3fac36ff140b",
+    "prototype-results/helper_cpu_all_widths.log": "90f32791bff0ffb8b11e3c3002b9ad5e5c6d2866a9870074d6f8d08810fd97fa"
+  }
+}

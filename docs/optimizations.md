@@ -225,3 +225,12 @@ staged-CPU and combined Fourier/staged-CPU J3 replays exactly reproduce recorded
 Delta/history/residual values. Physical GPU and consumer gates are queued; LU4,
 the requested g sweep and idle timings remain open. No production API/default
 or speed claim is changed. [Prototype](../benchmarks/experiments/section9_products4_consumer.md).
+
+## Section 9 P3: batched LU4 adapter preparation
+
+An isolated consumer batches descent and fitted gluing inverses with explicit
+opt-in, transactional failure handling, serialized shared host staging and owning
+prewarm. Final default, staged-CPU and combined adapter replays exactly match the
+recorded J3 Delta/history/residual values. Physical-GPU all-width/Metal and solver
+checks are queued; no original consumer/default, speed claim or library release
+is promoted. [Prototype](../benchmarks/experiments/section9_lu4_consumer.md).

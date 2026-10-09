@@ -1,0 +1,42 @@
+{
+  "scope": "Consumer-only LU4 candidate on top of frozen Fourier/product3 source; final CPU parity passed; GPU checks queued",
+  "base_sha256": {
+    "include/mx.hpp": "9cf8afa03ba01e41541ad9ddae4802abc5e562acc32ce16a9cac17b7dfecfbab",
+    "CMakeLists.txt": "752ef4f57e073b2412e567d98776b79fd6753dcf6634855189d77566a310bf69"
+  },
+  "prepared_sha256": {
+    "include/mx.hpp": "3f987442d37fe62ae6f30502991604012795ecebba3420885368ccf58524b6fb",
+    "CMakeLists.txt": "d110301e3a2a4776934de601479ce17fc7b2d17058fa61b2110c6ad939b7a400",
+    "tools/test_lu4_candidate.cpp": "12ddc8e20fa073f03e1d2e44c3ccc5eb547d74fb8d00f5d631ad9c16ce26fa1b",
+    "build/qscmx": "8428f4decc52d9d76de355fcf148474c2431600f13e8d062193b1e5d36872259",
+    "build/qscmx_lu4_check": "0cba7d7b94f411e5f17e126d5753769911e692d3b435e3f42f5705e009102095",
+    "build/limbforge/liblimbforge.a": "a9f3ec3ff4168b8e513ca07c7ac1e457c9ad6ad8d55145e8c77fd0948a72983c"
+  },
+  "production_library": "1.3.1 / main e456ef4, numerical source unchanged",
+  "evidence_sha256": {
+    "j3_lu4_split_cpu.m": "f29303f9a9653cf024e2dc52f22a704d6e6459ba41c201fd51a8131f9f47d861",
+    "j3_lu4_combined_split_cpu.m": "af583ccb453d10a018ca18f843d60f7a0a242a4302d6a6a93f2ed736827ae283",
+    "j3_lu4_final_default_cpu.m": "ea3cb8aa4a36ab9257583692088bd23bbe1769c3c03dd801af6d7df01ad179bd",
+    "j3_lu4_final_default_cpu.log": "9365d08e69106fa53af08f490e333129009a357f1f65a45163a6e7437d220592",
+    "helper_final_cpu_all_widths.log": "90f32791bff0ffb8b11e3c3002b9ad5e5c6d2866a9870074d6f8d08810fd97fa",
+    "configure.log": "68feb93d8cb4fb9ffc891c8809b5f6dc4c45bb4a9efcebceb7f910c46a92c1ad",
+    "cpu_replay_check.json": "d5834c2bd83e93c8d14d733018a86f266142b5bf0484e6fdf7a3b145d7c7b755",
+    "j3_lu4_default_cpu.m": "8b19c1345d5c652ad47e452375d47aadb5a5931d5e947df82410c70764fd3d20",
+    "j3_lu4_final_split_cpu.m": "a2a388ad233f41877f34d33caae130d414a326b8831181f074242756b6c53838",
+    "j3_lu4_final_combined_cpu.log": "16b8ab3588462810c55a0a71c0ff4c9c7a097a33cb555bd1b6af11fd250b136b",
+    "final_helper_build.log": "faf47f66429f2ccaeb0a3d99141d0adc94ef54fa847cf70d517120408680054e",
+    "helper_cpu.log": "3d8816d86ee10f553898a9cf7675f3c50e1f37462db25f30adda3fac36ff140b",
+    "final_build.log": "10765614ef0b396e3c2c61c15ffb886ee4417e19c0668c00e798fb79ff68ea60",
+    "j3_lu4_split_cpu.log": "ca82d96203a30c24cd394416486352cf9b114914718e4e6334bf3dbb5817dde2",
+    "j3_lu4_combined_split_cpu.log": "60d813a684d237f58ee89ff4340e61380c626832137927fca817a2f7ed3a6859",
+    "base_snapshot.json": "ca88f73ed5eaa4c3536222851a55d178ccee8c156280520aee3eaf290ef7cd90",
+    "fixed_build.log": "620cc02c5adb5b8534629f9c20c9b325f6d5e0085391dcff711ff8d0d741b21e",
+    "j3_lu4_final_split_cpu.log": "7d423ce090382d3ef9b7a1d5acd0ad7ab50af5e69713cef3ce3b51d762112303",
+    "j3_lu4_final_combined_cpu.m": "817c59e2f2b76fe246b8ab4132e8ed0881c70340509f6ef289afdaf07e92ee0a",
+    "helper_cpu_all_widths.log": "90f32791bff0ffb8b11e3c3002b9ad5e5c6d2866a9870074d6f8d08810fd97fa",
+    "final_cpu_metadata.json": "55569c8fba88257b6200687ccf6996da080b3fa2453bba0faab89dce3e9bd808",
+    "j3_lu4_default_cpu.log": "e88a798ce04cbf8e4910160e41d1ee095f13056b1f12d00c53029513b579c5ba",
+    "build.log": "96f5e9a3f3a92411da907fb4fe70b556318856492e5e50e9e77b3d64f569b2cb"
+  },
+  "remaining": "All31 normal/MTL LU4 reference gates, J3 GPU and combined acceptance, original consumer integration; required g=.1/.2/.5, idle timings and large-shape memory remain open"
+}

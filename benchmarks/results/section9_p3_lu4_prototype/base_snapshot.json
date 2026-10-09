@@ -1,0 +1,9 @@
+{
+  "base": "/tmp/wolfnum-qsc-section9-small4",
+  "scope": "Separate LU4 candidate on the frozen product3/Fourier consumer; original consumer untouched",
+  "sha256": {
+    "include/mx.hpp": "9cf8afa03ba01e41541ad9ddae4802abc5e562acc32ce16a9cac17b7dfecfbab",
+    "CMakeLists.txt": "752ef4f57e073b2412e567d98776b79fd6753dcf6634855189d77566a310bf69",
+    "src/qscmx.cpp": "679b75e38054dde0747499583814f52d9ad57c848ce5fd728ef3f3b25be104e4"
+  }
+}

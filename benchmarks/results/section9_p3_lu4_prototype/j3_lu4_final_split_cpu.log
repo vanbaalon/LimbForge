@@ -1,0 +1,18 @@
+Dset: rank 32 of 168  (1.6634857080000001 s)
+  descent inverses4 (CPU fallback): 27 matrices
+  start |G| = 1.0243522681269547e-10  |cons| = 4.1028220842960933e-94  (0.34282458300000002 s)
+  descent inverses4 (CPU fallback): 27 matrices
+  adjoint tables: stage 1 0.078510959000000005 s, stage 2 (CPU) 0.69355154100000005 s
+  adjoint check: PASS relative max difference 0, 0 units of 2^-374 (limit 65536; scale max |rows|; 12 columns), relative to max |dRows| 0
+  descent inverses4 (CPU fallback): 27 matrices
+  gluing inverses4 (CPU fallback): 338 matrices
+  Fourier Jacobian (CPU fallback): 338 projections
+  normal matrix (CPU): 0.086513500000000007 s, CPU J^T G: 0.00080737500000000004 s
+  first Cholesky (CPU): 0.075104749999999998 s
+  descent inverses4 (CPU fallback): 27 matrices
+  it 1  |G| = 1.2649616737754718e-21  mu = 1.0000000000000001e-21  Delta = 2 + 1.0012726137914625 + 2.069011156244995e-31 i  (3.636292208 s)
+  descent inverses4 (CPU fallback): 27 matrices
+  it 2 (chord)  |G| = 5.5775217996699744e-25  Delta = 2 + 1.0012726137914625 + -1.2665295352789159e-29 i  (3.777883042 s)
+  timing: Jc 0.30900783300000001  JG 2.6237891250000001  lin 0.13539041700000001  LM 0.22522562500000001  chord 0.14116600000000001 s (1 chord steps)
+  JG split (thread-summed s): dB 0.376726163  descent 7.6573031680000003  residual 2.387438892
+done (5.5372772919999997 s)

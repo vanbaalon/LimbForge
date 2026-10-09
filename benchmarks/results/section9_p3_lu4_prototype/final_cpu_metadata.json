@@ -1,0 +1,75 @@
+{
+  "state": "terminal",
+  "scope": "Final CPU staging parity and helper guards; not GPU arithmetic acceptance",
+  "sha256": {
+    "include/mx.hpp": "3f987442d37fe62ae6f30502991604012795ecebba3420885368ccf58524b6fb",
+    "tools/test_lu4_candidate.cpp": "12ddc8e20fa073f03e1d2e44c3ccc5eb547d74fb8d00f5d631ad9c16ce26fa1b",
+    "CMakeLists.txt": "d110301e3a2a4776934de601479ce17fc7b2d17058fa61b2110c6ad939b7a400",
+    "build/qscmx": "8428f4decc52d9d76de355fcf148474c2431600f13e8d062193b1e5d36872259",
+    "build/qscmx_lu4_check": "0cba7d7b94f411e5f17e126d5753769911e692d3b435e3f42f5705e009102095",
+    "build/limbforge/liblimbforge.a": "a9f3ec3ff4168b8e513ca07c7ac1e457c9ad6ad8d55145e8c77fd0948a72983c"
+  },
+  "steps": [
+    {
+      "label": "default",
+      "state": "terminal",
+      "command": [
+        "./build/qscmx",
+        "/Users/k0959535/Dropbox/IntegrabilityProjects/2026 Near N=4/qsccpp/runs/wolfnum_1_3_1/inputs/j3_X2Y_g0.202_nc21.txt",
+        "/tmp/wolfnum-qsc-section9-lu4/prototype-results/j3_lu4_final_default_cpu.m"
+      ],
+      "log": "j3_lu4_final_default_cpu.log",
+      "exit": 0,
+      "log_sha256": "9365d08e69106fa53af08f490e333129009a357f1f65a45163a6e7437d220592",
+      "Delta_history_residual_exactly_equal": true,
+      "history_entries": 3,
+      "residual": "5.57752179966997436E-25",
+      "output_sha256": "ea3cb8aa4a36ab9257583692088bd23bbe1769c3c03dd801af6d7df01ad179bd"
+    },
+    {
+      "label": "split",
+      "state": "terminal",
+      "command": [
+        "./build/qscmx",
+        "/Users/k0959535/Dropbox/IntegrabilityProjects/2026 Near N=4/qsccpp/runs/wolfnum_1_3_1/inputs/j3_X2Y_g0.202_nc21.txt",
+        "/tmp/wolfnum-qsc-section9-lu4/prototype-results/j3_lu4_final_split_cpu.m"
+      ],
+      "log": "j3_lu4_final_split_cpu.log",
+      "exit": 0,
+      "log_sha256": "7d423ce090382d3ef9b7a1d5acd0ad7ab50af5e69713cef3ce3b51d762112303",
+      "Delta_history_residual_exactly_equal": true,
+      "history_entries": 3,
+      "residual": "5.57752179966997436E-25",
+      "output_sha256": "a2a388ad233f41877f34d33caae130d414a326b8831181f074242756b6c53838"
+    },
+    {
+      "label": "combined",
+      "state": "terminal",
+      "command": [
+        "./build/qscmx",
+        "/Users/k0959535/Dropbox/IntegrabilityProjects/2026 Near N=4/qsccpp/runs/wolfnum_1_3_1/inputs/j3_X2Y_g0.202_nc21.txt",
+        "/tmp/wolfnum-qsc-section9-lu4/prototype-results/j3_lu4_final_combined_cpu.m"
+      ],
+      "log": "j3_lu4_final_combined_cpu.log",
+      "exit": 0,
+      "log_sha256": "16b8ab3588462810c55a0a71c0ff4c9c7a097a33cb555bd1b6af11fd250b136b",
+      "Delta_history_residual_exactly_equal": true,
+      "history_entries": 3,
+      "residual": "5.57752179966997436E-25",
+      "output_sha256": "817c59e2f2b76fe246b8ab4132e8ed0881c70340509f6ef289afdaf07e92ee0a"
+    },
+    {
+      "label": "helper",
+      "state": "terminal",
+      "exit": 0,
+      "command": [
+        "./build/qscmx_lu4_check",
+        "--cpu-only",
+        "--all-widths"
+      ],
+      "log": "helper_final_cpu_all_widths.log",
+      "log_sha256": "90f32791bff0ffb8b11e3c3002b9ad5e5c6d2866a9870074d6f8d08810fd97fa"
+    }
+  ],
+  "exit": 0
+}
