@@ -3,10 +3,10 @@
 #include "benchmark_support.hpp"
 #include <random>
 #include <cmath>
-struct Options{int bits=352;std::size_t rows=1100,cols=944;unsigned workers=18,repeats=5;bool resident=false,warm=false,check_only=false;};
+struct Options{int bits=352;std::size_t rows=1100,cols=944;unsigned workers=18,repeats=5;bool resident=false,warm=false,check_only=false,cpu_only=false,all_widths=false;};
 template<int B> void run(const Options& o){
     using F=Float<B>;auto k=o.rows,n=o.cols,n2=n*n,total=n2+n,tri=n*(n+1)/2;
-    Engine engine;BatchedLinalg batch_unit(engine);Linalg exact(engine);Workers pool(o.workers);std::mt19937_64 rng(B+91);
+    Workers pool(o.workers);std::mt19937_64 rng(B+91);
     std::vector<F> J(k*n),g(k),expected[3],got(total);for(auto* v:{&J,&g})for(auto& x:*v)x=reference::random_number<B>(rng,4);
     MPArray jm(J.size(),B),gm(g.size(),B),truth(total,2*B+64);
     for(std::size_t i=0;i<J.size();++i)to_mpfr<B>(jm[i],J[i]);for(std::size_t i=0;i<g.size();++i)to_mpfr<B>(gm[i],g[i]);
@@ -32,12 +32,22 @@ template<int B> void run(const Options& o){
             if(!rhs&&i!=j){expected[mode][j*n+i]=value;if(mode==2&&high_truth)mpfr_set(truth[j*n+i],t.full.x,MPFR_RNDN);}
         }} });};
     for(unsigned mode=0;mode<3;++mode)cpu(mode,mode==2);
-    const auto exact_oracle=expected[2];cpu(2);for(std::size_t i=0;i<total;++i)if(!reference::equal<B>(expected[2][i],exact_oracle[i]))throw std::runtime_error("MPFR dot differs from high-precision exact oracle");
+    const auto oracle_composed=expected[0],oracle_fused=expected[1],exact_oracle=expected[2];cpu(2);for(std::size_t i=0;i<total;++i)if(!reference::equal<B>(expected[2][i],exact_oracle[i]))throw std::runtime_error("MPFR dot differs from high-precision exact oracle");
     std::size_t differs[3]={};double error_units[3]={};reference::MP scale(2*B+64),diff(2*B+64),maximum(2*B+64),value(2*B+64);
     mpfr_set_zero(scale.x,1);for(std::size_t i=0;i<total;++i){mpfr_abs(value.x,truth[i],MPFR_RNDN);if(mpfr_cmp(value.x,scale.x)>0)mpfr_set(scale.x,value.x,MPFR_RNDN);}
     for(unsigned mode=0;mode<3;++mode){mpfr_set_zero(maximum.x,1);for(std::size_t i=0;i<total;++i){if(!reference::equal<B>(expected[mode][i],expected[2][i]))++differs[mode];
         to_mpfr<B>(value.x,expected[mode][i]);mpfr_sub(diff.x,value.x,truth[i],MPFR_RNDN);mpfr_abs(diff.x,diff.x,MPFR_RNDN);if(mpfr_cmp(diff.x,maximum.x)>0)mpfr_set(maximum.x,diff.x,MPFR_RNDN);}
         if(!mpfr_zero_p(scale.x)){mpfr_div(maximum.x,maximum.x,scale.x,MPFR_RNDN);mpfr_mul_2ui(maximum.x,maximum.x,B,MPFR_RNDN);}error_units[mode]=mpfr_get_d(maximum.x,MPFR_RNDN);}
+    if(o.cpu_only){
+        // Direct index traversal and separately allocated MPFR operations check the
+        // balanced triangular map, persistent timing scratch, and exact oracle.
+        for(std::size_t i=0;i<n;++i)for(std::size_t j=0;j<=n;++j){auto right=j==n?g.data():J.data()+j;auto stride=j==n?std::size_t(1):n;
+            auto once=reference::dot<B>(J.data()+i,n,right,stride,k);auto composed=zero<B/32>(),fused=zero<B/32>();
+            for(std::size_t row=0;row<k;++row){auto x=J[row*n+i],y=right[row*stride];composed=reference::real<B>(Operation::add,composed,reference::real<B>(Operation::mul,x,y));fused=reference::fused<B>(x,y,fused);}
+            auto index=j==n?n2+i:i*n+j;
+            if(!reference::equal<B>(expected[0][index],composed)||!reference::equal<B>(expected[1][index],fused)||!reference::equal<B>(expected[2][index],once))throw std::runtime_error("independent CPU normal-reference mismatch");}
+        std::cout<<B<<" bits: composed/fused/exact normal references and high oracle match independent MPFR; no GPU or timings\n";return;}
+    Engine engine;BatchedLinalg batch_unit(engine);LinalgOptions exact_options;exact_options.host_threads=o.workers;Linalg exact(engine,exact_options);
     auto put=[&](const std::vector<F>& v){auto b=engine.make_buffer<F>(v.size());b.upload(v.data(),v.size());return b;};
     auto jb=put(J),gb=put(g),ab=engine.make_buffer<F>(n2),rb=engine.make_buffer<F>(n);unsigned active=0;
     auto download=[&]{ab.download(got.data(),n2);rb.download(got.data()+n2,n);};
@@ -52,12 +62,15 @@ template<int B> void run(const Options& o){
     for(active=0;active<4;++active){gpu();verify();}
     if(o.check_only){std::cout<<B<<" bits, "<<k<<"x"<<n<<": all four normal-equation paths match MPFR; no timings recorded\n";return;}
     std::vector<double> wall[4],device[4],cpu_times[3];
-    for(unsigned rep=0;rep<o.repeats;++rep){for(unsigned mode=0;mode<3;++mode){auto start=Clock::now();cpu(mode);cpu_times[mode].push_back(std::chrono::duration<double>(Clock::now()-start).count());
-            if(mode==2)for(std::size_t i=0;i<total;++i)if(!reference::equal<B>(expected[2][i],exact_oracle[i]))throw std::runtime_error("timed MPFR dot mismatch");}
+    for(unsigned rep=0;rep<o.repeats;++rep){for(unsigned position=0;position<3;++position){auto mode=(rep+position)%3;auto start=Clock::now();cpu(mode);cpu_times[mode].push_back(std::chrono::duration<double>(Clock::now()-start).count());
+            const auto& oracle=mode==0?oracle_composed:mode==1?oracle_fused:exact_oracle;
+            for(std::size_t i=0;i<total;++i)if(!reference::equal<B>(expected[mode][i],oracle[i]))throw std::runtime_error("timed MPFR output mismatch");
+            std::cerr<<"cpu_sample,"<<B<<','<<k<<','<<n<<','<<rep<<','<<position<<','<<mode<<','<<std::setprecision(12)<<cpu_times[mode].back()<<'\n';}
         for(unsigned j=0;j<4;++j){active=(rep+j)%4;if(o.warm){gpu();verify();}auto timing=gpu();wall[active].push_back(timing.wall_seconds);device[active].push_back(timing.gpu_seconds);verify();
             std::cerr<<"sample,"<<B<<','<<k<<','<<n<<','<<rep<<','<<j<<','<<names[active]<<','<<std::setprecision(12)<<timing.wall_seconds<<','<<timing.gpu_seconds<<'\n';}}
+    std::cerr<<"Device: "<<engine.device_name()<<"; immutable MPFR references check every timed CPU/GPU output; numeric-array transfers "<<(o.resident?"excluded":"included")<<"; bridge conversion excluded; "<<(o.warm?"verified-warm-call":"cpu-interleaved")<<'\n';
     std::cout<<"bits,rows,cols,path,resident,workers,repeats,clock,cpu_reference_wall,gpu_wall,gpu_device,wall_p25,wall_p75,wall_min,wall_max,different_from_exact,error_units_2neg_bits,profile\n";
-    for(unsigned p=0;p<4;++p){auto mode=std::min(p,2u);std::cout<<B<<','<<k<<','<<n<<','<<names[p]<<','<<o.resident<<','<<o.workers<<','<<o.repeats<<','<<(o.warm?"warm":"cpu_interleaved")<<','<<std::setprecision(12)<<quantile(cpu_times[mode],.5)<<','<<quantile(wall[p],.5)<<','<<quantile(device[p],.5)<<','<<quantile(wall[p],.25)<<','<<quantile(wall[p],.75)<<','<<quantile(wall[p],0)<<','<<quantile(wall[p],1)<<','<<differs[mode]<<','<<error_units[mode]<<','<<engine.device_name()<<" / " LIMBFORGE_VERSION_STRING " / normal-equations\n";}
+    for(unsigned p=0;p<4;++p){auto mode=std::min(p,2u);std::cout<<B<<','<<k<<','<<n<<','<<names[p]<<','<<o.resident<<','<<o.workers<<','<<o.repeats<<','<<(o.warm?"verified-warm-call":"cpu-interleaved")<<','<<std::setprecision(12)<<quantile(cpu_times[mode],.5)<<','<<quantile(wall[p],.5)<<','<<quantile(device[p],.5)<<','<<quantile(wall[p],.25)<<','<<quantile(wall[p],.75)<<','<<quantile(wall[p],0)<<','<<quantile(wall[p],1)<<','<<differs[mode]<<','<<error_units[mode]<<','<<engine.device_name()<<" / " LIMBFORGE_VERSION_STRING " / normal-equations\n";}
 }
-template<int B=64> void width(const Options& o){if(o.bits==B)run<B>(o);else if constexpr(B<1024)width<B+32>(o);}
-int main(int argc,char** argv){try{Options o;for(int i=1;i<argc;++i){std::string a=argv[i];if(a=="--resident"){o.resident=true;continue;}if(a=="--warm"){o.warm=true;continue;}if(a=="--check-only"){o.check_only=true;continue;}if(a=="--help"){std::cout<<"section9_normal_limbforge --bits B --rows K --cols N --workers W --repeats R [--resident] [--warm] [--check-only]\n";return 0;}if(++i==argc)throw std::invalid_argument("missing value");std::string s=argv[i];std::size_t used;auto v=std::stoull(s,&used);if(used!=s.size()||s[0]=='-'||!v||v>4096)throw std::invalid_argument("invalid value");if(a=="--bits")o.bits=int(v);else if(a=="--rows")o.rows=v;else if(a=="--cols")o.cols=v;else if(a=="--workers")o.workers=unsigned(v);else if(a=="--repeats")o.repeats=unsigned(v);else throw std::invalid_argument("unknown option");}if(o.bits<64||o.bits>1024||o.bits%32||o.workers>256||o.repeats>1000)throw std::invalid_argument("invalid options");width(o);return 0;}catch(const std::exception& e){std::cerr<<e.what()<<'\n';return 1;}}
+template<int B=64> void width(const Options& o){if(o.all_widths||o.bits==B)run<B>(o);if constexpr(B<1024)if(o.all_widths||o.bits>B)width<B+32>(o);}
+int main(int argc,char** argv){try{Options o;for(int i=1;i<argc;++i){std::string a=argv[i];if(a=="--cpu-only"){o.cpu_only=true;continue;}if(a=="--all-widths"){o.all_widths=true;continue;}if(a=="--resident"){o.resident=true;continue;}if(a=="--warm"){o.warm=true;continue;}if(a=="--check-only"){o.check_only=true;continue;}if(a=="--help"){std::cout<<"section9_normal_limbforge --bits B --rows K --cols N --workers W --repeats R [--resident] [--warm] [--check-only] [--cpu-only [--all-widths]]\n";return 0;}if(++i==argc)throw std::invalid_argument("missing value");std::string s=argv[i];std::size_t used;auto v=std::stoull(s,&used);if(used!=s.size()||s[0]=='-'||!v||v>4096)throw std::invalid_argument("invalid value");if(a=="--bits")o.bits=int(v);else if(a=="--rows")o.rows=v;else if(a=="--cols")o.cols=v;else if(a=="--workers")o.workers=unsigned(v);else if(a=="--repeats")o.repeats=unsigned(v);else throw std::invalid_argument("unknown option");}if(o.all_widths&&!o.cpu_only)throw std::invalid_argument("--all-widths requires --cpu-only");if(o.bits<64||o.bits>1024||o.bits%32||o.workers>256||o.repeats>1000)throw std::invalid_argument("invalid options");width(o);return 0;}catch(const std::exception& e){std::cerr<<e.what()<<'\n';return 1;}}

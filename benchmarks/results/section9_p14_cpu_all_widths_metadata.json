@@ -1,0 +1,20 @@
+{
+  "command": [
+    "./build/section9_normal_limbforge",
+    "--cpu-only",
+    "--all-widths",
+    "--rows",
+    "9",
+    "--cols",
+    "5",
+    "--workers",
+    "4"
+  ],
+  "exit": 0,
+  "scope": "Independent CPU benchmark-reference checks at31 widths, not GPU validation or measurements.",
+  "sha256": {
+    "benchmarks/section9_normal.cpp": "e8563eb4c373e43c22983c56e0cd07f5b75cbc659f572c08c037744ddac14927",
+    "build/section9_normal_limbforge": "c7f6824030e6446c6dc62a8055991b4d8c6a1d8b149e7802beb75894daae9966",
+    "build/liblimbforge.a": "76d3442122b5d8a05e5604427dfb3892c8208bbf92f207ed8fc64a16f3d1c671"
+  }
+}
