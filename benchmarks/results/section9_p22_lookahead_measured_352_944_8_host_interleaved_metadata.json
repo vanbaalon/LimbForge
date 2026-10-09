@@ -1,0 +1,290 @@
+{
+  "started_utc": "2026-10-09T06:46:09.416030+00:00",
+  "commit": "cbbf403bbd6e86b2cdb4687e47d0084b992c94bc",
+  "command": [
+    "./build/section9_exact_trials_limbforge",
+    "--bits",
+    "352",
+    "--n",
+    "944",
+    "--count",
+    "8",
+    "--nrhs",
+    "3",
+    "--workers",
+    "18",
+    "--repeats",
+    "3"
+  ],
+  "cwd": "/private/tmp/limbforge-section9-exact-lookahead",
+  "clock": "cpu-interleaved",
+  "scope": "Checked numeric-array library benchmark; every initial/warm/timed CPU and GPU output verified by the executable. CPU ratios on busy host are not idle consumer acceptance. RSS covers whole benchmark process including MPFR oracles and staging, not isolated API scratch.",
+  "state": "terminal",
+  "sha256": {
+    "build/section9_exact_trials_limbforge": "ef8a89ac7ed6a4948609f80680f0cc2068223482aebd707f05f3ce56adb87df4",
+    "build/liblimbforge.a": "2ef9d66a16c6df1b7d0ea3a8a04dc3059f4f9552d6f78b0cb993de30aad53cb1",
+    "benchmarks/section9_exact_trials.cpp": "916dd472603f70c500c4030529b46de937ff2dd9e3bca7b95968a7f0a5141033",
+    "benchmarks/section9_normal.cpp": "e8563eb4c373e43c22983c56e0cd07f5b75cbc659f572c08c037744ddac14927",
+    "src/batched_factor.mm": "7b7d71487bbb493e0052706a9c25cd83a2e4ae20f46a51451b032f7b02388688",
+    "include/limbforge/batched_linalg.hpp": "848655e699430ed5fc40106e2fabce98a7ef3580a4d58d3275da7c2fc73f0f75",
+    "src/linalg.mm": "028f470efb81460cbb03e20e18ccbc619ca11c4ae5c1407a533b94a6d3c73e26",
+    "include/limbforge/core.hpp": "12cc4bcd199bc0957275f55f7e7462f79918ad19fb3f21b55404d08119ef2ce8",
+    "src/kernels.metal": "72dcc8f6f7fa99d09f004bc2e418d2ebd1c4a0b0ea6750f2e771458c74e8d2e0",
+    "src/linalg.metal": "fa7cac7ac80fab5ba5648ef2bc002c496415f4ac394e160cf52b489d7a1a65e3",
+    "src/batched_linalg.metal": "71b8e269d0db50a76b20d2a8df65e3d3efcc587c9812ac598ebd0a19620f5507"
+  },
+  "load_samples": [
+    {
+      "seconds": 0.00277554098283872,
+      "loadavg": [
+        6.205078125,
+        5.47216796875,
+        6.5556640625
+      ]
+    },
+    {
+      "seconds": 5.012956625025254,
+      "loadavg": [
+        6.9892578125,
+        5.646484375,
+        6.61083984375
+      ]
+    },
+    {
+      "seconds": 10.017836540995631,
+      "loadavg": [
+        7.31005859375,
+        5.7353515625,
+        6.63623046875
+      ]
+    },
+    {
+      "seconds": 15.018640624999534,
+      "loadavg": [
+        7.525390625,
+        5.8056640625,
+        6.65576171875
+      ]
+    },
+    {
+      "seconds": 20.0189532910008,
+      "loadavg": [
+        7.88330078125,
+        5.908203125,
+        6.68701171875
+      ]
+    },
+    {
+      "seconds": 25.02899304102175,
+      "loadavg": [
+        9.09375,
+        6.19189453125,
+        6.7822265625
+      ]
+    },
+    {
+      "seconds": 30.039051875006407,
+      "loadavg": [
+        10.20703125,
+        6.470703125,
+        6.876953125
+      ]
+    },
+    {
+      "seconds": 35.05005345802056,
+      "loadavg": [
+        10.9912109375,
+        6.69482421875,
+        6.95361328125
+      ]
+    },
+    {
+      "seconds": 40.05282616597833,
+      "loadavg": [
+        10.59130859375,
+        6.68310546875,
+        6.94775390625
+      ]
+    },
+    {
+      "seconds": 45.05824462499004,
+      "loadavg": [
+        9.9033203125,
+        6.60498046875,
+        6.91845703125
+      ]
+    },
+    {
+      "seconds": 50.06584449997172,
+      "loadavg": [
+        10.55126953125,
+        6.7939453125,
+        6.98291015625
+      ]
+    },
+    {
+      "seconds": 55.07598633301677,
+      "loadavg": [
+        11.3076171875,
+        7.01318359375,
+        7.05908203125
+      ]
+    },
+    {
+      "seconds": 60.080469999986235,
+      "loadavg": [
+        16.00732421875,
+        8.05859375,
+        7.427734375
+      ]
+    },
+    {
+      "seconds": 65.09116120799445,
+      "loadavg": [
+        15.84619140625,
+        8.1572265625,
+        7.4658203125
+      ]
+    },
+    {
+      "seconds": 70.1012031250284,
+      "loadavg": [
+        16.1787109375,
+        8.353515625,
+        7.5390625
+      ]
+    },
+    {
+      "seconds": 75.1066436659894,
+      "loadavg": [
+        15.923828125,
+        8.43017578125,
+        7.57080078125
+      ]
+    },
+    {
+      "seconds": 80.11669900000561,
+      "loadavg": [
+        18.171875,
+        9.0205078125,
+        7.7841796875
+      ]
+    },
+    {
+      "seconds": 85.12674087501364,
+      "loadavg": [
+        17.51708984375,
+        9.03662109375,
+        7.796875
+      ]
+    },
+    {
+      "seconds": 90.12735891598277,
+      "loadavg": [
+        17.2353515625,
+        9.11865234375,
+        7.8330078125
+      ]
+    },
+    {
+      "seconds": 95.13816962501733,
+      "loadavg": [
+        17.05615234375,
+        9.2158203125,
+        7.875
+      ]
+    },
+    {
+      "seconds": 100.14641929097706,
+      "loadavg": [
+        16.57080078125,
+        9.2451171875,
+        7.89306640625
+      ]
+    },
+    {
+      "seconds": 105.1555557079846,
+      "loadavg": [
+        16.12451171875,
+        9.27392578125,
+        7.9111328125
+      ]
+    },
+    {
+      "seconds": 110.16545866598608,
+      "loadavg": [
+        15.8740234375,
+        9.33544921875,
+        7.94091796875
+      ]
+    },
+    {
+      "seconds": 115.17083579098107,
+      "loadavg": [
+        16.5244140625,
+        9.57861328125,
+        8.03466796875
+      ]
+    },
+    {
+      "seconds": 120.18087899999227,
+      "loadavg": [
+        16.00146484375,
+        9.58544921875,
+        8.0458984375
+      ]
+    },
+    {
+      "seconds": 125.18275166599778,
+      "loadavg": [
+        15.6806640625,
+        9.62548828125,
+        8.06884765625
+      ]
+    },
+    {
+      "seconds": 130.19280504097696,
+      "loadavg": [
+        15.3857421875,
+        9.66455078125,
+        8.091796875
+      ]
+    },
+    {
+      "seconds": 135.19885587500175,
+      "loadavg": [
+        16.1552734375,
+        9.9189453125,
+        8.1904296875
+      ]
+    },
+    {
+      "seconds": 140.2088961250265,
+      "loadavg": [
+        16.142578125,
+        10.01953125,
+        8.23583984375
+      ]
+    }
+  ],
+  "hardware": {
+    "hw.memsize": "137438953472",
+    "hw.ncpu": "18",
+    "machdep.cpu.brand_string": "Apple M5 Max"
+  },
+  "pid": 6987,
+  "elapsed_seconds": 145.21156308299396,
+  "exit": 0,
+  "finished_utc": "2026-10-09T06:48:34.657147+00:00",
+  "artifacts_sha256": {
+    "section9_p22_lookahead_measured_352_944_8_host_interleaved.csv": "c8a22e5dcb555c6eaba2d9c5ddab6b558400e63e1ee6686df809bf5baabb78ff",
+    "section9_p22_lookahead_measured_352_944_8_host_interleaved.txt": "4eeb6f42309908968298e3cbe6ebab5a8506e9eae5b3a36f361cbcdfea4c3f82"
+  },
+  "maximum_resident_set_size_bytes": 3067379712,
+  "checked_csv_rows": 3,
+  "all_recorded_loadavg_below_4": false,
+  "environment": {
+    "WOLFNUM_EXACT_TRIAL_SCHEDULE": "lookahead"
+  },
+  "correctness_gate_manifest": "section9_p22_lookahead_gate_metadata.json"
+}

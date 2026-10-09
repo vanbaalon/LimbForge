@@ -138,8 +138,8 @@ a row in `docs/optimizations.md`, rejected attempts kept under `benchmarks/exper
 - **Prepared comparison:** opt-in `section9_gemm_limbforge` compares composed/fused
   complex GEMM, exact real embedding and a separately documented three-real-GEMM
   Gauss sequence. All 31 CPU exact-reference checks and focused 352/1024 GPU cases
-  pass normally and under validation. Real-shape timings and tile experiments remain
-  pending; see `benchmarks/experiments/section9_gemm_comparison.md`.
+  pass normally and under validation. 352-bit Fourier host/resident and 10,000/100,000 resident 4x4 timings
+  now pass every output check; tile/native-product work remains pending; see `benchmarks/experiments/section9_gemm_comparison.md`.
 - **Historical baseline:** the pre-1.0.1 composed tiled GEMM measured 7.9× MPFR at
   the Fourier shape; remeasure the corrected backend before using that ratio.
 - **Compare it against:**
@@ -217,7 +217,8 @@ Newton histories and idle timings still require P3 checks.
 
 A separate look-ahead schedule at `05f22fa` now passes all 31 widths in both modes
 and the full 26/19 regressions, including failures during overlapped updates.
-It remains an unmeasured prototype; see [the retained experiment](../benchmarks/experiments/section9_exact_trials_lookahead.md).
+Its first checked n944/352 median is 0.528 s versus the exact loop's 0.612 s,
+with overlapping ranges; the 3x target remains unmet. See [the retained experiment](../benchmarks/experiments/section9_exact_trials_lookahead.md).
 
 **P2.3: Break-even table.** Partial: 50 source-recurrence keys and 24 normal-equation
 keys cover measured host/resident contracts and clock profiles. Three factor-plus-solve

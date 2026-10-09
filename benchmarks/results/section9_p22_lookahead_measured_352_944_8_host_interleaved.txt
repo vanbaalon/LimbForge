@@ -1,0 +1,43 @@
+cpu_sample,0,0,sequential,10.623156167
+cpu_sample,0,1,exact_block32,13.64707875
+sample,352,944,0,0,sequential_scalar,10.623156167,7.907615958,7.89048274996,0.813408625,7.094207167,cpu-interleaved
+sample,352,944,0,1,exact_linalg_loop,13.64707875,0.704168875,0.356149250409,0.60720475,0.096964084,cpu-interleaved
+factor_profile,0,exact_linalg_loop,0.340546916,0.537041589,424,32
+sample,352,944,0,2,exact_batched_panels,13.64707875,0.626734292,0.346961875039,0.527554416,0.099177292,cpu-interleaved
+factor_profile,0,exact_batched_panels,0.192697794,0.506785706,224,8,28,33341952,0
+workspace_profile,0,385695744,0,137895192,602959232,0
+cpu_sample,1,0,exact_block32,12.565566334
+cpu_sample,1,1,sequential,9.674036834
+sample,352,944,1,0,exact_linalg_loop,12.565566334,0.719030042,0.370707291062,0.611874208,0.107155834,cpu-interleaved
+factor_profile,1,exact_linalg_loop,0.262478835,0.561013964,424,32
+sample,352,944,1,1,exact_batched_panels,12.565566334,0.740251166,0.371454791748,0.606256709,0.133994334,cpu-interleaved
+factor_profile,1,exact_batched_panels,0.21940654,0.58095383,224,8,28,33341952,0
+workspace_profile,1,385695744,0,137895192,602959232,0
+sample,352,944,1,2,sequential_scalar,9.674036834,8.275427709,8.26181591663,1.108934083,7.1664935,cpu-interleaved
+cpu_sample,2,0,sequential,9.98932075
+cpu_sample,2,1,exact_block32,12.469290041
+sample,352,944,2,0,exact_batched_panels,12.469290041,0.582868666,0.351051166828,0.47474,0.108128625,cpu-interleaved
+factor_profile,2,exact_batched_panels,0.163792956,0.449359002,224,8,28,33341952,0
+workspace_profile,2,385695744,0,137895192,602959232,0
+sample,352,944,2,1,sequential_scalar,9.98932075,8.087598792,8.07524016663,0.950818625,7.136780125,cpu-interleaved
+sample,352,944,2,2,exact_linalg_loop,12.469290041,0.736844208,0.356913416123,0.626824709,0.110019375,cpu-interleaved
+factor_profile,2,exact_linalg_loop,0.369238492,0.565864179,424,32
+Device: Apple M5 Max; split factor/solve; A=J^T J K=n+n/6; mu=0.001*2^-trial; every timed CPU/GPU factor/solve checked; MPFR concurrency <= 8; exact-batched uses shared resident SYRK and the production blocked solve; numeric-array bridge conversion excluded
+      144.05 real       869.47 user         6.34 sys
+          3067379712  maximum resident set size
+                   0  average shared memory size
+                   0  average unshared data size
+                   0  average unshared stack size
+              216511  page reclaims
+                   6  page faults
+                   0  swaps
+                   0  block input operations
+                   0  block output operations
+                   0  messages sent
+                   0  messages received
+                   0  signals received
+                   3  voluntary context switches
+              475128  involuntary context switches
+      14724647712940  instructions retired
+       3377515449240  cycles elapsed
+          4132162536  peak memory footprint
