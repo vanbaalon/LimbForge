@@ -1,0 +1,3 @@
+bits,lanes,groups,steps,terms,share,coefficient_sets,fused,reverse,all_steps,resident,clock_mode,workers,repeats,path,cpu_median,wall_median,wall_p25,wall_p75,wall_min,wall_max,device_median,scratch_bytes
+352,1041,66,100,24,16,1,0,0,0,0,verified-warm-call,18,3,per_lane,0.046399375,0.69963675000000003,0.699601417,0.69963675000000003,0.699601417,0.69996250000000004,0.69926712499000132,0
+352,1041,66,100,24,16,1,0,0,0,0,verified-warm-call,18,3,shared_sources,0.046399375,0.031637749999999999,0.031523875,0.031637749999999999,0.031523875,0.031638958000000002,0.030842958309222013,11943792

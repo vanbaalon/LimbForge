@@ -1,0 +1,53 @@
+{
+  "recorded_utc": "2026-10-09T03:10:17.126615+00:00",
+  "base": "02bca53",
+  "revision": "3c79ffd6fb725562631c8a6231d693b703135791",
+  "results": [
+    {
+      "log": "section9_p15_rebase1_2_smoke_reference.txt",
+      "exit": 0
+    },
+    {
+      "log": "section9_p15_rebase1_2_352_reference.txt",
+      "exit": 0
+    },
+    {
+      "log": "section9_p15_rebase1_2_1024_reference.txt",
+      "exit": 0
+    },
+    {
+      "log": "section9_p15_rebase1_2_empty_reference.txt",
+      "exit": 0
+    },
+    {
+      "log": "section9_p15_rebase1_2_smoke_validation.txt",
+      "exit": 0
+    },
+    {
+      "log": "section9_p15_rebase1_2_352_validation.txt",
+      "exit": 0
+    },
+    {
+      "log": "section9_p15_rebase1_2_1024_validation.txt",
+      "exit": 0
+    },
+    {
+      "log": "section9_p15_rebase1_2_empty_validation.txt",
+      "exit": 0
+    },
+    {
+      "log": "section9_p15_rebase1_2_package.txt",
+      "exit": 0
+    }
+  ],
+  "sha256": {
+    "include/limbforge/batched_linalg.hpp": "d7e7ba7083b9151dccfef3e2c3a30b4520cd90ed43f12bc99c7429f37f0bedef",
+    "src/batched_linalg.mm": "40a01ddab48f11df7fe0a824060abc5691b59653b06115051c4f59dda53b0be1",
+    "src/batched_linalg.metal": "71b8e269d0db50a76b20d2a8df65e3d3efcc587c9812ac598ebd0a19620f5507",
+    "include/limbforge/core.hpp": "12cc4bcd199bc0957275f55f7e7462f79918ad19fb3f21b55404d08119ef2ce8",
+    "build/liblimbforge.a": "729aab720d76d01c9682092022424ee9e970a5274622b845679cf9a8031762ae",
+    "build/section9_sources_limbforge": "ddab8ec720ee759507ec2475937033fac51bfb6f42fba2a7373f82833f227cbf"
+  },
+  "numerical_sources": "Metal and source/recurrence encode method bodies unchanged from all-width/full-suite-gated candidate",
+  "scope": "1.2.0 host cache/workspace integration and linked benchmark focus; original 26+19 and all-width arithmetic gates retained, not repeated"
+}

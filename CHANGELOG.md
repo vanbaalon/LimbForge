@@ -6,7 +6,8 @@
   `PolynomialEvaluation::shared_sources` recurrence overload. Rounded device Horner
   states and two recurrence passes per step reuse sources across shared lanes while
   preserving the documented order, tails, statuses and ownership. Existing calls keep
-  per-lane evaluation. Full validation and benchmark acceptance are still pending;
+  per-lane evaluation. Full correctness gates and 1.2.0-linked focused checks pass;
+  benchmark sweep acceptance and a compatible minor release remain pending;
   this worktree is not a production release.
 
 ## 1.2.0 — 2026-10-08

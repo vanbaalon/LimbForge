@@ -1,0 +1,2 @@
+2026-10-08 23:09:55.982 section9_sources_limbforge[8425:233556162] Metal GPU Validation Enabled
+PASS 1024 bits; both paths, 68 independently checked outputs; no timings

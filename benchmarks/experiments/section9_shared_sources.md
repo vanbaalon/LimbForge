@@ -69,7 +69,32 @@ passes three check-only fixtures: 352-bit dense/reverse/all-steps, 1024-bit resi
 17-term per-group fused sources, and 64-bit zero-step/zero-term inputs. No timings
 or performance acceptance follow from these correctness checks.
 
-## Prepared benchmark (no timings yet)
+## Benchmark and first measurements
+
+The candidate is rebased on 1.2.0/current main. Metal source and the source/recurrence
+encoder bodies are unchanged from the all-width/full-suite-gated implementation.
+Focused smoke, three linked benchmark fixtures and version/package checks pass normally
+and under shader validation, recorded in `section9_p15_rebase1_2_*`. Historical gate
+identities remain separate from the rebuilt 1.2.0-linked archive.
+
+At 352 bits, 1041 lanes, 100 steps, 24 terms and sharing 16 (including a tail), three
+interleaved repetitions give the following wall medians in milliseconds:
+
+| Mode | Per-lane GPU | Shared-source GPU | Optimized 18-worker MPFR CPU |
+|---|---:|---:|---:|
+| Host staging, CPU-interleaved | 700.688 | 31.773 | 53.170 |
+| Resident, CPU-interleaved | 710.588 | 31.686 | 52.228 |
+| Host staging, verified warm call | 699.637 | 31.638 | 46.399 |
+| Resident, verified warm call | 700.287 | 31.687 | 54.516 |
+
+Every initial/warm/timed output matches its independent MPFR sequence. Shared-source
+wall time is 22.1–22.4x lower than the legacy per-lane GPU on this fixture. The CPU
+already shares Horner sources; it is not a deliberately redundant baseline. Host load
+averages are 8.7–11.9, so CPU ratios are busy-host library observations and not accepted
+idle-host consumer speedups. Raw samples/ranges and hashes are retained in
+`section9_p15_352_1041_100_24_share16_*` and `...measurements_metadata.json`.
+Additional widths, larger term/step counts and sharing factors are being measured;
+no global backend/default selection follows from one fixture.
 
 `section9_sources_limbforge` compares the legacy per-lane path with the explicit shared
 candidate. Its CPU baseline also evaluates each group's sources only once, then applies

@@ -1,0 +1,140 @@
+{
+  "source_fixture_gates": "section9_p15_rebase1_2_metadata.json",
+  "library_baseline": "1.2.0 + unreleased shared-source candidate",
+  "benchmark_sha256": "ddab8ec720ee759507ec2475937033fac51bfb6f42fba2a7373f82833f227cbf",
+  "scope": "library measurement; every output checked, CPU shared-source baseline; busy-host ratios not accepted idle consumer speedups",
+  "samples": [
+    {
+      "label": "section9_p15_352_1041_100_24_share16_host_interleaved",
+      "exit": 0,
+      "command": [
+        "./build/section9_sources_limbforge",
+        "--bits",
+        "352",
+        "--lanes",
+        "1041",
+        "--steps",
+        "100",
+        "--terms",
+        "24",
+        "--share",
+        "16",
+        "--workers",
+        "18",
+        "--repeats",
+        "3"
+      ],
+      "load_before": [
+        8.82568359375,
+        10.94140625,
+        11.90869140625
+      ],
+      "load_after": [
+        8.75927734375,
+        10.89208984375,
+        11.8857421875
+      ],
+      "recorded_utc": "2026-10-09T03:10:54.614750+00:00"
+    },
+    {
+      "label": "section9_p15_352_1041_100_24_share16_resident_interleaved",
+      "exit": 0,
+      "command": [
+        "./build/section9_sources_limbforge",
+        "--bits",
+        "352",
+        "--lanes",
+        "1041",
+        "--steps",
+        "100",
+        "--terms",
+        "24",
+        "--share",
+        "16",
+        "--workers",
+        "18",
+        "--repeats",
+        "3",
+        "--resident"
+      ],
+      "load_before": [
+        8.75927734375,
+        10.89208984375,
+        11.8857421875
+      ],
+      "load_after": [
+        8.6982421875,
+        10.84375,
+        11.86279296875
+      ],
+      "recorded_utc": "2026-10-09T03:10:57.885989+00:00"
+    },
+    {
+      "label": "section9_p15_352_1041_100_24_share16_host_verified_warm",
+      "exit": 0,
+      "command": [
+        "./build/section9_sources_limbforge",
+        "--bits",
+        "352",
+        "--lanes",
+        "1041",
+        "--steps",
+        "100",
+        "--terms",
+        "24",
+        "--share",
+        "16",
+        "--workers",
+        "18",
+        "--repeats",
+        "3",
+        "--warm"
+      ],
+      "load_before": [
+        8.6982421875,
+        10.84375,
+        11.86279296875
+      ],
+      "load_after": [
+        9.28271484375,
+        10.92919921875,
+        11.88671875
+      ],
+      "recorded_utc": "2026-10-09T03:11:03.448217+00:00"
+    },
+    {
+      "label": "section9_p15_352_1041_100_24_share16_resident_verified_warm",
+      "exit": 0,
+      "command": [
+        "./build/section9_sources_limbforge",
+        "--bits",
+        "352",
+        "--lanes",
+        "1041",
+        "--steps",
+        "100",
+        "--terms",
+        "24",
+        "--share",
+        "16",
+        "--workers",
+        "18",
+        "--repeats",
+        "3",
+        "--resident",
+        "--warm"
+      ],
+      "load_before": [
+        9.28271484375,
+        10.92919921875,
+        11.88671875
+      ],
+      "load_after": [
+        9.099609375,
+        10.86376953125,
+        11.85791015625
+      ],
+      "recorded_utc": "2026-10-09T03:11:08.899587+00:00"
+    }
+  ]
+}
