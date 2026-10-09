@@ -196,8 +196,11 @@ queries and release follow the existing Linalg ownership semantics.
 `round-section9-exact-trials` adds synchronous `cholesky_trials_blocked`: shared
 exact SYRK submissions, parallel host panels and repaired outputs before dependent
 panels. Host-only all31 and focused 352/1024 physical GPU/shader checks pass against
-independent MPFR and the production Linalg contract. Expanded all-width GPU gates,
-broad regressions, solver-size measurements and release acceptance remain pending.
+independent MPFR and the production Linalg contract. Expanded all31 physical-GPU
+and shader-validation checks also pass, including 65x65 block32 tails, mixed failures
+and wide/forced repairs. The candidate is rebased on current main; broad regressions
+and linked fixtures are running. Solver-size measurements and release acceptance
+remain pending.
 The target is bit-identical factors per trial with the same block; existing all-device
 sequential calls remain unchanged. Consumer Newton histories still require P3 checks.
 
