@@ -2,7 +2,8 @@
 
 Original base `70ec257` / 1.1.0, now rebased on `bffa58b` / WolfNum 1.3.0. No library arithmetic, API or default change.
 `section9_gemm_limbforge` is an opt-in benchmark excluded from routine builds/CTest.
-No timings have been recorded or speed claims accepted.
+Checked 352-bit Fourier-shape and small-matrix comparisons are now recorded.
+No numerical library source or default changes are accepted by these measurements.
 
 The four paths have separate MPFR references:
 
@@ -60,3 +61,35 @@ proves controlled cold or continuously warm clocks. Four rebuilt focused physica
 harness (352-bit host and 1024-bit resident, normal and shader validation).
 `section9_p1_gemm_wolfnum_fixture_metadata.json` records commands and identities;
 real-shape measurements remain pending.
+
+## Checked 1.3.1 measurements
+
+All outputs pass their own independent MPFR sequence, including every timed CPU/GPU
+call. Clock mode is CPU-interleaved; bridge conversion is excluded. The Fourier
+fixture uses bounded random exponents at the requested shape, not saved solver data.
+
+| Fourier 66x130 times 130x3800 | Host GPU wall (s) | Resident GPU wall (s) | Global error units |
+|---|---:|---:|---:|
+| Composed complex | 0.103959 | 0.104439 | 7.720741 |
+| Fused complex | 0.212559 | 0.216581 | 8.007584 |
+| Exact real embedding | 0.015914 | 0.010170 | 0.548310 |
+| Three-real-GEMM Gauss | 0.080504 | 0.078172 | 11.772728 |
+
+Exact embedding has the lowest measured wall time and error in this fixture; the
+once-rounded contract remains distinct from either sequential path. Gauss is faster
+than composed here but has larger error and cannot silently replace its sequence.
+
+| Resident 4x4 batches | Composed (s) | Fused (s) | Matrix-level Gauss (s) |
+|---|---:|---:|---:|
+| 10,000 | 0.004640 | 0.015358 | 0.006108 |
+| 100,000 | 0.039772 | 0.046511 | 0.030021 |
+
+Gauss is not uniformly faster. Its global error units are 2.592/3.083 for these two
+batches versus composed 1.529/1.585 and fused 1.222/1.134. These are global infinity
+error comparisons in units of 2^-B, not per-entry relative errors or digits correct.
+Every profile has busy-host load samples; CPU ratios are library observations, not
+idle consumer acceptance. All sample ranges and identities are retained in
+`section9_p13_fourier_*` and `section9_p13_small4_*` raw triples. Large-batch exact
+encoding remains outside this small-matrix comparison: one Linalg call per matrix
+is not a batched exact implementation. Other widths, transfer profiles, native
+three-product multiplication and tile experiments remain follow-up work.

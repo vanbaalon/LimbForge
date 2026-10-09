@@ -1,0 +1,25 @@
+cpu_sample,0,0,complex_composed,0.1642275
+gpu_sample,0,0,complex_composed,0.039771625,0.0390416250448
+cpu_sample,1,0,complex_composed,0.154504834
+gpu_sample,1,0,complex_composed,0.028887666,0.0282598749618
+cpu_sample,2,0,complex_composed,0.185606334
+gpu_sample,2,0,complex_composed,0.041056542,0.0403649166692
+Device: Apple M5 Max; immutable MPFR references check every timed CPU/GPU output; numeric-array transfers excluded; bridge conversion excluded; exact Linalg host workers=18
+        3.80 real        19.74 user         0.38 sys
+          4699209728  maximum resident set size
+                   0  average shared memory size
+                   0  average unshared data size
+                   0  average unshared stack size
+              287271  page reclaims
+                   2  page faults
+                   0  swaps
+                   0  block input operations
+                   0  block output operations
+                   0  messages sent
+                   0  messages received
+                   0  signals received
+                   0  voluntary context switches
+               10966  involuntary context switches
+        294507789078  instructions retired
+         80410034832  cycles elapsed
+          4982935512  peak memory footprint

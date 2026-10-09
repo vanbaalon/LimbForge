@@ -1,0 +1,101 @@
+{
+  "scope": "Rebuilt unchanged GEMM harness on published1.3.1; prior all-width references/numerical regressions remain applicable",
+  "commit": "deee518ac966254d6bfefd9290208c08b3b84ff0",
+  "state": "terminal",
+  "exit": 0,
+  "checks": [
+    {
+      "command": [
+        "./build/section9_gemm_limbforge",
+        "--bits",
+        "352",
+        "--count",
+        "2",
+        "--m",
+        "9",
+        "--n",
+        "17",
+        "--k",
+        "7",
+        "--workers",
+        "18",
+        "--check-only"
+      ],
+      "shader_validation": false,
+      "exit": 0,
+      "log": "section9_p13_1_3_1_focus_352_reference.txt"
+    },
+    {
+      "command": [
+        "./build/section9_gemm_limbforge",
+        "--bits",
+        "352",
+        "--count",
+        "2",
+        "--m",
+        "9",
+        "--n",
+        "17",
+        "--k",
+        "7",
+        "--workers",
+        "18",
+        "--check-only"
+      ],
+      "shader_validation": true,
+      "exit": 0,
+      "log": "section9_p13_1_3_1_focus_352_shader.txt"
+    },
+    {
+      "command": [
+        "./build/section9_gemm_limbforge",
+        "--bits",
+        "1024",
+        "--count",
+        "3",
+        "--m",
+        "4",
+        "--n",
+        "4",
+        "--k",
+        "4",
+        "--workers",
+        "18",
+        "--resident",
+        "--check-only"
+      ],
+      "shader_validation": false,
+      "exit": 0,
+      "log": "section9_p13_1_3_1_focus_1024_reference.txt"
+    },
+    {
+      "command": [
+        "./build/section9_gemm_limbforge",
+        "--bits",
+        "1024",
+        "--count",
+        "3",
+        "--m",
+        "4",
+        "--n",
+        "4",
+        "--k",
+        "4",
+        "--workers",
+        "18",
+        "--resident",
+        "--check-only"
+      ],
+      "shader_validation": true,
+      "exit": 0,
+      "log": "section9_p13_1_3_1_focus_1024_shader.txt"
+    }
+  ],
+  "sha256": {
+    "benchmarks/section9_gemm.cpp": "80f850c388fe5a4ff67cc13cd96e24e5f5d5e4416036cfc798b48d3fab0b003e",
+    "include/limbforge/core.hpp": "12cc4bcd199bc0957275f55f7e7462f79918ad19fb3f21b55404d08119ef2ce8",
+    "src/batched_linalg.metal": "71b8e269d0db50a76b20d2a8df65e3d3efcc587c9812ac598ebd0a19620f5507",
+    "build/liblimbforge.a": "c9dd6ebed304b6f74258f8ea0aebb4c29e1b205fff4deb115254ee5652ff9d24",
+    "build/section9_gemm_limbforge": "a8a40fbbf9a3290cd200d4c24d0d632554c6d739b168c55cf2892a9e15725d11"
+  }
+}

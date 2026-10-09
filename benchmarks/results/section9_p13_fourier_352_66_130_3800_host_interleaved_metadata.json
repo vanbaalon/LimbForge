@@ -1,0 +1,97 @@
+{
+  "started_utc": "2026-10-09T06:53:50.369842+00:00",
+  "commit": "deee518ac966254d6bfefd9290208c08b3b84ff0",
+  "command": [
+    "./build/section9_gemm_limbforge",
+    "--bits",
+    "352",
+    "--count",
+    "1",
+    "--m",
+    "66",
+    "--n",
+    "3800",
+    "--k",
+    "130",
+    "--workers",
+    "18",
+    "--repeats",
+    "3"
+  ],
+  "cwd": "/private/tmp/wolfnum-section9-gemm-measurements",
+  "clock": "cpu-interleaved",
+  "scope": "Checked numeric-array library benchmark; every initial/warm/timed CPU and GPU output verified by the executable. CPU ratios on busy host are not idle consumer acceptance. RSS covers whole benchmark process including MPFR oracles and staging, not isolated API scratch.",
+  "state": "terminal",
+  "sha256": {
+    "build/section9_gemm_limbforge": "a8a40fbbf9a3290cd200d4c24d0d632554c6d739b168c55cf2892a9e15725d11",
+    "build/liblimbforge.a": "c9dd6ebed304b6f74258f8ea0aebb4c29e1b205fff4deb115254ee5652ff9d24",
+    "benchmarks/section9_normal.cpp": "e8563eb4c373e43c22983c56e0cd07f5b75cbc659f572c08c037744ddac14927",
+    "include/limbforge/batched_linalg.hpp": "f80ef93bfe7e9e9387b0419a06ee1f3a4af24c0b6ca0183fe377164c51b70bad",
+    "src/linalg.mm": "3a5c8362c125b506fbb9bf9ef76da766eea52c88eb75cb07bf1626f64a8a18e0",
+    "include/limbforge/core.hpp": "12cc4bcd199bc0957275f55f7e7462f79918ad19fb3f21b55404d08119ef2ce8",
+    "src/kernels.metal": "72dcc8f6f7fa99d09f004bc2e418d2ebd1c4a0b0ea6750f2e771458c74e8d2e0",
+    "src/linalg.metal": "fa7cac7ac80fab5ba5648ef2bc002c496415f4ac394e160cf52b489d7a1a65e3",
+    "src/batched_linalg.metal": "71b8e269d0db50a76b20d2a8df65e3d3efcc587c9812ac598ebd0a19620f5507"
+  },
+  "load_samples": [
+    {
+      "seconds": 0.0013719999697059393,
+      "loadavg": [
+        3.796875,
+        6.85986328125,
+        7.4130859375
+      ]
+    },
+    {
+      "seconds": 5.011539625003934,
+      "loadavg": [
+        3.97314453125,
+        6.84521484375,
+        7.40478515625
+      ]
+    },
+    {
+      "seconds": 10.02310408296762,
+      "loadavg": [
+        5.09619140625,
+        7.0302734375,
+        7.466796875
+      ]
+    },
+    {
+      "seconds": 15.027993457973935,
+      "loadavg": [
+        7.65087890625,
+        7.52734375,
+        7.6396484375
+      ]
+    },
+    {
+      "seconds": 20.038028624956496,
+      "loadavg": [
+        10.8818359375,
+        8.19921875,
+        7.8759765625
+      ]
+    }
+  ],
+  "hardware": {
+    "hw.memsize": "137438953472",
+    "hw.ncpu": "18",
+    "machdep.cpu.brand_string": "Apple M5 Max"
+  },
+  "pid": 9028,
+  "elapsed_seconds": 25.045353749999776,
+  "exit": 0,
+  "finished_utc": "2026-10-09T06:54:15.443898+00:00",
+  "artifacts_sha256": {
+    "section9_p13_fourier_352_66_130_3800_host_interleaved.csv": "e989e0fe3da0766d0de16f7eccd67f4a4a17eb02eb319dfa5897c2ea56334645",
+    "section9_p13_fourier_352_66_130_3800_host_interleaved.txt": "a944d58956dbd794cb8e6b66de089ac0a07d39daf1e92e53b9e9a8837c563bd5"
+  },
+  "maximum_resident_set_size_bytes": 1080606720,
+  "checked_csv_rows": 4,
+  "all_recorded_loadavg_below_4": false,
+  "benchmark_source_identity_verified_against_commit": "deee518ac966254d6bfefd9290208c08b3b84ff0",
+  "benchmark_source_sha256": "80f850c388fe5a4ff67cc13cd96e24e5f5d5e4416036cfc798b48d3fab0b003e",
+  "preceding_focus_manifest": "section9_p13_1_3_1_focus_metadata.json"
+}
