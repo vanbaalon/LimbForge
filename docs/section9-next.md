@@ -160,7 +160,13 @@ a row in `docs/optimizations.md`, rejected attempts kept under `benchmarks/exper
 
 ### P2: API cohesion
 
-**P2.1: Two contracts, similar names.** `Linalg` products and factorizations round once per entry from the exact value. `BatchedLinalg` uses sequential composed or fused dot products, and a different Cholesky sequence.
+**P2.1: Two contracts, similar names.**
+- **Local candidate `1326370`:** explicit exact GEMM/SYRK, sequential batched
+  products/normals/trials/solves, and blocked Cholesky/solve aliases. Old names and
+  defaults remain supported. The Numerics table compares accuracy, speed-evidence
+  limits and residency/finality. Build and version/package checks pass; focused
+  cancellation/physical-GPU checks and a compatible minor release remain pending.
+ `Linalg` products and factorizations round once per entry from the exact value. `BatchedLinalg` uses sequential composed or fused dot products, and a different Cholesky sequence.
 - Make the contract visible through documentation and additive names or a contract enum.
 - Clarify same-named methods with different meanings (`cholesky_solve`); preserve existing entry points through 1.x.
 - Add a comparison table (contract, accuracy, speed, residency) to `docs/numerics.md`.
