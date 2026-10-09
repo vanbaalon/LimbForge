@@ -168,3 +168,18 @@ Linalg loop for factor plus three-RHS solve. No production selector or default c
 is accepted. The full patch, source identities and checked raw records are retained in
 [the experiment report](../benchmarks/experiments/section9_blocked_trials.md). The 3x
 objective and actual batched exact-contract implementation remain pending.
+
+
+## Section 9 P2.2: exact batched baseline, target unmet
+
+An isolated shared-SYRK/parallel-panel driver passes all31 normal/shader references,
+26 normal suites,19 distinct shader suites and four rebuilt linked fixtures. Its
+first n944/count8/352-bit factor measurement loses about11% to the production exact
+loop (0.685s vs0.619s), so no numerical API/default change or3x improvement is accepted.
+The retained source patch, complete gates, checked timings, load and memory identify
+serialized update waits as a direction to investigate. [Baseline record](../benchmarks/experiments/section9_exact_trials_baseline.md).
+
+The normal-equation and GEMM benchmark harnesses now explicitly match Linalg/MPFR
+worker counts, retain immutable reference checks for every timed output and use
+precise clock labels. Rebuilt focused checks pass in both physical-GPU modes;
+large-shape timing/accuracy acceptance remains separate.

@@ -1,0 +1,32 @@
+[  0%] Building CXX object CMakeFiles/limbforge.dir/src/version.cpp.o
+[ 12%] Building OBJCXX object CMakeFiles/limbforge.dir/src/linalg.mm.o
+[ 25%] Building OBJCXX object CMakeFiles/limbforge.dir/src/linalg_complex.mm.o
+[ 37%] Building OBJCXX object CMakeFiles/limbforge.dir/src/engine.mm.o
+[ 50%] Building OBJCXX object CMakeFiles/limbforge.dir/src/batched_linalg.mm.o
+/private/tmp/limbforge-section9-exact-trials/src/engine.mm:420:75: warning: missing field 'b_stride' initializer [-Wmissing-field-initializers]
+  420 |         Params params={std::uint32_t(count),std::uint32_t(operation),0,0,1};[encoder setBytes:&params length:sizeof(params) atIndex:3];
+      |                                                                           ^
+1 warning generated.
+[ 62%] Building OBJCXX object CMakeFiles/limbforge.dir/src/batched_factor.mm.o
+[ 75%] Building OBJCXX object CMakeFiles/limbforge.dir/src/numerics.mm.o
+/private/tmp/limbforge-section9-exact-trials/src/batched_factor.mm:35:70: error: no template named 'exact_dot_add' in namespace 'limbforge::detail'; did you mean simply 'exact_dot_add'?
+   35 |     auto D=[](const T& c,const T* x,const T* y,std::size_t k){return detail::exact_dot_add<N>(&c,true,x,1,y,1,k);};
+      |                                                                      ^~~~~~~~~~~~~~~~~~~~~
+      |                                                                      exact_dot_add
+/private/tmp/limbforge-section9-exact-trials/include/limbforge/linalg.hpp:274:27: note: 'exact_dot_add' declared here
+  274 | template<int N> Number<N> exact_dot_add(const Number<N>* c,bool subtract,const Number<N>* a,std::ptrdiff_t sa,const Number<N>* b,std::ptrdiff_t sb,std::size_t K){
+      |                           ^
+/private/tmp/limbforge-section9-exact-trials/src/batched_factor.mm:35:70: error: no template named 'exact_dot_add' in namespace 'limbforge::detail'; did you mean simply 'exact_dot_add'?
+   35 |     auto D=[](const T& c,const T* x,const T* y,std::size_t k){return detail::exact_dot_add<N>(&c,true,x,1,y,1,k);};
+      |                                                                      ^~~~~~~~~~~~~~~~~~~~~
+      |                                                                      exact_dot_add
+/private/tmp/limbforge-section9-exact-trials/include/limbforge/linalg.hpp:274:27: note: 'exact_dot_add' declared here
+  274 | template<int N> Number<N> exact_dot_add(const Number<N>* c,bool subtract,const Number<N>* a,std::ptrdiff_t sa,const Number<N>* b,std::ptrdiff_t sb,std::size_t K){
+      |                           ^
+[ 75%] Building OBJCXX object CMakeFiles/limbforge.dir/src/transcendental.mm.o
+2 errors generated.
+gmake[3]: *** [CMakeFiles/limbforge.dir/build.make:149: CMakeFiles/limbforge.dir/src/batched_factor.mm.o] Error 1
+gmake[3]: *** Waiting for unfinished jobs....
+gmake[2]: *** [CMakeFiles/Makefile2:268: CMakeFiles/limbforge.dir/all] Error 2
+gmake[1]: *** [CMakeFiles/Makefile2:1683: CMakeFiles/test_limbforge_blocked_trials.dir/rule] Error 2
+gmake: *** [Makefile:751: test_limbforge_blocked_trials] Error 2

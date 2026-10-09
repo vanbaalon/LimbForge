@@ -1,0 +1,91 @@
+{
+  "timestamp_utc": "2026-10-09T05:16:26.906394+00:00",
+  "scope": "Four post-WolfNum-rebase instrumented benchmark fixtures; full/all31 numerical drivers and shaders retain gated hashes",
+  "cases": [
+    {
+      "log": "section9_p22_wolfnum_instrumented_352_reference.txt",
+      "command": [
+        "./build/section9_exact_trials_limbforge",
+        "--bits",
+        "352",
+        "--n",
+        "65",
+        "--count",
+        "2",
+        "--nrhs",
+        "3",
+        "--workers",
+        "4",
+        "--check-only"
+      ],
+      "shader_validation": false,
+      "exit": 0
+    },
+    {
+      "log": "section9_p22_wolfnum_instrumented_352_validation.txt",
+      "command": [
+        "./build/section9_exact_trials_limbforge",
+        "--bits",
+        "352",
+        "--n",
+        "65",
+        "--count",
+        "2",
+        "--nrhs",
+        "3",
+        "--workers",
+        "4",
+        "--check-only"
+      ],
+      "shader_validation": true,
+      "exit": 0
+    },
+    {
+      "log": "section9_p22_wolfnum_instrumented_1024_reference.txt",
+      "command": [
+        "./build/section9_exact_trials_limbforge",
+        "--bits",
+        "1024",
+        "--n",
+        "17",
+        "--count",
+        "2",
+        "--nrhs",
+        "3",
+        "--workers",
+        "4",
+        "--check-only",
+        "--resident"
+      ],
+      "shader_validation": false,
+      "exit": 0
+    },
+    {
+      "log": "section9_p22_wolfnum_instrumented_1024_validation.txt",
+      "command": [
+        "./build/section9_exact_trials_limbforge",
+        "--bits",
+        "1024",
+        "--n",
+        "17",
+        "--count",
+        "2",
+        "--nrhs",
+        "3",
+        "--workers",
+        "4",
+        "--check-only",
+        "--resident"
+      ],
+      "shader_validation": true,
+      "exit": 0
+    }
+  ],
+  "sha256": {
+    "build/liblimbforge.a": "936c1678b853ccdc127c8a47fe1df6e976feeb2fcb6d5766702e17a0e7c52006",
+    "build/section9_exact_trials_limbforge": "094bd2c8ef2ba36c789d2407952f8f80c5748c0e404631eb1847d1b53d36292d",
+    "benchmarks/section9_exact_trials.cpp": "c28a768bafea9cdbcbdbf2b72dbf924f4e613f1f4684e9e510ab4241319b9d0d",
+    "src/batched_factor.mm": "9f66f087ba829ced45f0f6cace019d87d42d6e3106f10439087f60e2cc8ab5f0",
+    "include/limbforge/batched_linalg.hpp": "848655e699430ed5fc40106e2fabce98a7ef3580a4d58d3275da7c2fc73f0f75"
+  }
+}

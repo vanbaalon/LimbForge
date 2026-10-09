@@ -1,0 +1,4 @@
+bits,n,count,nrhs,cpu_workers,repeats,resident,path,cpu_contract,cpu_wall,gpu_wall,gpu_device,factor_wall,solve_wall,wall_p25,wall_p75,wall_min,wall_max,clock,cpu_active_workers,profile
+352,944,8,3,18,3,0,sequential_scalar,sequential,9.79633554,8.75316608,8.73537854,1.46144871,7.29171729,7.63994942,8.75316608,7.63994942,9.98458962,cpu-interleaved,8,Apple M5 Max / exact-trials-candidate / 1.3.0 / sequential / split-factor-solve
+352,944,8,3,18,3,0,exact_linalg_loop,exact_block32,12.1954876,0.72145275,0.384459166,0.619182875,0.102269833,0.665091041,0.72145275,0.665091041,0.831211084,cpu-interleaved,8,Apple M5 Max / exact-trials-candidate / 1.3.0 / exact-block32 / split-factor-solve
+352,944,8,3,18,3,0,exact_batched_panels,exact_block32,12.1954876,0.803592584,0.364729667,0.68459,0.1190025,0.720690917,0.803592584,0.720690917,0.815725417,cpu-interleaved,8,Apple M5 Max / exact-trials-candidate / 1.3.0 / exact-block32 / split-factor-solve

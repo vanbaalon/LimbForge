@@ -1,0 +1,2 @@
+352 bits: blocked trial factors, mixed pivots and shared GPU/exact repair match MPFR
+Blocked exact damping trials reference run passed

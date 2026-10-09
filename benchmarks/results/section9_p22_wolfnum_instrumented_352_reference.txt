@@ -1,0 +1,1 @@
+352 bits: 2 trials, n=65, 3 RHS: sequential and both exact factor/solve paths match independent MPFR; no timings recorded

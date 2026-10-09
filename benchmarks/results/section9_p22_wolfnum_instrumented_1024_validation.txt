@@ -1,0 +1,2 @@
+2026-10-09 01:16:24.136 section9_exact_trials_limbforge[73940:243438481] Metal GPU Validation Enabled
+1024 bits: 2 trials, n=17, 3 RHS: sequential and both exact factor/solve paths match independent MPFR; no timings recorded

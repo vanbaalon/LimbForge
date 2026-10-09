@@ -1,0 +1,31 @@
+{
+  "recorded_utc": "2026-10-09T04:05:06.653943+00:00",
+  "scope": "All31 physical GPU widths, 65x65 block32 tail plus smaller blocks, independent MPFR and production Linalg oracles, statuses, wide/forced repairs, source ownership and scratch release. Full library regressions are separate.",
+  "results": [
+    {
+      "log": "section9_p22_expanded_all_widths_reference.txt",
+      "command": [
+        "./build/test_limbforge_blocked_trials",
+        "--all-widths"
+      ],
+      "exit": 0
+    },
+    {
+      "log": "section9_p22_expanded_all_widths_validation.txt",
+      "command": [
+        "./build/test_limbforge_blocked_trials",
+        "--all-widths"
+      ],
+      "exit": 0
+    }
+  ],
+  "sha256": {
+    "src/batched_factor.mm": "9f66f087ba829ced45f0f6cace019d87d42d6e3106f10439087f60e2cc8ab5f0",
+    "src/linalg.mm": "028f470efb81460cbb03e20e18ccbc619ca11c4ae5c1407a533b94a6d3c73e26",
+    "src/linalg_internal.hpp": "335f5925ca231a1bd64c13c2e2f0549073bd01c7d28070cd69d11c09a92a114c",
+    "include/limbforge/batched_linalg.hpp": "848655e699430ed5fc40106e2fabce98a7ef3580a4d58d3275da7c2fc73f0f75",
+    "tests/test_blocked_trials.cpp": "ea8acb75cbadcb23d16975eda5ba1d8f1d0c8f1b82452741e9d1bf6253be4f13",
+    "build/liblimbforge.a": "41268e45ef86a0f700f657bea21c98529cafc3ba1ff64f49ac7ac277aa1de126",
+    "build/test_limbforge_blocked_trials": "e702c4dc4d2944006acfe369ab7fb12bfa262518646f255564c485b67ccf7937"
+  }
+}

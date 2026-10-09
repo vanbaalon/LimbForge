@@ -1,0 +1,12 @@
+Test project /private/tmp/limbforge-section9-exact-trials/build
+      Start  1: fused_gpu
+ 1/19 Test  #1: fused_gpu ........................   Passed  310.29 sec
+      Start  2: linalg_gpu
+ 2/19 Test  #2: linalg_gpu .......................   Passed   25.27 sec
+      Start  3: linalg_cholesky
+ 3/19 Test  #3: linalg_cholesky ..................   Passed   19.40 sec
+      Start  4: linalg_qr
+ 4/19 Test  #4: linalg_qr ........................   Passed   61.42 sec
+      Start  5: linalg_qr_complex
+ 5/19 Test  #5: linalg_qr_complex ................   Passed  139.37 sec
+      Start  6: arithmetic_gpu

@@ -1,0 +1,33 @@
+Test project /private/tmp/limbforge-section9-exact-trials/build
+      Start 13: arithmetic_gpu
+ 1/14 Test #13: arithmetic_gpu ...................   Passed   61.00 sec
+      Start 14: broadcast_gpu
+ 2/14 Test #14: broadcast_gpu ....................   Passed   15.13 sec
+      Start 15: batched4_gpu
+ 3/14 Test #15: batched4_gpu .....................   Passed  312.39 sec
+      Start 16: section9_smoke
+ 4/14 Test #16: section9_smoke ...................   Passed   12.44 sec
+      Start 17: threshold_gpu
+ 5/14 Test #17: threshold_gpu ....................   Passed    2.03 sec
+      Start 18: cast_gpu
+ 6/14 Test #18: cast_gpu .........................   Passed    0.83 sec
+      Start 19: segmented_dot_gpu
+ 7/14 Test #19: segmented_dot_gpu ................   Passed   21.30 sec
+      Start 20: vector_recurrence_gpu
+ 8/14 Test #20: vector_recurrence_gpu ............   Passed   22.73 sec
+      Start 21: numerics_gpu
+ 9/14 Test #21: numerics_gpu .....................   Passed   90.58 sec
+      Start 22: resident_units_gpu
+10/14 Test #22: resident_units_gpu ...............   Passed  215.13 sec
+      Start 23: resident_linalg_gpu
+11/14 Test #23: resident_linalg_gpu ..............   Passed   41.81 sec
+      Start 24: resident_buffers
+12/14 Test #24: resident_buffers .................   Passed   11.35 sec
+      Start 25: transcendental_gpu
+13/14 Test #25: transcendental_gpu ...............   Passed  172.51 sec
+      Start 26: tree_reduction
+14/14 Test #26: tree_reduction ...................   Passed   16.07 sec
+
+100% tests passed out of 14
+
+Total Test time (real) = 995.32 sec

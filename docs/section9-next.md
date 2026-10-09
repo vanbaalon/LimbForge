@@ -128,7 +128,7 @@ a row in `docs/optimizations.md`, rejected attempts kept under `benchmarks/exper
   The patch, full grid and raw records are preserved in
   [the rejection record](../benchmarks/experiments/section9_blocked_trials.md).
   The 3x target remains open; the new exact-contract batched design is P2.2.
-- **Problem:** the column-by-column passes (≈ 3n small dispatches with shrinking grids) lose to eight sequential `Linalg::cholesky` calls at n = 944 (1.54 s vs 1.23 s).
+- **Historical problem statement:** the column-by-column passes (≈ 3n small dispatches with shrinking grids) lose to eight sequential `Linalg::cholesky` calls at n = 944 (1.54 s vs 1.23 s).
 - **Change:** use a blocked algorithm, with per-trial panels and trailing updates as batched GEMM over all trials.
 - **Target:** ≥ 3× over 8 × `Linalg::cholesky` at n ≈ 1000, and keep the n ≤ 400 advantage.
 - **Contract:** expose a different sequence through an explicit new option/API and give it an MPFR replay. Preserve the existing `cholesky_trials` sequence and default. Compare numerical contracts alongside timings against `Linalg::cholesky`.
@@ -149,6 +149,12 @@ a row in `docs/optimizations.md`, rejected attempts kept under `benchmarks/exper
 - **Shapes:** both §9.2 shapes, plus the 4×4 batches at 1e4–1e5 matrices.
 
 **P1.4: Normal equations.**
+- **Harness ready on WolfNum1.3:** `section9_normal_limbforge` checks every timed
+  composed/fused/exact CPU/GPU output, with persistent balanced-triangle MPFR work,
+  matched Linalg worker counts and independent high-precision accuracy. CPU-only
+  all31 and four rebuilt normal/shader fixtures pass. The target is opt-in; n=944,
+  K=1100 timing/accuracy and guidance remain pending. See
+  `benchmarks/experiments/section9_normal_equations.md`.
 - Measurement harness prepared on `round-section9-normal-measurements`: composed/fused
   sequential, exact augmented and exact SYRK+GEMM paths have independent references.
   Check-only 352/1024 cases pass; actual n=944/K=1100 timings and accuracy-guidance
@@ -196,17 +202,20 @@ queries and release follow the existing Linalg ownership semantics.
 - Clarify same-named methods with different meanings (`cholesky_solve`); preserve existing entry points through 1.x.
 - Add a comparison table (contract, accuracy, speed, residency) to `docs/numerics.md`.
 
-**P2.2: Exact-contract damping trials.** An isolated candidate on
-`round-section9-exact-trials` adds synchronous `cholesky_trials_blocked`: shared
-exact SYRK submissions, parallel host panels and repaired outputs before dependent
-panels. Host-only all31 and focused 352/1024 physical GPU/shader checks pass against
-independent MPFR and the production Linalg contract. Expanded all31 physical-GPU
-and shader-validation checks also pass, including 65x65 block32 tails, mixed failures
-and wide/forced repairs. The candidate is rebased on current main; broad regressions
-and linked fixtures are running. Solver-size measurements and release acceptance
-remain pending.
-The target is bit-identical factors per trial with the same block; existing all-device
-sequential calls remain unchanged. Consumer Newton histories still require P3 checks.
+**P2.2: Exact-contract damping trials.** The isolated `70d87d4` baseline adds
+synchronous `cholesky_trials_blocked`, parallel host panels and shared resident
+exact SYRK submissions. All31 normal/shader references, full26 normal suites,
+all19 distinct shader-validation suites and four post-WolfNum linked fixtures pass.
+Numerical source hashes survive the rebase; this API remains outside production.
+The first checked 352-bit n=944/count8/three-RHS measurement takes0.685s for batched
+factorization versus0.619s for the exact Linalg loop, missing the3x target and losing
+about11%. Component accounting identifies serialized trailing-update waits despite
+cheaper parallel panels. Preserve the baseline patch, raw gates, timing/load and
+memory in [the baseline record](../benchmarks/experiments/section9_exact_trials_baseline.md).
+Improve scheduling/update throughput, then complete352/384/448 and200/400 comparisons
+before release acceptance. The target remains bit-identical factors per trial with
+the same block; existing sequential calls and defaults stay unchanged. Consumer
+Newton histories and idle timings still require P3 checks.
 
 **P2.3: Break-even table.** Partial: the source-recurrence exporter and 50 verified
 profile-specific keys cover host/resident, composed/fused and measured clock modes.

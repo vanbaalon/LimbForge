@@ -1,0 +1,51 @@
+{
+  "recorded_utc": "2026-10-09T04:02:30.093428+00:00",
+  "results": [
+    {
+      "log": "section9_p22_focus_352_reference.txt",
+      "command": [
+        "./build/test_limbforge_blocked_trials",
+        "--bits",
+        "352"
+      ],
+      "exit": 0
+    },
+    {
+      "log": "section9_p22_focus_1024_reference.txt",
+      "command": [
+        "./build/test_limbforge_blocked_trials",
+        "--bits",
+        "1024"
+      ],
+      "exit": 0
+    },
+    {
+      "log": "section9_p22_focus_352_validation.txt",
+      "command": [
+        "./build/test_limbforge_blocked_trials",
+        "--bits",
+        "352"
+      ],
+      "exit": 0
+    },
+    {
+      "log": "section9_p22_focus_1024_validation.txt",
+      "command": [
+        "./build/test_limbforge_blocked_trials",
+        "--bits",
+        "1024"
+      ],
+      "exit": 0
+    }
+  ],
+  "scope": "Focused physical-GPU staged exact-trial API tests; broad all-width and library gates are separate.",
+  "sha256": {
+    "src/batched_factor.mm": "9f66f087ba829ced45f0f6cace019d87d42d6e3106f10439087f60e2cc8ab5f0",
+    "src/linalg.mm": "028f470efb81460cbb03e20e18ccbc619ca11c4ae5c1407a533b94a6d3c73e26",
+    "src/linalg_internal.hpp": "335f5925ca231a1bd64c13c2e2f0549073bd01c7d28070cd69d11c09a92a114c",
+    "include/limbforge/batched_linalg.hpp": "848655e699430ed5fc40106e2fabce98a7ef3580a4d58d3275da7c2fc73f0f75",
+    "tests/test_blocked_trials.cpp": "09f7a576fc459ca8ca9c780baa57a0816b1d4ddfb598dd787ae1717e963a231a",
+    "build/liblimbforge.a": "41268e45ef86a0f700f657bea21c98529cafc3ba1ff64f49ac7ac277aa1de126",
+    "build/test_limbforge_blocked_trials": "470c531da053bd9e7b1ba6422072fb4d29273f413d9339cffa56ad9a7c521b7d"
+  }
+}

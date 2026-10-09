@@ -1,0 +1,16 @@
+{
+  "command": [
+    "test_limbforge_blocked_trials",
+    "--all-widths",
+    "--host-only"
+  ],
+  "exit": 0,
+  "scope": "Host-only 31-width MPFR factor references; no GPU validation or performance claim. Prior host log uses an inaccurate generic label; this final log distinguishes host-only scheduling.",
+  "sha256": {
+    "src/batched_factor.mm": "9f66f087ba829ced45f0f6cace019d87d42d6e3106f10439087f60e2cc8ab5f0",
+    "include/limbforge/batched_linalg.hpp": "848655e699430ed5fc40106e2fabce98a7ef3580a4d58d3275da7c2fc73f0f75",
+    "tests/test_blocked_trials.cpp": "09f7a576fc459ca8ca9c780baa57a0816b1d4ddfb598dd787ae1717e963a231a",
+    "build/liblimbforge.a": "41268e45ef86a0f700f657bea21c98529cafc3ba1ff64f49ac7ac277aa1de126",
+    "build/test_limbforge_blocked_trials": "470c531da053bd9e7b1ba6422072fb4d29273f413d9339cffa56ad9a7c521b7d"
+  }
+}
