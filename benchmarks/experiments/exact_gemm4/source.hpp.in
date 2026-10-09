@@ -1,0 +1,7 @@
+#pragma once
+static const char* exact_gemm4_source=R"WOLFNUM(
+#include <metal_stdlib>
+@CORE_SOURCE@
+@BATCHED_PRIVATE_CORE_SOURCE@
+@EXACT_GEMM4_SOURCE@
+)WOLFNUM";

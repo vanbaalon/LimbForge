@@ -1533,3 +1533,15 @@ and both E and outputs are `[steps][4][groups]`. Horner and source scaling have 
 contract above. Zero steps/groups writes nothing. With zero terms, E is still multiplied
 by canonical zero, preserving statuses. Outputs contain sources in ascending step order;
 the consumer chooses their application order.
+
+## Uninstalled exact 4x4 batch experiment
+
+The isolated `benchmarks/experiments/exact_gemm4` prototype evaluates four real
+products, or eight signed real products per complex component, exactly before
+one round-to-nearest, ties-to-even operation. Optional accumulation includes the
+old component in that exact sum; optional negation changes the final sign.
+Each component propagates the OR of all its operand statuses. Bounded exponent
+spreads run in one batched GPU dispatch; wider spreads use exact host repair at
+wait. Outputs are provisional until that wait. This does not change installed
+APIs, sequential batched GEMM, defaults or the 1.3.1 release. See the experiment's
+README and independent MPFR gate for full contracts and acceptance requirements.
