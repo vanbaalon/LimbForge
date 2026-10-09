@@ -54,9 +54,11 @@ legacy `--path composed`, `fused` or `gauss` for a single path. Only selected GP
 layouts are allocated. All four CPU references and the independent exact oracle
 are still prepared and checked. The subset omits the per-matrix Linalg encoding
 cost and extra buffers of the exact embedding. A fair large-batch exact comparison
-still needs measurement and may motivate an exact batched API. The Fourier and resident 1e4/1e5 profiles below are measured. Other widths,
-host 4x4 batches, register blocking/TK variants and performance acceptance remain
-pending; the historical 7.9x ratio is not a current baseline.
+still needs measurement and may motivate an exact batched API. The tables below retain the original 352-bit snapshot. The
+[extended grid](section9_gemm_extended/README.md) now covers 352/384/448 bits,
+host/resident layouts and both recorded clock profiles, with 120 offline keys.
+Register blocking/TK variants, fair batched exact 4x4 and idle-consumer acceptance
+remain open; the historical 7.9x ratio is not a current baseline.
 
 The current harness explicitly matches Linalg host-worker count to the MPFR
 worker count. Clock labels are `cpu-interleaved` and `verified-warm-call`; neither
@@ -94,8 +96,9 @@ Every profile has busy-host load samples; CPU ratios are library observations, n
 idle consumer acceptance. All sample ranges and identities are retained in
 `section9_p13_fourier_*` and `section9_p13_small4_*` raw triples. Large-batch exact
 encoding remains outside this small-matrix comparison: one Linalg call per matrix
-is not a batched exact implementation. Other widths, transfer profiles, native
-three-product multiplication and tile experiments remain follow-up work.
+is not a batched exact implementation. The extended width/layout/clock grid is
+now complete; native per-product Gauss remains separately rejected. Fair batched
+exact products, tile experiments and idle-consumer measurements remain open.
 
 ## Offline calibration
 
@@ -105,6 +108,14 @@ Its JSON retains binary/archive, contract, clock and busy-host load identity.
 The generated C++ consumer checks every measured key and unknown width/profile/shape
 queries; terminal, raw-hash, idle and overwrite guards pass. This installs no default
 and does not establish consumer or idle-host acceptance. See [calibration](../../docs/calibration.md).
+
+## Expanded measured grid
+
+Thirty-two new records plus eight originals yield 120 offline contract keys across
+36 workload/layout/clock configurations. All raw samples/medians and profile
+coverage independently verify, as do the compiled 120-key factory and ten
+provenance/idle/overwrite guards. Original artifacts stay unchanged.
+[Full grid, method, accuracy and process memory](section9_gemm_extended/README.md).
 
 ## Production benchmark subset gate
 

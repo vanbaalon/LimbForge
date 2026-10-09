@@ -1,0 +1,199 @@
+{
+  "status": "PASS",
+  "pid": 84802,
+  "predecessor": {
+    "pid": 84105,
+    "identity": "Fri Oct  9 07:31:01 2026     /opt/homebrew/Cellar/python@3.14/3.14.6/Frameworks/Python.framework/Versions/3.14/Resources/Python.app/Contents/MacOS/Python -u runs/wolfnum_converged_fixtures/collocation_seed_g05_continuation/run_comparisons.py"
+  },
+  "steps": [
+    {
+      "name": "section9_p13_extended_384_1_66_3800_130_host_interleaved",
+      "exit": 0,
+      "metadata_sha256": "f273c5e2e162afd3cf712b5a696f2a3aa0df626c45a8b5002bec5b60da536367",
+      "verified": true,
+      "retained_prior_measurement": "/tmp/wolfnum-section9-production-gemm-subsets/benchmarks/results/section9_gemm_extended/section9_p13_extended_384_1_66_3800_130_host_interleaved_metadata.json"
+    },
+    {
+      "name": "section9_p13_extended_384_1_66_3800_130_host_warm",
+      "exit": 0,
+      "metadata_sha256": "c4aa7b3929b07c7aa4d9834336401c4f2a3e1d70e917e4dc711cbc96665c85f5",
+      "verified": true
+    },
+    {
+      "name": "section9_p13_extended_384_1_66_3800_130_resident_interleaved",
+      "exit": 0,
+      "metadata_sha256": "72929bb3c4dfe09546b399a679dd0d5c47201849c08961581f69e3f9e74f2056",
+      "verified": true
+    },
+    {
+      "name": "section9_p13_extended_384_1_66_3800_130_resident_warm",
+      "exit": 0,
+      "metadata_sha256": "ca50608b7269b20794a69ac2392c0d29764f01bfc9bc01876cda63f3f881c3a0",
+      "verified": true
+    },
+    {
+      "name": "section9_p13_extended_448_1_66_3800_130_host_interleaved",
+      "exit": 0,
+      "metadata_sha256": "2b9cb93d240a867e13a4a688f26ba589111de28da1465613989f10784486b4c6",
+      "verified": true
+    },
+    {
+      "name": "section9_p13_extended_448_1_66_3800_130_host_warm",
+      "exit": 0,
+      "metadata_sha256": "39b6ab1eba1bc4e79e65e09b63599c126eaa0e5eff53adef1c8f91a86fdbaee4",
+      "verified": true
+    },
+    {
+      "name": "section9_p13_extended_448_1_66_3800_130_resident_interleaved",
+      "exit": 0,
+      "metadata_sha256": "a036e66a7e722af67f3686e578beb169f681e5208d35df9d6ae7f263a88c4ba8",
+      "verified": true
+    },
+    {
+      "name": "section9_p13_extended_448_1_66_3800_130_resident_warm",
+      "exit": 0,
+      "metadata_sha256": "2b3d507c827bfe90b84a69967f5a04125a46a7817f583733b8a6dee86ce62cdc",
+      "verified": true
+    },
+    {
+      "name": "section9_p13_extended_352_10000_4_4_4_host_interleaved",
+      "exit": 0,
+      "metadata_sha256": "86a7ed6d470e23225a0f8d40e8a557440c71308d6187728774e0e942048f0243",
+      "verified": true
+    },
+    {
+      "name": "section9_p13_extended_352_10000_4_4_4_host_warm",
+      "exit": 0,
+      "metadata_sha256": "0bb17a1eaa75a52354b47f63b36dca8e897effdf574cd6cc7bb9b770092a6826",
+      "verified": true
+    },
+    {
+      "name": "section9_p13_extended_352_10000_4_4_4_resident_warm",
+      "exit": 0,
+      "metadata_sha256": "bda167f12846f28412d9809e4cd4aa94bee074ed3534d9106cfb1294dd85e36c",
+      "verified": true
+    },
+    {
+      "name": "section9_p13_extended_352_100000_4_4_4_host_interleaved",
+      "exit": 0,
+      "metadata_sha256": "2319b915e394259bdc3c65691635992ba19620b98a0c9047ea02a147a88b455d",
+      "verified": true
+    },
+    {
+      "name": "section9_p13_extended_352_100000_4_4_4_host_warm",
+      "exit": 0,
+      "metadata_sha256": "c3c8af20340492fd7bb4913cab3dbaec97f283ace315aa995faf3637f96c1f91",
+      "verified": true
+    },
+    {
+      "name": "section9_p13_extended_352_100000_4_4_4_resident_warm",
+      "exit": 0,
+      "metadata_sha256": "c72da4d8f1d12c3199b070bf141e32077f181611bd23f91fd79a2df0ec80a52c",
+      "verified": true
+    },
+    {
+      "name": "section9_p13_extended_384_10000_4_4_4_host_interleaved",
+      "exit": 0,
+      "metadata_sha256": "5d4466038c127cc497826695143c965c4ad1bfeadf72626c1d89ad53a626d80b",
+      "verified": true
+    },
+    {
+      "name": "section9_p13_extended_384_10000_4_4_4_host_warm",
+      "exit": 0,
+      "metadata_sha256": "b062285d3c20bbe0d6434064e261264339f26b690c9ec77b87a9d700201e8ca4",
+      "verified": true
+    },
+    {
+      "name": "section9_p13_extended_384_10000_4_4_4_resident_interleaved",
+      "exit": 0,
+      "metadata_sha256": "6f7db426300d2eee676935d702e5dd031f2400f9c42b53f20ff395b9d56a5e29",
+      "verified": true
+    },
+    {
+      "name": "section9_p13_extended_384_10000_4_4_4_resident_warm",
+      "exit": 0,
+      "metadata_sha256": "58d80c2a74f1b67661ba08795cc3910a9df673c63e32afee94febb3978de96e8",
+      "verified": true
+    },
+    {
+      "name": "section9_p13_extended_384_100000_4_4_4_host_interleaved",
+      "exit": 0,
+      "metadata_sha256": "7343543e6dbf309ffabc6a670de307183b1be55f15d86c9e10c38b1f8d297cd1",
+      "verified": true
+    },
+    {
+      "name": "section9_p13_extended_384_100000_4_4_4_host_warm",
+      "exit": 0,
+      "metadata_sha256": "f9604038cce45d529f667d19e369cf9363866448f8647379ddb8975a226a51ba",
+      "verified": true
+    },
+    {
+      "name": "section9_p13_extended_384_100000_4_4_4_resident_interleaved",
+      "exit": 0,
+      "metadata_sha256": "210eb86b62edf2c1b466bd0bba4ab5a08632ac6a7718c55f76cb005d7d2595f1",
+      "verified": true
+    },
+    {
+      "name": "section9_p13_extended_384_100000_4_4_4_resident_warm",
+      "exit": 0,
+      "metadata_sha256": "69b332ee8030cb3fd759c3a7db3af8ed7cbf3c66ed01ef9fb71f64b233e999cd",
+      "verified": true
+    },
+    {
+      "name": "section9_p13_extended_448_10000_4_4_4_host_interleaved",
+      "exit": 0,
+      "metadata_sha256": "3eaed0b5ac844a409b61e69c222e1fd01c32e04be3f5a17c5041c7ae878b142d",
+      "verified": true
+    },
+    {
+      "name": "section9_p13_extended_448_10000_4_4_4_host_warm",
+      "exit": 0,
+      "metadata_sha256": "4e53ea742ce9fed9c415387bdc127dabccb228ad3d193969c329c91c7114d82f",
+      "verified": true
+    },
+    {
+      "name": "section9_p13_extended_448_10000_4_4_4_resident_interleaved",
+      "exit": 0,
+      "metadata_sha256": "12da4ee605dcc53c7ccd473f8643e39cca38beb10056c49b3f179793a4d434f2",
+      "verified": true
+    },
+    {
+      "name": "section9_p13_extended_448_10000_4_4_4_resident_warm",
+      "exit": 0,
+      "metadata_sha256": "1de2d2aeb65d023c970c80e15c15e8dde83b1409b05a71f2ca7fca067251be14",
+      "verified": true
+    },
+    {
+      "name": "section9_p13_extended_448_100000_4_4_4_host_interleaved",
+      "exit": 0,
+      "metadata_sha256": "160c999552a7592d34230ac75c0f1e5fda30fe4a958b6906c36e6a289af1bd3f",
+      "verified": true
+    },
+    {
+      "name": "section9_p13_extended_448_100000_4_4_4_host_warm",
+      "exit": 0,
+      "metadata_sha256": "7db83252515500fd6dbeae809950fdfb599a5c51bfecb91c91e974fd42a00c12",
+      "verified": true
+    },
+    {
+      "name": "section9_p13_extended_448_100000_4_4_4_resident_interleaved",
+      "exit": 0,
+      "metadata_sha256": "0fa4d93f9cff636aabca87b324c62b4af37b26965c505ca1be4a50d61ebfc463",
+      "verified": true
+    },
+    {
+      "name": "section9_p13_extended_448_100000_4_4_4_resident_warm",
+      "exit": 0,
+      "metadata_sha256": "8d63e5ac6084159610d79a81d1dc146195344f655affbccd2edd43f84a6bd9dc",
+      "verified": true
+    }
+  ],
+  "scope": "Thirty checked production GEMM library profiles; busy-host results, no idle consumer/default acceptance",
+  "sha256": {
+    "benchmarks/section9_gemm.cpp": "320aa23feaf34987144afb03d4b0c83df2f903c1b2152f64ee9d3fc4157baa6d",
+    "build/section9_gemm_limbforge": "a00b7974e2551331115d1b17ad4fb393575969892c028ee5fce217011bd62a33",
+    "build/liblimbforge.a": "d249dc2a6af9fe08c1cdb0f524e2a270fccbc7a94348c234d94e5661488f3c47"
+  },
+  "correctness_gate_sha256": "f1325abc8c35c1673814a746190c146195c898d112745e7e96c93e0c437eb61b",
+  "predecessor_metadata_sha256": "5867d734eade2ba65b2302c3190258ebee8661bf1f46a9449347ef2e20f92259"
+}

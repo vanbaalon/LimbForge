@@ -145,10 +145,10 @@ a row in `docs/optimizations.md`, rejected attempts kept under `benchmarks/exper
 - **Prepared comparison:** opt-in `section9_gemm_limbforge` compares composed/fused
   complex GEMM, exact real embedding and a separately documented three-real-GEMM
   Gauss sequence. All 31 CPU exact-reference checks and focused 352/1024 GPU cases
-  pass normally and under validation. 352-bit Fourier host/resident and 10,000/100,000 resident 4x4 timings
-  now pass every output check. Three private 8x4 tile configurations pass their all 31
+  pass normally and under validation. The full 352/384/448-bit Fourier and 10,000/100,000 4x4 host/resident/clock grid
+  now passes every output check, with 120 offline keys. Three private 8x4 tile configurations pass their all 31
   normal/shader GEMM sweeps; register-blocked 8x8 and a named-accumulator correction
-  fail dense 64-bit shader validation. Remaining tile gates/timing and native-product acceptance remain pending; see `benchmarks/experiments/section9_gemm_comparison.md`.
+  fail dense 64-bit shader validation. The recorded GEMM width/layout/clock grid is now complete; remaining tile gates/timing and fair batched exact products stay open; see `benchmarks/experiments/section9_gemm_comparison.md`.
 - **Historical baseline:** the pre-1.0.1 composed tiled GEMM measured 7.9× MPFR at
   the Fourier shape; remeasure the corrected backend before using that ratio.
 - **Compare it against:**
@@ -236,13 +236,15 @@ exact loop, and factor+solve 0.629s versus 0.675s. The 3x factor target is still
 full width/size performance comparisons and consumer acceptance remain open.
 No public API/default is promoted. [Frozen source, raw gates, memory and timing](../benchmarks/experiments/section9_grouped_exact/README.md).
 
-**P2.3: Break-even table.** Partial: 50 source-recurrence keys and 24 normal-equation
-keys cover measured host/resident contracts and clock profiles; 14 GEMM keys cover
-the checked 352-bit Fourier host/resident and resident 4x4 measurements. Three factor-plus-solve
-keys retain the explicit unreleased-trial scope. Exported factories load every key;
-unmeasured widths/profiles remain unknown. Terminal/hash/idle/overwrite guards pass.
-No table installs a default or establishes idle-consumer policy. See
-[offline calibration](calibration.md). Other GEMM widths/clock modes and accepted idle-host profiles remain pending.
+**P2.3: Break-even table.** Partial: 50 source-recurrence keys, 24 normal-equation
+keys and now 120 GEMM keys cover recorded host/resident contracts and both clock
+profiles. GEMM includes 352/384/448-bit Fourier and 1e4/1e5 4x4 configurations;
+large 4x4 exact embedding is excluded pending a fair batched exact API. Three
+factor-plus-solve keys retain explicit unreleased-trial scope. Exported factories
+load every key; unmeasured widths/profiles remain unknown. Terminal/hash/idle/
+overwrite guards pass. No table installs a default or establishes idle-consumer
+policy. [Expanded GEMM grid](../benchmarks/experiments/section9_gemm_extended/README.md)
+and [offline calibration](calibration.md). Accepted idle-host profiles remain pending.
 
 ### P3: end-to-end (consumer)
 

@@ -1,0 +1,20 @@
+{
+  "status": "PASS",
+  "guards": {
+    "nonterminal": true,
+    "failed": true,
+    "explicit_verification_error": true,
+    "clock_mismatch": true,
+    "incomplete_rows": true,
+    "missing_binary_identity": true,
+    "changed_csv": true,
+    "changed_log": true,
+    "idle_required": true,
+    "overwrite_refused_without_changes": true
+  },
+  "compiled_factory": "120 actual keys +120 unknown widths +unknown profile/shape PASS",
+  "factory_source_sha256": "18312aa7d29c59eefbe5cc59f2f372df886c43c61ec61820749f5ee133affcee",
+  "factory_binary_sha256": "87fbb2cb9ca444eeb5f738fa738a4d1424db6bec06f85e1118b48ff6fa953bfd",
+  "library_source_changed": false,
+  "idle_consumer_policy_installed": false
+}

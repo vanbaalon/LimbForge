@@ -69,6 +69,9 @@ benchmark inputs do not exercise the baseline's known exponent-boundary bug.
 
 | Round | Change | Decision and evidence |
 |---|---|---|
+| Section 9 grouped exact updates | Private grouped single-band trial SYRK; frozen 25c8852 | All 31 direct/factor/full-band normal/Metal and 26/19 regressions pass; first n944/352 factor+solve improves about 1.07x over exact loop but 3x factor target remains unmet; retained experiment only. |
+| Section 9 production GEMM subsets/grid | Rotating benchmark subsets and 120 offline keys | Eight parser, 31 CPU-width and 16 focused normal/Metal checks pass; full 352/384/448 host/resident/clock Fourier and 1e4/1e5 4x4 grid measured and independently verified. No library/default change; exact batched 4x4 and idle-consumer policy remain open. |
+| Section 9 requested convergence sweep | Matching 1.3.1 J3 g=.1/.2/.5 with all candidate switches | Original gtol 1e-22 retained; two histories match per case; Delta agreement below 1e-25, all paths/adjoint checks pass without fallback; raw/frozen checks pass offline/live. Idle timing and damping/base remain open. |
 | Section 9 (`65c4373`) | Batched strided GEMM/power moments, small triple products, normal equations and resident damping trials/solves, polynomial-source recurrence, runtime bridges, inline MPC import and offline dispatch policy | Implemented with the recorded light MPFR/GPU smoke coverage in `docs/section9.md`. The lead agent's QSC-shape measurements in `docs/section9-next.md` are provisional comparisons on a loaded host, not accepted optimization baselines. The subsequent 1.0.1 correction passes full-width/dense checks; solver-size integration remains pending. |
 | Section 9 P0 preparation | Shared smoke references, separate opt-in 31-width audit runner with mode/status/shape cases and dense GEMM repeats; canonical contracts in `docs/numerics.md` / `docs/execution.md`; planning aligned with API 1.0.0 | Verification infrastructure only; no kernel change or performance claim. Focused smoke and selected-width results are recorded in `benchmarks/results/section9_p0_*`. The subsequent correction and completed gates are recorded in the next row. This preparation round itself made no kernel changes. |
 | Section 9 P1.3 comparison preparation | Composed/fused complex GEMM, once-rounded exact real embedding and an explicit Gauss three-real-GEMM sequence, each with an MPFR reference; reused buffers, interleaved order and every-sample checks | No library or default change. All 31 CPU exact-dot references and focused 352-bit host/1024-bit resident normal/shader-validation cases pass. Real-shape timings, tile experiments and acceptance remain pending; no speed claim. |
@@ -310,3 +313,15 @@ verification passes offline and live. CPU collocation is seed preparation; the
 stalled .5 collocation result remains explicitly unsuccessful, followed by a
 passing final modes solve. No idle timing, cutoff or default change follows.
 [Full records and remaining scope](../benchmarks/experiments/section9_converged_sweep.md).
+
+## Section 9 P1.3/P2.3: full measured GEMM grid
+
+Thirty-two new checked records complete 352/384/448-bit host/resident and both
+recorded clock profiles for Fourier and 1e4/1e5 4x4 batches. With eight originals,
+36 workload/layout/clock configurations yield 120 offline numerical-contract keys.
+All raw samples/medians/coverage and hashes verify; the compiled factory checks
+120 keys, 120 unknown widths and unknown profile/shape queries. Ten provenance/
+idle/overwrite guards pass. Exact embedding is fastest in the measured Fourier
+fixtures; all contracts retain distinct references and accuracy measures. A fair
+batched exact 4x4 comparison, tile candidates and idle-consumer policy stay open.
+No library/API/version/default change. [Raw grid and verification](../benchmarks/experiments/section9_gemm_extended/README.md).

@@ -1,0 +1,24 @@
+{
+  "status": "FAILED",
+  "pid": 82227,
+  "predecessor": {
+    "pid": 79616,
+    "identity": "Fri Oct  9 07:22:42 2026     /opt/homebrew/Cellar/python@3.14/3.14.6/Frameworks/Python.framework/Versions/3.14/Resources/Python.app/Contents/MacOS/Python -u runs/wolfnum_converged_fixtures/prepare_collocation.py"
+  },
+  "steps": [
+    {
+      "name": "section9_p13_extended_384_1_66_3800_130_host_interleaved",
+      "exit": 0,
+      "metadata_sha256": "91f8d26aac718dfbf2061dc8b8280ee2de9b12660354810cbbd8e1ec5dbe9f4b",
+      "verified": false
+    }
+  ],
+  "scope": "Thirty checked production GEMM library profiles; busy-host results, no idle consumer/default acceptance",
+  "sha256": {
+    "benchmarks/section9_gemm.cpp": "320aa23feaf34987144afb03d4b0c83df2f903c1b2152f64ee9d3fc4157baa6d",
+    "build/section9_gemm_limbforge": "a00b7974e2551331115d1b17ad4fb393575969892c028ee5fce217011bd62a33",
+    "build/liblimbforge.a": "d249dc2a6af9fe08c1cdb0f524e2a270fccbc7a94348c234d94e5661488f3c47"
+  },
+  "correctness_gate_sha256": "f1325abc8c35c1673814a746190c146195c898d112745e7e96c93e0c437eb61b",
+  "predecessor_metadata_sha256": "1671608c97f76f4ef8a27783e5794a21b0898328eb9c7e18e660e7a20cf25f8a"
+}

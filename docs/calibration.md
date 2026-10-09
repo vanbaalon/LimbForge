@@ -50,5 +50,14 @@ measurements additionally yield 14 GEMM keys in
 `benchmarks/results/section9_p13_gemm_break_even_measured.hpp/.json`. The
 generated C++ factory checks all 14 keys; changed width, profile and shape stay
 unknown. Busy-host idle export, nonterminal/failed records, changed raw hashes
-and existing-output overwrites are rejected. Other widths, clock modes, small
-host batches and accepted idle-consumer calibration remain pending.
+and existing-output overwrites are rejected. Those original artifacts remain unchanged.
+
+The expanded `section9_p13_gemm_break_even_expanded.hpp/.json` now contains 120
+keys across 352/384/448 bits, host/resident and both recorded clock profiles:
+Fourier has all four contracts; 1e4/1e5 4x4 batches have composed/fused/matrix Gauss.
+Thirty-two new measurement records supplement the eight originals, covering 36
+workload/layout/clock configurations. Full raw sample/median/coverage verification,
+a compiled 120-key factory, unknown queries and ten provenance/idle/overwrite
+guards pass. Include one generated factory header at a time. A fair batched exact
+4x4 comparison and accepted idle-consumer calibration remain open.
+See [the complete measured grid](../benchmarks/experiments/section9_gemm_extended/README.md).

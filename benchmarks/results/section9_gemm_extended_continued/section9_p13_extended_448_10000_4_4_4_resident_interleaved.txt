@@ -1,0 +1,37 @@
+cpu_sample,0,0,complex_composed,0.012882417
+cpu_sample,0,1,complex_fused,0.054132667
+cpu_sample,0,2,gauss_three_real_composed,0.015510666
+gpu_sample,0,0,complex_composed,0.004297209,0.00408416666323
+gpu_sample,0,1,complex_fused,0.007353417,0.00681395834545
+gpu_sample,0,2,gauss_three_real_composed,0.003358667,0.00281124998583
+cpu_sample,1,0,complex_fused,0.054277834
+cpu_sample,1,1,gauss_three_real_composed,0.016011125
+cpu_sample,1,2,complex_composed,0.018238166
+gpu_sample,1,0,complex_fused,0.00699575,0.0064301249804
+gpu_sample,1,1,gauss_three_real_composed,0.003272292,0.00275124999462
+gpu_sample,1,2,complex_composed,0.004457791,0.00393437501043
+cpu_sample,2,0,gauss_three_real_composed,0.016221459
+cpu_sample,2,1,complex_composed,0.018003375
+cpu_sample,2,2,complex_fused,0.051584209
+gpu_sample,2,0,gauss_three_real_composed,0.003722958,0.00314629165223
+gpu_sample,2,1,complex_composed,0.004498416,0.00398362497799
+gpu_sample,2,2,complex_fused,0.006758625,0.00627275003353
+Device: Apple M5 Max; immutable MPFR references check every timed CPU/GPU output; numeric-array transfers excluded; bridge conversion excluded; exact Linalg host workers=18
+        0.75 real         4.72 user         0.15 sys
+           675020800  maximum resident set size
+                   0  average shared memory size
+                   0  average unshared data size
+                   0  average unshared stack size
+               41598  page reclaims
+                   2  page faults
+                   0  swaps
+                   0  block input operations
+                   0  block output operations
+                   0  messages sent
+                   0  messages received
+                   0  signals received
+                   0  voluntary context switches
+               28171  involuntary context switches
+         64335150044  instructions retired
+         20594656815  cycles elapsed
+          1453409600  peak memory footprint

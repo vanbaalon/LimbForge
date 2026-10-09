@@ -1,0 +1,30 @@
+{
+  "status": "PASS",
+  "pid": 88904,
+  "predecessor": {
+    "pid": 84105,
+    "identity": "Fri Oct  9 07:31:01 2026     /opt/homebrew/Cellar/python@3.14/3.14.6/Frameworks/Python.framework/Versions/3.14/Resources/Python.app/Contents/MacOS/Python -u runs/wolfnum_converged_fixtures/collocation_seed_g05_continuation/run_comparisons.py"
+  },
+  "steps": [
+    {
+      "name": "section9_p13_extended_352_1_66_3800_130_host_warm",
+      "exit": 0,
+      "metadata_sha256": "970b98f6d473daa6c777f72462e993ace35163b3d1aff792169447b8ee5718ef",
+      "verified": true
+    },
+    {
+      "name": "section9_p13_extended_352_1_66_3800_130_resident_warm",
+      "exit": 0,
+      "metadata_sha256": "0d1d92c470748d4f38103d2c3aff3a5b95fc1285605a5a9d471d6a4840219248",
+      "verified": true
+    }
+  ],
+  "scope": "Two checked 352-bit warm Fourier production GEMM library profiles; busy-host results, no idle consumer/default acceptance",
+  "sha256": {
+    "benchmarks/section9_gemm.cpp": "320aa23feaf34987144afb03d4b0c83df2f903c1b2152f64ee9d3fc4157baa6d",
+    "build/section9_gemm_limbforge": "a00b7974e2551331115d1b17ad4fb393575969892c028ee5fce217011bd62a33",
+    "build/liblimbforge.a": "d249dc2a6af9fe08c1cdb0f524e2a270fccbc7a94348c234d94e5661488f3c47"
+  },
+  "correctness_gate_sha256": "f1325abc8c35c1673814a746190c146195c898d112745e7e96c93e0c437eb61b",
+  "predecessor_metadata_sha256": "5867d734eade2ba65b2302c3190258ebee8661bf1f46a9449347ef2e20f92259"
+}

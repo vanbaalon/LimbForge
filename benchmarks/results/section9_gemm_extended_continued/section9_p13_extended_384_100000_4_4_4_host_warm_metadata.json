@@ -1,0 +1,117 @@
+{
+  "state": "terminal",
+  "command": [
+    "./build/section9_gemm_limbforge",
+    "--bits",
+    "384",
+    "--count",
+    "100000",
+    "--m",
+    "4",
+    "--n",
+    "4",
+    "--k",
+    "4",
+    "--workers",
+    "18",
+    "--repeats",
+    "3",
+    "--warm",
+    "--paths",
+    "composed,fused,gauss"
+  ],
+  "clock": "verified-warm-call",
+  "sha256": {
+    "benchmarks/section9_gemm.cpp": "320aa23feaf34987144afb03d4b0c83df2f903c1b2152f64ee9d3fc4157baa6d",
+    "build/section9_gemm_limbforge": "a00b7974e2551331115d1b17ad4fb393575969892c028ee5fce217011bd62a33",
+    "build/liblimbforge.a": "d249dc2a6af9fe08c1cdb0f524e2a270fccbc7a94348c234d94e5661488f3c47"
+  },
+  "source_commit": "dd1c2366afd577b313698380b7cc5b207db2f4b7",
+  "library_baseline": "v1.3.1",
+  "correctness_gate_sha256": "f1325abc8c35c1673814a746190c146195c898d112745e7e96c93e0c437eb61b",
+  "load_samples": [
+    {
+      "monotonic": 326897.640496041,
+      "loadavg": [
+        17.306640625,
+        13.80224609375,
+        10.42041015625
+      ]
+    },
+    {
+      "monotonic": 326898.644917166,
+      "loadavg": [
+        17.306640625,
+        13.80224609375,
+        10.42041015625
+      ]
+    },
+    {
+      "monotonic": 326899.6466525,
+      "loadavg": [
+        17.306640625,
+        13.80224609375,
+        10.42041015625
+      ]
+    },
+    {
+      "monotonic": 326900.650948458,
+      "loadavg": [
+        18.40283203125,
+        14.08740234375,
+        10.54052734375
+      ]
+    },
+    {
+      "monotonic": 326901.652854333,
+      "loadavg": [
+        18.40283203125,
+        14.08740234375,
+        10.54052734375
+      ]
+    },
+    {
+      "monotonic": 326902.661240958,
+      "loadavg": [
+        18.40283203125,
+        14.08740234375,
+        10.54052734375
+      ]
+    },
+    {
+      "monotonic": 326903.664550125,
+      "loadavg": [
+        18.40283203125,
+        14.08740234375,
+        10.54052734375
+      ]
+    },
+    {
+      "monotonic": 326904.669297958,
+      "loadavg": [
+        18.40283203125,
+        14.08740234375,
+        10.54052734375
+      ]
+    },
+    {
+      "monotonic": 326904.669400666,
+      "loadavg": [
+        18.40283203125,
+        14.08740234375,
+        10.54052734375
+      ]
+    }
+  ],
+  "timing_accepted_for_consumer": false,
+  "build_scope": "Tested standalone clang binary copied byte-identically to standard benchmark name; unchanged production archive",
+  "pid": 87260,
+  "exit": 0,
+  "elapsed_seconds": 7.0397993749938905,
+  "checked_csv_rows": 3,
+  "all_recorded_loadavg_below_4": false,
+  "artifacts_sha256": {
+    "section9_p13_extended_384_100000_4_4_4_host_warm.csv": "932f0317267641aafaa7145cbc83969157462aeb3f867b82c620cfbf1de1bfc4",
+    "section9_p13_extended_384_100000_4_4_4_host_warm.txt": "a7a92a7500cbecb83d155e5315c386a56039c536216e01b721570f988b08cbbf"
+  }
+}
