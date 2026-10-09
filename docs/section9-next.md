@@ -166,18 +166,46 @@ a row in `docs/optimizations.md`, rejected attempts kept under `benchmarks/exper
 - **Check:** Δ agrees to 10⁻²⁵ at g = 0.1, 0.2, 0.5, and the Newton histories match.
 - **Measure:** wall time per Jacobian against the current ≈ 7 s (Nc = 59, Nsh = 160, nPts = 65, 352 bits), on an idle host.
 
-### Consumer requests from `qsccpp/LIMBFORGE_NEXT.md` (2026-10-08)
+### P3 handoff checklist from `qsccpp/LIMBFORGE_NEXT.md` (2026-10-08)
 
-- **Prewarm algebra units:** `Engine::Prewarm` covers arithmetic/recurrences/dots/LU4,
-  not `BatchedLinalg::power_moments` or `Linalg::syrk/cholesky`. Add operation/shape-aware,
-  asynchronous preparation on the owning algebra units with safe lifetime/concurrency
-  rules. A dummy arithmetic prewarm must not be advertised as warming these pipelines.
-- **Consumer status:** qscmx's three original switches are implemented. Robustness work
-  adds a shared engine, matching-release checks, transactional helper outputs, worker-error
-  propagation, CPU fallback and per-operation runtime switches. A focused helper check
-  passes at 352 bits. Small saved-seed .1/.5 diagnostics agree; a reused-seed .2 diagnostic diverges and stalls, while its own saved seed agrees but stalls above tolerance. Full converged g=.1/.2/.5 histories and idle-host timing acceptance
-  remain pending; small truncation-limited solves do not satisfy that gate.
-- **Compact storage:** the consumer may opt into the new 1.1.0 overload after rebuilding
-  matching headers/archive. This reduces GPU auxiliary powers, not its full host W table.
-- Treat the Fourier 7.9× and trial timings in the old handoff as historical measurements;
-  they predate the dense-complex correction and are not current integration speed claims.
+Source: the consumer's `LIMBFORGE_NEXT.md`; implementation/verification detail lives in
+`qsccpp/LIMBFORGE_STATUS.md`. Keep universal numerical APIs in LimbForge and solver
+switches in qscmx. The following records each handoff item, without treating a local
+candidate or an unconverged diagnostic as accepted production behavior.
+
+| Item | Status / acceptance still needed |
+|---|---|
+| Catch GPU/bridge errors and fall back to CPU; warn once | Implemented locally; focused helper check passes, including transactional output preservation and worker exception propagation |
+| One shared Engine for algebra units | Implemented locally; matching 1.1.0 headers/archive checked at startup; pipeline caches remain separate |
+| Algebra prewarm | **Library API pending:** operation/shape-aware asynchronous preparation on the owning `BatchedLinalg`/`Linalg`, with safe lifetime and concurrent cache access |
+| Keep `adj_prep` CPU-only; select stage 2 after the glue | Preserved; do not move the glue or invoke GPU work inside stage 1 |
+| Relative MPFR adjoint check in units of `2^-prec` | Implemented; finite, nonempty checks require <=65536 normalized units; report finite-difference amplification separately |
+| Converged CPU/GPU g=.1/.2/.5 checks | Pending: componentwise Delta agreement <=1e-25, equal iteration counts and matching residual histories; save inputs and both logs |
+| Idle-host Jacobian timings | Pending: all load averages <4 before each solve; 352 bits, Nc=23/31/59, with the large case Nsh=160 and nPts=65 |
+| Fold `J^T G` into exact augmented SYRK | Local candidate behind explicit `QSC_GPU_NORMAL=1`; default off, CPU fallback and `QSC_GPU_SYRK` gate retained; full converged-history and timing acceptance pending |
+| Fourier residual -> complex GEMM | Pending; measure 66x130 times 130x3800 on the corrected backend (P1.3) |
+| Per-column 4x4 products and LU4 | Pending; batched GEMM/product3 plus lu4, with an independent switch/fallback and repeated consumer checks |
+| Remaining damping trials | Pending; preserve the first exact factor path, use batched trials only after P1.2/P2.2 numerical/performance acceptance; retain the large-matrix guard meanwhile |
+| Optional base polynomial recurrence | Pending; measure shared Horner sources (P1.5) before switching the solver |
+| Large-shape memory | Pending consumer measurement: host W remains; compact 1.1.0 power storage is available explicitly, with a latency trade-off; chunk count if needed |
+| >1024-bit fallback and precision rounding | Preserved; helpers refuse unsupported widths after rounding up to a multiple of 32 |
+| Deliverable in qscmx | `LIMBFORGE_STATUS.md` and verification logs exist; final accepted timing table and complete switch list remain pending |
+
+For each new consumer switch, keep CPU fallback and a `QSC_GPU` sub-switch, then repeat
+both converged-history verification and idle-host measurements. Time stage 1, stage 2,
+MPC/MPFR packing and unpacking, SYRK, `J^T G`, Cholesky and total separately. An ordinary
+arithmetic `Engine::Prewarm` does not prepare algebra pipelines and must not stand in
+for the pending algebra preparation API.
+
+The combined-normal candidate computes its RHS with a once-rounded exact dot instead
+of the CPU's sequential MPFR FMA. Its focused helper checks pass normally and under
+shader validation. A saved-seed g=.2 diagnostic at Nc=15/NQ=19/Nsh=100/nPts=21 agrees in
+Delta to 2.83e-118, has the same five history values at all 17 serialized digits and
+passes adjoint checks, but both runs stall at 5.34e-14 above gtol=1e-25. This is agreement
+evidence, **not converged acceptance**. Select this comparison explicitly with the
+consumer runner's `--normal-equations`; ordinary comparisons disable the candidate.
+
+The original saved-seed .1/.5 diagnostics also agree but stall. A reused-seed .2 case
+diverges and stalls; its own saved seed agrees but still fails convergence acceptance.
+Full g=.1/.2/.5 production checks remain open. Fourier 7.9x and old trial ratios are
+historical pre-1.0.1 measurements and must be remeasured before any speed claim.
