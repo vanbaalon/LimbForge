@@ -45,4 +45,10 @@ The six checked normal profiles yield 24 keys. Three additional trial-baseline k
 retain the explicit experimental scope. Actual generated factories load all keys;
 changed width/profile and factor-only operations stay unknown. Idle-host export of
 the measured busy data and overwrites are rejected. These artifacts remain offline;
-GEMM and accepted idle-consumer calibration are still pending.
+The checked 352-bit Fourier host/resident and 10,000/100,000 resident 4x4
+measurements additionally yield 14 GEMM keys in
+`benchmarks/results/section9_p13_gemm_break_even_measured.hpp/.json`. The
+generated C++ factory checks all 14 keys; changed width, profile and shape stay
+unknown. Busy-host idle export, nonterminal/failed records, changed raw hashes
+and existing-output overwrites are rejected. Other widths, clock modes, small
+host batches and accepted idle-consumer calibration remain pending.

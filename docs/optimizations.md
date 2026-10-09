@@ -183,3 +183,12 @@ The normal-equation and GEMM benchmark harnesses now explicitly match Linalg/MPF
 worker counts, retain immutable reference checks for every timed output and use
 precise clock labels. Rebuilt focused checks pass in both physical-GPU modes;
 large-shape timing/accuracy acceptance remains separate.
+
+## Section 9 P2.3: checked GEMM lookup records
+
+The eight completed 1.3.1 Fourier/4x4 profiles export 14 offline contract-specific
+keys. The actual generated C++ factory loads every key and preserves unknown
+width/profile/shape queries. Failed/nonterminal measurements, changed raw hashes,
+busy-host idle export and overwrites are rejected. No arithmetic, installed API or
+backend default changes. Other widths/clock modes and consumer acceptance remain
+open. [Calibration and provenance](calibration.md).

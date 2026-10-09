@@ -1,0 +1,751 @@
+{
+  "kind": "gemm",
+  "profile": "WolfNum 1.3.1 / Apple M5 Max / Release / busy-host library; no idle consumer acceptance",
+  "margin": 0.05,
+  "records": [
+    {
+      "key": {
+        "operation": "complex_gemm/complex_composed",
+        "bits": 352,
+        "count": 1,
+        "m": 66,
+        "n": 3800,
+        "k": 130,
+        "cpu_workers": 18,
+        "fused": false,
+        "profile": "WolfNum 1.3.1 / Apple M5 Max / Release / busy-host library; no idle consumer acceptance; measured=Apple M5 Max / 1.3.1 / complex-gemm-contracts; binary=a8a40fbbf9a3290cd200d4c24d0d632554c6d739b168c55cf2892a9e15725d11; archive=c9dd6ebed304b6f74258f8ea0aebb4c29e1b205fff4deb115254ee5652ff9d24; clock=cpu-interleaved; cpu=MPFR/complex_composed; active_workers=18; load_series=e71b047ca3ee9e662fc7cd733275671272b959d71e4f5e5a4a68b07ea8fd93c8; all_loadavg_below_4=false; scope=numeric-array-library; bridge=excluded",
+        "resident": false
+      },
+      "sample": {
+        "cpu_wall": 0.586542041,
+        "gpu_wall": 0.103958959
+      },
+      "recommendation": "gpu",
+      "source": "benchmarks/results/section9_p13_fourier_352_66_130_3800_host_interleaved.csv",
+      "source_sha256": "e989e0fe3da0766d0de16f7eccd67f4a4a17eb02eb319dfa5897c2ea56334645",
+      "metadata": "benchmarks/results/section9_p13_fourier_352_66_130_3800_host_interleaved_metadata.json",
+      "load_samples": [
+        {
+          "seconds": 0.0013719999697059393,
+          "loadavg": [
+            3.796875,
+            6.85986328125,
+            7.4130859375
+          ]
+        },
+        {
+          "seconds": 5.011539625003934,
+          "loadavg": [
+            3.97314453125,
+            6.84521484375,
+            7.40478515625
+          ]
+        },
+        {
+          "seconds": 10.02310408296762,
+          "loadavg": [
+            5.09619140625,
+            7.0302734375,
+            7.466796875
+          ]
+        },
+        {
+          "seconds": 15.027993457973935,
+          "loadavg": [
+            7.65087890625,
+            7.52734375,
+            7.6396484375
+          ]
+        },
+        {
+          "seconds": 20.038028624956496,
+          "loadavg": [
+            10.8818359375,
+            8.19921875,
+            7.8759765625
+          ]
+        }
+      ]
+    },
+    {
+      "key": {
+        "operation": "complex_gemm/complex_fused",
+        "bits": 352,
+        "count": 1,
+        "m": 66,
+        "n": 3800,
+        "k": 130,
+        "cpu_workers": 18,
+        "fused": true,
+        "profile": "WolfNum 1.3.1 / Apple M5 Max / Release / busy-host library; no idle consumer acceptance; measured=Apple M5 Max / 1.3.1 / complex-gemm-contracts; binary=a8a40fbbf9a3290cd200d4c24d0d632554c6d739b168c55cf2892a9e15725d11; archive=c9dd6ebed304b6f74258f8ea0aebb4c29e1b205fff4deb115254ee5652ff9d24; clock=cpu-interleaved; cpu=MPFR/complex_fused; active_workers=18; load_series=e71b047ca3ee9e662fc7cd733275671272b959d71e4f5e5a4a68b07ea8fd93c8; all_loadavg_below_4=false; scope=numeric-array-library; bridge=excluded",
+        "resident": false
+      },
+      "sample": {
+        "cpu_wall": 2.299732833,
+        "gpu_wall": 0.212558625
+      },
+      "recommendation": "gpu",
+      "source": "benchmarks/results/section9_p13_fourier_352_66_130_3800_host_interleaved.csv",
+      "source_sha256": "e989e0fe3da0766d0de16f7eccd67f4a4a17eb02eb319dfa5897c2ea56334645",
+      "metadata": "benchmarks/results/section9_p13_fourier_352_66_130_3800_host_interleaved_metadata.json",
+      "load_samples": [
+        {
+          "seconds": 0.0013719999697059393,
+          "loadavg": [
+            3.796875,
+            6.85986328125,
+            7.4130859375
+          ]
+        },
+        {
+          "seconds": 5.011539625003934,
+          "loadavg": [
+            3.97314453125,
+            6.84521484375,
+            7.40478515625
+          ]
+        },
+        {
+          "seconds": 10.02310408296762,
+          "loadavg": [
+            5.09619140625,
+            7.0302734375,
+            7.466796875
+          ]
+        },
+        {
+          "seconds": 15.027993457973935,
+          "loadavg": [
+            7.65087890625,
+            7.52734375,
+            7.6396484375
+          ]
+        },
+        {
+          "seconds": 20.038028624956496,
+          "loadavg": [
+            10.8818359375,
+            8.19921875,
+            7.8759765625
+          ]
+        }
+      ]
+    },
+    {
+      "key": {
+        "operation": "complex_gemm/exact_real_embedding",
+        "bits": 352,
+        "count": 1,
+        "m": 66,
+        "n": 3800,
+        "k": 130,
+        "cpu_workers": 18,
+        "fused": false,
+        "profile": "WolfNum 1.3.1 / Apple M5 Max / Release / busy-host library; no idle consumer acceptance; measured=Apple M5 Max / 1.3.1 / complex-gemm-contracts; binary=a8a40fbbf9a3290cd200d4c24d0d632554c6d739b168c55cf2892a9e15725d11; archive=c9dd6ebed304b6f74258f8ea0aebb4c29e1b205fff4deb115254ee5652ff9d24; clock=cpu-interleaved; cpu=MPFR/exact_real_embedding; active_workers=18; load_series=e71b047ca3ee9e662fc7cd733275671272b959d71e4f5e5a4a68b07ea8fd93c8; all_loadavg_below_4=false; scope=numeric-array-library; bridge=excluded",
+        "resident": false
+      },
+      "sample": {
+        "cpu_wall": 1.123830709,
+        "gpu_wall": 0.015913709
+      },
+      "recommendation": "gpu",
+      "source": "benchmarks/results/section9_p13_fourier_352_66_130_3800_host_interleaved.csv",
+      "source_sha256": "e989e0fe3da0766d0de16f7eccd67f4a4a17eb02eb319dfa5897c2ea56334645",
+      "metadata": "benchmarks/results/section9_p13_fourier_352_66_130_3800_host_interleaved_metadata.json",
+      "load_samples": [
+        {
+          "seconds": 0.0013719999697059393,
+          "loadavg": [
+            3.796875,
+            6.85986328125,
+            7.4130859375
+          ]
+        },
+        {
+          "seconds": 5.011539625003934,
+          "loadavg": [
+            3.97314453125,
+            6.84521484375,
+            7.40478515625
+          ]
+        },
+        {
+          "seconds": 10.02310408296762,
+          "loadavg": [
+            5.09619140625,
+            7.0302734375,
+            7.466796875
+          ]
+        },
+        {
+          "seconds": 15.027993457973935,
+          "loadavg": [
+            7.65087890625,
+            7.52734375,
+            7.6396484375
+          ]
+        },
+        {
+          "seconds": 20.038028624956496,
+          "loadavg": [
+            10.8818359375,
+            8.19921875,
+            7.8759765625
+          ]
+        }
+      ]
+    },
+    {
+      "key": {
+        "operation": "complex_gemm/gauss_three_real_composed",
+        "bits": 352,
+        "count": 1,
+        "m": 66,
+        "n": 3800,
+        "k": 130,
+        "cpu_workers": 18,
+        "fused": false,
+        "profile": "WolfNum 1.3.1 / Apple M5 Max / Release / busy-host library; no idle consumer acceptance; measured=Apple M5 Max / 1.3.1 / complex-gemm-contracts; binary=a8a40fbbf9a3290cd200d4c24d0d632554c6d739b168c55cf2892a9e15725d11; archive=c9dd6ebed304b6f74258f8ea0aebb4c29e1b205fff4deb115254ee5652ff9d24; clock=cpu-interleaved; cpu=MPFR/gauss_three_real_composed; active_workers=18; load_series=e71b047ca3ee9e662fc7cd733275671272b959d71e4f5e5a4a68b07ea8fd93c8; all_loadavg_below_4=false; scope=numeric-array-library; bridge=excluded",
+        "resident": false
+      },
+      "sample": {
+        "cpu_wall": 0.467161167,
+        "gpu_wall": 0.080504208
+      },
+      "recommendation": "gpu",
+      "source": "benchmarks/results/section9_p13_fourier_352_66_130_3800_host_interleaved.csv",
+      "source_sha256": "e989e0fe3da0766d0de16f7eccd67f4a4a17eb02eb319dfa5897c2ea56334645",
+      "metadata": "benchmarks/results/section9_p13_fourier_352_66_130_3800_host_interleaved_metadata.json",
+      "load_samples": [
+        {
+          "seconds": 0.0013719999697059393,
+          "loadavg": [
+            3.796875,
+            6.85986328125,
+            7.4130859375
+          ]
+        },
+        {
+          "seconds": 5.011539625003934,
+          "loadavg": [
+            3.97314453125,
+            6.84521484375,
+            7.40478515625
+          ]
+        },
+        {
+          "seconds": 10.02310408296762,
+          "loadavg": [
+            5.09619140625,
+            7.0302734375,
+            7.466796875
+          ]
+        },
+        {
+          "seconds": 15.027993457973935,
+          "loadavg": [
+            7.65087890625,
+            7.52734375,
+            7.6396484375
+          ]
+        },
+        {
+          "seconds": 20.038028624956496,
+          "loadavg": [
+            10.8818359375,
+            8.19921875,
+            7.8759765625
+          ]
+        }
+      ]
+    },
+    {
+      "key": {
+        "operation": "complex_gemm/complex_composed",
+        "bits": 352,
+        "count": 1,
+        "m": 66,
+        "n": 3800,
+        "k": 130,
+        "cpu_workers": 18,
+        "fused": false,
+        "profile": "WolfNum 1.3.1 / Apple M5 Max / Release / busy-host library; no idle consumer acceptance; measured=Apple M5 Max / 1.3.1 / complex-gemm-contracts; binary=a8a40fbbf9a3290cd200d4c24d0d632554c6d739b168c55cf2892a9e15725d11; archive=c9dd6ebed304b6f74258f8ea0aebb4c29e1b205fff4deb115254ee5652ff9d24; clock=cpu-interleaved; cpu=MPFR/complex_composed; active_workers=18; load_series=37aa78f5da509750a37950a1c3038e1c385d4d66cefa2e7ef0f244f0169b9411; all_loadavg_below_4=false; scope=numeric-array-library; bridge=excluded",
+        "resident": true
+      },
+      "sample": {
+        "cpu_wall": 0.791651875,
+        "gpu_wall": 0.10443875
+      },
+      "recommendation": "gpu",
+      "source": "benchmarks/results/section9_p13_fourier_352_66_130_3800_resident_interleaved.csv",
+      "source_sha256": "2cd46a42d155070b714d810196523867af77484ae249b7f58d8a1289154a0131",
+      "metadata": "benchmarks/results/section9_p13_fourier_352_66_130_3800_resident_interleaved_metadata.json",
+      "load_samples": [
+        {
+          "seconds": 0.0020538329845294356,
+          "loadavg": [
+            10.296875,
+            7.79052734375,
+            7.2490234375
+          ]
+        },
+        {
+          "seconds": 5.01224320800975,
+          "loadavg": [
+            16.91943359375,
+            9.205078125,
+            7.75146484375
+          ]
+        },
+        {
+          "seconds": 10.017124374979176,
+          "loadavg": [
+            19.80859375,
+            9.93212890625,
+            8.01611328125
+          ]
+        },
+        {
+          "seconds": 15.022359666996635,
+          "loadavg": [
+            18.30224609375,
+            9.78369140625,
+            7.974609375
+          ]
+        },
+        {
+          "seconds": 20.032408666971605,
+          "loadavg": [
+            21.56103515625,
+            10.6005859375,
+            8.2734375
+          ]
+        },
+        {
+          "seconds": 25.04193949996261,
+          "loadavg": [
+            25.359375,
+            11.56982421875,
+            8.62890625
+          ]
+        }
+      ]
+    },
+    {
+      "key": {
+        "operation": "complex_gemm/complex_fused",
+        "bits": 352,
+        "count": 1,
+        "m": 66,
+        "n": 3800,
+        "k": 130,
+        "cpu_workers": 18,
+        "fused": true,
+        "profile": "WolfNum 1.3.1 / Apple M5 Max / Release / busy-host library; no idle consumer acceptance; measured=Apple M5 Max / 1.3.1 / complex-gemm-contracts; binary=a8a40fbbf9a3290cd200d4c24d0d632554c6d739b168c55cf2892a9e15725d11; archive=c9dd6ebed304b6f74258f8ea0aebb4c29e1b205fff4deb115254ee5652ff9d24; clock=cpu-interleaved; cpu=MPFR/complex_fused; active_workers=18; load_series=37aa78f5da509750a37950a1c3038e1c385d4d66cefa2e7ef0f244f0169b9411; all_loadavg_below_4=false; scope=numeric-array-library; bridge=excluded",
+        "resident": true
+      },
+      "sample": {
+        "cpu_wall": 2.601216125,
+        "gpu_wall": 0.216581375
+      },
+      "recommendation": "gpu",
+      "source": "benchmarks/results/section9_p13_fourier_352_66_130_3800_resident_interleaved.csv",
+      "source_sha256": "2cd46a42d155070b714d810196523867af77484ae249b7f58d8a1289154a0131",
+      "metadata": "benchmarks/results/section9_p13_fourier_352_66_130_3800_resident_interleaved_metadata.json",
+      "load_samples": [
+        {
+          "seconds": 0.0020538329845294356,
+          "loadavg": [
+            10.296875,
+            7.79052734375,
+            7.2490234375
+          ]
+        },
+        {
+          "seconds": 5.01224320800975,
+          "loadavg": [
+            16.91943359375,
+            9.205078125,
+            7.75146484375
+          ]
+        },
+        {
+          "seconds": 10.017124374979176,
+          "loadavg": [
+            19.80859375,
+            9.93212890625,
+            8.01611328125
+          ]
+        },
+        {
+          "seconds": 15.022359666996635,
+          "loadavg": [
+            18.30224609375,
+            9.78369140625,
+            7.974609375
+          ]
+        },
+        {
+          "seconds": 20.032408666971605,
+          "loadavg": [
+            21.56103515625,
+            10.6005859375,
+            8.2734375
+          ]
+        },
+        {
+          "seconds": 25.04193949996261,
+          "loadavg": [
+            25.359375,
+            11.56982421875,
+            8.62890625
+          ]
+        }
+      ]
+    },
+    {
+      "key": {
+        "operation": "complex_gemm/exact_real_embedding",
+        "bits": 352,
+        "count": 1,
+        "m": 66,
+        "n": 3800,
+        "k": 130,
+        "cpu_workers": 18,
+        "fused": false,
+        "profile": "WolfNum 1.3.1 / Apple M5 Max / Release / busy-host library; no idle consumer acceptance; measured=Apple M5 Max / 1.3.1 / complex-gemm-contracts; binary=a8a40fbbf9a3290cd200d4c24d0d632554c6d739b168c55cf2892a9e15725d11; archive=c9dd6ebed304b6f74258f8ea0aebb4c29e1b205fff4deb115254ee5652ff9d24; clock=cpu-interleaved; cpu=MPFR/exact_real_embedding; active_workers=18; load_series=37aa78f5da509750a37950a1c3038e1c385d4d66cefa2e7ef0f244f0169b9411; all_loadavg_below_4=false; scope=numeric-array-library; bridge=excluded",
+        "resident": true
+      },
+      "sample": {
+        "cpu_wall": 1.605988584,
+        "gpu_wall": 0.010170375
+      },
+      "recommendation": "gpu",
+      "source": "benchmarks/results/section9_p13_fourier_352_66_130_3800_resident_interleaved.csv",
+      "source_sha256": "2cd46a42d155070b714d810196523867af77484ae249b7f58d8a1289154a0131",
+      "metadata": "benchmarks/results/section9_p13_fourier_352_66_130_3800_resident_interleaved_metadata.json",
+      "load_samples": [
+        {
+          "seconds": 0.0020538329845294356,
+          "loadavg": [
+            10.296875,
+            7.79052734375,
+            7.2490234375
+          ]
+        },
+        {
+          "seconds": 5.01224320800975,
+          "loadavg": [
+            16.91943359375,
+            9.205078125,
+            7.75146484375
+          ]
+        },
+        {
+          "seconds": 10.017124374979176,
+          "loadavg": [
+            19.80859375,
+            9.93212890625,
+            8.01611328125
+          ]
+        },
+        {
+          "seconds": 15.022359666996635,
+          "loadavg": [
+            18.30224609375,
+            9.78369140625,
+            7.974609375
+          ]
+        },
+        {
+          "seconds": 20.032408666971605,
+          "loadavg": [
+            21.56103515625,
+            10.6005859375,
+            8.2734375
+          ]
+        },
+        {
+          "seconds": 25.04193949996261,
+          "loadavg": [
+            25.359375,
+            11.56982421875,
+            8.62890625
+          ]
+        }
+      ]
+    },
+    {
+      "key": {
+        "operation": "complex_gemm/gauss_three_real_composed",
+        "bits": 352,
+        "count": 1,
+        "m": 66,
+        "n": 3800,
+        "k": 130,
+        "cpu_workers": 18,
+        "fused": false,
+        "profile": "WolfNum 1.3.1 / Apple M5 Max / Release / busy-host library; no idle consumer acceptance; measured=Apple M5 Max / 1.3.1 / complex-gemm-contracts; binary=a8a40fbbf9a3290cd200d4c24d0d632554c6d739b168c55cf2892a9e15725d11; archive=c9dd6ebed304b6f74258f8ea0aebb4c29e1b205fff4deb115254ee5652ff9d24; clock=cpu-interleaved; cpu=MPFR/gauss_three_real_composed; active_workers=18; load_series=37aa78f5da509750a37950a1c3038e1c385d4d66cefa2e7ef0f244f0169b9411; all_loadavg_below_4=false; scope=numeric-array-library; bridge=excluded",
+        "resident": true
+      },
+      "sample": {
+        "cpu_wall": 0.6611805,
+        "gpu_wall": 0.078172334
+      },
+      "recommendation": "gpu",
+      "source": "benchmarks/results/section9_p13_fourier_352_66_130_3800_resident_interleaved.csv",
+      "source_sha256": "2cd46a42d155070b714d810196523867af77484ae249b7f58d8a1289154a0131",
+      "metadata": "benchmarks/results/section9_p13_fourier_352_66_130_3800_resident_interleaved_metadata.json",
+      "load_samples": [
+        {
+          "seconds": 0.0020538329845294356,
+          "loadavg": [
+            10.296875,
+            7.79052734375,
+            7.2490234375
+          ]
+        },
+        {
+          "seconds": 5.01224320800975,
+          "loadavg": [
+            16.91943359375,
+            9.205078125,
+            7.75146484375
+          ]
+        },
+        {
+          "seconds": 10.017124374979176,
+          "loadavg": [
+            19.80859375,
+            9.93212890625,
+            8.01611328125
+          ]
+        },
+        {
+          "seconds": 15.022359666996635,
+          "loadavg": [
+            18.30224609375,
+            9.78369140625,
+            7.974609375
+          ]
+        },
+        {
+          "seconds": 20.032408666971605,
+          "loadavg": [
+            21.56103515625,
+            10.6005859375,
+            8.2734375
+          ]
+        },
+        {
+          "seconds": 25.04193949996261,
+          "loadavg": [
+            25.359375,
+            11.56982421875,
+            8.62890625
+          ]
+        }
+      ]
+    },
+    {
+      "key": {
+        "operation": "complex_gemm/complex_composed",
+        "bits": 352,
+        "count": 100000,
+        "m": 4,
+        "n": 4,
+        "k": 4,
+        "cpu_workers": 18,
+        "fused": false,
+        "profile": "WolfNum 1.3.1 / Apple M5 Max / Release / busy-host library; no idle consumer acceptance; measured=Apple M5 Max / 1.3.1 / complex-gemm-contracts; binary=a8a40fbbf9a3290cd200d4c24d0d632554c6d739b168c55cf2892a9e15725d11; archive=c9dd6ebed304b6f74258f8ea0aebb4c29e1b205fff4deb115254ee5652ff9d24; clock=cpu-interleaved; cpu=MPFR/complex_composed; active_workers=18; load_series=a39b4661361e14ed00271394d83a8dcf5253b877dbd99c903d2c1620a5c22ed7; all_loadavg_below_4=false; scope=numeric-array-library; bridge=excluded",
+        "resident": true
+      },
+      "sample": {
+        "cpu_wall": 0.1642275,
+        "gpu_wall": 0.039771625
+      },
+      "recommendation": "gpu",
+      "source": "benchmarks/results/section9_p13_small4_352_100000_composed_resident.csv",
+      "source_sha256": "e64c6cf259908a8ad7f86e3ac6e5b995737c46454c4ba5a36f1fc113f3c3cbc6",
+      "metadata": "benchmarks/results/section9_p13_small4_352_100000_composed_resident_metadata.json",
+      "load_samples": [
+        {
+          "seconds": 0.0015822909772396088,
+          "loadavg": [
+            20.59716796875,
+            11.37158203125,
+            8.625
+          ]
+        }
+      ]
+    },
+    {
+      "key": {
+        "operation": "complex_gemm/complex_fused",
+        "bits": 352,
+        "count": 100000,
+        "m": 4,
+        "n": 4,
+        "k": 4,
+        "cpu_workers": 18,
+        "fused": true,
+        "profile": "WolfNum 1.3.1 / Apple M5 Max / Release / busy-host library; no idle consumer acceptance; measured=Apple M5 Max / 1.3.1 / complex-gemm-contracts; binary=a8a40fbbf9a3290cd200d4c24d0d632554c6d739b168c55cf2892a9e15725d11; archive=c9dd6ebed304b6f74258f8ea0aebb4c29e1b205fff4deb115254ee5652ff9d24; clock=cpu-interleaved; cpu=MPFR/complex_fused; active_workers=18; load_series=b29eb5db0917a139f918d4575cab2fa6b482ba463762c5f9ac2dc142d367c5f0; all_loadavg_below_4=false; scope=numeric-array-library; bridge=excluded",
+        "resident": true
+      },
+      "sample": {
+        "cpu_wall": 0.658048959,
+        "gpu_wall": 0.046511333
+      },
+      "recommendation": "gpu",
+      "source": "benchmarks/results/section9_p13_small4_352_100000_fused_resident.csv",
+      "source_sha256": "d54826e68f081f1e1106e62562b65e4704f4fecc5ddda14d2229515acb4d7549",
+      "metadata": "benchmarks/results/section9_p13_small4_352_100000_fused_resident_metadata.json",
+      "load_samples": [
+        {
+          "seconds": 0.0017578330007381737,
+          "loadavg": [
+            19.82861328125,
+            11.365234375,
+            8.638671875
+          ]
+        },
+        {
+          "seconds": 5.011928624997381,
+          "loadavg": [
+            22.00439453125,
+            11.95654296875,
+            8.86328125
+          ]
+        }
+      ]
+    },
+    {
+      "key": {
+        "operation": "complex_gemm/gauss_three_real_composed",
+        "bits": 352,
+        "count": 100000,
+        "m": 4,
+        "n": 4,
+        "k": 4,
+        "cpu_workers": 18,
+        "fused": false,
+        "profile": "WolfNum 1.3.1 / Apple M5 Max / Release / busy-host library; no idle consumer acceptance; measured=Apple M5 Max / 1.3.1 / complex-gemm-contracts; binary=a8a40fbbf9a3290cd200d4c24d0d632554c6d739b168c55cf2892a9e15725d11; archive=c9dd6ebed304b6f74258f8ea0aebb4c29e1b205fff4deb115254ee5652ff9d24; clock=cpu-interleaved; cpu=MPFR/gauss_three_real_composed; active_workers=18; load_series=a1fd4209fa35c28e7959340ffe3b9de44043bb12280711c714845326d74ca5d9; all_loadavg_below_4=false; scope=numeric-array-library; bridge=excluded",
+        "resident": true
+      },
+      "sample": {
+        "cpu_wall": 0.1419045,
+        "gpu_wall": 0.030020792
+      },
+      "recommendation": "gpu",
+      "source": "benchmarks/results/section9_p13_small4_352_100000_gauss_resident.csv",
+      "source_sha256": "7b3a15324bc085b415dfb358414ae3daa54d7e072b2220f39657ddfc1c35dc3b",
+      "metadata": "benchmarks/results/section9_p13_small4_352_100000_gauss_resident_metadata.json",
+      "load_samples": [
+        {
+          "seconds": 0.002097457996569574,
+          "loadavg": [
+            21.04296875,
+            11.923828125,
+            8.86962890625
+          ]
+        }
+      ]
+    },
+    {
+      "key": {
+        "operation": "complex_gemm/complex_composed",
+        "bits": 352,
+        "count": 10000,
+        "m": 4,
+        "n": 4,
+        "k": 4,
+        "cpu_workers": 18,
+        "fused": false,
+        "profile": "WolfNum 1.3.1 / Apple M5 Max / Release / busy-host library; no idle consumer acceptance; measured=Apple M5 Max / 1.3.1 / complex-gemm-contracts; binary=a8a40fbbf9a3290cd200d4c24d0d632554c6d739b168c55cf2892a9e15725d11; archive=c9dd6ebed304b6f74258f8ea0aebb4c29e1b205fff4deb115254ee5652ff9d24; clock=cpu-interleaved; cpu=MPFR/complex_composed; active_workers=18; load_series=cf36b519773369761436edcc1e6cf0b8ed6cd67a3169bee720718f547db973bd; all_loadavg_below_4=false; scope=numeric-array-library; bridge=excluded",
+        "resident": true
+      },
+      "sample": {
+        "cpu_wall": 0.020817542,
+        "gpu_wall": 0.004639542
+      },
+      "recommendation": "gpu",
+      "source": "benchmarks/results/section9_p13_small4_352_10000_composed_resident.csv",
+      "source_sha256": "d9fab812556e8cb52290386101d88fb680bca25637acbe9e318f82ccaa99197b",
+      "metadata": "benchmarks/results/section9_p13_small4_352_10000_composed_resident_metadata.json",
+      "load_samples": [
+        {
+          "seconds": 0.00147312501212582,
+          "loadavg": [
+            24.04931640625,
+            11.52685546875,
+            8.630859375
+          ]
+        }
+      ]
+    },
+    {
+      "key": {
+        "operation": "complex_gemm/complex_fused",
+        "bits": 352,
+        "count": 10000,
+        "m": 4,
+        "n": 4,
+        "k": 4,
+        "cpu_workers": 18,
+        "fused": true,
+        "profile": "WolfNum 1.3.1 / Apple M5 Max / Release / busy-host library; no idle consumer acceptance; measured=Apple M5 Max / 1.3.1 / complex-gemm-contracts; binary=a8a40fbbf9a3290cd200d4c24d0d632554c6d739b168c55cf2892a9e15725d11; archive=c9dd6ebed304b6f74258f8ea0aebb4c29e1b205fff4deb115254ee5652ff9d24; clock=cpu-interleaved; cpu=MPFR/complex_fused; active_workers=18; load_series=b66976b73487dd5fab034e80968d825c2904eeeaca58e1a3d4631f2018ecbb2b; all_loadavg_below_4=false; scope=numeric-array-library; bridge=excluded",
+        "resident": true
+      },
+      "sample": {
+        "cpu_wall": 0.067454292,
+        "gpu_wall": 0.015358333
+      },
+      "recommendation": "gpu",
+      "source": "benchmarks/results/section9_p13_small4_352_10000_fused_resident.csv",
+      "source_sha256": "de140ac5af28f61a8af97e7dfc5ead5c9889dc87e64afc766ef65c68ee867e76",
+      "metadata": "benchmarks/results/section9_p13_small4_352_10000_fused_resident_metadata.json",
+      "load_samples": [
+        {
+          "seconds": 0.0020711669931188226,
+          "loadavg": [
+            22.443359375,
+            11.40185546875,
+            8.603515625
+          ]
+        }
+      ]
+    },
+    {
+      "key": {
+        "operation": "complex_gemm/gauss_three_real_composed",
+        "bits": 352,
+        "count": 10000,
+        "m": 4,
+        "n": 4,
+        "k": 4,
+        "cpu_workers": 18,
+        "fused": false,
+        "profile": "WolfNum 1.3.1 / Apple M5 Max / Release / busy-host library; no idle consumer acceptance; measured=Apple M5 Max / 1.3.1 / complex-gemm-contracts; binary=a8a40fbbf9a3290cd200d4c24d0d632554c6d739b168c55cf2892a9e15725d11; archive=c9dd6ebed304b6f74258f8ea0aebb4c29e1b205fff4deb115254ee5652ff9d24; clock=cpu-interleaved; cpu=MPFR/gauss_three_real_composed; active_workers=18; load_series=1e8daedacd47633c66cf0bd224a4cb11eb7116fb42cb364016c59ae29eca4853; all_loadavg_below_4=false; scope=numeric-array-library; bridge=excluded",
+        "resident": true
+      },
+      "sample": {
+        "cpu_wall": 0.015021042,
+        "gpu_wall": 0.006108291
+      },
+      "recommendation": "gpu",
+      "source": "benchmarks/results/section9_p13_small4_352_10000_gauss_resident.csv",
+      "source_sha256": "f95f1faf329bfbb8a7735e4e4f0d06a920b798924552a6149f0b56d561ead11a",
+      "metadata": "benchmarks/results/section9_p13_small4_352_10000_gauss_resident_metadata.json",
+      "load_samples": [
+        {
+          "seconds": 0.0019464999786578119,
+          "loadavg": [
+            21.60693359375,
+            11.41162109375,
+            8.623046875
+          ]
+        }
+      ]
+    }
+  ]
+}

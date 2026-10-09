@@ -1,0 +1,35 @@
+{
+  "state": "terminal",
+  "exit": 0,
+  "keys_checked": 14,
+  "factory": "section9_gemm_break_even",
+  "compile_command": [
+    "clang++",
+    "-std=c++17",
+    "-Iinclude",
+    "-Ibenchmarks/results",
+    "benchmarks/results/section9_p13_gemm_break_even_consumer.cpp",
+    "-o",
+    "/tmp/wolfnum-gemm-calibration-check"
+  ],
+  "unknown_checks": [
+    "width",
+    "profile",
+    "inner dimension",
+    "unmeasured storage profile"
+  ],
+  "rejection_checks": [
+    "busy-host --require-idle",
+    "existing output overwrite",
+    "nonterminal",
+    "failed measurement",
+    "mismatched raw hash"
+  ],
+  "sha256": {
+    "section9_p13_gemm_break_even_consumer.cpp": "dcd94305e3aed864878b987e182f068604ec98e665abba47b7d921803464fa9c",
+    "section9_p13_gemm_break_even_consumer.txt": "b8916fd4e7476aecd5c6369514492cc3bd413756125d986dd3e58474bc5ff68f",
+    "section9_p13_gemm_break_even_measured.hpp": "cdbd6154c0346c452309c07fc7436922c01f0f61720c2887b0ab34ed44d4a466",
+    "section9_p13_gemm_break_even_measured.json": "ff9c47c5649fc10f3d643d9813330c77480f8675226c9f28d6dc32dea732a330"
+  },
+  "scope": "Offline measured busy-host library; no installed default or consumer acceptance"
+}

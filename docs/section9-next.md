@@ -221,11 +221,12 @@ Its first checked n944/352 median is 0.528 s versus the exact loop's 0.612 s,
 with overlapping ranges; the 3x target remains unmet. See [the retained experiment](../benchmarks/experiments/section9_exact_trials_lookahead.md).
 
 **P2.3: Break-even table.** Partial: 50 source-recurrence keys and 24 normal-equation
-keys cover measured host/resident contracts and clock profiles. Three factor-plus-solve
+keys cover measured host/resident contracts and clock profiles; 14 GEMM keys cover
+the checked 352-bit Fourier host/resident and resident 4x4 measurements. Three factor-plus-solve
 keys retain the explicit unreleased-trial scope. Exported factories load every key;
 unmeasured widths/profiles remain unknown. Terminal/hash/idle/overwrite guards pass.
 No table installs a default or establishes idle-consumer policy. See
-[offline calibration](calibration.md). GEMM and idle-host profiles remain pending.
+[offline calibration](calibration.md). Other GEMM widths/clock modes and accepted idle-host profiles remain pending.
 
 ### P3: end-to-end (consumer)
 

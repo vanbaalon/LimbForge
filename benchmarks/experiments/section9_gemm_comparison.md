@@ -51,16 +51,16 @@ These are focused checks, not all-width certification of a new primitive.
 The default shape is the Fourier 66x130 times 130x3800. For large 4x4 batches, select
 `--path composed`, `fused` or `gauss` to avoid the unrelated per-matrix Linalg encoding
 cost and extra buffers of the exact embedding. A fair large-batch exact comparison
-still needs measurement and may motivate an exact batched API. Fourier/other §9.2
-shapes, 1e4/1e5 batches, register blocking/TK variants and performance acceptance
-remain pending; the historical 7.9x ratio is not a current baseline.
+still needs measurement and may motivate an exact batched API. The Fourier and resident 1e4/1e5 profiles below are measured. Other widths,
+host 4x4 batches, register blocking/TK variants and performance acceptance remain
+pending; the historical 7.9x ratio is not a current baseline.
 
 The current harness explicitly matches Linalg host-worker count to the MPFR
 worker count. Clock labels are `cpu-interleaved` and `verified-warm-call`; neither
 proves controlled cold or continuously warm clocks. Four rebuilt focused physical-GPU checks pass for this updated 1.3.0-linked
 harness (352-bit host and 1024-bit resident, normal and shader validation).
 `section9_p1_gemm_wolfnum_fixture_metadata.json` records commands and identities;
-real-shape measurements remain pending.
+the later 1.3.1 measurements below use separately recorded rebuilt fixtures.
 
 ## Checked 1.3.1 measurements
 
@@ -93,3 +93,12 @@ idle consumer acceptance. All sample ranges and identities are retained in
 encoding remains outside this small-matrix comparison: one Linalg call per matrix
 is not a batched exact implementation. Other widths, transfer profiles, native
 three-product multiplication and tile experiments remain follow-up work.
+
+## Offline calibration
+
+The eight completed profiles export 14 exact lookup keys through
+`section9_gemm_break_even()` in `section9_p13_gemm_break_even_measured.hpp`.
+Its JSON retains binary/archive, contract, clock and busy-host load identity.
+The generated C++ consumer checks every measured key and unknown width/profile/shape
+queries; terminal, raw-hash, idle and overwrite guards pass. This installs no default
+and does not establish consumer or idle-host acceptance. See [calibration](../../docs/calibration.md).

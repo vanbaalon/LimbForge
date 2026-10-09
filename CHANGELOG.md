@@ -2,6 +2,10 @@
 
 ## Unreleased
 
+- Recorded 14 offline GEMM calibration keys from checked WolfNum 1.3.1 Fourier
+  and resident 4x4 profiles. Generated C++ lookups and failed/nonterminal/hash, idle
+  and overwrite guards pass. Busy-host results establish no consumer default.
+
 ## 1.3.1 — 2026-10-09
 
 - Renamed the project to **WolfNum**, the numerical library in the Wolfbook family.
