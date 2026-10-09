@@ -105,3 +105,15 @@ Next candidates: reusable scratch with safe in-flight lifetimes, then a compact
 device fallback counter to avoid the full mask scan. New shader contexts require
 fresh physical-GPU correctness gates. The separate 3x factor target, remaining
 tile candidates and idle consumer timing/memory/damping/base work remain open.
+
+## Final main integration checks
+
+After fast-forward integration, the version and independent installed-consumer
+checks pass (2/2), as does the optional Baxter smoke enabled in the local build.
+Production `include`, `src` and package configuration files remain identical to
+v1.3.1. The rebuilt main archive retains its recorded production SHA-256;
+installation rewrites the archive index but all seven compiled object members
+match byte-for-byte. The experimental targets are not installed. The published
+v1.3.1 tag is unchanged. [Final receipts](../../results/section9_exact_gemm4_final_release_checks.json)
+record the exact source and validation scopes. Repository renaming remains with
+the maintainer; compatible 1.x integration names remain supported.

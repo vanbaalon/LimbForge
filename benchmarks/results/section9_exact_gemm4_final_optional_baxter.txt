@@ -1,0 +1,29 @@
+Start testing: Oct 09 09:35 EDT
+----------------------------------------------------------
+1/27 Testing: baxter_batch
+1/27 Test: baxter_batch
+Command: "/Users/k0959535/Dropbox/IntegrabilityProjects/2026 4d SoV/LimbForge/build/baxter_batch" "4" "600"
+Directory: /Users/k0959535/Dropbox/IntegrabilityProjects/2026 4d SoV/LimbForge/build
+"baxter_batch" start time: Oct 09 09:35 EDT
+Output:
+----------------------------------------------------------
+device=Apple M5 Max
+points=4
+steps=600
+bits=384
+cpu_reference_decimal_digits=110
+preparation_s=0.057687375
+gpu_s=0.01651695831
+gpu_wall_s=0.017476042
+preparation_plus_gpu_wall_s=0.075163417
+mpfr_solver_propagation_s=0.098393708
+max_error_over_1_plus_abs_q=6.937855186e-106
+<end of output>
+Test time =   0.92 sec
+----------------------------------------------------------
+Test Passed.
+"baxter_batch" end time: Oct 09 09:35 EDT
+"baxter_batch" time elapsed: 00:00:00
+----------------------------------------------------------
+
+End testing: Oct 09 09:35 EDT
