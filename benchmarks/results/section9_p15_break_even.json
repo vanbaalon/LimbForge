@@ -1,0 +1,1370 @@
+{
+  "profile": "Apple M5 Max / LimbForge 1.2.0 shared-source candidate / Release / measured busy host; not idle-consumer policy",
+  "margin": 0.05,
+  "records": [
+    {
+      "key": {
+        "operation": "polynomial_recurrence/per_lane",
+        "bits": 352,
+        "count": 1041,
+        "m": 100,
+        "n": 24,
+        "k": 16,
+        "cpu_workers": 18,
+        "fused": false,
+        "profile": "Apple M5 Max / LimbForge 1.2.0 shared-source candidate / Release / measured busy host; not idle-consumer policy; binary=ddab8ec720ee759507ec2475937033fac51bfb6f42fba2a7373f82833f227cbf; clock=cpu-interleaved; sets=1; reverse=0; all_steps=0; cpu=MPFR-shared-Horner",
+        "resident": false
+      },
+      "sample": {
+        "cpu_wall": 0.053170083,
+        "gpu_wall": 0.70068825
+      },
+      "recommendation": "cpu",
+      "source": "benchmarks/results/section9_p15_352_1041_100_24_share16_host_interleaved.csv",
+      "source_sha256": "8f8c567682745c36c154ba3a229b1873abc93e4cf8bd1c77222b68e13b558bbb",
+      "load_before": [
+        8.82568359375,
+        10.94140625,
+        11.90869140625
+      ],
+      "load_after": [
+        8.75927734375,
+        10.89208984375,
+        11.8857421875
+      ]
+    },
+    {
+      "key": {
+        "operation": "polynomial_recurrence/shared_sources",
+        "bits": 352,
+        "count": 1041,
+        "m": 100,
+        "n": 24,
+        "k": 16,
+        "cpu_workers": 18,
+        "fused": false,
+        "profile": "Apple M5 Max / LimbForge 1.2.0 shared-source candidate / Release / measured busy host; not idle-consumer policy; binary=ddab8ec720ee759507ec2475937033fac51bfb6f42fba2a7373f82833f227cbf; clock=cpu-interleaved; sets=1; reverse=0; all_steps=0; cpu=MPFR-shared-Horner",
+        "resident": false
+      },
+      "sample": {
+        "cpu_wall": 0.053170083,
+        "gpu_wall": 0.03177325
+      },
+      "recommendation": "gpu",
+      "source": "benchmarks/results/section9_p15_352_1041_100_24_share16_host_interleaved.csv",
+      "source_sha256": "8f8c567682745c36c154ba3a229b1873abc93e4cf8bd1c77222b68e13b558bbb",
+      "load_before": [
+        8.82568359375,
+        10.94140625,
+        11.90869140625
+      ],
+      "load_after": [
+        8.75927734375,
+        10.89208984375,
+        11.8857421875
+      ]
+    },
+    {
+      "key": {
+        "operation": "polynomial_recurrence/per_lane",
+        "bits": 352,
+        "count": 1041,
+        "m": 100,
+        "n": 24,
+        "k": 16,
+        "cpu_workers": 18,
+        "fused": false,
+        "profile": "Apple M5 Max / LimbForge 1.2.0 shared-source candidate / Release / measured busy host; not idle-consumer policy; binary=ddab8ec720ee759507ec2475937033fac51bfb6f42fba2a7373f82833f227cbf; clock=cpu-interleaved; sets=1; reverse=0; all_steps=0; cpu=MPFR-shared-Horner",
+        "resident": true
+      },
+      "sample": {
+        "cpu_wall": 0.052227834,
+        "gpu_wall": 0.710587791
+      },
+      "recommendation": "cpu",
+      "source": "benchmarks/results/section9_p15_352_1041_100_24_share16_resident_interleaved.csv",
+      "source_sha256": "e0ba4e63de3547aed2ed4f2796c3b5cae406ffc797779c3798bd549eb2edf998",
+      "load_before": [
+        8.75927734375,
+        10.89208984375,
+        11.8857421875
+      ],
+      "load_after": [
+        8.6982421875,
+        10.84375,
+        11.86279296875
+      ]
+    },
+    {
+      "key": {
+        "operation": "polynomial_recurrence/shared_sources",
+        "bits": 352,
+        "count": 1041,
+        "m": 100,
+        "n": 24,
+        "k": 16,
+        "cpu_workers": 18,
+        "fused": false,
+        "profile": "Apple M5 Max / LimbForge 1.2.0 shared-source candidate / Release / measured busy host; not idle-consumer policy; binary=ddab8ec720ee759507ec2475937033fac51bfb6f42fba2a7373f82833f227cbf; clock=cpu-interleaved; sets=1; reverse=0; all_steps=0; cpu=MPFR-shared-Horner",
+        "resident": true
+      },
+      "sample": {
+        "cpu_wall": 0.052227834,
+        "gpu_wall": 0.031686125
+      },
+      "recommendation": "gpu",
+      "source": "benchmarks/results/section9_p15_352_1041_100_24_share16_resident_interleaved.csv",
+      "source_sha256": "e0ba4e63de3547aed2ed4f2796c3b5cae406ffc797779c3798bd549eb2edf998",
+      "load_before": [
+        8.75927734375,
+        10.89208984375,
+        11.8857421875
+      ],
+      "load_after": [
+        8.6982421875,
+        10.84375,
+        11.86279296875
+      ]
+    },
+    {
+      "key": {
+        "operation": "polynomial_recurrence/per_lane",
+        "bits": 352,
+        "count": 1041,
+        "m": 100,
+        "n": 24,
+        "k": 16,
+        "cpu_workers": 18,
+        "fused": false,
+        "profile": "Apple M5 Max / LimbForge 1.2.0 shared-source candidate / Release / measured busy host; not idle-consumer policy; binary=ddab8ec720ee759507ec2475937033fac51bfb6f42fba2a7373f82833f227cbf; clock=verified-warm-call; sets=1; reverse=0; all_steps=0; cpu=MPFR-shared-Horner",
+        "resident": false
+      },
+      "sample": {
+        "cpu_wall": 0.046399375,
+        "gpu_wall": 0.69963675
+      },
+      "recommendation": "cpu",
+      "source": "benchmarks/results/section9_p15_352_1041_100_24_share16_host_verified_warm.csv",
+      "source_sha256": "ce26838f3822197c3ccd3fe8f341211c8dcd3fade3977b80be5549b64aeb3979",
+      "load_before": [
+        8.6982421875,
+        10.84375,
+        11.86279296875
+      ],
+      "load_after": [
+        9.28271484375,
+        10.92919921875,
+        11.88671875
+      ]
+    },
+    {
+      "key": {
+        "operation": "polynomial_recurrence/shared_sources",
+        "bits": 352,
+        "count": 1041,
+        "m": 100,
+        "n": 24,
+        "k": 16,
+        "cpu_workers": 18,
+        "fused": false,
+        "profile": "Apple M5 Max / LimbForge 1.2.0 shared-source candidate / Release / measured busy host; not idle-consumer policy; binary=ddab8ec720ee759507ec2475937033fac51bfb6f42fba2a7373f82833f227cbf; clock=verified-warm-call; sets=1; reverse=0; all_steps=0; cpu=MPFR-shared-Horner",
+        "resident": false
+      },
+      "sample": {
+        "cpu_wall": 0.046399375,
+        "gpu_wall": 0.03163775
+      },
+      "recommendation": "gpu",
+      "source": "benchmarks/results/section9_p15_352_1041_100_24_share16_host_verified_warm.csv",
+      "source_sha256": "ce26838f3822197c3ccd3fe8f341211c8dcd3fade3977b80be5549b64aeb3979",
+      "load_before": [
+        8.6982421875,
+        10.84375,
+        11.86279296875
+      ],
+      "load_after": [
+        9.28271484375,
+        10.92919921875,
+        11.88671875
+      ]
+    },
+    {
+      "key": {
+        "operation": "polynomial_recurrence/per_lane",
+        "bits": 352,
+        "count": 1041,
+        "m": 100,
+        "n": 24,
+        "k": 16,
+        "cpu_workers": 18,
+        "fused": false,
+        "profile": "Apple M5 Max / LimbForge 1.2.0 shared-source candidate / Release / measured busy host; not idle-consumer policy; binary=ddab8ec720ee759507ec2475937033fac51bfb6f42fba2a7373f82833f227cbf; clock=verified-warm-call; sets=1; reverse=0; all_steps=0; cpu=MPFR-shared-Horner",
+        "resident": true
+      },
+      "sample": {
+        "cpu_wall": 0.054515542,
+        "gpu_wall": 0.700287084
+      },
+      "recommendation": "cpu",
+      "source": "benchmarks/results/section9_p15_352_1041_100_24_share16_resident_verified_warm.csv",
+      "source_sha256": "9e3ca3c8d852a143d151e12dbbf228d84820fcfcc2ce17f69499c23170ab7490",
+      "load_before": [
+        9.28271484375,
+        10.92919921875,
+        11.88671875
+      ],
+      "load_after": [
+        9.099609375,
+        10.86376953125,
+        11.85791015625
+      ]
+    },
+    {
+      "key": {
+        "operation": "polynomial_recurrence/shared_sources",
+        "bits": 352,
+        "count": 1041,
+        "m": 100,
+        "n": 24,
+        "k": 16,
+        "cpu_workers": 18,
+        "fused": false,
+        "profile": "Apple M5 Max / LimbForge 1.2.0 shared-source candidate / Release / measured busy host; not idle-consumer policy; binary=ddab8ec720ee759507ec2475937033fac51bfb6f42fba2a7373f82833f227cbf; clock=verified-warm-call; sets=1; reverse=0; all_steps=0; cpu=MPFR-shared-Horner",
+        "resident": true
+      },
+      "sample": {
+        "cpu_wall": 0.054515542,
+        "gpu_wall": 0.031687
+      },
+      "recommendation": "gpu",
+      "source": "benchmarks/results/section9_p15_352_1041_100_24_share16_resident_verified_warm.csv",
+      "source_sha256": "9e3ca3c8d852a143d151e12dbbf228d84820fcfcc2ce17f69499c23170ab7490",
+      "load_before": [
+        9.28271484375,
+        10.92919921875,
+        11.88671875
+      ],
+      "load_after": [
+        9.099609375,
+        10.86376953125,
+        11.85791015625
+      ]
+    },
+    {
+      "key": {
+        "operation": "polynomial_recurrence/per_lane",
+        "bits": 352,
+        "count": 65,
+        "m": 100,
+        "n": 24,
+        "k": 1,
+        "cpu_workers": 18,
+        "fused": false,
+        "profile": "Apple M5 Max / LimbForge 1.2.0 shared-source candidate / Release / measured busy host; not idle-consumer policy; binary=ddab8ec720ee759507ec2475937033fac51bfb6f42fba2a7373f82833f227cbf; clock=cpu-interleaved; sets=1; reverse=0; all_steps=0; cpu=MPFR-shared-Horner",
+        "resident": false
+      },
+      "sample": {
+        "cpu_wall": 0.027943584,
+        "gpu_wall": 0.894778084
+      },
+      "recommendation": "cpu",
+      "source": "benchmarks/results/section9_p15_grid_352_65_100_24_share1_host.csv",
+      "source_sha256": "f2074555a8fbd9814c0185bcf02c09ece9637232140df63ce0f7ddd3ca20aa07",
+      "load_before": [
+        8.2197265625,
+        9.75830078125,
+        11.25927734375
+      ],
+      "load_after": [
+        8.76220703125,
+        9.84521484375,
+        11.28076171875
+      ]
+    },
+    {
+      "key": {
+        "operation": "polynomial_recurrence/shared_sources",
+        "bits": 352,
+        "count": 65,
+        "m": 100,
+        "n": 24,
+        "k": 1,
+        "cpu_workers": 18,
+        "fused": false,
+        "profile": "Apple M5 Max / LimbForge 1.2.0 shared-source candidate / Release / measured busy host; not idle-consumer policy; binary=ddab8ec720ee759507ec2475937033fac51bfb6f42fba2a7373f82833f227cbf; clock=cpu-interleaved; sets=1; reverse=0; all_steps=0; cpu=MPFR-shared-Horner",
+        "resident": false
+      },
+      "sample": {
+        "cpu_wall": 0.027943584,
+        "gpu_wall": 0.031675625
+      },
+      "recommendation": "cpu",
+      "source": "benchmarks/results/section9_p15_grid_352_65_100_24_share1_host.csv",
+      "source_sha256": "f2074555a8fbd9814c0185bcf02c09ece9637232140df63ce0f7ddd3ca20aa07",
+      "load_before": [
+        8.2197265625,
+        9.75830078125,
+        11.25927734375
+      ],
+      "load_after": [
+        8.76220703125,
+        9.84521484375,
+        11.28076171875
+      ]
+    },
+    {
+      "key": {
+        "operation": "polynomial_recurrence/per_lane",
+        "bits": 352,
+        "count": 65,
+        "m": 100,
+        "n": 24,
+        "k": 1,
+        "cpu_workers": 18,
+        "fused": false,
+        "profile": "Apple M5 Max / LimbForge 1.2.0 shared-source candidate / Release / measured busy host; not idle-consumer policy; binary=ddab8ec720ee759507ec2475937033fac51bfb6f42fba2a7373f82833f227cbf; clock=cpu-interleaved; sets=1; reverse=0; all_steps=0; cpu=MPFR-shared-Horner",
+        "resident": true
+      },
+      "sample": {
+        "cpu_wall": 0.044526834,
+        "gpu_wall": 0.897488084
+      },
+      "recommendation": "cpu",
+      "source": "benchmarks/results/section9_p15_grid_352_65_100_24_share1_resident.csv",
+      "source_sha256": "1c58726885cc2edf8e225f0239c1d3479b56e25e1e8dbdbbd424850f51113165",
+      "load_before": [
+        8.76220703125,
+        9.84521484375,
+        11.28076171875
+      ],
+      "load_after": [
+        9.34130859375,
+        9.947265625,
+        11.30810546875
+      ]
+    },
+    {
+      "key": {
+        "operation": "polynomial_recurrence/shared_sources",
+        "bits": 352,
+        "count": 65,
+        "m": 100,
+        "n": 24,
+        "k": 1,
+        "cpu_workers": 18,
+        "fused": false,
+        "profile": "Apple M5 Max / LimbForge 1.2.0 shared-source candidate / Release / measured busy host; not idle-consumer policy; binary=ddab8ec720ee759507ec2475937033fac51bfb6f42fba2a7373f82833f227cbf; clock=cpu-interleaved; sets=1; reverse=0; all_steps=0; cpu=MPFR-shared-Horner",
+        "resident": true
+      },
+      "sample": {
+        "cpu_wall": 0.044526834,
+        "gpu_wall": 0.031510666
+      },
+      "recommendation": "gpu",
+      "source": "benchmarks/results/section9_p15_grid_352_65_100_24_share1_resident.csv",
+      "source_sha256": "1c58726885cc2edf8e225f0239c1d3479b56e25e1e8dbdbbd424850f51113165",
+      "load_before": [
+        8.76220703125,
+        9.84521484375,
+        11.28076171875
+      ],
+      "load_after": [
+        9.34130859375,
+        9.947265625,
+        11.30810546875
+      ]
+    },
+    {
+      "key": {
+        "operation": "polynomial_recurrence/per_lane",
+        "bits": 352,
+        "count": 1041,
+        "m": 160,
+        "n": 60,
+        "k": 16,
+        "cpu_workers": 18,
+        "fused": false,
+        "profile": "Apple M5 Max / LimbForge 1.2.0 shared-source candidate / Release / measured busy host; not idle-consumer policy; binary=ddab8ec720ee759507ec2475937033fac51bfb6f42fba2a7373f82833f227cbf; clock=cpu-interleaved; sets=1; reverse=0; all_steps=0; cpu=MPFR-shared-Horner",
+        "resident": false
+      },
+      "sample": {
+        "cpu_wall": 0.146655792,
+        "gpu_wall": 2.970082333
+      },
+      "recommendation": "cpu",
+      "source": "benchmarks/results/section9_p15_grid_352_1041_160_60_share16_host.csv",
+      "source_sha256": "bcb515c2ac515a6db95c1b51211edf3779d807db93ad9b9a9cffa735c2b249c4",
+      "load_before": [
+        9.34130859375,
+        9.947265625,
+        11.30810546875
+      ],
+      "load_after": [
+        9.14111328125,
+        9.8828125,
+        11.26904296875
+      ]
+    },
+    {
+      "key": {
+        "operation": "polynomial_recurrence/shared_sources",
+        "bits": 352,
+        "count": 1041,
+        "m": 160,
+        "n": 60,
+        "k": 16,
+        "cpu_workers": 18,
+        "fused": false,
+        "profile": "Apple M5 Max / LimbForge 1.2.0 shared-source candidate / Release / measured busy host; not idle-consumer policy; binary=ddab8ec720ee759507ec2475937033fac51bfb6f42fba2a7373f82833f227cbf; clock=cpu-interleaved; sets=1; reverse=0; all_steps=0; cpu=MPFR-shared-Horner",
+        "resident": false
+      },
+      "sample": {
+        "cpu_wall": 0.146655792,
+        "gpu_wall": 0.070616583
+      },
+      "recommendation": "gpu",
+      "source": "benchmarks/results/section9_p15_grid_352_1041_160_60_share16_host.csv",
+      "source_sha256": "bcb515c2ac515a6db95c1b51211edf3779d807db93ad9b9a9cffa735c2b249c4",
+      "load_before": [
+        9.34130859375,
+        9.947265625,
+        11.30810546875
+      ],
+      "load_after": [
+        9.14111328125,
+        9.8828125,
+        11.26904296875
+      ]
+    },
+    {
+      "key": {
+        "operation": "polynomial_recurrence/per_lane",
+        "bits": 352,
+        "count": 1041,
+        "m": 160,
+        "n": 60,
+        "k": 16,
+        "cpu_workers": 18,
+        "fused": false,
+        "profile": "Apple M5 Max / LimbForge 1.2.0 shared-source candidate / Release / measured busy host; not idle-consumer policy; binary=ddab8ec720ee759507ec2475937033fac51bfb6f42fba2a7373f82833f227cbf; clock=cpu-interleaved; sets=1; reverse=0; all_steps=0; cpu=MPFR-shared-Horner",
+        "resident": true
+      },
+      "sample": {
+        "cpu_wall": 0.137296833,
+        "gpu_wall": 2.969232958
+      },
+      "recommendation": "cpu",
+      "source": "benchmarks/results/section9_p15_grid_352_1041_160_60_share16_resident.csv",
+      "source_sha256": "4c438f9171a85abadb160732c9ad388ee0855354704bcf36fa5e991800d8f03d",
+      "load_before": [
+        9.14111328125,
+        9.8828125,
+        11.26904296875
+      ],
+      "load_after": [
+        10.6826171875,
+        10.1953125,
+        11.3564453125
+      ]
+    },
+    {
+      "key": {
+        "operation": "polynomial_recurrence/shared_sources",
+        "bits": 352,
+        "count": 1041,
+        "m": 160,
+        "n": 60,
+        "k": 16,
+        "cpu_workers": 18,
+        "fused": false,
+        "profile": "Apple M5 Max / LimbForge 1.2.0 shared-source candidate / Release / measured busy host; not idle-consumer policy; binary=ddab8ec720ee759507ec2475937033fac51bfb6f42fba2a7373f82833f227cbf; clock=cpu-interleaved; sets=1; reverse=0; all_steps=0; cpu=MPFR-shared-Horner",
+        "resident": true
+      },
+      "sample": {
+        "cpu_wall": 0.137296833,
+        "gpu_wall": 0.068411708
+      },
+      "recommendation": "gpu",
+      "source": "benchmarks/results/section9_p15_grid_352_1041_160_60_share16_resident.csv",
+      "source_sha256": "4c438f9171a85abadb160732c9ad388ee0855354704bcf36fa5e991800d8f03d",
+      "load_before": [
+        9.14111328125,
+        9.8828125,
+        11.26904296875
+      ],
+      "load_after": [
+        10.6826171875,
+        10.1953125,
+        11.3564453125
+      ]
+    },
+    {
+      "key": {
+        "operation": "polynomial_recurrence/per_lane",
+        "bits": 352,
+        "count": 3901,
+        "m": 250,
+        "n": 100,
+        "k": 60,
+        "cpu_workers": 18,
+        "fused": false,
+        "profile": "Apple M5 Max / LimbForge 1.2.0 shared-source candidate / Release / measured busy host; not idle-consumer policy; binary=ddab8ec720ee759507ec2475937033fac51bfb6f42fba2a7373f82833f227cbf; clock=cpu-interleaved; sets=1; reverse=0; all_steps=0; cpu=MPFR-shared-Horner",
+        "resident": false
+      },
+      "sample": {
+        "cpu_wall": 0.498373125,
+        "gpu_wall": 7.973911625
+      },
+      "recommendation": "cpu",
+      "source": "benchmarks/results/section9_p15_grid_352_3901_250_100_share60_host.csv",
+      "source_sha256": "f7053c39ecfc37980f79af9410facdc33b9e2dd92d6810a6f2aa4f2384905831",
+      "load_before": [
+        10.6826171875,
+        10.1953125,
+        11.3564453125
+      ],
+      "load_after": [
+        7.91162109375,
+        9.56884765625,
+        11.0810546875
+      ]
+    },
+    {
+      "key": {
+        "operation": "polynomial_recurrence/shared_sources",
+        "bits": 352,
+        "count": 3901,
+        "m": 250,
+        "n": 100,
+        "k": 60,
+        "cpu_workers": 18,
+        "fused": false,
+        "profile": "Apple M5 Max / LimbForge 1.2.0 shared-source candidate / Release / measured busy host; not idle-consumer policy; binary=ddab8ec720ee759507ec2475937033fac51bfb6f42fba2a7373f82833f227cbf; clock=cpu-interleaved; sets=1; reverse=0; all_steps=0; cpu=MPFR-shared-Horner",
+        "resident": false
+      },
+      "sample": {
+        "cpu_wall": 0.498373125,
+        "gpu_wall": 0.144739458
+      },
+      "recommendation": "gpu",
+      "source": "benchmarks/results/section9_p15_grid_352_3901_250_100_share60_host.csv",
+      "source_sha256": "f7053c39ecfc37980f79af9410facdc33b9e2dd92d6810a6f2aa4f2384905831",
+      "load_before": [
+        10.6826171875,
+        10.1953125,
+        11.3564453125
+      ],
+      "load_after": [
+        7.91162109375,
+        9.56884765625,
+        11.0810546875
+      ]
+    },
+    {
+      "key": {
+        "operation": "polynomial_recurrence/per_lane",
+        "bits": 352,
+        "count": 3901,
+        "m": 250,
+        "n": 100,
+        "k": 60,
+        "cpu_workers": 18,
+        "fused": false,
+        "profile": "Apple M5 Max / LimbForge 1.2.0 shared-source candidate / Release / measured busy host; not idle-consumer policy; binary=ddab8ec720ee759507ec2475937033fac51bfb6f42fba2a7373f82833f227cbf; clock=cpu-interleaved; sets=1; reverse=0; all_steps=0; cpu=MPFR-shared-Horner",
+        "resident": true
+      },
+      "sample": {
+        "cpu_wall": 0.4169685,
+        "gpu_wall": 7.819055208
+      },
+      "recommendation": "cpu",
+      "source": "benchmarks/results/section9_p15_grid_352_3901_250_100_share60_resident.csv",
+      "source_sha256": "fbf608cfb11b0a512176bd2298923f17f23a68b7d019c2b58f39f2af01d0f31f",
+      "load_before": [
+        7.91162109375,
+        9.56884765625,
+        11.0810546875
+      ],
+      "load_after": [
+        11.17626953125,
+        10.08349609375,
+        11.2001953125
+      ]
+    },
+    {
+      "key": {
+        "operation": "polynomial_recurrence/shared_sources",
+        "bits": 352,
+        "count": 3901,
+        "m": 250,
+        "n": 100,
+        "k": 60,
+        "cpu_workers": 18,
+        "fused": false,
+        "profile": "Apple M5 Max / LimbForge 1.2.0 shared-source candidate / Release / measured busy host; not idle-consumer policy; binary=ddab8ec720ee759507ec2475937033fac51bfb6f42fba2a7373f82833f227cbf; clock=cpu-interleaved; sets=1; reverse=0; all_steps=0; cpu=MPFR-shared-Horner",
+        "resident": true
+      },
+      "sample": {
+        "cpu_wall": 0.4169685,
+        "gpu_wall": 0.145852875
+      },
+      "recommendation": "gpu",
+      "source": "benchmarks/results/section9_p15_grid_352_3901_250_100_share60_resident.csv",
+      "source_sha256": "fbf608cfb11b0a512176bd2298923f17f23a68b7d019c2b58f39f2af01d0f31f",
+      "load_before": [
+        7.91162109375,
+        9.56884765625,
+        11.0810546875
+      ],
+      "load_after": [
+        11.17626953125,
+        10.08349609375,
+        11.2001953125
+      ]
+    },
+    {
+      "key": {
+        "operation": "polynomial_recurrence/per_lane",
+        "bits": 384,
+        "count": 65,
+        "m": 100,
+        "n": 24,
+        "k": 1,
+        "cpu_workers": 18,
+        "fused": false,
+        "profile": "Apple M5 Max / LimbForge 1.2.0 shared-source candidate / Release / measured busy host; not idle-consumer policy; binary=ddab8ec720ee759507ec2475937033fac51bfb6f42fba2a7373f82833f227cbf; clock=cpu-interleaved; sets=1; reverse=0; all_steps=0; cpu=MPFR-shared-Horner",
+        "resident": false
+      },
+      "sample": {
+        "cpu_wall": 0.029622333,
+        "gpu_wall": 1.054622375
+      },
+      "recommendation": "cpu",
+      "source": "benchmarks/results/section9_p15_grid_384_65_100_24_share1_host.csv",
+      "source_sha256": "97c5389bbd3d0685fd2d574daa300a245b861acd16e194d6cac8784de3712f6d",
+      "load_before": [
+        11.17626953125,
+        10.08349609375,
+        11.2001953125
+      ],
+      "load_after": [
+        12.203125,
+        10.314453125,
+        11.27490234375
+      ]
+    },
+    {
+      "key": {
+        "operation": "polynomial_recurrence/shared_sources",
+        "bits": 384,
+        "count": 65,
+        "m": 100,
+        "n": 24,
+        "k": 1,
+        "cpu_workers": 18,
+        "fused": false,
+        "profile": "Apple M5 Max / LimbForge 1.2.0 shared-source candidate / Release / measured busy host; not idle-consumer policy; binary=ddab8ec720ee759507ec2475937033fac51bfb6f42fba2a7373f82833f227cbf; clock=cpu-interleaved; sets=1; reverse=0; all_steps=0; cpu=MPFR-shared-Horner",
+        "resident": false
+      },
+      "sample": {
+        "cpu_wall": 0.029622333,
+        "gpu_wall": 0.033320792
+      },
+      "recommendation": "cpu",
+      "source": "benchmarks/results/section9_p15_grid_384_65_100_24_share1_host.csv",
+      "source_sha256": "97c5389bbd3d0685fd2d574daa300a245b861acd16e194d6cac8784de3712f6d",
+      "load_before": [
+        11.17626953125,
+        10.08349609375,
+        11.2001953125
+      ],
+      "load_after": [
+        12.203125,
+        10.314453125,
+        11.27490234375
+      ]
+    },
+    {
+      "key": {
+        "operation": "polynomial_recurrence/per_lane",
+        "bits": 384,
+        "count": 65,
+        "m": 100,
+        "n": 24,
+        "k": 1,
+        "cpu_workers": 18,
+        "fused": false,
+        "profile": "Apple M5 Max / LimbForge 1.2.0 shared-source candidate / Release / measured busy host; not idle-consumer policy; binary=ddab8ec720ee759507ec2475937033fac51bfb6f42fba2a7373f82833f227cbf; clock=cpu-interleaved; sets=1; reverse=0; all_steps=0; cpu=MPFR-shared-Horner",
+        "resident": true
+      },
+      "sample": {
+        "cpu_wall": 0.026424833,
+        "gpu_wall": 1.059733791
+      },
+      "recommendation": "cpu",
+      "source": "benchmarks/results/section9_p15_grid_384_65_100_24_share1_resident.csv",
+      "source_sha256": "7ec6568991f72737398e08e64a7dabe850c2f1bbcc34d696fd77a9180148e723",
+      "load_before": [
+        12.203125,
+        10.314453125,
+        11.27490234375
+      ],
+      "load_after": [
+        12.5068359375,
+        10.40869140625,
+        11.30224609375
+      ]
+    },
+    {
+      "key": {
+        "operation": "polynomial_recurrence/shared_sources",
+        "bits": 384,
+        "count": 65,
+        "m": 100,
+        "n": 24,
+        "k": 1,
+        "cpu_workers": 18,
+        "fused": false,
+        "profile": "Apple M5 Max / LimbForge 1.2.0 shared-source candidate / Release / measured busy host; not idle-consumer policy; binary=ddab8ec720ee759507ec2475937033fac51bfb6f42fba2a7373f82833f227cbf; clock=cpu-interleaved; sets=1; reverse=0; all_steps=0; cpu=MPFR-shared-Horner",
+        "resident": true
+      },
+      "sample": {
+        "cpu_wall": 0.026424833,
+        "gpu_wall": 0.033722958
+      },
+      "recommendation": "cpu",
+      "source": "benchmarks/results/section9_p15_grid_384_65_100_24_share1_resident.csv",
+      "source_sha256": "7ec6568991f72737398e08e64a7dabe850c2f1bbcc34d696fd77a9180148e723",
+      "load_before": [
+        12.203125,
+        10.314453125,
+        11.27490234375
+      ],
+      "load_after": [
+        12.5068359375,
+        10.40869140625,
+        11.30224609375
+      ]
+    },
+    {
+      "key": {
+        "operation": "polynomial_recurrence/per_lane",
+        "bits": 384,
+        "count": 1041,
+        "m": 160,
+        "n": 60,
+        "k": 16,
+        "cpu_workers": 18,
+        "fused": false,
+        "profile": "Apple M5 Max / LimbForge 1.2.0 shared-source candidate / Release / measured busy host; not idle-consumer policy; binary=ddab8ec720ee759507ec2475937033fac51bfb6f42fba2a7373f82833f227cbf; clock=cpu-interleaved; sets=1; reverse=0; all_steps=0; cpu=MPFR-shared-Horner",
+        "resident": false
+      },
+      "sample": {
+        "cpu_wall": 0.177742875,
+        "gpu_wall": 3.531391584
+      },
+      "recommendation": "cpu",
+      "source": "benchmarks/results/section9_p15_grid_384_1041_160_60_share16_host.csv",
+      "source_sha256": "f30c7f6f2246f4d1e914cc1576ac44709ee7ea773b52b7417a32ee5ae3fe15e3",
+      "load_before": [
+        12.5068359375,
+        10.40869140625,
+        11.30224609375
+      ],
+      "load_after": [
+        11.34521484375,
+        10.2568359375,
+        11.23193359375
+      ]
+    },
+    {
+      "key": {
+        "operation": "polynomial_recurrence/shared_sources",
+        "bits": 384,
+        "count": 1041,
+        "m": 160,
+        "n": 60,
+        "k": 16,
+        "cpu_workers": 18,
+        "fused": false,
+        "profile": "Apple M5 Max / LimbForge 1.2.0 shared-source candidate / Release / measured busy host; not idle-consumer policy; binary=ddab8ec720ee759507ec2475937033fac51bfb6f42fba2a7373f82833f227cbf; clock=cpu-interleaved; sets=1; reverse=0; all_steps=0; cpu=MPFR-shared-Horner",
+        "resident": false
+      },
+      "sample": {
+        "cpu_wall": 0.177742875,
+        "gpu_wall": 0.073703458
+      },
+      "recommendation": "gpu",
+      "source": "benchmarks/results/section9_p15_grid_384_1041_160_60_share16_host.csv",
+      "source_sha256": "f30c7f6f2246f4d1e914cc1576ac44709ee7ea773b52b7417a32ee5ae3fe15e3",
+      "load_before": [
+        12.5068359375,
+        10.40869140625,
+        11.30224609375
+      ],
+      "load_after": [
+        11.34521484375,
+        10.2568359375,
+        11.23193359375
+      ]
+    },
+    {
+      "key": {
+        "operation": "polynomial_recurrence/per_lane",
+        "bits": 384,
+        "count": 1041,
+        "m": 160,
+        "n": 60,
+        "k": 16,
+        "cpu_workers": 18,
+        "fused": false,
+        "profile": "Apple M5 Max / LimbForge 1.2.0 shared-source candidate / Release / measured busy host; not idle-consumer policy; binary=ddab8ec720ee759507ec2475937033fac51bfb6f42fba2a7373f82833f227cbf; clock=cpu-interleaved; sets=1; reverse=0; all_steps=0; cpu=MPFR-shared-Horner",
+        "resident": true
+      },
+      "sample": {
+        "cpu_wall": 0.215730416,
+        "gpu_wall": 3.398820833
+      },
+      "recommendation": "cpu",
+      "source": "benchmarks/results/section9_p15_grid_384_1041_160_60_share16_resident.csv",
+      "source_sha256": "5bb1b6365a2b1ce16e9ca758a9d1a03df3e99c5062833759a54e734f048d9a5a",
+      "load_before": [
+        11.34521484375,
+        10.2568359375,
+        11.23193359375
+      ],
+      "load_after": [
+        10.9091796875,
+        10.224609375,
+        11.20361328125
+      ]
+    },
+    {
+      "key": {
+        "operation": "polynomial_recurrence/shared_sources",
+        "bits": 384,
+        "count": 1041,
+        "m": 160,
+        "n": 60,
+        "k": 16,
+        "cpu_workers": 18,
+        "fused": false,
+        "profile": "Apple M5 Max / LimbForge 1.2.0 shared-source candidate / Release / measured busy host; not idle-consumer policy; binary=ddab8ec720ee759507ec2475937033fac51bfb6f42fba2a7373f82833f227cbf; clock=cpu-interleaved; sets=1; reverse=0; all_steps=0; cpu=MPFR-shared-Horner",
+        "resident": true
+      },
+      "sample": {
+        "cpu_wall": 0.215730416,
+        "gpu_wall": 0.076134584
+      },
+      "recommendation": "gpu",
+      "source": "benchmarks/results/section9_p15_grid_384_1041_160_60_share16_resident.csv",
+      "source_sha256": "5bb1b6365a2b1ce16e9ca758a9d1a03df3e99c5062833759a54e734f048d9a5a",
+      "load_before": [
+        11.34521484375,
+        10.2568359375,
+        11.23193359375
+      ],
+      "load_after": [
+        10.9091796875,
+        10.224609375,
+        11.20361328125
+      ]
+    },
+    {
+      "key": {
+        "operation": "polynomial_recurrence/per_lane",
+        "bits": 384,
+        "count": 3901,
+        "m": 250,
+        "n": 100,
+        "k": 60,
+        "cpu_workers": 18,
+        "fused": false,
+        "profile": "Apple M5 Max / LimbForge 1.2.0 shared-source candidate / Release / measured busy host; not idle-consumer policy; binary=ddab8ec720ee759507ec2475937033fac51bfb6f42fba2a7373f82833f227cbf; clock=cpu-interleaved; sets=1; reverse=0; all_steps=0; cpu=MPFR-shared-Horner",
+        "resident": false
+      },
+      "sample": {
+        "cpu_wall": 0.641893792,
+        "gpu_wall": 9.161271542
+      },
+      "recommendation": "cpu",
+      "source": "benchmarks/results/section9_p15_grid_384_3901_250_100_share60_host.csv",
+      "source_sha256": "6f95ee94e9414514909142c13aac7657fcc9aed9a53605c39110f2f0e28348c2",
+      "load_before": [
+        10.9091796875,
+        10.224609375,
+        11.20361328125
+      ],
+      "load_after": [
+        9.06689453125,
+        9.78515625,
+        10.9931640625
+      ]
+    },
+    {
+      "key": {
+        "operation": "polynomial_recurrence/shared_sources",
+        "bits": 384,
+        "count": 3901,
+        "m": 250,
+        "n": 100,
+        "k": 60,
+        "cpu_workers": 18,
+        "fused": false,
+        "profile": "Apple M5 Max / LimbForge 1.2.0 shared-source candidate / Release / measured busy host; not idle-consumer policy; binary=ddab8ec720ee759507ec2475937033fac51bfb6f42fba2a7373f82833f227cbf; clock=cpu-interleaved; sets=1; reverse=0; all_steps=0; cpu=MPFR-shared-Horner",
+        "resident": false
+      },
+      "sample": {
+        "cpu_wall": 0.641893792,
+        "gpu_wall": 0.156652875
+      },
+      "recommendation": "gpu",
+      "source": "benchmarks/results/section9_p15_grid_384_3901_250_100_share60_host.csv",
+      "source_sha256": "6f95ee94e9414514909142c13aac7657fcc9aed9a53605c39110f2f0e28348c2",
+      "load_before": [
+        10.9091796875,
+        10.224609375,
+        11.20361328125
+      ],
+      "load_after": [
+        9.06689453125,
+        9.78515625,
+        10.9931640625
+      ]
+    },
+    {
+      "key": {
+        "operation": "polynomial_recurrence/per_lane",
+        "bits": 384,
+        "count": 3901,
+        "m": 250,
+        "n": 100,
+        "k": 60,
+        "cpu_workers": 18,
+        "fused": false,
+        "profile": "Apple M5 Max / LimbForge 1.2.0 shared-source candidate / Release / measured busy host; not idle-consumer policy; binary=ddab8ec720ee759507ec2475937033fac51bfb6f42fba2a7373f82833f227cbf; clock=cpu-interleaved; sets=1; reverse=0; all_steps=0; cpu=MPFR-shared-Horner",
+        "resident": true
+      },
+      "sample": {
+        "cpu_wall": 0.392852584,
+        "gpu_wall": 9.022265584
+      },
+      "recommendation": "cpu",
+      "source": "benchmarks/results/section9_p15_grid_384_3901_250_100_share60_resident.csv",
+      "source_sha256": "1e0bd500b501ec45a18e2179494b5e3cc534b5162716bc83afc86feecb827f87",
+      "load_before": [
+        9.06689453125,
+        9.78515625,
+        10.9931640625
+      ],
+      "load_after": [
+        12.23046875,
+        10.4521484375,
+        11.177734375
+      ]
+    },
+    {
+      "key": {
+        "operation": "polynomial_recurrence/shared_sources",
+        "bits": 384,
+        "count": 3901,
+        "m": 250,
+        "n": 100,
+        "k": 60,
+        "cpu_workers": 18,
+        "fused": false,
+        "profile": "Apple M5 Max / LimbForge 1.2.0 shared-source candidate / Release / measured busy host; not idle-consumer policy; binary=ddab8ec720ee759507ec2475937033fac51bfb6f42fba2a7373f82833f227cbf; clock=cpu-interleaved; sets=1; reverse=0; all_steps=0; cpu=MPFR-shared-Horner",
+        "resident": true
+      },
+      "sample": {
+        "cpu_wall": 0.392852584,
+        "gpu_wall": 0.153537167
+      },
+      "recommendation": "gpu",
+      "source": "benchmarks/results/section9_p15_grid_384_3901_250_100_share60_resident.csv",
+      "source_sha256": "1e0bd500b501ec45a18e2179494b5e3cc534b5162716bc83afc86feecb827f87",
+      "load_before": [
+        9.06689453125,
+        9.78515625,
+        10.9931640625
+      ],
+      "load_after": [
+        12.23046875,
+        10.4521484375,
+        11.177734375
+      ]
+    },
+    {
+      "key": {
+        "operation": "polynomial_recurrence/per_lane",
+        "bits": 448,
+        "count": 65,
+        "m": 100,
+        "n": 24,
+        "k": 1,
+        "cpu_workers": 18,
+        "fused": false,
+        "profile": "Apple M5 Max / LimbForge 1.2.0 shared-source candidate / Release / measured busy host; not idle-consumer policy; binary=ddab8ec720ee759507ec2475937033fac51bfb6f42fba2a7373f82833f227cbf; clock=cpu-interleaved; sets=1; reverse=0; all_steps=0; cpu=MPFR-shared-Horner",
+        "resident": false
+      },
+      "sample": {
+        "cpu_wall": 0.032070167,
+        "gpu_wall": 1.262868958
+      },
+      "recommendation": "cpu",
+      "source": "benchmarks/results/section9_p15_grid_448_65_100_24_share1_host.csv",
+      "source_sha256": "bb80953e05910985f3fc4a8d3ac1c24ffc546e5a3740c73e7f08aea717cf4cd4",
+      "load_before": [
+        12.23046875,
+        10.4521484375,
+        11.177734375
+      ],
+      "load_after": [
+        11.8115234375,
+        10.39453125,
+        11.15283203125
+      ]
+    },
+    {
+      "key": {
+        "operation": "polynomial_recurrence/shared_sources",
+        "bits": 448,
+        "count": 65,
+        "m": 100,
+        "n": 24,
+        "k": 1,
+        "cpu_workers": 18,
+        "fused": false,
+        "profile": "Apple M5 Max / LimbForge 1.2.0 shared-source candidate / Release / measured busy host; not idle-consumer policy; binary=ddab8ec720ee759507ec2475937033fac51bfb6f42fba2a7373f82833f227cbf; clock=cpu-interleaved; sets=1; reverse=0; all_steps=0; cpu=MPFR-shared-Horner",
+        "resident": false
+      },
+      "sample": {
+        "cpu_wall": 0.032070167,
+        "gpu_wall": 0.040309416
+      },
+      "recommendation": "cpu",
+      "source": "benchmarks/results/section9_p15_grid_448_65_100_24_share1_host.csv",
+      "source_sha256": "bb80953e05910985f3fc4a8d3ac1c24ffc546e5a3740c73e7f08aea717cf4cd4",
+      "load_before": [
+        12.23046875,
+        10.4521484375,
+        11.177734375
+      ],
+      "load_after": [
+        11.8115234375,
+        10.39453125,
+        11.15283203125
+      ]
+    },
+    {
+      "key": {
+        "operation": "polynomial_recurrence/per_lane",
+        "bits": 448,
+        "count": 65,
+        "m": 100,
+        "n": 24,
+        "k": 1,
+        "cpu_workers": 18,
+        "fused": false,
+        "profile": "Apple M5 Max / LimbForge 1.2.0 shared-source candidate / Release / measured busy host; not idle-consumer policy; binary=ddab8ec720ee759507ec2475937033fac51bfb6f42fba2a7373f82833f227cbf; clock=cpu-interleaved; sets=1; reverse=0; all_steps=0; cpu=MPFR-shared-Horner",
+        "resident": true
+      },
+      "sample": {
+        "cpu_wall": 0.037423666,
+        "gpu_wall": 1.266886083
+      },
+      "recommendation": "cpu",
+      "source": "benchmarks/results/section9_p15_grid_448_65_100_24_share1_resident.csv",
+      "source_sha256": "27384ac9b090c1de547536d8e3c474a4f381f413f4985dfa2e6b499be5657973",
+      "load_before": [
+        11.8115234375,
+        10.39453125,
+        11.15283203125
+      ],
+      "load_after": [
+        11.666015625,
+        10.3876953125,
+        11.14599609375
+      ]
+    },
+    {
+      "key": {
+        "operation": "polynomial_recurrence/shared_sources",
+        "bits": 448,
+        "count": 65,
+        "m": 100,
+        "n": 24,
+        "k": 1,
+        "cpu_workers": 18,
+        "fused": false,
+        "profile": "Apple M5 Max / LimbForge 1.2.0 shared-source candidate / Release / measured busy host; not idle-consumer policy; binary=ddab8ec720ee759507ec2475937033fac51bfb6f42fba2a7373f82833f227cbf; clock=cpu-interleaved; sets=1; reverse=0; all_steps=0; cpu=MPFR-shared-Horner",
+        "resident": true
+      },
+      "sample": {
+        "cpu_wall": 0.037423666,
+        "gpu_wall": 0.039791583
+      },
+      "recommendation": "cpu",
+      "source": "benchmarks/results/section9_p15_grid_448_65_100_24_share1_resident.csv",
+      "source_sha256": "27384ac9b090c1de547536d8e3c474a4f381f413f4985dfa2e6b499be5657973",
+      "load_before": [
+        11.8115234375,
+        10.39453125,
+        11.15283203125
+      ],
+      "load_after": [
+        11.666015625,
+        10.3876953125,
+        11.14599609375
+      ]
+    },
+    {
+      "key": {
+        "operation": "polynomial_recurrence/per_lane",
+        "bits": 448,
+        "count": 1041,
+        "m": 160,
+        "n": 60,
+        "k": 16,
+        "cpu_workers": 18,
+        "fused": false,
+        "profile": "Apple M5 Max / LimbForge 1.2.0 shared-source candidate / Release / measured busy host; not idle-consumer policy; binary=ddab8ec720ee759507ec2475937033fac51bfb6f42fba2a7373f82833f227cbf; clock=cpu-interleaved; sets=1; reverse=0; all_steps=0; cpu=MPFR-shared-Horner",
+        "resident": false
+      },
+      "sample": {
+        "cpu_wall": 0.159337667,
+        "gpu_wall": 4.056803833
+      },
+      "recommendation": "cpu",
+      "source": "benchmarks/results/section9_p15_grid_448_1041_160_60_share16_host.csv",
+      "source_sha256": "6089bfff457c742632aa4ec4808dba04280d4a46d3e4a92f17d5872fab38ada3",
+      "load_before": [
+        11.666015625,
+        10.3876953125,
+        11.14599609375
+      ],
+      "load_after": [
+        10.84130859375,
+        10.306640625,
+        11.10009765625
+      ]
+    },
+    {
+      "key": {
+        "operation": "polynomial_recurrence/shared_sources",
+        "bits": 448,
+        "count": 1041,
+        "m": 160,
+        "n": 60,
+        "k": 16,
+        "cpu_workers": 18,
+        "fused": false,
+        "profile": "Apple M5 Max / LimbForge 1.2.0 shared-source candidate / Release / measured busy host; not idle-consumer policy; binary=ddab8ec720ee759507ec2475937033fac51bfb6f42fba2a7373f82833f227cbf; clock=cpu-interleaved; sets=1; reverse=0; all_steps=0; cpu=MPFR-shared-Horner",
+        "resident": false
+      },
+      "sample": {
+        "cpu_wall": 0.159337667,
+        "gpu_wall": 0.08732925
+      },
+      "recommendation": "gpu",
+      "source": "benchmarks/results/section9_p15_grid_448_1041_160_60_share16_host.csv",
+      "source_sha256": "6089bfff457c742632aa4ec4808dba04280d4a46d3e4a92f17d5872fab38ada3",
+      "load_before": [
+        11.666015625,
+        10.3876953125,
+        11.14599609375
+      ],
+      "load_after": [
+        10.84130859375,
+        10.306640625,
+        11.10009765625
+      ]
+    },
+    {
+      "key": {
+        "operation": "polynomial_recurrence/per_lane",
+        "bits": 448,
+        "count": 1041,
+        "m": 160,
+        "n": 60,
+        "k": 16,
+        "cpu_workers": 18,
+        "fused": false,
+        "profile": "Apple M5 Max / LimbForge 1.2.0 shared-source candidate / Release / measured busy host; not idle-consumer policy; binary=ddab8ec720ee759507ec2475937033fac51bfb6f42fba2a7373f82833f227cbf; clock=cpu-interleaved; sets=1; reverse=0; all_steps=0; cpu=MPFR-shared-Horner",
+        "resident": true
+      },
+      "sample": {
+        "cpu_wall": 0.157295708,
+        "gpu_wall": 4.055367666
+      },
+      "recommendation": "cpu",
+      "source": "benchmarks/results/section9_p15_grid_448_1041_160_60_share16_resident.csv",
+      "source_sha256": "ab5078a4d849b8de6a5852525c34a13be402b9fbdb6777acea42e35d27ee956d",
+      "load_before": [
+        10.84130859375,
+        10.306640625,
+        11.10009765625
+      ],
+      "load_after": [
+        9.810546875,
+        10.10986328125,
+        11.01611328125
+      ]
+    },
+    {
+      "key": {
+        "operation": "polynomial_recurrence/shared_sources",
+        "bits": 448,
+        "count": 1041,
+        "m": 160,
+        "n": 60,
+        "k": 16,
+        "cpu_workers": 18,
+        "fused": false,
+        "profile": "Apple M5 Max / LimbForge 1.2.0 shared-source candidate / Release / measured busy host; not idle-consumer policy; binary=ddab8ec720ee759507ec2475937033fac51bfb6f42fba2a7373f82833f227cbf; clock=cpu-interleaved; sets=1; reverse=0; all_steps=0; cpu=MPFR-shared-Horner",
+        "resident": true
+      },
+      "sample": {
+        "cpu_wall": 0.157295708,
+        "gpu_wall": 0.0874445
+      },
+      "recommendation": "gpu",
+      "source": "benchmarks/results/section9_p15_grid_448_1041_160_60_share16_resident.csv",
+      "source_sha256": "ab5078a4d849b8de6a5852525c34a13be402b9fbdb6777acea42e35d27ee956d",
+      "load_before": [
+        10.84130859375,
+        10.306640625,
+        11.10009765625
+      ],
+      "load_after": [
+        9.810546875,
+        10.10986328125,
+        11.01611328125
+      ]
+    },
+    {
+      "key": {
+        "operation": "polynomial_recurrence/per_lane",
+        "bits": 448,
+        "count": 3901,
+        "m": 250,
+        "n": 100,
+        "k": 60,
+        "cpu_workers": 18,
+        "fused": false,
+        "profile": "Apple M5 Max / LimbForge 1.2.0 shared-source candidate / Release / measured busy host; not idle-consumer policy; binary=ddab8ec720ee759507ec2475937033fac51bfb6f42fba2a7373f82833f227cbf; clock=cpu-interleaved; sets=1; reverse=0; all_steps=0; cpu=MPFR-shared-Horner",
+        "resident": false
+      },
+      "sample": {
+        "cpu_wall": 0.869129083,
+        "gpu_wall": 11.2246375
+      },
+      "recommendation": "cpu",
+      "source": "benchmarks/results/section9_p15_grid_448_3901_250_100_share60_host.csv",
+      "source_sha256": "90c334605ae168ff112aa21a7089f39f690b700ea76b894aa3e230f55028a401",
+      "load_before": [
+        9.810546875,
+        10.10986328125,
+        11.01611328125
+      ],
+      "load_after": [
+        11.669921875,
+        10.4853515625,
+        11.095703125
+      ]
+    },
+    {
+      "key": {
+        "operation": "polynomial_recurrence/shared_sources",
+        "bits": 448,
+        "count": 3901,
+        "m": 250,
+        "n": 100,
+        "k": 60,
+        "cpu_workers": 18,
+        "fused": false,
+        "profile": "Apple M5 Max / LimbForge 1.2.0 shared-source candidate / Release / measured busy host; not idle-consumer policy; binary=ddab8ec720ee759507ec2475937033fac51bfb6f42fba2a7373f82833f227cbf; clock=cpu-interleaved; sets=1; reverse=0; all_steps=0; cpu=MPFR-shared-Horner",
+        "resident": false
+      },
+      "sample": {
+        "cpu_wall": 0.869129083,
+        "gpu_wall": 0.183895792
+      },
+      "recommendation": "gpu",
+      "source": "benchmarks/results/section9_p15_grid_448_3901_250_100_share60_host.csv",
+      "source_sha256": "90c334605ae168ff112aa21a7089f39f690b700ea76b894aa3e230f55028a401",
+      "load_before": [
+        9.810546875,
+        10.10986328125,
+        11.01611328125
+      ],
+      "load_after": [
+        11.669921875,
+        10.4853515625,
+        11.095703125
+      ]
+    },
+    {
+      "key": {
+        "operation": "polynomial_recurrence/per_lane",
+        "bits": 448,
+        "count": 3901,
+        "m": 250,
+        "n": 100,
+        "k": 60,
+        "cpu_workers": 18,
+        "fused": false,
+        "profile": "Apple M5 Max / LimbForge 1.2.0 shared-source candidate / Release / measured busy host; not idle-consumer policy; binary=ddab8ec720ee759507ec2475937033fac51bfb6f42fba2a7373f82833f227cbf; clock=cpu-interleaved; sets=1; reverse=0; all_steps=0; cpu=MPFR-shared-Horner",
+        "resident": true
+      },
+      "sample": {
+        "cpu_wall": 0.58674175,
+        "gpu_wall": 11.363195417
+      },
+      "recommendation": "cpu",
+      "source": "benchmarks/results/section9_p15_grid_448_3901_250_100_share60_resident.csv",
+      "source_sha256": "7acf0188e5be89b30b5058cc846f674fee06a1de8d0bf41cb84a6385d85adf63",
+      "load_before": [
+        11.669921875,
+        10.4853515625,
+        11.095703125
+      ],
+      "load_after": [
+        11.15673828125,
+        10.7763671875,
+        11.18212890625
+      ]
+    },
+    {
+      "key": {
+        "operation": "polynomial_recurrence/shared_sources",
+        "bits": 448,
+        "count": 3901,
+        "m": 250,
+        "n": 100,
+        "k": 60,
+        "cpu_workers": 18,
+        "fused": false,
+        "profile": "Apple M5 Max / LimbForge 1.2.0 shared-source candidate / Release / measured busy host; not idle-consumer policy; binary=ddab8ec720ee759507ec2475937033fac51bfb6f42fba2a7373f82833f227cbf; clock=cpu-interleaved; sets=1; reverse=0; all_steps=0; cpu=MPFR-shared-Horner",
+        "resident": true
+      },
+      "sample": {
+        "cpu_wall": 0.58674175,
+        "gpu_wall": 0.184127167
+      },
+      "recommendation": "gpu",
+      "source": "benchmarks/results/section9_p15_grid_448_3901_250_100_share60_resident.csv",
+      "source_sha256": "7acf0188e5be89b30b5058cc846f674fee06a1de8d0bf41cb84a6385d85adf63",
+      "load_before": [
+        11.669921875,
+        10.4853515625,
+        11.095703125
+      ],
+      "load_after": [
+        11.15673828125,
+        10.7763671875,
+        11.18212890625
+      ]
+    }
+  ]
+}

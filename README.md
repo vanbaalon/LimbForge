@@ -15,8 +15,8 @@ steps of 32. Real arithmetic uses round-to-nearest, ties-to-even.
 **Author: Nikolay Gromov.**
 
 > **Versioned API 1.x:** the compatibility baseline is **1.0.0**; the current release is
-> **1.2.0**, adding algebra prewarm, reusable intermediates and explicit numerical contract names.
-> Production consumers can pin `v1.2.0` and rebuild with matching headers/archive;
+> **1.3.0**, adding reusable polynomial-source tables and an explicit shared-source recurrence option.
+> Production consumers can pin `v1.3.0` and rebuild with matching headers/archive;
 > see [versioning and compatibility](docs/versioning.md).
 > CPU and physical GPU validation use independent MPFR operations, with device validation
 > currently covering an Apple M5 Max. See the [numerical contract](docs/numerics.md).

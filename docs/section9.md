@@ -87,8 +87,7 @@ specified in [Numerics](numerics.md#batched-products-and-polynomial-source-recur
 
 The additive `PolynomialEvaluation::shared_sources` overload evaluates each shared group's
 sources once. `polynomial_sources` also exposes p/q buffers for other device consumers.
-These are experimental candidates in this worktree; acceptance and performance results
-are tracked in [the experiment record](../benchmarks/experiments/section9_shared_sources.md).
+Both are available since 1.3.0; validation and measured performance are recorded in [the experiment record](../benchmarks/experiments/section9_shared_sources.md).
 Existing calls retain per-lane evaluation.
 
 This variant covers the rank-one base trajectory. The existing `Engine::vector_recurrence`

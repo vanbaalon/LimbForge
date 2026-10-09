@@ -1,0 +1,165 @@
+{
+  "recorded_utc": "2026-10-09T03:41:00.995331+00:00",
+  "version": "1.3.0",
+  "base": "02bca53",
+  "scope": "Final separate PolynomialPrewarm request: invalid-width checks, concurrent use, lifetime, linked source fixtures and package. Numerical implementation unchanged from retained all-width/full suites.",
+  "results": [
+    {
+      "log": "section9_p15_separate_api_1_3_smoke_reference.txt",
+      "command": [
+        "./build/test_limbforge_section9"
+      ],
+      "exit": 0
+    },
+    {
+      "log": "section9_p15_separate_api_1_3_prewarm_reference.txt",
+      "command": [
+        "./build/test_limbforge_algebra_prewarm"
+      ],
+      "exit": 0
+    },
+    {
+      "log": "section9_p15_separate_api_1_3_352_reference.txt",
+      "command": [
+        "./build/section9_sources_limbforge",
+        "--bits",
+        "352",
+        "--lanes",
+        "1041",
+        "--steps",
+        "160",
+        "--terms",
+        "60",
+        "--share",
+        "16",
+        "--fused",
+        "--check-only"
+      ],
+      "exit": 0
+    },
+    {
+      "log": "section9_p15_separate_api_1_3_1024_reference.txt",
+      "command": [
+        "./build/section9_sources_limbforge",
+        "--bits",
+        "1024",
+        "--lanes",
+        "17",
+        "--steps",
+        "7",
+        "--terms",
+        "17",
+        "--share",
+        "7",
+        "--resident",
+        "--per-group",
+        "--fused",
+        "--check-only"
+      ],
+      "exit": 0
+    },
+    {
+      "log": "section9_p15_separate_api_1_3_empty_reference.txt",
+      "command": [
+        "./build/section9_sources_limbforge",
+        "--bits",
+        "64",
+        "--lanes",
+        "5",
+        "--steps",
+        "0",
+        "--terms",
+        "0",
+        "--share",
+        "7",
+        "--check-only"
+      ],
+      "exit": 0
+    },
+    {
+      "log": "section9_p15_separate_api_1_3_smoke_validation.txt",
+      "command": [
+        "./build/test_limbforge_section9"
+      ],
+      "exit": 0
+    },
+    {
+      "log": "section9_p15_separate_api_1_3_prewarm_validation.txt",
+      "command": [
+        "./build/test_limbforge_algebra_prewarm"
+      ],
+      "exit": 0
+    },
+    {
+      "log": "section9_p15_separate_api_1_3_352_validation.txt",
+      "command": [
+        "./build/section9_sources_limbforge",
+        "--bits",
+        "352",
+        "--lanes",
+        "1041",
+        "--steps",
+        "160",
+        "--terms",
+        "60",
+        "--share",
+        "16",
+        "--fused",
+        "--check-only"
+      ],
+      "exit": 0
+    },
+    {
+      "log": "section9_p15_separate_api_1_3_1024_validation.txt",
+      "command": [
+        "./build/section9_sources_limbforge",
+        "--bits",
+        "1024",
+        "--lanes",
+        "17",
+        "--steps",
+        "7",
+        "--terms",
+        "17",
+        "--share",
+        "7",
+        "--resident",
+        "--per-group",
+        "--fused",
+        "--check-only"
+      ],
+      "exit": 0
+    },
+    {
+      "log": "section9_p15_separate_api_1_3_empty_validation.txt",
+      "command": [
+        "./build/section9_sources_limbforge",
+        "--bits",
+        "64",
+        "--lanes",
+        "5",
+        "--steps",
+        "0",
+        "--terms",
+        "0",
+        "--share",
+        "7",
+        "--check-only"
+      ],
+      "exit": 0
+    },
+    {
+      "log": "section9_p15_separate_api_1_3_package.txt",
+      "exit": 0
+    }
+  ],
+  "sha256": {
+    "include/limbforge/version.hpp": "1bf942e0b6045af181bc1304ace628035c09861112e293f1f542a1042a1a1a07",
+    "include/limbforge/batched_linalg.hpp": "f80ef93bfe7e9e9387b0419a06ee1f3a4af24c0b6ca0183fe377164c51b70bad",
+    "src/batched_linalg.mm": "478994d7e1b16037bcf749ff0282da6eeae6f3af514617f074b3d8b48eaa3ee7",
+    "src/batched_linalg.metal": "71b8e269d0db50a76b20d2a8df65e3d3efcc587c9812ac598ebd0a19620f5507",
+    "tests/test_algebra_prewarm.cpp": "ae60d5f0a5d3ad35b479ac38cfd5fbbbf90065683b3490c12da9012531c7c1f8",
+    "build/liblimbforge.a": "41f3854438935aaf6eca10a575e26628990544e79e29de53cbcd1658430ab9d4",
+    "build/section9_sources_limbforge": "c7359618970b866348ed5b5277c89059a6fbe0390e3b6b17753f324ffb6bf624"
+  }
+}

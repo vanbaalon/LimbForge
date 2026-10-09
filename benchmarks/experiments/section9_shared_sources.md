@@ -1,12 +1,12 @@
 # Section 9 P1.5: shared polynomial-source experiments
 
-Base: `e91a215` / 1.1.0, branch `round-section9-shared-sources`.
-No production acceptance, default change or speed claim.
+Delivered as an explicit option in 1.3.0, based on current main/1.2.0.
+Existing calls retain per-lane evaluation. The diagnostic history below began on
+`e91a215` / 1.1.0; retained failures are rejected implementations, not the released path.
 
-A proposed additive `polynomial_sources` API writes p/q per step, shared group and
-component, for reuse by arbitrary consumers. The current adapter handles incomplete sharing groups directly. This avoids duplicate Horner work and preserves
-Horner/multiply/recurrence order. Production polynomial behavior remains the old inline
-path while these experiments are gated.
+The additive `polynomial_sources` API writes p/q per step, shared group and
+component, for reuse by arbitrary consumers. The shared recurrence handles incomplete sharing groups directly. This avoids duplicate Horner work and preserves
+Horner/multiply/recurrence order. Existing polynomial calls retain the old inline path.
 
 Rejected/context-sensitive variants are retained as patches and raw logs:
 
@@ -93,8 +93,8 @@ already shares Horner sources; it is not a deliberately redundant baseline. Host
 averages are 8.7–11.9, so CPU ratios are busy-host library observations and not accepted
 idle-host consumer speedups. Raw samples/ranges and hashes are retained in
 `section9_p15_352_1041_100_24_share16_*` and `...measurements_metadata.json`.
-Additional widths, larger term/step counts and sharing factors are being measured;
-no global backend/default selection follows from one fixture.
+The additional width/shape sweep below is complete; no global backend/default selection
+follows from these measurements.
 
 `section9_sources_limbforge` compares the legacy per-lane path with the explicit shared
 candidate. Its CPU baseline also evaluates each group's sources only once, then applies
@@ -127,11 +127,80 @@ from default builds and CTest. Run shape/contract checks before recording measur
 ```
 
 Measure 352/384/448-bit point/column workloads with terms 24/60/100, steps 100/160/250,
-and sharing factors 1/16/60, including sharing tails. Start at practical shapes before
-attempting the largest workload. Repeated interleaved host/resident runs, load metadata
-and solver-size fixture checks remain pending. Keep source tables reusable by other
-consumers; the recurrence helper remains rank-one, while Engine provides the other modes.
+and sharing factors 1/16/60, including sharing tails. These shapes were measured in repeated interleaved host/resident runs with recorded
+load and independent output checks. Consumer convergence and idle-host timing remain
+pending. Source tables are reusable by other consumers; the recurrence helper remains
+rank-one, while Engine provides the other modes.
 
 
 The initial staged source build had an address-space mismatch on a copied coefficient;
 the compile-error log is retained and the device-load expression is corrected.
+
+## Completed width/shape measurements and release checks
+
+Three checked repetitions per mode on the M5 Max, composed arithmetic. Wall medians
+include all source generation and recurrence steps. Shapes list lanes/steps/terms/sharing;
+1041 and 3901 include an incomplete sharing group. Scratch is logical decimal MB.
+
+| Bits | Shape | Shared GPU host / resident (ms) | Old GPU / shared GPU | Scratch (MB) |
+|---|---|---:|---:|---:|
+| 352 | 65/100/24/1 | 31.676 / 31.511 | 28.2–28.5x | 11.655 |
+| 352 | 1041/160/60/16 | 70.617 / 68.412 | 42.1–43.4x | 19.040 |
+| 352 | 3901/250/100/60 | 144.739 / 145.853 | 53.6–55.1x | 30.005 |
+| 384 | 65/100/24/1 | 33.321 / 33.723 | 31.4–31.7x | 12.488 |
+| 384 | 1041/160/60/16 | 73.703 / 76.135 | 44.6–47.9x | 20.400 |
+| 384 | 3901/250/100/60 | 156.653 / 153.537 | 58.5–58.8x | 32.148 |
+| 448 | 65/100/24/1 | 40.309 / 39.792 | 31.3–31.8x | 14.153 |
+| 448 | 1041/160/60/16 | 87.329 / 87.444 | 46.4–46.5x | 23.120 |
+| 448 | 3901/250/100/60 | 183.896 / 184.127 | 61.0–61.7x | 36.435 |
+
+The composed grid improves GPU wall time by 28.2–61.7x. A separate fused, resident,
+verified-warm-call sweep at 1041/160/60/16 gives shared medians 71.854, 72.732 and
+83.131 ms at 352/384/448 bits, respectively, with 61.3–63.0x lower wall time than the
+old GPU path. The source pass also parallelizes steps/components when sharing is one,
+so the gain does not come only from avoiding repeated lane work.
+
+The optimized CPU already evaluates Horner once per group. On the composed grid,
+CPU/shared-GPU ratios range from 0.78 to 4.73; CPU wins some 65-lane cases. Host loads
+are roughly 8–12. These ratios are provisional busy-host observations, not an idle
+CPU comparison or solver speed claim. Prefer the explicit shared option for the measured
+large repeated-source workloads; measure small workloads before choosing GPU over CPU.
+Raw samples, ranges, commands, load and measured binary identities are in
+`section9_p15_grid_*` and `section9_p15_fused_*`. Measurements used the 1.2.0-linked
+numerical candidate; the 1.3.0 rebuild has a distinct archive/binary identity and the
+same gated numerical implementation.
+
+The final release adds separate `PolynomialPrewarm` requests and
+`prewarm_polynomial[_async]` methods, preserving the production `BatchedPrewarm` layout
+and unambiguous existing `prewarm({})` calls. The final separate-request normal/validation
+checks, synchronous rejection, concurrent encoding, future lifetime, linked fixtures
+and version/package results are in `section9_p15_separate_api_1_3_*`. Earlier
+`section9_p15_final1_3_*` logs describe a superseded request-layout prototype; their
+hashes are preserved and they do not establish the final prewarm interface. The full
+31-width numerical and 26+19 suite gates remain applicable: shaders and source/recurrence
+encoder bodies have not changed.
+
+## Offline break-even records (P2.3 partial)
+
+`benchmarks/export_section9_break_even.py` exports only verified source-recurrence
+comparisons. The retained `section9_p15_break_even_all_contracts.hpp/.json` contain
+50 measured keys, including host/resident, composed/fused and clock-mode identities.
+Profiles retain the measured binary hash, machine/build, CPU workers, coefficient-set
+count, direction, output mode and load metadata; CSV hashes are retained. A 5% margin
+leaves near ties unknown. The generated C++ factory builds a `BreakEvenTable` without
+installing a policy or changing a runtime default.
+
+Reproduce into a fresh prefix (the exporter refuses to overwrite evidence):
+
+```sh
+python3 benchmarks/export_section9_break_even.py \
+  --metadata benchmarks/results/section9_p15_352_1041_measurements_metadata.json \
+  --metadata benchmarks/results/section9_p15_grid_metadata.json \
+  --metadata benchmarks/results/section9_p15_fused_metadata.json \
+  --profile 'Apple M5 Max / LimbForge 1.2.0 shared-source candidate / Release / measured busy host; not idle-consumer policy' \
+  --out /tmp/limbforge-source-calibration
+```
+
+These records are an explicit historical profile, not idle-consumer policy. Other
+operations, devices/builds and idle-host profiles still require their own measurements;
+P2.3 as a whole remains open.

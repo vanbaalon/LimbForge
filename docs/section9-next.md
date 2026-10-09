@@ -149,17 +149,15 @@ a row in `docs/optimizations.md`, rejected attempts kept under `benchmarks/exper
 - **Decision rule:** if the sequential form is slower and less accurate, recommend `normal_equations_exact` in usage guidance. Preserve the meaning and defaults of `normal_equations`; it remains useful for chaining within a batch, where its outputs are final immediately.
 
 **P1.5: `polynomial_recurrence` sources.**
-- **Candidate recurrence correctness:** local branch `round-section9-shared-sources`
-  (`7019a3c`; rebase on current main before acceptance) adds an independent `polynomial_sources` API
-  and explicit shared-source recurrence selection. Rounded Horner states, then a
-  dot pass before each update, preserve the original order and partial groups.
-  The expanded recurrence sweeps pass all 31 widths normally and under shader
-  validation, including 17-term Horner and sharing factors 1/2/3/7. The earlier
-  vector adapter fails its final API check and remains rejected. The final standalone
-  source API recheck passes at all 31 widths in both modes; 26/26 normal and 19/19
-  shader-validation suites pass, as do three final benchmark-linked fixtures.
-  Speed acceptance is pending.
-  Existing production calls retain per-lane evaluation. These candidates are not released.
+- **Delivered in 1.3.0:** independent `polynomial_sources` API, explicit shared-source
+  recurrence and separate polynomial prewarm requests. All 31 recurrence/source widths
+  pass normally and under shader validation, with 26/26 normal and 19/19 GPU-validation
+  suites passing. Final API/cache/lifetime, linked fixtures and package checks pass.
+  Correctness-checked 352/384/448-bit composed/fused measurements at sharing 1/16/60
+  show 22–63x lower wall time than the old GPU path. CPU ratios are provisional on the
+  busy host; consumer convergence/idle timing remain P3 work. Existing production calls
+  retain per-lane evaluation; rejected adapters and measurements are preserved in
+  [the experiment record](../benchmarks/experiments/section9_shared_sources.md).
 - **Problem:** every lane re-evaluates 8 Horner polynomials of degree ≈ Nc per step, and lanes sharing a weight group repeat identical work. Horner dominates, at roughly 60× the arithmetic of the recurrence update itself.
 - **Option to measure:** a device source pass that writes p and q per (step, weight group, component) into batch scratch. That scratch is small, e.g. 160 × 65 × 8 complex, and is not the host table the consumer wants to avoid. Follow it with the existing `vector_recurrence`, which also brings the matrix, affine and tangent modes.
 - **Contract:** keep the documented Horner and recurrence order, so results stay identical. Preserve incomplete weight-sharing groups: `polynomial_recurrence` permits sharing tails, which an adapter to `vector_recurrence` must handle explicitly.
@@ -192,7 +190,11 @@ queries and release follow the existing Linalg ownership semantics.
 
 **P2.2: Exact-contract damping trials.** A batched variant reproducing `Linalg::cholesky` bit for bit per trial, so Newton histories stay identical to the current exact GPU path.
 
-**P2.3: Break-even table.** `BreakEvenTable` has two smoke entries, both CPU wins at tiny shapes. Record measured entries at QSC shapes (host-array and resident) for each new operation.
+**P2.3: Break-even table.** Partial: the source-recurrence exporter and 50 verified
+profile-specific keys cover host/resident, composed/fused and measured clock modes.
+Profiles retain device/build/binary identities and load; they do not install a default
+or establish idle-consumer policy. See `section9_shared_sources.md`. Record measured
+entries at QSC shapes for the remaining operations and idle-host profiles.
 
 ### P3: end-to-end (consumer)
 

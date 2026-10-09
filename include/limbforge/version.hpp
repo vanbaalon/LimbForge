@@ -1,7 +1,7 @@
 #pragma once
 // Canonical release version. CMake reads these three definitions; keep them literal integers.
 #define LIMBFORGE_VERSION_MAJOR 1
-#define LIMBFORGE_VERSION_MINOR 2
+#define LIMBFORGE_VERSION_MINOR 3
 #define LIMBFORGE_VERSION_PATCH 0
 #define LIMBFORGE_API_VERSION LIMBFORGE_VERSION_MAJOR
 #define LIMBFORGE_DETAIL_STRINGIFY_IMPL(x) #x

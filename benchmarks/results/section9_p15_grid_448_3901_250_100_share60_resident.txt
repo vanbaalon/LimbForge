@@ -1,0 +1,7 @@
+Device: Apple M5 Max; optimized shared-source MPFR CPU; 18 workers requested; active source/lane workers 18/18; every GPU sample checked
+sample=0 order=0 path=0 cpu=0.58674174999999995 wall=11.363195417 device=11.356734749977477
+sample=0 order=1 path=1 cpu=0.58674174999999995 wall=0.18412716700000001 device=0.17102299997350201
+sample=1 order=0 path=1 cpu=0.82348920800000003 wall=0.18205658299999999 device=0.17984175001038238
+sample=1 order=1 path=0 cpu=0.82348920800000003 wall=11.366404958 device=11.358132249966729
+sample=2 order=0 path=0 cpu=0.514838083 wall=10.777961917000001 device=10.761877041659318
+sample=2 order=1 path=1 cpu=0.514838083 wall=0.18566949999999999 device=0.17172712500905618

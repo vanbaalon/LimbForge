@@ -1,0 +1,9 @@
+2026-10-08 23:40:26.529 test_limbforge_section9[26746:235055058] Metal GPU Validation Enabled
+352 bits: complex GEMM tile tails/broadcast/strides, triple product, negative power moments
+352 bits: resident normal equations, three damping trials, solves, async wait, exact fallback repair
+352 bits: real 4x4 GEMM odd batch/broadcast and empty dots
+224 bits: runtime bridge and inline MPC staging
+352 bits: on-device Horner recurrence, reverse/all_steps, sharing tails, composed/fused
+704 bits: on-device Horner recurrence, reverse/all_steps, sharing tails, composed/fused
+Batched workspace reuse, detachment, ownership and exact repair passed
+Section 9 light smoke passed (not a full audit).

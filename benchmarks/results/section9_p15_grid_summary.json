@@ -1,0 +1,182 @@
+[
+  {
+    "bits": 352,
+    "share": 1,
+    "resident": 0,
+    "per_lane_ms": 894.778084,
+    "shared_ms": 31.675625,
+    "cpu_ms": 27.943584,
+    "gpu_ratio": 28.248158765612363,
+    "scratch_bytes": 11655280
+  },
+  {
+    "bits": 352,
+    "share": 1,
+    "resident": 1,
+    "per_lane_ms": 897.4880840000001,
+    "shared_ms": 31.510666,
+    "cpu_ms": 44.526834,
+    "gpu_ratio": 28.482041096814648,
+    "scratch_bytes": 11655280
+  },
+  {
+    "bits": 352,
+    "share": 16,
+    "resident": 0,
+    "per_lane_ms": 2970.0823330000003,
+    "shared_ms": 70.61658299999999,
+    "cpu_ms": 146.65579200000002,
+    "gpu_ratio": 42.05927569449233,
+    "scratch_bytes": 19040112
+  },
+  {
+    "bits": 352,
+    "share": 16,
+    "resident": 1,
+    "per_lane_ms": 2969.232958,
+    "shared_ms": 68.411708,
+    "cpu_ms": 137.29683300000002,
+    "gpu_ratio": 43.40240939460246,
+    "scratch_bytes": 19040112
+  },
+  {
+    "bits": 352,
+    "share": 60,
+    "resident": 0,
+    "per_lane_ms": 7973.911625000001,
+    "shared_ms": 144.73945799999998,
+    "cpu_ms": 498.37312499999996,
+    "gpu_ratio": 55.09148462473862,
+    "scratch_bytes": 30004912
+  },
+  {
+    "bits": 352,
+    "share": 60,
+    "resident": 1,
+    "per_lane_ms": 7819.055208,
+    "shared_ms": 145.85287499999998,
+    "cpu_ms": 416.9685,
+    "gpu_ratio": 53.6091949370213,
+    "scratch_bytes": 30004912
+  },
+  {
+    "bits": 384,
+    "share": 1,
+    "resident": 0,
+    "per_lane_ms": 1054.622375,
+    "shared_ms": 33.320792000000004,
+    "cpu_ms": 29.622333,
+    "gpu_ratio": 31.650579464017536,
+    "scratch_bytes": 12487800
+  },
+  {
+    "bits": 384,
+    "share": 1,
+    "resident": 1,
+    "per_lane_ms": 1059.7337909999999,
+    "shared_ms": 33.722958,
+    "cpu_ms": 26.424833,
+    "gpu_ratio": 31.424698598503728,
+    "scratch_bytes": 12487800
+  },
+  {
+    "bits": 384,
+    "share": 16,
+    "resident": 0,
+    "per_lane_ms": 3531.391584,
+    "shared_ms": 73.703458,
+    "cpu_ms": 177.742875,
+    "gpu_ratio": 47.91351287750977,
+    "scratch_bytes": 20400120
+  },
+  {
+    "bits": 384,
+    "share": 16,
+    "resident": 1,
+    "per_lane_ms": 3398.8208329999998,
+    "shared_ms": 76.134584,
+    "cpu_ms": 215.73041600000002,
+    "gpu_ratio": 44.64227233447548,
+    "scratch_bytes": 20400120
+  },
+  {
+    "bits": 384,
+    "share": 60,
+    "resident": 0,
+    "per_lane_ms": 9161.271542,
+    "shared_ms": 156.652875,
+    "cpu_ms": 641.893792,
+    "gpu_ratio": 58.481349557101964,
+    "scratch_bytes": 32148120
+  },
+  {
+    "bits": 384,
+    "share": 60,
+    "resident": 1,
+    "per_lane_ms": 9022.265583999999,
+    "shared_ms": 153.537167,
+    "cpu_ms": 392.852584,
+    "gpu_ratio": 58.76274624762355,
+    "scratch_bytes": 32148120
+  },
+  {
+    "bits": 448,
+    "share": 1,
+    "resident": 0,
+    "per_lane_ms": 1262.868958,
+    "shared_ms": 40.309416,
+    "cpu_ms": 32.070167,
+    "gpu_ratio": 31.329378674203568,
+    "scratch_bytes": 14152840
+  },
+  {
+    "bits": 448,
+    "share": 1,
+    "resident": 1,
+    "per_lane_ms": 1266.8860829999999,
+    "shared_ms": 39.791582999999996,
+    "cpu_ms": 37.423666000000004,
+    "gpu_ratio": 31.83804180396643,
+    "scratch_bytes": 14152840
+  },
+  {
+    "bits": 448,
+    "share": 16,
+    "resident": 0,
+    "per_lane_ms": 4056.803833,
+    "shared_ms": 87.32925,
+    "cpu_ms": 159.33766699999998,
+    "gpu_ratio": 46.454124282528475,
+    "scratch_bytes": 23120136
+  },
+  {
+    "bits": 448,
+    "share": 16,
+    "resident": 1,
+    "per_lane_ms": 4055.3676660000006,
+    "shared_ms": 87.44449999999999,
+    "cpu_ms": 157.29570800000002,
+    "gpu_ratio": 46.37647497555593,
+    "scratch_bytes": 23120136
+  },
+  {
+    "bits": 448,
+    "share": 60,
+    "resident": 0,
+    "per_lane_ms": 11224.6375,
+    "shared_ms": 183.895792,
+    "cpu_ms": 869.129083,
+    "gpu_ratio": 61.038033431455574,
+    "scratch_bytes": 36434536
+  },
+  {
+    "bits": 448,
+    "share": 60,
+    "resident": 1,
+    "per_lane_ms": 11363.195417,
+    "shared_ms": 184.12716700000001,
+    "cpu_ms": 586.7417499999999,
+    "gpu_ratio": 61.713844850499434,
+    "scratch_bytes": 36434536
+  }
+]

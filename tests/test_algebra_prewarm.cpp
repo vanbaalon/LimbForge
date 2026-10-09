@@ -11,10 +11,12 @@ template<int B> void focus(){
     request.cholesky_trials=true;request.cholesky_solve=true;request.exact_normal=true;
     auto compact=request;compact.power_storage=PowerStorage::compact;
     auto first=batch.prewarm_async(request),second=batch.prewarm_async(compact);
+    auto sources=batch.prewarm_polynomial_async({{B},{false,true},{false,true}});
     auto dense=exact.prewarm_async({{B},{0,9,32,1100},true});
     // Owner-thread work overlaps background cache preparation. Same keys must be safe.
-    products<B>(e,batch);normal<B>(e,batch);polynomial<B>(e,batch);first.get();second.get();dense.get();
+    products<B>(e,batch);normal<B>(e,batch);polynomial<B>(e,batch);first.get();second.get();sources.get();dense.get();
     batch.prewarm(request);batch.prewarm(compact);exact.prewarm({{B},{9},true});
+    batch.prewarm_polynomial({{B},{false,true},{false,true}});
     auto one=from_decimal<B>("1"),two=from_decimal<B>("2");std::vector<F<B>> E(8,one),Y(8,two),W(32,one),powers(160),expected_powers(160);
     auto value=from_decimal<B>("4");for(int n=0;n<20;++n){for(int trial=0;trial<2;++trial)for(int j=0;j<4;++j)expected_powers[(trial*20+n)*4+j]=value;value=rm<B>(value,two);}
     batch.power_moments(B,false,request.real_power[0],E.data(),Y.data(),W.data(),powers.data(),PowerStorage::compact);check<B>(powers,expected_powers,"prewarmed compact real 4-row tail");
@@ -38,10 +40,13 @@ int main(){try{
         bad.power_storage=PowerStorage::full_table;bad.real_gemm={{2,1,1,1,1,1,0}};reject([&]{b.prewarm_async(bad);});
         bad.real_gemm={{1,std::numeric_limits<std::size_t>::max(),2,1,0,0,0}};reject([&]{b.prewarm(bad);});
         reject([&]{l.prewarm_async({{65},{},false});});reject([&]{l.prewarm({{64},{65473},true});});
+        reject([&]{b.prewarm_polynomial({{65},{true},{}});});
+        reject([&]{b.prewarm_polynomial_async({{1056},{},{true}});});
+        b.prewarm_polynomial({});b.prewarm_polynomial_async({}).get();
         b.prewarm({});l.prewarm_async({}).get();}
     focus<64>();focus<352>();
-    std::future<void> a,b;
-    {Engine e;BatchedLinalg batched(e);Linalg exact(e);BatchedPrewarm r;r.bits={224};r.complex_power={{1,3,3,2,0}};a=batched.prewarm_async(r);b=exact.prewarm_async({{224},{9},true});}
-    a.get();b.get(); // caches/device outlive their unit and Engine, without host scratch.
+    std::future<void> a,b,c;
+    {Engine e;BatchedLinalg batched(e);Linalg exact(e);BatchedPrewarm r;r.bits={224};r.complex_power={{1,3,3,2,0}};a=batched.prewarm_async(r);b=exact.prewarm_async({{224},{9},true});c=batched.prewarm_polynomial_async({{224},{true},{true}});}
+    a.get();b.get();c.get(); // caches/device outlive their unit and Engine, without host scratch.
     std::cout<<"Algebra prewarm focused references, lifetime and validation passed\n";return 0;
 }catch(const std::exception& e){std::cerr<<"algebra prewarm: "<<e.what()<<'\n';return 1;}}

@@ -2,13 +2,24 @@
 
 ## Unreleased
 
-- Candidate additive `polynomial_sources` API and explicit
-  `PolynomialEvaluation::shared_sources` recurrence overload. Rounded device Horner
-  states and two recurrence passes per step reuse sources across shared lanes while
-  preserving the documented order, tails, statuses and ownership. Existing calls keep
-  per-lane evaluation. Full correctness gates and 1.2.0-linked focused checks pass;
-  benchmark sweep acceptance and a compatible minor release remain pending;
-  this worktree is not a production release.
+No unreleased changes.
+
+## 1.3.0 — 2026-10-08
+
+- Added `polynomial_sources` for reusable device p/q tables and explicit
+  `PolynomialEvaluation::shared_sources` recurrence overloads. Staged rounded Horner
+  states and dot/update passes preserve order, tails, statuses and ownership. Existing
+  calls retain per-lane evaluation.
+- Added separate `PolynomialPrewarm` requests and synchronous/asynchronous preparation
+  methods; the existing `BatchedPrewarm` layout and calls stay compatible.
+- All 31 source/recurrence widths pass normally and under shader validation, with
+  26/26 normal and 19/19 GPU-validation suites passing. Final API, concurrency, lifetime,
+  linked fixtures and version/package checks pass in their focused scopes.
+- Correctness-checked 352/384/448-bit measurements show 22–63x lower wall time than
+  the old GPU recurrence on the recorded shapes. CPU ratios remain provisional under
+  busy-host load; no solver or universal CPU speedup is claimed. Added an offline
+  exporter and 50 profile-specific break-even keys; other-operation calibration remains
+  pending. See `benchmarks/experiments/section9_shared_sources.md`.
 
 ## 1.2.0 — 2026-10-08
 

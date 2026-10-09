@@ -1,0 +1,592 @@
+{
+  "source_fixture_gates": "section9_p15_rebase1_2_metadata.json",
+  "benchmark_sha256": "ddab8ec720ee759507ec2475937033fac51bfb6f42fba2a7373f82833f227cbf",
+  "scope": "correctness-checked library measurements under recorded host load; not idle consumer acceptance",
+  "samples": [
+    {
+      "label": "section9_p15_grid_352_65_100_24_share1_host",
+      "exit": 0,
+      "command": [
+        "./build/section9_sources_limbforge",
+        "--bits",
+        "352",
+        "--lanes",
+        "65",
+        "--steps",
+        "100",
+        "--terms",
+        "24",
+        "--share",
+        "1",
+        "--workers",
+        "18",
+        "--repeats",
+        "3"
+      ],
+      "load_before": [
+        8.2197265625,
+        9.75830078125,
+        11.25927734375
+      ],
+      "load_after": [
+        8.76220703125,
+        9.84521484375,
+        11.28076171875
+      ],
+      "recorded_utc": "2026-10-09T03:13:30.532203+00:00"
+    },
+    {
+      "label": "section9_p15_grid_352_65_100_24_share1_resident",
+      "exit": 0,
+      "command": [
+        "./build/section9_sources_limbforge",
+        "--bits",
+        "352",
+        "--lanes",
+        "65",
+        "--steps",
+        "100",
+        "--terms",
+        "24",
+        "--share",
+        "1",
+        "--workers",
+        "18",
+        "--repeats",
+        "3",
+        "--resident"
+      ],
+      "load_before": [
+        8.76220703125,
+        9.84521484375,
+        11.28076171875
+      ],
+      "load_after": [
+        9.34130859375,
+        9.947265625,
+        11.30810546875
+      ],
+      "recorded_utc": "2026-10-09T03:13:34.483843+00:00"
+    },
+    {
+      "label": "section9_p15_grid_352_1041_160_60_share16_host",
+      "exit": 0,
+      "command": [
+        "./build/section9_sources_limbforge",
+        "--bits",
+        "352",
+        "--lanes",
+        "1041",
+        "--steps",
+        "160",
+        "--terms",
+        "60",
+        "--share",
+        "16",
+        "--workers",
+        "18",
+        "--repeats",
+        "3"
+      ],
+      "load_before": [
+        9.34130859375,
+        9.947265625,
+        11.30810546875
+      ],
+      "load_after": [
+        9.14111328125,
+        9.8828125,
+        11.26904296875
+      ],
+      "recorded_utc": "2026-10-09T03:13:47.486324+00:00"
+    },
+    {
+      "label": "section9_p15_grid_352_1041_160_60_share16_resident",
+      "exit": 0,
+      "command": [
+        "./build/section9_sources_limbforge",
+        "--bits",
+        "352",
+        "--lanes",
+        "1041",
+        "--steps",
+        "160",
+        "--terms",
+        "60",
+        "--share",
+        "16",
+        "--workers",
+        "18",
+        "--repeats",
+        "3",
+        "--resident"
+      ],
+      "load_before": [
+        9.14111328125,
+        9.8828125,
+        11.26904296875
+      ],
+      "load_after": [
+        10.6826171875,
+        10.1953125,
+        11.3564453125
+      ],
+      "recorded_utc": "2026-10-09T03:14:00.462224+00:00"
+    },
+    {
+      "label": "section9_p15_grid_352_3901_250_100_share60_host",
+      "exit": 0,
+      "command": [
+        "./build/section9_sources_limbforge",
+        "--bits",
+        "352",
+        "--lanes",
+        "3901",
+        "--steps",
+        "250",
+        "--terms",
+        "100",
+        "--share",
+        "60",
+        "--workers",
+        "18",
+        "--repeats",
+        "3"
+      ],
+      "load_before": [
+        10.6826171875,
+        10.1953125,
+        11.3564453125
+      ],
+      "load_after": [
+        7.91162109375,
+        9.56884765625,
+        11.0810546875
+      ],
+      "recorded_utc": "2026-10-09T03:14:35.202422+00:00"
+    },
+    {
+      "label": "section9_p15_grid_352_3901_250_100_share60_resident",
+      "exit": 0,
+      "command": [
+        "./build/section9_sources_limbforge",
+        "--bits",
+        "352",
+        "--lanes",
+        "3901",
+        "--steps",
+        "250",
+        "--terms",
+        "100",
+        "--share",
+        "60",
+        "--workers",
+        "18",
+        "--repeats",
+        "3",
+        "--resident"
+      ],
+      "load_before": [
+        7.91162109375,
+        9.56884765625,
+        11.0810546875
+      ],
+      "load_after": [
+        11.17626953125,
+        10.08349609375,
+        11.2001953125
+      ],
+      "recorded_utc": "2026-10-09T03:15:09.097005+00:00"
+    },
+    {
+      "label": "section9_p15_grid_384_65_100_24_share1_host",
+      "exit": 0,
+      "command": [
+        "./build/section9_sources_limbforge",
+        "--bits",
+        "384",
+        "--lanes",
+        "65",
+        "--steps",
+        "100",
+        "--terms",
+        "24",
+        "--share",
+        "1",
+        "--workers",
+        "18",
+        "--repeats",
+        "3"
+      ],
+      "load_before": [
+        11.17626953125,
+        10.08349609375,
+        11.2001953125
+      ],
+      "load_after": [
+        12.203125,
+        10.314453125,
+        11.27490234375
+      ],
+      "recorded_utc": "2026-10-09T03:15:15.704047+00:00"
+    },
+    {
+      "label": "section9_p15_grid_384_65_100_24_share1_resident",
+      "exit": 0,
+      "command": [
+        "./build/section9_sources_limbforge",
+        "--bits",
+        "384",
+        "--lanes",
+        "65",
+        "--steps",
+        "100",
+        "--terms",
+        "24",
+        "--share",
+        "1",
+        "--workers",
+        "18",
+        "--repeats",
+        "3",
+        "--resident"
+      ],
+      "load_before": [
+        12.203125,
+        10.314453125,
+        11.27490234375
+      ],
+      "load_after": [
+        12.5068359375,
+        10.40869140625,
+        11.30224609375
+      ],
+      "recorded_utc": "2026-10-09T03:15:20.381381+00:00"
+    },
+    {
+      "label": "section9_p15_grid_384_1041_160_60_share16_host",
+      "exit": 0,
+      "command": [
+        "./build/section9_sources_limbforge",
+        "--bits",
+        "384",
+        "--lanes",
+        "1041",
+        "--steps",
+        "160",
+        "--terms",
+        "60",
+        "--share",
+        "16",
+        "--workers",
+        "18",
+        "--repeats",
+        "3"
+      ],
+      "load_before": [
+        12.5068359375,
+        10.40869140625,
+        11.30224609375
+      ],
+      "load_after": [
+        11.34521484375,
+        10.2568359375,
+        11.23193359375
+      ],
+      "recorded_utc": "2026-10-09T03:15:35.361236+00:00"
+    },
+    {
+      "label": "section9_p15_grid_384_1041_160_60_share16_resident",
+      "exit": 0,
+      "command": [
+        "./build/section9_sources_limbforge",
+        "--bits",
+        "384",
+        "--lanes",
+        "1041",
+        "--steps",
+        "160",
+        "--terms",
+        "60",
+        "--share",
+        "16",
+        "--workers",
+        "18",
+        "--repeats",
+        "3",
+        "--resident"
+      ],
+      "load_before": [
+        11.34521484375,
+        10.2568359375,
+        11.23193359375
+      ],
+      "load_after": [
+        10.9091796875,
+        10.224609375,
+        11.20361328125
+      ],
+      "recorded_utc": "2026-10-09T03:15:50.534774+00:00"
+    },
+    {
+      "label": "section9_p15_grid_384_3901_250_100_share60_host",
+      "exit": 0,
+      "command": [
+        "./build/section9_sources_limbforge",
+        "--bits",
+        "384",
+        "--lanes",
+        "3901",
+        "--steps",
+        "250",
+        "--terms",
+        "100",
+        "--share",
+        "60",
+        "--workers",
+        "18",
+        "--repeats",
+        "3"
+      ],
+      "load_before": [
+        10.9091796875,
+        10.224609375,
+        11.20361328125
+      ],
+      "load_after": [
+        9.06689453125,
+        9.78515625,
+        10.9931640625
+      ],
+      "recorded_utc": "2026-10-09T03:16:29.980014+00:00"
+    },
+    {
+      "label": "section9_p15_grid_384_3901_250_100_share60_resident",
+      "exit": 0,
+      "command": [
+        "./build/section9_sources_limbforge",
+        "--bits",
+        "384",
+        "--lanes",
+        "3901",
+        "--steps",
+        "250",
+        "--terms",
+        "100",
+        "--share",
+        "60",
+        "--workers",
+        "18",
+        "--repeats",
+        "3",
+        "--resident"
+      ],
+      "load_before": [
+        9.06689453125,
+        9.78515625,
+        10.9931640625
+      ],
+      "load_after": [
+        12.23046875,
+        10.4521484375,
+        11.177734375
+      ],
+      "recorded_utc": "2026-10-09T03:17:08.619674+00:00"
+    },
+    {
+      "label": "section9_p15_grid_448_65_100_24_share1_host",
+      "exit": 0,
+      "command": [
+        "./build/section9_sources_limbforge",
+        "--bits",
+        "448",
+        "--lanes",
+        "65",
+        "--steps",
+        "100",
+        "--terms",
+        "24",
+        "--share",
+        "1",
+        "--workers",
+        "18",
+        "--repeats",
+        "3"
+      ],
+      "load_before": [
+        12.23046875,
+        10.4521484375,
+        11.177734375
+      ],
+      "load_after": [
+        11.8115234375,
+        10.39453125,
+        11.15283203125
+      ],
+      "recorded_utc": "2026-10-09T03:17:16.660417+00:00"
+    },
+    {
+      "label": "section9_p15_grid_448_65_100_24_share1_resident",
+      "exit": 0,
+      "command": [
+        "./build/section9_sources_limbforge",
+        "--bits",
+        "448",
+        "--lanes",
+        "65",
+        "--steps",
+        "100",
+        "--terms",
+        "24",
+        "--share",
+        "1",
+        "--workers",
+        "18",
+        "--repeats",
+        "3",
+        "--resident"
+      ],
+      "load_before": [
+        11.8115234375,
+        10.39453125,
+        11.15283203125
+      ],
+      "load_after": [
+        11.666015625,
+        10.3876953125,
+        11.14599609375
+      ],
+      "recorded_utc": "2026-10-09T03:17:22.238818+00:00"
+    },
+    {
+      "label": "section9_p15_grid_448_1041_160_60_share16_host",
+      "exit": 0,
+      "command": [
+        "./build/section9_sources_limbforge",
+        "--bits",
+        "448",
+        "--lanes",
+        "1041",
+        "--steps",
+        "160",
+        "--terms",
+        "60",
+        "--share",
+        "16",
+        "--workers",
+        "18",
+        "--repeats",
+        "3"
+      ],
+      "load_before": [
+        11.666015625,
+        10.3876953125,
+        11.14599609375
+      ],
+      "load_after": [
+        10.84130859375,
+        10.306640625,
+        11.10009765625
+      ],
+      "recorded_utc": "2026-10-09T03:17:39.650790+00:00"
+    },
+    {
+      "label": "section9_p15_grid_448_1041_160_60_share16_resident",
+      "exit": 0,
+      "command": [
+        "./build/section9_sources_limbforge",
+        "--bits",
+        "448",
+        "--lanes",
+        "1041",
+        "--steps",
+        "160",
+        "--terms",
+        "60",
+        "--share",
+        "16",
+        "--workers",
+        "18",
+        "--repeats",
+        "3",
+        "--resident"
+      ],
+      "load_before": [
+        10.84130859375,
+        10.306640625,
+        11.10009765625
+      ],
+      "load_after": [
+        9.810546875,
+        10.10986328125,
+        11.01611328125
+      ],
+      "recorded_utc": "2026-10-09T03:17:56.963505+00:00"
+    },
+    {
+      "label": "section9_p15_grid_448_3901_250_100_share60_host",
+      "exit": 0,
+      "command": [
+        "./build/section9_sources_limbforge",
+        "--bits",
+        "448",
+        "--lanes",
+        "3901",
+        "--steps",
+        "250",
+        "--terms",
+        "100",
+        "--share",
+        "60",
+        "--workers",
+        "18",
+        "--repeats",
+        "3"
+      ],
+      "load_before": [
+        9.810546875,
+        10.10986328125,
+        11.01611328125
+      ],
+      "load_after": [
+        11.669921875,
+        10.4853515625,
+        11.095703125
+      ],
+      "recorded_utc": "2026-10-09T03:18:45.856038+00:00"
+    },
+    {
+      "label": "section9_p15_grid_448_3901_250_100_share60_resident",
+      "exit": 0,
+      "command": [
+        "./build/section9_sources_limbforge",
+        "--bits",
+        "448",
+        "--lanes",
+        "3901",
+        "--steps",
+        "250",
+        "--terms",
+        "100",
+        "--share",
+        "60",
+        "--workers",
+        "18",
+        "--repeats",
+        "3",
+        "--resident"
+      ],
+      "load_before": [
+        11.669921875,
+        10.4853515625,
+        11.095703125
+      ],
+      "load_after": [
+        11.15673828125,
+        10.7763671875,
+        11.18212890625
+      ],
+      "recorded_utc": "2026-10-09T03:19:33.748872+00:00"
+    }
+  ]
+}

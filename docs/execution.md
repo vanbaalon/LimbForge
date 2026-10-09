@@ -358,6 +358,12 @@ storage, composed/fused normal or polynomial kernels, damping trials/solve, and 
 augmentation/extraction kernels of exact normals. Real GEMM 4x4 and compact-panel tails
 are distinct specializations and are included when required. `exact_normal` prepares
 only the batched augmentation/extraction; prepare the owning Linalg separately.
+Since 1.3.0, the separate `PolynomialPrewarm` request and
+`prewarm_polynomial` / `prewarm_polynomial_async` methods prepare source families:
+`sources_fused` selects standalone passes; `shared_recurrence_fused` also selects
+the recurrence dot/update kernels. Each vector selects composed/fused specializations.
+The original `BatchedPrewarm` layout and its per-lane `polynomial_fused` meaning remain
+unchanged. The same cache lifetime, validation and completion rules apply.
 
 `LinalgPrewarm` prepares the exact-product pipelines also used by Cholesky and QR
 trailing updates. `resident=true` adds device analysis/planning; `inner_sizes` supplies

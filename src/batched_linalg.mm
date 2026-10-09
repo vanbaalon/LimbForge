@@ -128,6 +128,16 @@ void prepare(const std::shared_ptr<BatchedPipelines>& cache,const std::vector<in
 void BatchedLinalg::prewarm(const BatchedPrewarm& r){auto keys=prewarm_keys(r);prepare(impl_->cache,r.bits,keys);}
 std::future<void> BatchedLinalg::prewarm_async(BatchedPrewarm r){auto keys=prewarm_keys(r);auto cache=impl_->cache;return std::async(std::launch::async,[cache,bits=std::move(r.bits),keys=std::move(keys)]{prepare(cache,bits,keys);});}
 namespace {
+WarmKeys polynomial_prewarm_keys(const PolynomialPrewarm& r){
+    for(int bits:r.bits)bits_ok(bits);WarmKeys keys;
+    auto sources=[&](bool fused){keys.emplace("batch_source_seed",false);keys.emplace("batch_source_step",fused);keys.emplace("batch_source_scale",false);};
+    for(bool fused:r.sources_fused)sources(fused);
+    for(bool fused:r.shared_recurrence_fused){sources(fused);keys.emplace("batch_source_dot",fused);keys.emplace("batch_source_update",fused);}return keys;
+}
+}
+void BatchedLinalg::prewarm_polynomial(const PolynomialPrewarm& r){auto keys=polynomial_prewarm_keys(r);prepare(impl_->cache,r.bits,keys);}
+std::future<void> BatchedLinalg::prewarm_polynomial_async(PolynomialPrewarm r){auto keys=polynomial_prewarm_keys(r);auto cache=impl_->cache;return std::async(std::launch::async,[cache,bits=std::move(r.bits),keys=std::move(keys)]{prepare(cache,bits,keys);});}
+namespace {
 Timing host_call(Engine& e,int bits,bool complex,const std::size_t* sizes,const void* const* pointers,bool accumulate,
                  const std::function<void(CommandBatch&,O,O,O,O)>& encode){
     bits_ok(bits);auto start=std::chrono::steady_clock::now();auto b=e.batch();S storage[4];O operands[4];auto element=std::size_t(bits/8+12)*(complex?2:1);
