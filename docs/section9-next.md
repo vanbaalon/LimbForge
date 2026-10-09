@@ -118,6 +118,12 @@ a row in `docs/optimizations.md`, rejected attempts kept under `benchmarks/exper
 - **Measure:** 400–900 batches, steps 100–250, nmax 40–100, ncols 16, at 352/384/448 bits, against the current kernel and 18-worker MPFR.
 
 **P1.2: Blocked `cholesky_trials`.**
+- **Candidate validation complete:** local branch `round-section9-blocked-trials`
+  (`a14f13e`, rebased on current main) preserves the existing scalar sequence through
+  three passes per block panel. All 31 factor/solve widths pass normally and under
+  shader validation, 26/26 library suites and all 19 unique GPU-validation suites
+  pass. Solver-size independent MPFR fixtures also pass. Production still selects
+  scalar columns; warm/cold interleaved measurements and the 3x target are pending.
 - **Problem:** the column-by-column passes (≈ 3n small dispatches with shrinking grids) lose to eight sequential `Linalg::cholesky` calls at n = 944 (1.54 s vs 1.23 s).
 - **Change:** use a blocked algorithm, with per-trial panels and trailing updates as batched GEMM over all trials.
 - **Target:** ≥ 3× over 8 × `Linalg::cholesky` at n ≈ 1000, and keep the n ≤ 400 advantage.
@@ -137,6 +143,15 @@ a row in `docs/optimizations.md`, rejected attempts kept under `benchmarks/exper
 - **Decision rule:** if the sequential form is slower and less accurate, recommend `normal_equations_exact` in usage guidance. Preserve the meaning and defaults of `normal_equations`; it remains useful for chaining within a batch, where its outputs are final immediately.
 
 **P1.5: `polynomial_recurrence` sources.**
+- **Candidate recurrence correctness:** local branch `round-section9-shared-sources`
+  (`f21cafb`, rebased on current main) adds an independent `polynomial_sources` API
+  and explicit shared-source recurrence selection. Rounded Horner states, then a
+  dot pass before each update, preserve the original order and partial groups.
+  The expanded recurrence sweeps pass all 31 widths normally and under shader
+  validation, including 17-term Horner and sharing factors 1/2/3/7. The earlier
+  vector adapter fails its final API check and remains rejected. The final standalone
+  source API recheck and 26/19 suite gates are running; speed acceptance is pending.
+  Existing production calls retain per-lane evaluation. These candidates are not released.
 - **Problem:** every lane re-evaluates 8 Horner polynomials of degree ≈ Nc per step, and lanes sharing a weight group repeat identical work. Horner dominates, at roughly 60× the arithmetic of the recurrence update itself.
 - **Option to measure:** a device source pass that writes p and q per (step, weight group, component) into batch scratch. That scratch is small, e.g. 160 × 65 × 8 complex, and is not the host table the consumer wants to avoid. Follow it with the existing `vector_recurrence`, which also brings the matrix, affine and tangent modes.
 - **Contract:** keep the documented Horner and recurrence order, so results stay identical. Preserve incomplete weight-sharing groups: `polynomial_recurrence` permits sharing tails, which an adapter to `vector_recurrence` must handle explicitly.

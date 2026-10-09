@@ -307,6 +307,8 @@ For BSolver (≈128 lanes × 600 steps) the GPU runs ~128 threads. Two complemen
 | Section 9 batched products, polynomial sources, damping trials and infrastructure | implemented (`65c4373`); all-width/dense checks pass after 1.0.1 correction; solver integration pending | `batched_linalg.hpp`, `docs/section9.md` |
 | Section 9 P0 verification harness | all 31 widths, dense/wide-exponent and shader checks pass; 26/26 + 19/19 library suites | `test_limbforge_section9_audit`, `docs/section9-next.md` |
 | Section 9 P1.1 compact power storage | done as explicit 1.1.0 option; scratch savings validated, latency trade-off | `PowerStorage`, `section9_compact_power.md` |
+| Section 9 P1.2 blocked trials | candidate all-width + 26/19 correctness gates complete; performance acceptance pending | local `round-section9-blocked-trials` (`a14f13e`), `section9-next.md` P1.2 |
+| Section 9 P1.5 shared polynomial sources | candidate recurrence passes 31 normal/validation widths; standalone-source/full suites in progress; no speed claim | local `round-section9-shared-sources` (`f21cafb`), `section9-next.md` P1.5 |
 | Section 9 P3 qscmx handoff | itemized; robustness implemented locally, combined normal candidate off by default; algebra prewarm, converged histories, idle timings and remaining switches pending | `section9-next.md` P3 handoff checklist; consumer `LIMBFORGE_STATUS.md` |
 | Production API versioning | baseline 1.0.0 (`ed41426`); current minor 1.1.0; immutable release tags | `version.hpp`, `docs/versioning.md` |
 
