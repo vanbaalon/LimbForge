@@ -31,6 +31,16 @@ struct PolynomialRecurrence {
 // All-device Cholesky sequence: ascending column k, rounded square/mul and sub updates,
 // rounded sqrt/div. Different from Linalg's blocked exact updates. Status: 0 or failed pivot+1.
 struct CholeskyTrials {std::size_t n=0,count=0;};
+// Compile only the requested operation families/specializations, on this unit's cache.
+// No operands, dispatches or numerical workspace are needed.
+struct BatchedPrewarm {
+    std::vector<int> bits;
+    std::vector<StridedGemm> real_gemm,complex_gemm;
+    std::vector<PowerMoments> real_power,complex_power;
+    std::vector<bool> normal_fused,polynomial_fused;
+    bool cholesky_trials=false,cholesky_solve=false,exact_normal=false;
+    PowerStorage power_storage=PowerStorage::full_table;
+};
 // Metadata for an external, page-aligned and page-sized allocation with inline significands.
 // Offsets address little-endian 64-bit MPFR limbs; precision must already equal the GPU width.
 // The caller keeps the allocation alive and immutable until submission completion.
@@ -58,6 +68,8 @@ public:
     BatchedWorkspaces workspaces() const;
     BatchedWorkspaces release_workspaces();
     BatchedLinalg(const BatchedLinalg&)=delete; BatchedLinalg& operator=(const BatchedLinalg&)=delete;
+    void prewarm(const BatchedPrewarm&);
+    std::future<void> prewarm_async(BatchedPrewarm);
     // Synchronous host-array forms, including input staging and output readback. Same kernels/contracts.
     Timing gemm(int bits,bool complex,const StridedGemm&,const void* A,const void* B,void* C);
     Timing power_moments(int bits,bool complex,const PowerMoments&,const void* E,const void* y,const void* W,void* out);

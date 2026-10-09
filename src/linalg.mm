@@ -150,33 +150,11 @@ struct Workspace {
 };
 struct LineInfo {std::uint32_t status;std::int32_t cls,nb,pad;}; // linalg.metal LineInfo
 struct PlanConst {Params base;std::uint32_t M,Nc,R,syrk,me_cap,ne_cap,B,batches,acc_words,copy_a,copy_b,tg_left,tg_right,tg_rec,tg_fin;};
-struct Linalg::Impl {
-    LinalgOptions options;LinalgReport report;id<MTLDevice> device;id<MTLCommandQueue> queue;
-    std::map<int,Kernels> kernels;std::recursive_mutex kernel_mutex; // kernels may be requested by resident calls of several threads
-    // Resident workspaces: per call (analysis, plan, snapshots: read at wait) and per batch (digit planes, residues, accumulators:
-    // shared by the calls of one batch, whose dispatches run in order); by_batch maps a batch's command buffer to its workspace.
-    std::mutex workspace_mutex;std::vector<std::shared_ptr<Workspace>> call_spaces,batch_spaces;std::map<void*,std::weak_ptr<Workspace>> by_batch;
-    std::vector<std::weak_ptr<Workspace>> detached; // busy workspaces dropped by release_workspaces (freed by their batches)
-    static std::shared_ptr<Workspace> free_space(std::vector<std::shared_ptr<Workspace>>& pool){
-        for(auto& w:pool)if(w.use_count()==1)return w;pool.push_back(std::make_shared<Workspace>());return pool.back();}std::map<std::string,id<MTLBuffer>> pool;std::unique_ptr<Pool> workers;
-    // Buffers that the factorization drivers keep on the GPU: views and outputs inside them are used in place.
-    std::vector<id<MTLBuffer>> resident;
-    unsigned threads()const{return options.host_threads?options.host_threads:std::max(1u,std::thread::hardware_concurrency());}
-    // The factorization runs trailing updates on a second host thread (side_thread) while the caller's thread factors
-    // the next panel; each thread then uses its own worker pool.
-    std::unique_ptr<Pool> side_workers;
-    Pool& pool_workers(){auto& w=side_thread?side_workers:workers;if(!w)w=std::make_unique<Pool>(side_thread?std::max(1u,threads()/4):threads());current_pool=w.get();return *w;}
-    // f(i) for i in [0, n), dynamically scheduled over the persistent workers.
-    template<class F> void each(std::size_t n,F f){if(!n)return;if(n==1){f(std::size_t(0));return;}
-        pool_workers().run(n,[&](std::size_t i,unsigned){f(i);});}
-    id<MTLBuffer> find(const void* p,std::size_t& offset){auto c=static_cast<const unsigned char*>(p);
-        for(id<MTLBuffer> b:resident){auto base=static_cast<const unsigned char*>(b.contents);if(c>=base&&c<base+b.length){offset=std::size_t(c-base);return b;}}return nil;}
-    // Page-aligned caller memory is wrapped without a copy (the call waits for the GPU before returning).
-    id<MTLBuffer> wrap(const void* p,std::size_t bytes){std::size_t page=std::size_t(getpagesize());if(!p||!bytes||reinterpret_cast<std::uintptr_t>(p)%page)return nil;
-        return [device newBufferWithBytesNoCopy:const_cast<void*>(p) length:up(bytes,page) options:MTLResourceStorageModeShared deallocator:nil];}
-    id<MTLBuffer> buffer(const std::string& role,std::size_t bytes){
-        auto& b=pool[role];if(!b||b.length<bytes){b=nil;b=[device newBufferWithLength:std::max<std::size_t>(bytes,16) options:MTLResourceStorageModeShared];}
-        if(!b)throw std::runtime_error("Metal allocation failed ("+role+")");return b;}
+// Only pipeline/table state is shared with background preparation. Host scratch and
+// worker pools keep their original owner-thread lifetime in Linalg::Impl.
+struct LinalgKernelCache {
+    LinalgOptions options;id<MTLDevice> device;std::map<int,Kernels> kernels;std::recursive_mutex kernel_mutex;
+    LinalgKernelCache(LinalgOptions o,id<MTLDevice> d):options(o),device(d){}
     id<MTLComputePipelineState> state(id<MTLLibrary> lib,NSString* name,int sub=-1){NSError* e=nil;id<MTLFunction> f=nil;
         if(sub<0)f=[lib newFunctionWithName:name];
         else{MTLFunctionConstantValues* v=[MTLFunctionConstantValues new];bool s=sub;[v setConstantValue:&s type:MTLDataTypeBool atIndex:0];f=[lib newFunctionWithName:name constantValues:v error:&e];}
@@ -212,15 +190,6 @@ struct Linalg::Impl {
         for(int j=0;j<L;++j){std::uint64_t c=0;for(auto& w:x){std::uint64_t t=std::uint64_t(w)*primes()[j]+c;w=std::uint32_t(t);c=t>>32;}}
         b.assign(2*Wc,0);for(int i=0;i<Wc;++i){b[i]=(x[i]>>1)|(i+1<Wc?x[i+1]<<31:0);b[Wc+i]=x[i];}return b;
     }
-    // C[i*stride + j] (stride 0: Nc) = RN(dot), or RN(C - dot) with sub. Views and C inside a resident buffer are used in place.
-    Timing run(int bits,View lv,View rv,std::size_t M,std::size_t Nc,std::size_t K,void* C,bool syrk,bool lower_only,bool sub=false,std::size_t stride=0);
-    template<int N> CholeskyInfo cholesky_n(const Number<N>* A,std::size_t n,Number<N>* L,const FactorOptions& fo);
-    template<int N> Timing solve_n(const Number<N>* L,std::size_t n,const Number<N>* B,std::size_t nrhs,Number<N>* X,const FactorOptions& fo,int passes,bool upper=false);
-    // Householder QR (qr_n), one compact-WY block applied to columns [c0, c1) of X (qr_block), Q or Q^T applied to C (qr_apply_n).
-    template<int N> void qr_n(const Number<N>* A,std::size_t m,std::size_t n,detail::QRData& f);
-    template<int N> Timing qr_block(const detail::QRData& f,std::size_t b,Number<N>* X,std::size_t ld,std::size_t c0,std::size_t c1,bool qt,Number<N>* Wb,Number<N>* Yb,double threshold,bool gpu,bool& on_gpu,bool have_y=false);
-    template<int N> Timing qr_apply_n(const detail::QRData& f,Number<N>* C,std::size_t nrhs,bool qt);
-    template<int N> Timing qr_solve_n(const detail::QRData& f,const Number<N>* B,std::size_t nrhs,Number<N>* X);
     // Resident products: the pipelines of the GPU analysis and plan, and per ceil(log2 K) the modulus count, Wc and bounds of
     // every widest band width pmax in [0, G] (the host's choice in run(), made on the GPU from the band analysis).
     void resident_pipelines(Kernels& k){std::lock_guard<std::recursive_mutex> lock(kernel_mutex);if(k.analyze)return;
@@ -238,6 +207,47 @@ struct Linalg::Impl {
         id<MTLBuffer> bb=[device newBufferWithBytes:all.data() length:4*all.size() options:MTLResourceStorageModeShared];
         if(!tb||!bb)throw std::runtime_error("Metal allocation failed (modulus table)");
         t.bounds=bb;t.table=tb;return t;}
+};
+struct Linalg::Impl {
+    LinalgOptions options;LinalgReport report;id<MTLDevice> device;id<MTLCommandQueue> queue;
+    std::shared_ptr<LinalgKernelCache> cache;
+    // Resident workspaces: per call (analysis, plan, snapshots: read at wait) and per batch (digit planes, residues, accumulators:
+    // shared by the calls of one batch, whose dispatches run in order); by_batch maps a batch's command buffer to its workspace.
+    std::mutex workspace_mutex;std::vector<std::shared_ptr<Workspace>> call_spaces,batch_spaces;std::map<void*,std::weak_ptr<Workspace>> by_batch;
+    std::vector<std::weak_ptr<Workspace>> detached; // busy workspaces dropped by release_workspaces (freed by their batches)
+    static std::shared_ptr<Workspace> free_space(std::vector<std::shared_ptr<Workspace>>& pool){
+        for(auto& w:pool)if(w.use_count()==1)return w;pool.push_back(std::make_shared<Workspace>());return pool.back();}std::map<std::string,id<MTLBuffer>> pool;std::unique_ptr<Pool> workers;
+    // Buffers that the factorization drivers keep on the GPU: views and outputs inside them are used in place.
+    std::vector<id<MTLBuffer>> resident;
+    unsigned threads()const{return options.host_threads?options.host_threads:std::max(1u,std::thread::hardware_concurrency());}
+    // The factorization runs trailing updates on a second host thread (side_thread) while the caller's thread factors
+    // the next panel; each thread then uses its own worker pool.
+    std::unique_ptr<Pool> side_workers;
+    Pool& pool_workers(){auto& w=side_thread?side_workers:workers;if(!w)w=std::make_unique<Pool>(side_thread?std::max(1u,threads()/4):threads());current_pool=w.get();return *w;}
+    // f(i) for i in [0, n), dynamically scheduled over the persistent workers.
+    template<class F> void each(std::size_t n,F f){if(!n)return;if(n==1){f(std::size_t(0));return;}
+        pool_workers().run(n,[&](std::size_t i,unsigned){f(i);});}
+    id<MTLBuffer> find(const void* p,std::size_t& offset){auto c=static_cast<const unsigned char*>(p);
+        for(id<MTLBuffer> b:resident){auto base=static_cast<const unsigned char*>(b.contents);if(c>=base&&c<base+b.length){offset=std::size_t(c-base);return b;}}return nil;}
+    // Page-aligned caller memory is wrapped without a copy (the call waits for the GPU before returning).
+    id<MTLBuffer> wrap(const void* p,std::size_t bytes){std::size_t page=std::size_t(getpagesize());if(!p||!bytes||reinterpret_cast<std::uintptr_t>(p)%page)return nil;
+        return [device newBufferWithBytesNoCopy:const_cast<void*>(p) length:up(bytes,page) options:MTLResourceStorageModeShared deallocator:nil];}
+    id<MTLBuffer> buffer(const std::string& role,std::size_t bytes){
+        auto& b=pool[role];if(!b||b.length<bytes){b=nil;b=[device newBufferWithLength:std::max<std::size_t>(bytes,16) options:MTLResourceStorageModeShared];}
+        if(!b)throw std::runtime_error("Metal allocation failed ("+role+")");return b;}
+    Kernels& get(int bits){return cache->get(bits);}
+    const std::vector<std::uint32_t>& bounds(Kernels& k,int L,int Wc){return cache->bounds(k,L,Wc);}
+    // C[i*stride + j] (stride 0: Nc) = RN(dot), or RN(C - dot) with sub. Views and C inside a resident buffer are used in place.
+    Timing run(int bits,View lv,View rv,std::size_t M,std::size_t Nc,std::size_t K,void* C,bool syrk,bool lower_only,bool sub=false,std::size_t stride=0);
+    template<int N> CholeskyInfo cholesky_n(const Number<N>* A,std::size_t n,Number<N>* L,const FactorOptions& fo);
+    template<int N> Timing solve_n(const Number<N>* L,std::size_t n,const Number<N>* B,std::size_t nrhs,Number<N>* X,const FactorOptions& fo,int passes,bool upper=false);
+    // Householder QR (qr_n), one compact-WY block applied to columns [c0, c1) of X (qr_block), Q or Q^T applied to C (qr_apply_n).
+    template<int N> void qr_n(const Number<N>* A,std::size_t m,std::size_t n,detail::QRData& f);
+    template<int N> Timing qr_block(const detail::QRData& f,std::size_t b,Number<N>* X,std::size_t ld,std::size_t c0,std::size_t c1,bool qt,Number<N>* Wb,Number<N>* Yb,double threshold,bool gpu,bool& on_gpu,bool have_y=false);
+    template<int N> Timing qr_apply_n(const detail::QRData& f,Number<N>* C,std::size_t nrhs,bool qt);
+    template<int N> Timing qr_solve_n(const detail::QRData& f,const Number<N>* B,std::size_t nrhs,Number<N>* X);
+    void resident_pipelines(Kernels& k){cache->resident_pipelines(k);}
+    const ModulusTable& modulus_table(Kernels& k,int bits,int logk){return cache->modulus_table(k,bits,logk);}
     ~Impl(){if((workers&&current_pool==workers.get())||(side_workers&&current_pool==side_workers.get()))current_pool=nullptr;}
     // Restores the resident list on scope exit.
     struct Residency {Impl& im;std::size_t size;explicit Residency(Impl& i):im(i),size(i.resident.size()){} ~Residency(){im.resident.resize(size);}};
@@ -247,9 +257,11 @@ Linalg::Linalg(LinalgOptions options):impl(std::make_unique<Impl>()){
         throw std::invalid_argument("linalg options: band_bits in [0,1024], max_bands >= 0, max_spread in [0,8192]");
     impl->options=options;impl->device=MTLCreateSystemDefaultDevice();if(!impl->device)throw std::runtime_error("no Metal GPU available");
     impl->queue=[impl->device newCommandQueue];if(!impl->queue)throw std::runtime_error("cannot create Metal command queue");
+    impl->cache=std::make_shared<LinalgKernelCache>(options,impl->device);
 }
 Linalg::Linalg(Engine& engine,LinalgOptions options):Linalg(options){
     impl->device=detail::Internal::device(engine);impl->queue=[impl->device newCommandQueue];if(!impl->queue)throw std::runtime_error("cannot create Metal command queue");
+    impl->cache=std::make_shared<LinalgKernelCache>(options,impl->device);
 }
 Linalg::~Linalg()=default;
 std::string Linalg::device_name()const{return [[impl->device name] UTF8String];}
@@ -272,6 +284,14 @@ LinalgWorkspaces Linalg::release_workspaces(){LinalgWorkspaces w;for(auto& e:imp
         impl->by_batch.clear();}
     return w;}
 static void check_bits(int bits){if(bits<64||bits>1024||bits%32)throw std::invalid_argument("bits must be a multiple of 32 in [64,1024]");}
+namespace {
+void validate_prewarm(const LinalgPrewarm& r){for(int bits:r.bits)check_bits(bits);for(auto k:r.inner_sizes)if(k>max_k)throw std::invalid_argument("linalg prewarm: resident K exceeds 65472");}
+void prepare(const std::shared_ptr<LinalgKernelCache>& cache,const LinalgPrewarm& r){@autoreleasepool{
+    for(int bits:r.bits){auto& k=cache->get(bits);if(r.resident){cache->resident_pipelines(k);for(auto size:r.inner_sizes){int logk=0;while((std::size_t(1)<<logk)<size)++logk;cache->modulus_table(k,bits,logk);}}}
+}}
+}
+void Linalg::prewarm(const LinalgPrewarm& r){validate_prewarm(r);prepare(impl->cache,r);}
+std::future<void> Linalg::prewarm_async(LinalgPrewarm r){validate_prewarm(r);auto cache=impl->cache;return std::async(std::launch::async,[cache,r=std::move(r)]{prepare(cache,r);});}
 Timing Linalg::syrk(int bits,const void* A,std::size_t rows,std::size_t cols,void* C,bool lower_only,bool subtract){
     check_bits(bits);if(subtract&&!lower_only)throw std::invalid_argument("syrk: subtract updates the lower triangle only (lower_only)");
     std::size_t e=bits/8+12;auto a=static_cast<const unsigned char*>(A);

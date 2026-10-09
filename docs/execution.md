@@ -321,3 +321,49 @@ and returns `std::future<std::vector<Timing>>`. The CPU can do independent work,
 future, or wait on it. The helper drains every submission even if one fails, then rethrows
 the first error. It preserves the usual rule: buffers become available after submission
 completion and host repair. It is not a GPU event that bypasses those completion steps.
+
+## Algebra pipeline preparation (candidate)
+
+`BatchedLinalg::prewarm` / `prewarm_async` and `Linalg::prewarm` / `prewarm_async`
+prepare the owning unit's algebra cache. An Engine arithmetic prewarm remains separate.
+These additive APIs are an unreleased candidate; focused physical-GPU lifetime and
+reference checks remain pending in `benchmarks/experiments/section9_algebra_prewarm.md`.
+
+```cpp
+Engine engine;
+BatchedLinalg batched(engine);
+Linalg exact(engine);
+BatchedPrewarm power_request;
+power_request.bits = {352};
+power_request.complex_power = {{520, 160, 59, 16, 0}};
+auto powers_ready = batched.prewarm_async(power_request);
+auto exact_ready = exact.prewarm_async({{352}, {1100, 32}, true});
+// Perform independent initialization here.
+powers_ready.get();
+exact_ready.get();
+```
+
+`BatchedPrewarm` selects real/complex GEMM shapes, power shapes and full/compact power
+storage, composed/fused normal or polynomial kernels, damping trials/solve, and the
+augmentation/extraction kernels of exact normals. Real GEMM 4x4 and compact-panel tails
+are distinct specializations and are included when required. `exact_normal` prepares
+only the batched augmentation/extraction; prepare the owning Linalg separately.
+
+`LinalgPrewarm` prepares the exact-product pipelines also used by Cholesky and QR
+trailing updates. `resident=true` adds device analysis/planning; `inner_sizes` supplies
+resident K values, from 0 through 65472, for their modulus/bounds tables. Host products
+need only widths. This does not prepare other units or all complex-QR helper pipelines.
+
+Both async methods copy and validate requests before launching; invalid widths, shapes
+or selections throw on the caller's thread. Compilation/allocation failures are delivered
+by `future.get()`. Preparation owns its cache and Metal device through completion and
+may outlive the unit and Engine. The numerical units still require their normal owner
+lifetimes for actual calls. Cache access is synchronized with ordinary owner-thread
+operations; the rest of Linalg retains its existing one-owner-thread rule.
+
+Preparation compiles pipelines and creates immutable exact-product constants/tables.
+It does not dispatch work, evaluate operands, allocate numerical workspaces or initialize
+host worker pools, and it leaves rounding and operation defaults unchanged. Repeated
+requests reuse cached specializations. Wait on each future before starting a timed solve;
+catch failures in the consumer and retain its CPU fallback. A discarded std::async future
+can wait in its destructor, so keep the future while doing independent initialization.

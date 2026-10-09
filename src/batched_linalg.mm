@@ -4,6 +4,8 @@
 #include "batched_linalg_source.hpp"
 #include <cstring>
 #include <map>
+#include <mutex>
+#include <set>
 #include <chrono>
 #include <unistd.h>
 #include <mutex>
@@ -22,15 +24,13 @@ S retain(CommandBatch& b,O o,std::size_t n,bool written=false,bool final=true){s
 std::string message(NSError* e){return e?std::string(e.localizedDescription.UTF8String):"unknown Metal error";}
 }
 struct BatchedWorkspace {S first,second;std::atomic<std::size_t> bytes{0};};
-struct BatchedLinalg::Impl {
-    mutable std::mutex workspace_mutex;
-    std::vector<std::shared_ptr<BatchedWorkspace>> workspaces;
-    std::vector<std::weak_ptr<BatchedWorkspace>> detached;
+struct BatchedPipelines {
     id<MTLDevice> device;std::map<int,id<MTLLibrary>> libs;
     std::map<std::tuple<int,std::string,bool>,id<MTLComputePipelineState>> pipelines;
-    explicit Impl(Engine& e):device(I::device(e)){}
+    std::mutex mutex;
+    explicit BatchedPipelines(id<MTLDevice> d):device(d){}
     id<MTLComputePipelineState> pipeline(int bits,const char* name,bool fused=false){
-        auto key=std::make_tuple(bits,std::string(name),fused);auto it=pipelines.find(key);if(it!=pipelines.end())return it->second;
+        std::lock_guard<std::mutex> lock(mutex);auto key=std::make_tuple(bits,std::string(name),fused);auto it=pipelines.find(key);if(it!=pipelines.end())return it->second;
         @autoreleasepool {auto& lib=libs[bits];NSError* error=nil;if(!lib){auto options=[MTLCompileOptions new];options.languageVersion=MTLLanguageVersion3_1;options.mathMode=MTLMathModeSafe;
             NSString* source=[NSString stringWithFormat:@"#define LF_BITS %d\n%s",bits,limbforge_batched_linalg_source];lib=[device newLibraryWithSource:source options:options error:&error];
             if(!lib)throw std::runtime_error("batched algebra Metal compilation: "+message(error));}
@@ -39,6 +39,14 @@ struct BatchedLinalg::Impl {
         if(!f)throw std::runtime_error("batched algebra Metal function: "+message(error));auto p=[device newComputePipelineStateWithFunction:f error:&error];
         if(!p)throw std::runtime_error("batched algebra Metal pipeline: "+message(error));pipelines.emplace(key,p);return p;}
     }
+};
+struct BatchedLinalg::Impl {
+    mutable std::mutex workspace_mutex;
+    std::vector<std::shared_ptr<BatchedWorkspace>> workspaces;
+    std::vector<std::weak_ptr<BatchedWorkspace>> detached;
+    id<MTLDevice> device;std::shared_ptr<BatchedPipelines> cache;
+    explicit Impl(Engine& e):device(I::device(e)),cache(std::make_shared<BatchedPipelines>(device)){}
+    id<MTLComputePipelineState> pipeline(int bits,const char* name,bool fused=false){return cache->pipeline(bits,name,fused);}
     void pass(CommandBatch& b,int bits,const char* name,const Params& p,std::initializer_list<std::pair<unsigned,S>> buffers,std::size_t count,bool fused=false,bool tiled=false,bool components=false){
         if(!count)return;if(I::device(b)!=device)throw std::invalid_argument("batched algebra: foreign batch device");
         auto state=pipeline(bits,name,fused);I::keep(b,state);auto encoder=I::compute(b);[encoder setComputePipelineState:state];
@@ -87,6 +95,36 @@ BatchedWorkspaces BatchedLinalg::release_workspaces(){
     }
     return result;
 }
+namespace {
+using WarmKeys=std::set<std::pair<std::string,bool>>;
+WarmKeys prewarm_keys(const BatchedPrewarm& r){
+    for(int bits:r.bits)bits_ok(bits);
+    if(r.power_storage!=PowerStorage::full_table&&r.power_storage!=PowerStorage::compact)throw std::invalid_argument("prewarm: invalid power storage mode");
+    WarmKeys keys;
+    auto gemm=[&](const StridedGemm& s,bool complex){auto cs=mul_size(s.m,s.n);grid_ok(mul_size(s.count,cs));
+        if(s.count>1&&s.stride_c<cs)throw std::invalid_argument("prewarm GEMM: output matrices overlap");
+        extent(s.count,s.stride_a,mul_size(s.m,s.k));extent(s.count,s.stride_b,mul_size(s.k,s.n));extent(s.count,s.stride_c,cs);
+        if(s.count&&cs)keys.emplace(complex?"batch_private_complex":s.m==4&&s.n==4&&s.k==4?"batch_gemm4_real":"batch_gemm_real",s.fused);
+    };
+    for(auto& s:r.real_gemm)gemm(s,false);for(auto& s:r.complex_gemm)gemm(s,true);
+    auto power=[&](const PowerMoments& s,bool complex){auto rows=std::size_t(s.nmax)+1,ek=mul_size(s.count,s.steps);grid_ok(ek);mul_size(ek,rows);mul_size(ek,s.ncols);grid_ok(mul_size(mul_size(s.count,rows),s.ncols));
+        if(!s.count||!s.ncols)return;bool compact=r.power_storage==PowerStorage::compact&&s.steps;
+        if(ek){if(compact){keys.emplace(complex?"batch_panel_seed_complex":"batch_panel_seed_real",false);keys.emplace(complex?"batch_panel_powers_complex":"batch_panel_powers_real",false);}
+            else keys.emplace(complex?"batch_powers_complex":"batch_powers_real",false);}
+        auto add_gemm=[&](std::size_t m){StridedGemm g{s.count,m,s.ncols,s.steps,mul_size(m,s.steps),mul_size(s.steps,s.ncols),mul_size(m,s.ncols),s.accumulate,s.fused};gemm(g,complex);};
+        if(compact){add_gemm(std::min<std::size_t>(8,rows));if(rows>8&&rows%8)add_gemm(rows%8);}else add_gemm(rows);
+    };
+    for(auto& s:r.real_power)power(s,false);for(auto& s:r.complex_power)power(s,true);
+    for(bool fused:r.normal_fused)keys.emplace("batch_normal",fused);
+    for(bool fused:r.polynomial_fused)keys.emplace("batch_polynomial_recurrence",fused);
+    if(r.cholesky_trials)for(auto name:{"batch_chol_init","batch_chol_pivot","batch_chol_column","batch_chol_update","batch_chol_finish"})keys.emplace(name,false);
+    if(r.cholesky_solve)keys.emplace("batch_chol_solve",false);
+    if(r.exact_normal){keys.emplace("batch_augment",false);keys.emplace("batch_extract",false);}return keys;
+}
+void prepare(const std::shared_ptr<BatchedPipelines>& cache,const std::vector<int>& bits,const WarmKeys& keys){@autoreleasepool{for(int width:bits)for(auto& key:keys)cache->pipeline(width,key.first.c_str(),key.second);}}
+}
+void BatchedLinalg::prewarm(const BatchedPrewarm& r){auto keys=prewarm_keys(r);prepare(impl_->cache,r.bits,keys);}
+std::future<void> BatchedLinalg::prewarm_async(BatchedPrewarm r){auto keys=prewarm_keys(r);auto cache=impl_->cache;return std::async(std::launch::async,[cache,bits=std::move(r.bits),keys=std::move(keys)]{prepare(cache,bits,keys);});}
 namespace {
 Timing host_call(Engine& e,int bits,bool complex,const std::size_t* sizes,const void* const* pointers,bool accumulate,
                  const std::function<void(CommandBatch&,O,O,O,O)>& encode){

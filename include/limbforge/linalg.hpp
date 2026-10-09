@@ -23,6 +23,13 @@ struct LinalgOptions {
     bool force_fallback=false; // every output through the exact host path (testing)
     int resident_bands=2;  // resident calls: workspace for up to resident_bands*lines band rows per side; beyond, the whole call is exact on the host at wait
 };
+// Exact-product pipelines also serve the trailing updates of Cholesky and QR.
+// Resident calls additionally use analysis/planning pipelines and per-K modulus tables.
+struct LinalgPrewarm {
+    std::vector<int> bits;
+    std::vector<std::size_t> inner_sizes; // resident K values, 0..65472
+    bool resident=false;
+};
 struct LinalgPair { unsigned left_band,right_band,rows,cols,moduli; };
 // Diagnostics of the last call. "Lines" are rows of the left operand and columns of the right operand.
 struct LinalgReport {
@@ -136,6 +143,8 @@ public:
     explicit Linalg(LinalgOptions options={}); ~Linalg();
     explicit Linalg(Engine& engine,LinalgOptions options={}); // compiles on the engine's Metal device (required for Buffer operands)
     Linalg(const Linalg&)=delete; Linalg& operator=(const Linalg&)=delete;
+    void prewarm(const LinalgPrewarm&);
+    std::future<void> prewarm_async(LinalgPrewarm);
     std::string device_name() const;
     // C (cols x cols) = A^T A for A (rows x cols). lower_only writes C[i][j] for i >= j and leaves the
     // rest of C untouched; otherwise the full symmetric matrix is written. With subtract, C[i][j] = RN(C[i][j] - (A^T A)[i][j])

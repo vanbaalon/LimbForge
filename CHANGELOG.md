@@ -7,6 +7,13 @@
   Busy storage survives release until its owning batch is destroyed or waited.
   The arithmetic sequence, provisional-output rules and existing signatures are unchanged.
   This API addition is unreleased; focused normal/validation lifetime checks pass.
+- Candidate additive operation-aware `BatchedPrewarm` and shape-aware `LinalgPrewarm`
+  requests, with synchronous and asynchronous preparation on the owning algebra cache.
+  Background tasks retain pipeline/table state and the Metal device, while Linalg host
+  scratch/worker lifetime stays on its owner thread. Cache access is synchronized;
+  numerical shader sources, public layouts, defaults and rounding sequences are unchanged.
+  Version/package checks pass; focused reference/concurrency/lifetime checks are pending.
+  This is not a released feature.
 
 ## 1.1.0 — 2026-10-08
 
