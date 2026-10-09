@@ -1,0 +1,28 @@
+{
+	"status":"PREPARED_NOT_YET_CONVERGENCE_VERIFIED",
+	"state":"J3 X2Y",
+	"sources":{
+		"\/Users\/k0959535\/Dropbox\/IntegrabilityProjects\/2026 Near N=4\/qsccpp\/runs\/wolfnum_converged_fixtures\/sources\/trajectory_X2Y.m":"816e41107d44057c600b7b83fb3f9a91171073f4e26dfed53092781c07b0e7ae",
+		"\/Users\/k0959535\/Dropbox\/IntegrabilityProjects\/2026 Near N=4\/qsccpp\/runs\/wolfnum_converged_fixtures\/sources\/lo_X2Y.m":"d0fad1640aa081486540d172d7979a9ca597c2c7964df2916ba6087bf3b62c93"
+	},
+	"exporter_sha256":"89592175a311e830c2234d5d7b6d3de22d062d8fb2c4d53759e86e1a447c2b69",
+	"fixtures":[
+		{
+			"input":"\/Users\/k0959535\/Dropbox\/IntegrabilityProjects\/2026 Near N=4\/qsccpp\/runs\/wolfnum_converged_fixtures\/exact_seed_g02\/j3_X2Y_g0.2_nc21.txt",
+			"sha256":"403ff22c8a7543d270f0be0b4db8fcd653efc9a02fc7d9327e1b8fb8759aa251",
+			"g":"1\/5",
+			"seed_g":"1\/5",
+			"seed_residual":"1.51886688783368768`17.181519714341768*^-25",
+			"dims":[
+				21,
+				25,
+				300,
+				27
+			],
+			"precision_bits":374,
+			"gtol":"1e-22",
+			"seed_transform":"coefficient scale(target)\/scale(source), saved same-coupling seed, Delta perturbed by 1e-24 to exercise Newton; original vpar\/gauto, mu0=0, ppmax=Nc, gmask and consres=False; fixed AA unchanged"
+		}
+	],
+	"timing_accepted":false
+}

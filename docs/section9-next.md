@@ -270,7 +270,7 @@ candidate or an unconverged diagnostic as accepted production behavior.
 | Algebra prewarm | Delivered in 1.2.0 and wired locally in qscmx: futures overlap CPU setup and both are drained before solver construction; startup failure disables GPU helpers for CPU fallback. Focused normal/shader checks and a real main startup eval pass; consumer records are in `runs/limbforge/prewarm_1_2`. First-Jacobian timing and converged-history acceptance remain pending |
 | Keep `adj_prep` CPU-only; select stage 2 after the glue | Preserved; do not move the glue or invoke GPU work inside stage 1 |
 | Relative MPFR adjoint check in units of `2^-prec` | Implemented; finite, nonempty checks require <=65536 normalized units; report finite-difference amplification separately |
-| Converged CPU/GPU g=.1/.2/.5 checks | Pending: componentwise Delta agreement <=1e-25, equal iteration counts and matching residual histories; save inputs and both logs |
+| Converged CPU/GPU g=.1/.2/.5 checks | Partial: the matching 1.3.1 combined-switch g=.2 fixture now converges at its original 1e-22 tolerance, with equal two-entry histories and Delta error 3.05e-89. Requested full-sweep evidence remains open; save inputs and both logs |
 | Idle-host Jacobian timings | Pending: all load averages <4 before each solve; 352 bits, Nc=23/31/59, with the large case Nsh=160 and nPts=65 |
 | Fold `J^T G` into exact augmented SYRK | Local candidate behind explicit `QSC_GPU_NORMAL=1`; default off, CPU fallback and `QSC_GPU_SYRK` gate retained; full converged-history and timing acceptance pending |
 | Fourier residual -> complex GEMM | Integrated locally behind off-default switch; matching 1.3.1 build passes MPFR normal/Metal checks and saved J3 default/combined GPU replay. Full g sweep and idle timings pending |
@@ -341,3 +341,11 @@ reproduce the recorded baseline. The new comparison runner controls inherited
 candidate/audit switches and requires every selected path's GPU marker. Existing
 binaries are retained. Full g sweep, idle timings, large-shape memory and the
 remaining damping/base switches stay pending. [Complete patch and evidence](../benchmarks/experiments/section9_consumer_integrated.md).
+
+A new matching-1.3.1 combined-switch g=.2 fixture is now independently verified
+from the saved same-coupling J3 point with a tiny Delta perturbation to exercise
+Newton. Both residuals are 1.483e-25 at the original gtol 1e-22; two history entries
+match and component Delta error is 3.05e-89. All existing and selected new GPU
+paths and adjoint checks pass without fallback. This completes that g=.2 case,
+with the full requested sweep and idle timing still separate requirements.
+[Raw outputs and independent checker](../benchmarks/experiments/section9_converged_g02.md).

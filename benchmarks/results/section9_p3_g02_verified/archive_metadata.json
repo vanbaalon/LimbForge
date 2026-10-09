@@ -1,0 +1,18 @@
+{
+  "status": "PASS",
+  "scope": "J3 g=.2 saved same-coupling seed with Delta perturbed by1e-24; matching1.3.1 consumer, all4 additional switches; g=.1/.5 and idle timings remain open",
+  "timing_accepted": false,
+  "source_directory": "/Users/k0959535/Dropbox/IntegrabilityProjects/2026 Near N=4/qsccpp/runs/wolfnum_converged_fixtures/exact_seed_g02",
+  "evidence_sha256": {
+    "preparation_metadata.json": "557412ac1745ef323e10731becb7fba174b29427ecbf486b2bb30f61880a49d3",
+    "j3_X2Y_g0.2_nc21.txt": "403ff22c8a7543d270f0be0b4db8fcd653efc9a02fc7d9327e1b8fb8759aa251",
+    "j3_X2Y_g0.2_nc21_cpu.m": "67d32abf5b1f4977bf3fdb1e7c6c2e6fcac2ff2446cc447b9f8759d5fd28f1bb",
+    "j3_X2Y_g0.2_nc21_gpu.m": "18bad1cc5eaee1a83017dc60743681ba64cc077227bc810ebaf38122237de481",
+    "comparison.json": "eedddb060c31b6ca41ff32b40e39e4a17329b862ae74177ca8546cc902407e4c",
+    "run_comparisons.py": "58ae276616186cfe37b16ba6178ef8d74ef6e0f28773ead0d5e9f76f465b204a",
+    "preparation.wl": "89592175a311e830c2234d5d7b6d3de22d062d8fb2c4d53759e86e1a447c2b69",
+    "comparison_gate_metadata.json": "42d14a89fc9106f56cbe7d6984607ea61fc96191d560964aa12ceb8e70878e35",
+    "j3_X2Y_g0.2_nc21_cpu.log": "d24601e36f49bee81ec36e3dedb514e6fbe43dbb2acb64806d73fc6a0c745a9d",
+    "j3_X2Y_g0.2_nc21_gpu.log": "9e9fc6cea0b3f5bd720203a76c33973cc0c6c9fafe15e80938e1eb929a4ad7f6"
+  }
+}

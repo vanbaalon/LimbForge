@@ -288,3 +288,14 @@ remains unmet, with the full size/width grid and consumer work open. Retained
 source/patch, raw gates/timing, memory scopes and independent verification are
 [archived here](../benchmarks/experiments/section9_grouped_exact/README.md).
 No installed API/version/default change is accepted.
+
+## Section 9 P3: requested g=.2 converged fixture
+
+A matching 1.3.1 consumer now passes CPU/GPU comparison at g=.2 with the saved
+same-coupling J3 seed and a tiny perturbation to exercise Newton. The original
+gtol 1e-22 is preserved; both residuals are 1.48e-25, two serialized histories
+match and maximum component Delta error is 3.05e-89. Existing paths plus exact
+normals, Fourier/product3/LU4 all execute without fallback and pass adjoint
+checks. Raw outputs and frozen identities independently verify. This is one
+requested coupling; full sweep, idle timings, memory and damping/base work remain
+open. [Fixture and checker](../benchmarks/experiments/section9_converged_g02.md).

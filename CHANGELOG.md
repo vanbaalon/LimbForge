@@ -2,6 +2,12 @@
 
 ## Unreleased
 
+- Archived an independently verified converged J3 g=.2 CPU/GPU comparison for
+  the matching 1.3.1 consumer with exact-normal/Fourier/product3/LU4 switches on.
+  Original gtol=1e-22 is preserved; two history entries match, residuals are
+  1.48e-25 and maximum component Delta error is 3.05e-89. Full sweep and idle
+  timings remain separate requirements; no library/default/version change.
+
 - Archived a grouped exact trailing-update prototype with all 31 normal/Metal
   direct/factor/full-band references and complete 26/19 regression gates. The
   first checked n944/352-bit profile improves factor/solve wall time about 1.07x

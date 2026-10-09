@@ -1,0 +1,132 @@
+{
+  "status": "PASS",
+  "pid": 77747,
+  "pid_identity": "Fri Oct  9 07:19:26 2026     /opt/homebrew/Cellar/python@3.14/3.14.6/Frameworks/Python.framework/Versions/3.14/Resources/Python.app/Contents/MacOS/Python -u runs/wolfnum_converged_fixtures/exact_seed_g02/run_comparisons.py",
+  "predecessor_pid": 63844,
+  "predecessor_identity": "",
+  "scope": "J3 g=.2 exact saved seed plus Delta perturbation, matching 1.3.1 consumer, existing GPU paths plus explicit exact-normal/Fourier/products4/LU4; no timing acceptance",
+  "sha256": {
+    "/Users/k0959535/Dropbox/IntegrabilityProjects/2026 Near N=4/qsccpp/CMakeLists.txt": "d110301e3a2a4776934de601479ce17fc7b2d17058fa61b2110c6ad939b7a400",
+    "/Users/k0959535/Dropbox/IntegrabilityProjects/2026 Near N=4/qsccpp/include/mx.hpp": "3f987442d37fe62ae6f30502991604012795ecebba3420885368ccf58524b6fb",
+    "/Users/k0959535/Dropbox/IntegrabilityProjects/2026 Near N=4/qsccpp/include/mp.hpp": "d5695b6aef005a3a5472e115c9355b55dc634df8bbbbe41768b7a2e28f6c73b7",
+    "/Users/k0959535/Dropbox/IntegrabilityProjects/2026 Near N=4/qsccpp/src/qscmx.cpp": "679b75e38054dde0747499583814f52d9ad57c848ce5fd728ef3f3b25be104e4",
+    "/Users/k0959535/Dropbox/IntegrabilityProjects/2026 Near N=4/qsccpp/tools/check_limbforge_solver.py": "40f517b86673871d5e6b23d15ae969376d61492658c639afb6a0cb9b85d72edd",
+    "/Users/k0959535/Dropbox/IntegrabilityProjects/2026 Near N=4/qsccpp/tools/test_limbforge.cpp": "42e740df6bf3a92747be6421c2a98f82a6159ef3331d93d226528df446b7e64f",
+    "/Users/k0959535/Dropbox/IntegrabilityProjects/2026 Near N=4/qsccpp/tools/test_fourier_candidate.cpp": "33b86491268eae5c599ec32210bae7261ba36362b5ad8a7e3731300b10da814a",
+    "/Users/k0959535/Dropbox/IntegrabilityProjects/2026 Near N=4/qsccpp/tools/test_products4_candidate.cpp": "e3c888dd3920aaf1cdfeaf4f06f229807033a90af3d5fae3e66b9b6508b6892f",
+    "/Users/k0959535/Dropbox/IntegrabilityProjects/2026 Near N=4/qsccpp/tools/test_lu4_candidate.cpp": "12ddc8e20fa073f03e1d2e44c3ccc5eb547d74fb8d00f5d631ad9c16ce26fa1b",
+    "/Users/k0959535/Dropbox/IntegrabilityProjects/2026 Near N=4/qsccpp/build-wolfnum-section9/qscmx": "8428f4decc52d9d76de355fcf148474c2431600f13e8d062193b1e5d36872259",
+    "/Users/k0959535/Dropbox/IntegrabilityProjects/2026 Near N=4/qsccpp/build-wolfnum-section9/qscmx_limbforge_check": "6d811ce1371941f7fee928aa59cfc921cd250ebb01304ce418dd2078536f37c6",
+    "/Users/k0959535/Dropbox/IntegrabilityProjects/2026 Near N=4/qsccpp/build-wolfnum-section9/qscmx_fourier_check": "795335a787b03ea590ecfa8349902b4f6e215b957a2893ad0d1d853381cb8a04",
+    "/Users/k0959535/Dropbox/IntegrabilityProjects/2026 Near N=4/qsccpp/build-wolfnum-section9/qscmx_products4_check": "ed52de94a2b89795401d963f9704234637a6405adfdb9198223004e3437849f2",
+    "/Users/k0959535/Dropbox/IntegrabilityProjects/2026 Near N=4/qsccpp/build-wolfnum-section9/qscmx_lu4_check": "0cba7d7b94f411e5f17e126d5753769911e692d3b435e3f42f5705e009102095",
+    "/Users/k0959535/Dropbox/IntegrabilityProjects/2026 Near N=4/qsccpp/build-wolfnum-section9/limbforge/liblimbforge.a": "b1ed7252a69a6090baabcc6c83e849223e77c4920995f8004e5a3cac2bbc78e7",
+    "/Users/k0959535/Dropbox/IntegrabilityProjects/2026 Near N=4/qsccpp/runs/wolfnum_converged_fixtures/exact_seed_g02/j3_X2Y_g0.2_nc21.txt": "403ff22c8a7543d270f0be0b4db8fcd653efc9a02fc7d9327e1b8fb8759aa251",
+    "/Users/k0959535/Dropbox/IntegrabilityProjects/2026 Near N=4/qsccpp/runs/wolfnum_converged_fixtures/exact_seed_g02/preparation_metadata.json": "557412ac1745ef323e10731becb7fba174b29427ecbf486b2bb30f61880a49d3",
+    "/Users/k0959535/Dropbox/IntegrabilityProjects/2026 Near N=4/qsccpp/runs/wolfnum_converged_fixtures/exact_seed_g02/preparation.wl": "89592175a311e830c2234d5d7b6d3de22d062d8fb2c4d53759e86e1a447c2b69"
+  },
+  "steps": [
+    {
+      "input": "j3_X2Y_g0.2_nc21.txt",
+      "command": [
+        "/opt/homebrew/opt/python@3.14/bin/python3.14",
+        "/Users/k0959535/Dropbox/IntegrabilityProjects/2026 Near N=4/qsccpp/tools/check_limbforge_solver.py",
+        "/Users/k0959535/Dropbox/IntegrabilityProjects/2026 Near N=4/qsccpp/build-wolfnum-section9/qscmx",
+        "/Users/k0959535/Dropbox/IntegrabilityProjects/2026 Near N=4/qsccpp/runs/wolfnum_converged_fixtures/exact_seed_g02/j3_X2Y_g0.2_nc21.txt",
+        "--out",
+        "/Users/k0959535/Dropbox/IntegrabilityProjects/2026 Near N=4/qsccpp/runs/wolfnum_converged_fixtures/exact_seed_g02/comparison_j3_X2Y_g0.2_nc21",
+        "--normal-equations",
+        "--fourier",
+        "--products4",
+        "--lu4"
+      ],
+      "started_utc": "2026-10-09T11:19:26.744465+00:00",
+      "load_before": [
+        7.4208984375,
+        7.79443359375,
+        7.330078125
+      ],
+      "state": "TERMINAL",
+      "pid": 77750,
+      "pid_identity": "Fri Oct  9 07:19:26 2026     /opt/homebrew/opt/python@3.14/bin/python3.14 /Users/k0959535/Dropbox/IntegrabilityProjects/2026 Near N=4/qsccpp/tools/check_limbforge_solver.py /Users/k0959535/Dropbox/IntegrabilityProjects/2026 Near N=4/qsccpp/build-wolfnum-section9/qscmx /Users/k0959535/Dropbox/IntegrabilityProjects/2026 Near N=4/qsccpp/runs/wolfnum_converged_fixtures/exact_seed_g02/j3_X2Y_g0.2_nc21.txt --out /Users/k0959535/Dropbox/IntegrabilityProjects/2026 Near N=4/qsccpp/runs/wolfnum_converged_fixtures/exact_seed_g02/comparison_j3_X2Y_g0.2_nc21 --normal-equations --fourier --products4 --lu4",
+      "exit_code": 0,
+      "elapsed_seconds": 12.133696666976903,
+      "load_after": [
+        9.1103515625,
+        8.14697265625,
+        7.46337890625
+      ],
+      "log_sha256": "1ebd58a16c22d5b836bbc3bd9030a6cd4a088181614513156ce944ea324abaeb",
+      "comparison_sha256": "eedddb060c31b6ca41ff32b40e39e4a17329b862ae74177ca8546cc902407e4c",
+      "acceptance_pass": true,
+      "comparison": [
+        {
+          "input": "/Users/k0959535/Dropbox/IntegrabilityProjects/2026 Near N=4/qsccpp/runs/wolfnum_converged_fixtures/exact_seed_g02/j3_X2Y_g0.2_nc21.txt",
+          "sha256": "403ff22c8a7543d270f0be0b4db8fcd653efc9a02fc7d9327e1b8fb8759aa251",
+          "g": [
+            "0.2000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000e0",
+            "0"
+          ],
+          "dims": [
+            "21",
+            "25",
+            "300",
+            "27"
+          ],
+          "prec": [
+            "374"
+          ],
+          "binary": "/Users/k0959535/Dropbox/IntegrabilityProjects/2026 Near N=4/qsccpp/build-wolfnum-section9/qscmx",
+          "binary_sha256": "8428f4decc52d9d76de355fcf148474c2431600f13e8d062193b1e5d36872259",
+          "load_before": [
+            [
+              7.4208984375,
+              7.79443359375,
+              7.330078125
+            ],
+            [
+              8.59814453125,
+              8.03173828125,
+              7.41943359375
+            ]
+          ],
+          "timing_accepted": false,
+          "combined_exact_normal": true,
+          "selected_gpu_switches": {
+            "QSC_GPU_NORMAL": true,
+            "QSC_GPU_FOURIER": true,
+            "QSC_GPU_PRODUCTS4": true,
+            "QSC_GPU_LU4": true
+          },
+          "required_candidate_markers": [
+            "exact normal equations:",
+            "Fourier Jacobian (GPU)",
+            "exact Fourier:",
+            "tangent 4x4 Jacobian (GPU)",
+            "tangent products4:",
+            "descent inverses4 (GPU)",
+            "gluing inverses4 (GPU)",
+            "inverse4 LU:"
+          ],
+          "delta_max_component_error": "3.048459916049717231113095515480716003033128857457098E-89",
+          "cpu_iterations": 2,
+          "gpu_iterations": 2,
+          "history_max_relative_error": "0",
+          "cpu_residual": "1.48318644267521618E-25",
+          "gpu_residual": "1.48318644267521618E-25",
+          "gtol": "1E-22",
+          "adjoint_checks_pass": true,
+          "all_three_gpu_paths_exercised": true,
+          "agreement_pass": true,
+          "converged": true,
+          "acceptance_pass": true
+        }
+      ]
+    }
+  ],
+  "started_utc": "2026-10-09T11:19:26.702625+00:00",
+  "timing_accepted": false,
+  "preceding_gpu_gate_status": "PASS",
+  "preceding_gpu_gate_sha256": "f1325abc8c35c1673814a746190c146195c898d112745e7e96c93e0c437eb61b",
+  "finished_utc": "2026-10-09T11:19:38.878930+00:00"
+}
