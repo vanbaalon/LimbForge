@@ -216,8 +216,8 @@ candidate or an unconverged diagnostic as accepted production behavior.
 | Item | Status / acceptance still needed |
 |---|---|
 | Catch GPU/bridge errors and fall back to CPU; warn once | Implemented locally; focused helper check passes, including transactional output preservation and worker exception propagation |
-| One shared Engine for algebra units | Implemented locally; matching 1.1.0 headers/archive checked at startup; pipeline caches remain separate |
-| Algebra prewarm | Delivered in 1.2.0: operation/shape-aware synchronous and asynchronous preparation on the owning units, with detached cache lifetime and synchronized cache access. Combined focused normal/shader and package checks pass; consumer startup wiring pending |
+| One shared Engine for algebra units | Implemented locally; matching 1.2.0 headers/archive checked at startup; pipeline caches remain separate |
+| Algebra prewarm | Delivered in 1.2.0 and wired locally in qscmx: futures overlap CPU setup and both are drained before solver construction; startup failure disables GPU helpers for CPU fallback. Focused normal/shader checks and a real main startup eval pass; consumer records are in `runs/limbforge/prewarm_1_2`. First-Jacobian timing and converged-history acceptance remain pending |
 | Keep `adj_prep` CPU-only; select stage 2 after the glue | Preserved; do not move the glue or invoke GPU work inside stage 1 |
 | Relative MPFR adjoint check in units of `2^-prec` | Implemented; finite, nonempty checks require <=65536 normalized units; report finite-difference amplification separately |
 | Converged CPU/GPU g=.1/.2/.5 checks | Pending: componentwise Delta agreement <=1e-25, equal iteration counts and matching residual histories; save inputs and both logs |
