@@ -122,8 +122,13 @@ a row in `docs/optimizations.md`, rejected attempts kept under `benchmarks/exper
   (`3e30d47`, based on 1.2.0/main `02bca53`) preserves the existing scalar sequence through
   three passes per block panel. All 31 factor/solve widths pass normally and under
   shader validation, 26/26 library suites and all 19 unique GPU-validation suites
-  pass. Solver-size independent MPFR fixtures also pass. Production still selects
-  scalar columns; warm/cold interleaved measurements and the 3x target are pending.
+  pass. Solver-size independent MPFR fixtures also pass. The first three-repeat
+  352-bit n=944/eight-trial/three-RHS host comparison is unfavorable: factor plus
+  solve takes 8.55 s for block panels versus 7.89 s scalar and 0.76 s for the exact
+  Linalg block32 loop. Each matches its own contract; these are busy-host library
+  observations, not idle consumer timing. The candidate is not accepted; production
+  retains scalar columns. Other width/shape comparisons are queued. The 3x target
+  and optimized exact-contract batched design (P2.2) remain open.
 - **Problem:** the column-by-column passes (≈ 3n small dispatches with shrinking grids) lose to eight sequential `Linalg::cholesky` calls at n = 944 (1.54 s vs 1.23 s).
 - **Change:** use a blocked algorithm, with per-trial panels and trailing updates as batched GEMM over all trials.
 - **Target:** ≥ 3× over 8 × `Linalg::cholesky` at n ≈ 1000, and keep the n ≤ 400 advantage.
