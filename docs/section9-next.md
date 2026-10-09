@@ -119,7 +119,7 @@ a row in `docs/optimizations.md`, rejected attempts kept under `benchmarks/exper
 
 **P1.2: Blocked `cholesky_trials`.**
 - **Candidate validation complete:** local branch `round-section9-blocked-trials`
-  (`a14f13e`, rebased on current main) preserves the existing scalar sequence through
+  (`3e30d47`, based on 1.2.0/main `02bca53`) preserves the existing scalar sequence through
   three passes per block panel. All 31 factor/solve widths pass normally and under
   shader validation, 26/26 library suites and all 19 unique GPU-validation suites
   pass. Solver-size independent MPFR fixtures also pass. Production still selects

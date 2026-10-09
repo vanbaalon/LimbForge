@@ -1,0 +1,13 @@
+{
+  "version": "1.3.0",
+  "revision": "11e46427ebfa57c550d226dea7bc24bff1656731",
+  "result": "2/2 version and installed package checks PASS; matching main headers/archive",
+  "recorded_utc": "2026-10-09T03:43:32.759260+00:00",
+  "sha256": {
+    "include/limbforge/version.hpp": "1bf942e0b6045af181bc1304ace628035c09861112e293f1f542a1042a1a1a07",
+    "include/limbforge/batched_linalg.hpp": "f80ef93bfe7e9e9387b0419a06ee1f3a4af24c0b6ca0183fe377164c51b70bad",
+    "src/batched_linalg.mm": "478994d7e1b16037bcf749ff0282da6eeae6f3af514617f074b3d8b48eaa3ee7",
+    "src/batched_linalg.metal": "71b8e269d0db50a76b20d2a8df65e3d3efcc587c9812ac598ebd0a19620f5507",
+    "build/liblimbforge.a": "1cae1cef9af348413d4e1567cf5bc5be7b9df0da6ed7794c48cc757ee19840f1"
+  }
+}
