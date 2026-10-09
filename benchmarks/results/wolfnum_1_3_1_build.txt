@@ -1,0 +1,23 @@
+[ 10%] Building CXX object CMakeFiles/limbforge.dir/src/version.cpp.o
+[ 20%] Building OBJCXX object CMakeFiles/limbforge.dir/src/engine.mm.o
+[ 30%] Building OBJCXX object CMakeFiles/limbforge.dir/src/linalg_complex.mm.o
+[ 40%] Building OBJCXX object CMakeFiles/limbforge.dir/src/linalg.mm.o
+[ 50%] Building OBJCXX object CMakeFiles/limbforge.dir/src/batched_linalg.mm.o
+/private/tmp/wolfnum-release-1.3.1/src/engine.mm:420:75: warning: missing field 'b_stride' initializer [-Wmissing-field-initializers]
+  420 |         Params params={std::uint32_t(count),std::uint32_t(operation),0,0,1};[encoder setBytes:&params length:sizeof(params) atIndex:3];
+      |                                                                           ^
+1 warning generated.
+[ 60%] Building OBJCXX object CMakeFiles/limbforge.dir/src/numerics.mm.o
+[ 70%] Building OBJCXX object CMakeFiles/limbforge.dir/src/transcendental.mm.o
+[ 80%] Linking CXX static library liblimbforge.a
+[ 80%] Built target limbforge
+[ 90%] Building CXX object CMakeFiles/test_limbforge_version.dir/tests/test_version.cpp.o
+[100%] Linking CXX executable test_limbforge_version
+[100%] Built target test_limbforge_version
+[ 80%] Built target limbforge
+[ 90%] Building CXX object CMakeFiles/test_limbforge_bridge.dir/tests/test_bridge.cpp.o
+[100%] Linking CXX executable test_limbforge_bridge
+ld: warning: building for macOS-15.0, but linking with dylib '/opt/homebrew/opt/libmpc/lib/libmpc.3.dylib' which was built for newer version 26.0
+ld: warning: building for macOS-15.0, but linking with dylib '/opt/homebrew/opt/mpfr/lib/libmpfr.6.dylib' which was built for newer version 26.0
+ld: warning: building for macOS-15.0, but linking with dylib '/opt/homebrew/opt/gmp/lib/libgmp.10.dylib' which was built for newer version 26.0
+[100%] Built target test_limbforge_bridge

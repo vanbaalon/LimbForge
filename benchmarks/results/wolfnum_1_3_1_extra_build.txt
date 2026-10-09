@@ -1,0 +1,32 @@
+[ 80%] Built target limbforge
+[ 90%] Building CXX object CMakeFiles/test_limbforge.dir/tests/test_arithmetic.cpp.o
+[100%] Linking CXX executable test_limbforge
+ld: warning: building for macOS-15.0, but linking with dylib '/opt/homebrew/opt/mpfr/lib/libmpfr.6.dylib' which was built for newer version 26.0
+ld: warning: building for macOS-15.0, but linking with dylib '/opt/homebrew/opt/gmp/lib/libgmp.10.dylib' which was built for newer version 26.0
+[100%] Built target test_limbforge
+[ 80%] Built target limbforge
+[ 90%] Building CXX object CMakeFiles/test_limbforge_fused.dir/tests/test_fused.cpp.o
+[100%] Linking CXX executable test_limbforge_fused
+ld: warning: building for macOS-15.0, but linking with dylib '/opt/homebrew/opt/mpfr/lib/libmpfr.6.dylib' which was built for newer version 26.0
+ld: warning: building for macOS-15.0, but linking with dylib '/opt/homebrew/opt/gmp/lib/libgmp.10.dylib' which was built for newer version 26.0
+[100%] Built target test_limbforge_fused
+[ 80%] Built target limbforge
+[ 90%] Building CXX object CMakeFiles/test_limbforge_transcendental.dir/tests/test_transcendental.cpp.o
+[100%] Linking CXX executable test_limbforge_transcendental
+ld: warning: building for macOS-15.0, but linking with dylib '/opt/homebrew/opt/libmpc/lib/libmpc.3.dylib' which was built for newer version 26.0
+ld: warning: building for macOS-15.0, but linking with dylib '/opt/homebrew/opt/mpfr/lib/libmpfr.6.dylib' which was built for newer version 26.0
+ld: warning: building for macOS-15.0, but linking with dylib '/opt/homebrew/opt/gmp/lib/libgmp.10.dylib' which was built for newer version 26.0
+[100%] Built target test_limbforge_transcendental
+[ 80%] Built target limbforge
+[ 90%] Building CXX object CMakeFiles/test_limbforge_linalg.dir/tests/test_linalg.cpp.o
+[100%] Linking CXX executable test_limbforge_linalg
+ld: warning: building for macOS-15.0, but linking with dylib '/opt/homebrew/opt/mpfr/lib/libmpfr.6.dylib' which was built for newer version 26.0
+ld: warning: building for macOS-15.0, but linking with dylib '/opt/homebrew/opt/gmp/lib/libgmp.10.dylib' which was built for newer version 26.0
+[100%] Built target test_limbforge_linalg
+[ 80%] Built target limbforge
+[ 90%] Building CXX object CMakeFiles/test_limbforge_section9.dir/tests/test_section9.cpp.o
+[100%] Linking CXX executable test_limbforge_section9
+ld: warning: building for macOS-15.0, but linking with dylib '/opt/homebrew/opt/libmpc/lib/libmpc.3.dylib' which was built for newer version 26.0
+ld: warning: building for macOS-15.0, but linking with dylib '/opt/homebrew/opt/mpfr/lib/libmpfr.6.dylib' which was built for newer version 26.0
+ld: warning: building for macOS-15.0, but linking with dylib '/opt/homebrew/opt/gmp/lib/libgmp.10.dylib' which was built for newer version 26.0
+[100%] Built target test_limbforge_section9

@@ -57,6 +57,12 @@ Use `normal_equations` for immediately final, sequential products, or `normal_eq
 for single-round exact dots. The [numerical contracts](numerics.md#batched-products-and-polynomial-source-recurrences)
 and [completion rules](execution.md#batched-numerical-operations) explain which can be chained in one batch.
 
+For independent calls at the measured n=944/K=1100, 352/384/448-bit profiles,
+prefer the exact form: it is faster and has smaller measured global error in these
+fixtures. See [timing and accuracy evidence](../benchmarks/experiments/section9_normal_equations.md).
+The sequential form remains useful for immediate chaining as in the example below;
+exact outputs must be waited and repaired before a dependent read.
+
 ```cpp
 auto batch = engine.batch();
 numerical.normal_equations(batch, J, g, rows, cols, A, rhs);

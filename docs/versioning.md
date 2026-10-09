@@ -32,25 +32,25 @@ numerical validation coverage and measured performance remain documented separat
 
 ## Pin a production dependency
 
-Use the immutable `v1.3.0` tag, or its commit, rather than a moving main branch:
+Use the immutable `v1.3.1` tag, or its commit, rather than a moving main branch:
 
 ```sh
-git clone --branch v1.3.0 --depth 1 https://github.com/vanbaalon/LimbForge.git
+git clone --branch v1.3.1 --depth 1 https://github.com/vanbaalon/LimbForge.git
 ```
 
 With an installed package, require exactly the validated release:
 
 ```cmake
-find_package(LimbForge 1.3.0 EXACT CONFIG REQUIRED)
+find_package(LimbForge 1.3.1 EXACT CONFIG REQUIRED)
 target_link_libraries(my_application PRIVATE LimbForge::limbforge)
 ```
 
 If a project deliberately allows compatible upgrades, use
-`find_package(LimbForge 1.3.0...<2.0.0 CONFIG REQUIRED)` or a minimum of `1.3.0`.
+`find_package(LimbForge 1.3.1...<2.0.0 CONFIG REQUIRED)` or a minimum of `1.3.1`.
 The generated package version file only accepts the same major and a sufficient version.
 The config exposes `LimbForge_VERSION` and `LimbForge_API_VERSION` (the major).
 Consumers previously requesting the unversioned development baseline with `0.1` should
-update that requirement to `1.3.0`; existing source names and signatures remain available in this release.
+update that requirement to `1.3.1`; existing source names and signatures remain available in this release.
 
 For `add_subdirectory`/FetchContent, pin the same Git tag or commit. The checked-in
 `version.hpp` is the single version source: CMake reads its three numeric macros, so installed,

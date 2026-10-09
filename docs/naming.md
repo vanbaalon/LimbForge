@@ -6,7 +6,8 @@ not require Wolfbook. Nikolay Gromov is the project author.
 
 Documentation, diagnostics, current benchmark method labels and the CMake project
 name use WolfNum. The rename changes no arithmetic, precision, rounding, storage,
-ownership or default behavior and creates no new release or moved tag.
+ownership or default behavior. The branding is released as compatible patch
+**1.3.1**; previously published tags stay unchanged.
 
 ## Production integration names
 

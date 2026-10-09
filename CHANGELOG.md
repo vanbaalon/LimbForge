@@ -2,17 +2,26 @@
 
 ## Unreleased
 
+## 1.3.1 — 2026-10-09
+
 - Renamed the project to **WolfNum**, the numerical library in the Wolfbook family.
   Updated documentation, comments, diagnostics and benchmark method labels. The
   CMake project is now `WolfNum`; former project variables remain available.
   Existing `limbforge` headers, C++ symbols, version macros, package, build targets,
   options and environment variables retain their production-compatible names.
   Repository URLs, published tags and recorded benchmark evidence retain their
-  original identities. Numerical behavior and API version are unchanged.
+  original identities. Numerical behavior and API major remain unchanged.
   Validation: rebuilt the affected library, example and benchmark targets; all
   three focused CPU version/package/bridge checks pass. An embedded consumer
   also confirms legacy targets and directory variables remain available. Core
   arithmetic and shader sources are byte-identical to the pre-rename baseline.
+
+- Added opt-in normal-equation comparisons and tightened the GEMM benchmark worker
+  and timing scopes. Each timed CPU/GPU output is checked against its documented
+  contract. Recorded six normal-equation profiles and scoped exact-path guidance;
+  an offline exporter adds checked, profile-specific calibration without changing defaults.
+  Exact-trial prototypes and their measurements remain experimental;
+  they are not installed public APIs in this release.
 
 ## 1.3.0 — 2026-10-08
 

@@ -25,4 +25,4 @@ jobs:
       - name: Check CPU arithmetic against MPFR
         run: ctest --test-dir build --output-on-failure
       - name: Verify package installation
-        run: cmake --install build --prefix "$RUNNER_TEMP/limbforge-install"
+        run: cmake --install build --prefix "$RUNNER_TEMP/wolfnum-install"

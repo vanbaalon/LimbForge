@@ -21,8 +21,9 @@ GitHub repository still uses its original URL until it is renamed.
 See the [naming and compatibility notes](docs/naming.md).
 
 > **Versioned API 1.x:** the compatibility baseline is **1.0.0**; the current release is
-> **1.3.0**, adding reusable polynomial-source tables and an explicit shared-source recurrence option.
-> Production consumers can pin `v1.3.0` and rebuild with matching headers/archive;
+> **1.3.1**, releasing the WolfNum name with the existing production API.
+> Reusable polynomial-source tables and the explicit shared-source recurrence option arrived in 1.3.0.
+> Production consumers can pin `v1.3.1` and rebuild with matching headers/archive;
 > see [versioning and compatibility](docs/versioning.md).
 > CPU and physical GPU validation use independent MPFR operations, with device validation
 > currently covering an Apple M5 Max. See the [numerical contract](docs/numerics.md).

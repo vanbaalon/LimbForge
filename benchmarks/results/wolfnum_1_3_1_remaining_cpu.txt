@@ -1,0 +1,13 @@
+Test project /private/tmp/wolfnum-release-1.3.1/build
+    Start 3: arithmetic_cpu
+1/4 Test #3: arithmetic_cpu ...................   Passed    1.44 sec
+    Start 5: fused_cpu
+2/4 Test #5: fused_cpu ........................   Passed    0.55 sec
+    Start 7: transcendental_cpu
+3/4 Test #7: transcendental_cpu ...............   Passed   45.41 sec
+    Start 8: linalg_cpu
+4/4 Test #8: linalg_cpu .......................   Passed    0.54 sec
+
+100% tests passed out of 4
+
+Total Test time (real) =  47.94 sec

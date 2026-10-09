@@ -149,18 +149,16 @@ a row in `docs/optimizations.md`, rejected attempts kept under `benchmarks/exper
 - **Shapes:** both §9.2 shapes, plus the 4×4 batches at 1e4–1e5 matrices.
 
 **P1.4: Normal equations.**
-- **Harness ready on WolfNum1.3:** `section9_normal_limbforge` checks every timed
-  composed/fused/exact CPU/GPU output, with persistent balanced-triangle MPFR work,
-  matched Linalg worker counts and independent high-precision accuracy. CPU-only
-  all31 and four rebuilt normal/shader fixtures pass. The target is opt-in; n=944,
-  K=1100 timing/accuracy and guidance remain pending. See
-  `benchmarks/experiments/section9_normal_equations.md`.
-- Measurement harness prepared on `round-section9-normal-measurements`: composed/fused
-  sequential, exact augmented and exact SYRK+GEMM paths have independent references.
-  Check-only 352/1024 cases pass; actual n=944/K=1100 timings and accuracy-guidance
-  decisions remain pending. [Record](../benchmarks/experiments/section9_normal_equations.md).
-- **Measure:** `normal_equations` (sequential, one thread per output) against `normal_equations_exact` and plain `syrk`, at n ≈ 944, K ≈ 1100, for time and accuracy.
-- **Decision rule:** if the sequential form is slower and less accurate, recommend `normal_equations_exact` in usage guidance. Preserve the meaning and defaults of `normal_equations`; it remains useful for chaining within a batch, where its outputs are final immediately.
+- **Measured:** all six 352/384/448-bit host/resident comparisons at n=944, K=1100
+  complete three checked repetitions. Exact augmented normals have 4.39–9.76x lower
+  median GPU wall time than composed sequential normals and smaller measured error.
+  Plain exact SYRK plus GEMM has the lowest median in these fixtures. Independent
+  all-width CPU references and focused physical-GPU/shader checks pass beforehand.
+- **Usage guidance:** recommend `normal_equations_exact` for independent calls at
+  these measured profiles. Preserve sequential defaults and immediate within-batch
+  chaining; exact outputs require wait-time finalization. Bounded input exponents
+  and busy-host load limit these results; consumer acceptance remains P3.
+  [Timing, accuracy and raw evidence](../benchmarks/experiments/section9_normal_equations.md).
 
 **P1.5: `polynomial_recurrence` sources.**
 - **Delivered in 1.3.0:** independent `polynomial_sources` API, explicit shared-source
@@ -217,11 +215,12 @@ before release acceptance. The target remains bit-identical factors per trial wi
 the same block; existing sequential calls and defaults stay unchanged. Consumer
 Newton histories and idle timings still require P3 checks.
 
-**P2.3: Break-even table.** Partial: the source-recurrence exporter and 50 verified
-profile-specific keys cover host/resident, composed/fused and measured clock modes.
-Profiles retain device/build/binary identities and load; they do not install a default
-or establish idle-consumer policy. See `section9_shared_sources.md`. Record measured
-entries at QSC shapes for the remaining operations and idle-host profiles.
+**P2.3: Break-even table.** Partial: 50 source-recurrence keys and 24 normal-equation
+keys cover measured host/resident contracts and clock profiles. Three factor-plus-solve
+keys retain the explicit unreleased-trial scope. Exported factories load every key;
+unmeasured widths/profiles remain unknown. Terminal/hash/idle/overwrite guards pass.
+No table installs a default or establishes idle-consumer policy. See
+[offline calibration](calibration.md). GEMM and idle-host profiles remain pending.
 
 ### P3: end-to-end (consumer)
 

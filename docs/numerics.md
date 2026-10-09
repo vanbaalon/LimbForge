@@ -1430,10 +1430,10 @@ and sequential cancellation references. No arithmetic implementation changed.
 
 | Explicit name | Existing name | Accuracy/rounding | Speed evidence | Residency/completion |
 |---|---|---|---|---|
-| `Linalg::gemm_exact`, `syrk_exact` | `gemm`, `syrk` | Correctly rounded exact dot per entry | Corrected-backend P1.3/P1.4 comparison pending; band/fallback work is data dependent | Host synchronous; Buffer batch ticket final at wait |
+| `Linalg::gemm_exact`, `syrk_exact` | `gemm`, `syrk` | Correctly rounded exact dot per entry | P1.3 GEMM timings pending; P1.4 normal profiles measured; band/fallback work is data dependent | Host synchronous; Buffer batch ticket final at wait |
 | `BatchedLinalg::gemm_sequential` | `gemm` | Ascending composed or fused updates; per-step rounding can lose cancellation | P1.3 comparison pending; fused flag preserves its existing meaning | Host synchronous or immediately final in a batch |
-| `normal_equations_sequential` | `normal_equations` | Ascending-row composed/fused dots | P1.4 comparison pending | Immediately final in a batch |
-| `normal_equations_exact` | Same existing explicit name | Exact augmented SYRK, one rounding per dot | P1.4 comparison pending | Ticket final after wait/fallback repair |
+| `normal_equations_sequential` | `normal_equations` | Ascending-row composed/fused dots | Slower and larger error than exact normals in the six recorded P1.4 fixtures | Immediately final in a batch |
+| `normal_equations_exact` | Same existing explicit name | Exact augmented SYRK, one rounding per dot | 4.39–9.76x lower median GPU wall time than composed normals in the recorded P1.4 fixtures | Ticket final after wait/fallback repair |
 | `Linalg::cholesky_blocked`, `cholesky_solve_blocked` | `cholesky`, `cholesky_solve` | Blocked exact dot updates; `FactorOptions::block` determines the sequence; the full factor/solve is not rounded just once | Backend split changes speed but preserves bits for a fixed block | Host/Buffer synchronous |
 | `cholesky_trials_sequential`, `cholesky_solve_sequential` | Batched `cholesky_trials`, `cholesky_solve` | Scalar-column factor updates and sequential triangular multiply/subtract/divide | P1.2 measurements pending | Device buffers, immediately final within batch |
 
@@ -1471,6 +1471,14 @@ the optional final negation applies after the second product.
 `normal_equations` computes both JᵀJ and Jᵀg by ascending row-index updates, composed by
 default or explicitly fused. `normal_equations_exact` forms the exact Gram matrix of `[J g]`
 and extracts JᵀJ and Jᵀg, with the same bits as the corresponding `Linalg` exact products.
+
+For independent normal-matrix/RHS calls at the measured n=944, K=1100 profiles,
+prefer `normal_equations_exact`: the six 352/384/448-bit host/resident comparisons
+show lower median GPU wall time and smaller global error than sequential normals.
+Input exponents are bounded and the host was busy; see the
+[measurements and accuracy units](../benchmarks/experiments/section9_normal_equations.md).
+Sequential calls retain immediate within-batch finality; wait for exact outputs and
+any repairs before a dependent read. Existing defaults are unchanged.
 
 `cholesky_trials` factors `A + mu[t]*diag(D)` for all trials. A is a shared row-major
 `[n][n]` matrix whose lower triangle is used, D is `[n]`, mu is `[count]`, L is

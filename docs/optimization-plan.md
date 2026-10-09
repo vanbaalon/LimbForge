@@ -308,14 +308,14 @@ For BSolver (≈128 lanes × 600 steps) the GPU runs ~128 threads. Two complemen
 | Section 9 P0 verification harness | all 31 widths, dense/wide-exponent and shader checks pass; 26/26 + 19/19 library suites | `test_limbforge_section9_audit`, `docs/section9-next.md` |
 | Section 9 P1.1 compact power storage | done as explicit 1.1.0 option; scratch savings validated, latency trade-off | `PowerStorage`, `section9_compact_power.md` |
 | Section 9 P1.3 GEMM comparison | four distinct contracts prepared; all-width CPU exact-reference and focused 352/1024 normal/validation GPU checks pass; measurements/tile work pending | `section9_gemm_limbforge`, `section9_gemm_comparison.md` |
-| Section 9 P1.4 normal comparison | harness prepared; all31 CPU and rebuilt focused normal/shader fixtures pass; large timing/accuracy pending | `section9_normal_limbforge`, `section9_normal_equations.md` |
+| Section 9 P1.4 normal comparison | six checked 352/384/448-bit host/resident profiles at n944/K1100; exact path faster and more accurate in these fixtures; scoped usage guidance and 24 offline keys | `section9_normal_limbforge`, `section9_normal_equations.md` |
 | Section 9 P2.2 exact trial baseline | all31/full gates pass; first n944/352 factor comparison loses11% to exact loop; scheduling/update optimization and3x acceptance pending | `section9_exact_trials_baseline.md`, retained base-bffa58b patch |
 | Section 9 P1.2 blocked trials | sequential block candidate rejected: six checked comparisons lose at n=200/400/944; optimized exact-contract P2.2 remains pending | `section9_blocked_trials.md`, retained base-02bca53 patch |
 | Section 9 P1.5 shared polynomial sources | delivered in 1.3.0; all-width/full and final focused gates pass; 22–63x lower GPU wall time on measured shapes, busy-host CPU ratios provisional | `PolynomialSources`, `PolynomialEvaluation`, `section9-next.md` P1.5 |
 | Section 9 P3 qscmx handoff | itemized; robustness and 1.2.0 startup prewarm wired locally, focused normal/shader/startup checks pass; combined normal candidate off by default; converged histories, idle timings and remaining switches pending | `section9-next.md` P3 handoff checklist; consumer `LIMBFORGE_STATUS.md` |
 | Section 9 P1.6 intermediate reuse | delivered in 1.2.0; combined focused normal/validation checks pass | `BatchedWorkspaces`, `section9_workspace_reuse.md` |
 | Section 9 P2.1 contract names | delivered in 1.2.0; additive exact/sequential/blocked names, old defaults retained | `docs/numerics.md`, `section9_contract_names.md` |
-| Production API versioning | baseline 1.0.0 (`ed41426`); current minor 1.3.0; immutable release tags | `version.hpp`, `docs/versioning.md` |
+| Production API versioning | baseline 1.0.0 (`ed41426`); current release 1.3.1; immutable release tags | `version.hpp`, `docs/versioning.md` |
 
 For section 9, finish the correctness gates in `docs/section9-next.md` P0 before accepting P1 performance changes.
 The 1.0.1 all-width/dense and shader-validation checks pass with retained logs.
