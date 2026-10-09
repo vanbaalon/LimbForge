@@ -56,5 +56,7 @@ remain pending; the historical 7.9x ratio is not a current baseline.
 
 The current harness explicitly matches Linalg host-worker count to the MPFR
 worker count. Clock labels are `cpu-interleaved` and `verified-warm-call`; neither
-proves controlled cold or continuously warm clocks. Rebuilt focused physical-GPU
-checks are required before measuring this updated 1.3.0-linked harness.
+proves controlled cold or continuously warm clocks. Four rebuilt focused physical-GPU checks pass for this updated 1.3.0-linked
+harness (352-bit host and 1024-bit resident, normal and shader validation).
+`section9_p1_gemm_wolfnum_fixture_metadata.json` records commands and identities;
+real-shape measurements remain pending.

@@ -1,0 +1,101 @@
+{
+  "timestamp_utc": "2026-10-09T05:14:49.495117+00:00",
+  "scope": "Four focused rebuilt physical-GPU fixtures (normal and shader-validation), not all-width numerical recertification or timings",
+  "cases": [
+    {
+      "log": "section9_p1_gemm_wolfnum_352_reference.txt",
+      "command": [
+        "./build/section9_gemm_limbforge",
+        "--bits",
+        "352",
+        "--count",
+        "2",
+        "--m",
+        "9",
+        "--n",
+        "7",
+        "--k",
+        "17",
+        "--workers",
+        "4",
+        "--check-only"
+      ],
+      "shader_validation": false,
+      "exit": 0
+    },
+    {
+      "log": "section9_p1_gemm_wolfnum_352_validation.txt",
+      "command": [
+        "./build/section9_gemm_limbforge",
+        "--bits",
+        "352",
+        "--count",
+        "2",
+        "--m",
+        "9",
+        "--n",
+        "7",
+        "--k",
+        "17",
+        "--workers",
+        "4",
+        "--check-only"
+      ],
+      "shader_validation": true,
+      "exit": 0
+    },
+    {
+      "log": "section9_p1_gemm_wolfnum_1024_reference.txt",
+      "command": [
+        "./build/section9_gemm_limbforge",
+        "--bits",
+        "1024",
+        "--count",
+        "3",
+        "--m",
+        "4",
+        "--n",
+        "4",
+        "--k",
+        "4",
+        "--workers",
+        "4",
+        "--check-only",
+        "--resident"
+      ],
+      "shader_validation": false,
+      "exit": 0
+    },
+    {
+      "log": "section9_p1_gemm_wolfnum_1024_validation.txt",
+      "command": [
+        "./build/section9_gemm_limbforge",
+        "--bits",
+        "1024",
+        "--count",
+        "3",
+        "--m",
+        "4",
+        "--n",
+        "4",
+        "--k",
+        "4",
+        "--workers",
+        "4",
+        "--check-only",
+        "--resident"
+      ],
+      "shader_validation": true,
+      "exit": 0
+    }
+  ],
+  "sha256": {
+    "build/section9_gemm_limbforge": "4a58dba85bc8a4bbd53796d29d460c4a8dfd3cca291f75a383e0510af06f5766",
+    "build/liblimbforge.a": "21d8afa4e431090e0a7bebbc9191fd183a0ca39dac38b9aa981c755f5978a2a4",
+    "benchmarks/section9_gemm.cpp": "80f850c388fe5a4ff67cc13cd96e24e5f5d5e4416036cfc798b48d3fab0b003e",
+    "include/limbforge/core.hpp": "12cc4bcd199bc0957275f55f7e7462f79918ad19fb3f21b55404d08119ef2ce8",
+    "src/kernels.metal": "72dcc8f6f7fa99d09f004bc2e418d2ebd1c4a0b0ea6750f2e771458c74e8d2e0",
+    "src/linalg.metal": "fa7cac7ac80fab5ba5648ef2bc002c496415f4ac394e160cf52b489d7a1a65e3",
+    "src/batched_linalg.metal": "71b8e269d0db50a76b20d2a8df65e3d3efcc587c9812ac598ebd0a19620f5507"
+  }
+}
