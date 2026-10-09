@@ -1,0 +1,10 @@
+Dset: rank 32 of 168  (1.7232781669999999 s)
+  start |G| = 4.9420920580589978e-11  |cons| = 1.8776732046444919e-95  (0.38728891599999998 s)
+  adjoint tables: stage 1 0.071550500000000003 s, stage 2 (CPU) 0.747160834 s
+  adjoint check: PASS relative max difference 0, 0 units of 2^-374 (limit 65536; scale max |rows|; 12 columns), relative to max |dRows| 0
+  normal matrix (CPU): 0.092983875000000007 s, CPU J^T G: 0.00082333300000000009 s
+  first Cholesky (CPU): 0.079572333000000009 s
+  it 1  |G| = 9.75172864777155e-28  mu = 9.9999999999999993e-41  Delta = 2 + -0.99937581469617887 + 1.6747606620660852e-37 i  (3.7934796660000001 s)
+  timing: Jc 0.29564012499999998  JG 2.7283722080000001  lin 0.14699941699999999  LM 0.235130542  chord 0 s (0 chord steps)
+  JG split (thread-summed s): dB 0.41211087400000002  descent 8.1143522539999999  residual 2.5156616250000003
+done (5.6165927919999996 s)

@@ -2,6 +2,13 @@
 
 ## Unreleased
 
+- Completed the requested J3 g=.1/.2/.5 combined-switch convergence sweep.
+  All final CPU/GPU modes solves preserve gtol=1e-22, match two history entries,
+  agree in Delta below1e-25 and exercise every selected GPU path without fallback.
+  Independent raw-output and frozen-identity checks pass. Collocation is seed
+  preparation only; its stalled .5 result is retained separately. Idle timing,
+  memory and damping/base work remain open; no library/default/version change.
+
 - Archived an independently verified converged J3 g=.2 CPU/GPU comparison for
   the matching 1.3.1 consumer with exact-normal/Fourier/product3/LU4 switches on.
   Original gtol=1e-22 is preserved; two history entries match, residuals are

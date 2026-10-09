@@ -1,0 +1,163 @@
+{
+  "status": "FAILED_ACCEPTANCE",
+  "pid": 79616,
+  "scope": "CPU collocation seed preparation followed by modes-path verification at original gtol=1e-22; no idle timing",
+  "source_and_binary_sha256": {
+    "CMakeLists.txt": "d110301e3a2a4776934de601479ce17fc7b2d17058fa61b2110c6ad939b7a400",
+    "include/mx.hpp": "3f987442d37fe62ae6f30502991604012795ecebba3420885368ccf58524b6fb",
+    "include/mp.hpp": "d5695b6aef005a3a5472e115c9355b55dc634df8bbbbe41768b7a2e28f6c73b7",
+    "src/qscmx.cpp": "679b75e38054dde0747499583814f52d9ad57c848ce5fd728ef3f3b25be104e4",
+    "tools/check_limbforge_solver.py": "40f517b86673871d5e6b23d15ae969376d61492658c639afb6a0cb9b85d72edd",
+    "tools/test_limbforge.cpp": "42e740df6bf3a92747be6421c2a98f82a6159ef3331d93d226528df446b7e64f",
+    "tools/test_fourier_candidate.cpp": "33b86491268eae5c599ec32210bae7261ba36362b5ad8a7e3731300b10da814a",
+    "tools/test_products4_candidate.cpp": "e3c888dd3920aaf1cdfeaf4f06f229807033a90af3d5fae3e66b9b6508b6892f",
+    "tools/test_lu4_candidate.cpp": "12ddc8e20fa073f03e1d2e44c3ccc5eb547d74fb8d00f5d631ad9c16ce26fa1b",
+    "build-wolfnum-section9/qscmx": "8428f4decc52d9d76de355fcf148474c2431600f13e8d062193b1e5d36872259",
+    "build-wolfnum-section9/qscmx_limbforge_check": "6d811ce1371941f7fee928aa59cfc921cd250ebb01304ce418dd2078536f37c6",
+    "build-wolfnum-section9/qscmx_fourier_check": "795335a787b03ea590ecfa8349902b4f6e215b957a2893ad0d1d853381cb8a04",
+    "build-wolfnum-section9/qscmx_products4_check": "ed52de94a2b89795401d963f9704234637a6405adfdb9198223004e3437849f2",
+    "build-wolfnum-section9/qscmx_lu4_check": "0cba7d7b94f411e5f17e126d5753769911e692d3b435e3f42f5705e009102095",
+    "build-wolfnum-section9/limbforge/liblimbforge.a": "b1ed7252a69a6090baabcc6c83e849223e77c4920995f8004e5a3cac2bbc78e7"
+  },
+  "steps": [
+    {
+      "name": "j3_X2Y_g0.1_nc21_collocation",
+      "command": [
+        "/Users/k0959535/Dropbox/IntegrabilityProjects/2026 Near N=4/qsccpp/build-wolfnum-section9/qscmx",
+        "/Users/k0959535/Dropbox/IntegrabilityProjects/2026 Near N=4/qsccpp/runs/wolfnum_converged_fixtures/collocation_seeds/j3_X2Y_g0.1_nc21_collocation.txt",
+        "/Users/k0959535/Dropbox/IntegrabilityProjects/2026 Near N=4/qsccpp/runs/wolfnum_converged_fixtures/collocation_seeds/j3_X2Y_g0.1_nc21_collocation.m"
+      ],
+      "state": "TERMINAL",
+      "load_before": [
+        4.08154296875,
+        6.2509765625,
+        6.7998046875
+      ],
+      "pid": 79617,
+      "pid_identity": "Fri Oct  9 07:22:42 2026     /Users/k0959535/Dropbox/IntegrabilityProjects/2026 Near N=4/qsccpp/build-wolfnum-section9/qscmx /Users/k0959535/Dropbox/IntegrabilityProjects/2026 Near N=4/qsccpp/runs/wolfnum_converged_fixtures/collocation_seeds/j3_X2Y_g0.1_nc21_collocation.txt /Users/k0959535/Dropbox/IntegrabilityProjects/2026 Near N=4/qsccpp/runs/wolfnum_converged_fixtures/collocation_seeds/j3_X2Y_g0.1_nc21_collocation.m",
+      "exit_code": 0,
+      "elapsed_seconds": 23.240082541015,
+      "log_sha256": "c648429ede6ad9fe18b2fb5e1d32c842a6b9f8d9739837eda84c4c82a696872e",
+      "input_sha256": "20db0a9ccc173f0ae56e5d6c3a7ae5b344709a2e60e9752a701e0cc87acbf088",
+      "output_sha256": "0a9d29ede8c7ddaeaea4ca1dbe5b0be1b3c2d8c4a4ff3670493723f252cea557",
+      "residual": "2.89751162760549012E-23",
+      "converged_collocation": true
+    },
+    {
+      "name": "j3_X2Y_g0.1_nc21_modes_comparison",
+      "command": [
+        "/opt/homebrew/opt/python@3.14/bin/python3.14",
+        "/Users/k0959535/Dropbox/IntegrabilityProjects/2026 Near N=4/qsccpp/tools/check_limbforge_solver.py",
+        "/Users/k0959535/Dropbox/IntegrabilityProjects/2026 Near N=4/qsccpp/build-wolfnum-section9/qscmx",
+        "/Users/k0959535/Dropbox/IntegrabilityProjects/2026 Near N=4/qsccpp/runs/wolfnum_converged_fixtures/collocation_seeds/j3_X2Y_g0.1_nc21_prepared_modes.txt",
+        "--out",
+        "/Users/k0959535/Dropbox/IntegrabilityProjects/2026 Near N=4/qsccpp/runs/wolfnum_converged_fixtures/collocation_seeds/j3_X2Y_g0.1_nc21_modes_comparison",
+        "--normal-equations",
+        "--fourier",
+        "--products4",
+        "--lu4"
+      ],
+      "state": "TERMINAL",
+      "load_before": [
+        5.3603515625,
+        6.36181640625,
+        6.822265625
+      ],
+      "pid": 79810,
+      "pid_identity": "Fri Oct  9 07:23:05 2026     /opt/homebrew/opt/python@3.14/bin/python3.14 /Users/k0959535/Dropbox/IntegrabilityProjects/2026 Near N=4/qsccpp/tools/check_limbforge_solver.py /Users/k0959535/Dropbox/IntegrabilityProjects/2026 Near N=4/qsccpp/build-wolfnum-section9/qscmx /Users/k0959535/Dropbox/IntegrabilityProjects/2026 Near N=4/qsccpp/runs/wolfnum_converged_fixtures/collocation_seeds/j3_X2Y_g0.1_nc21_prepared_modes.txt --out /Users/k0959535/Dropbox/IntegrabilityProjects/2026 Near N=4/qsccpp/runs/wolfnum_converged_fixtures/collocation_seeds/j3_X2Y_g0.1_nc21_modes_comparison --normal-equations --fourier --products4 --lu4",
+      "exit_code": 0,
+      "elapsed_seconds": 10.775667500041891,
+      "log_sha256": "bc135d3e93f7335c825c532644fa1c53cf7b5456dc2b08802a802a0025e5ec64",
+      "input_sha256": "f2e3aabfff902765c9d85e5781a8def12c866d173a78817194bc70ea87d450bf",
+      "acceptance_pass": true,
+      "comparison_sha256": "39c89982d6d3e163952fe5ebfc12cbc6557f3edd87a327f7fd1ed0976099a738",
+      "comparison": [
+        {
+          "input": "/Users/k0959535/Dropbox/IntegrabilityProjects/2026 Near N=4/qsccpp/runs/wolfnum_converged_fixtures/collocation_seeds/j3_X2Y_g0.1_nc21_prepared_modes.txt",
+          "sha256": "f2e3aabfff902765c9d85e5781a8def12c866d173a78817194bc70ea87d450bf",
+          "g": [
+            "0.1000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000e0",
+            "0"
+          ],
+          "dims": [
+            "21",
+            "25",
+            "300",
+            "27"
+          ],
+          "prec": [
+            "374"
+          ],
+          "binary": "/Users/k0959535/Dropbox/IntegrabilityProjects/2026 Near N=4/qsccpp/build-wolfnum-section9/qscmx",
+          "binary_sha256": "8428f4decc52d9d76de355fcf148474c2431600f13e8d062193b1e5d36872259",
+          "load_before": [
+            [
+              5.3603515625,
+              6.36181640625,
+              6.822265625
+            ],
+            [
+              5.2509765625,
+              6.322265625,
+              6.8056640625
+            ]
+          ],
+          "timing_accepted": false,
+          "combined_exact_normal": true,
+          "selected_gpu_switches": {
+            "QSC_GPU_NORMAL": true,
+            "QSC_GPU_FOURIER": true,
+            "QSC_GPU_PRODUCTS4": true,
+            "QSC_GPU_LU4": true
+          },
+          "required_candidate_markers": [
+            "exact normal equations:",
+            "Fourier Jacobian (GPU)",
+            "exact Fourier:",
+            "tangent 4x4 Jacobian (GPU)",
+            "tangent products4:",
+            "descent inverses4 (GPU)",
+            "gluing inverses4 (GPU)",
+            "inverse4 LU:"
+          ],
+          "delta_max_component_error": "3.5574656554180785056819E-88",
+          "cpu_iterations": 2,
+          "gpu_iterations": 2,
+          "history_max_relative_error": "0",
+          "cpu_residual": "9.75172864777155000E-28",
+          "gpu_residual": "9.75172864777155000E-28",
+          "gtol": "1E-22",
+          "adjoint_checks_pass": true,
+          "all_three_gpu_paths_exercised": true,
+          "agreement_pass": true,
+          "converged": true,
+          "acceptance_pass": true
+        }
+      ]
+    },
+    {
+      "name": "j3_X2Y_g0.5_nc33_collocation",
+      "command": [
+        "/Users/k0959535/Dropbox/IntegrabilityProjects/2026 Near N=4/qsccpp/build-wolfnum-section9/qscmx",
+        "/Users/k0959535/Dropbox/IntegrabilityProjects/2026 Near N=4/qsccpp/runs/wolfnum_converged_fixtures/collocation_seeds/j3_X2Y_g0.5_nc33_collocation.txt",
+        "/Users/k0959535/Dropbox/IntegrabilityProjects/2026 Near N=4/qsccpp/runs/wolfnum_converged_fixtures/collocation_seeds/j3_X2Y_g0.5_nc33_collocation.m"
+      ],
+      "state": "TERMINAL",
+      "load_before": [
+        5.0703125,
+        6.26708984375,
+        6.783203125
+      ],
+      "pid": 79913,
+      "pid_identity": "Fri Oct  9 07:23:16 2026     /Users/k0959535/Dropbox/IntegrabilityProjects/2026 Near N=4/qsccpp/build-wolfnum-section9/qscmx /Users/k0959535/Dropbox/IntegrabilityProjects/2026 Near N=4/qsccpp/runs/wolfnum_converged_fixtures/collocation_seeds/j3_X2Y_g0.5_nc33_collocation.txt /Users/k0959535/Dropbox/IntegrabilityProjects/2026 Near N=4/qsccpp/runs/wolfnum_converged_fixtures/collocation_seeds/j3_X2Y_g0.5_nc33_collocation.m",
+      "exit_code": 0,
+      "elapsed_seconds": 348.65933408401906,
+      "log_sha256": "b374f2e83e09b57a22b9eec29c5aceea31eb78d40e2bd6a783678b738a95efec",
+      "input_sha256": "c25ed65ae45098d990042a83eff5bd3d076ea82c678e4ae30205c6b278ab0ace",
+      "output_sha256": "a2a73cf0f775214d52b38100ff8ebea1e13b7039df0d53a49b4fd892c59e08ed",
+      "residual": "6.37011557145661349E-20",
+      "converged_collocation": false
+    }
+  ],
+  "timing_accepted": false
+}

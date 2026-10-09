@@ -299,3 +299,14 @@ normals, Fourier/product3/LU4 all execute without fallback and pass adjoint
 checks. Raw outputs and frozen identities independently verify. This is one
 requested coupling; full sweep, idle timings, memory and damping/base work remain
 open. [Fixture and checker](../benchmarks/experiments/section9_converged_g02.md).
+
+## Section 9 P3: complete requested convergence sweep
+
+All three requested combined-switch J3 g=.1/.2/.5 comparisons pass final modes
+convergence at the original gtol 1e-22. Two serialized history entries match per
+case, Delta differences are below 1e-25, and all existing/selected GPU paths and
+adjoint checks pass without fallback. Independent raw-output and frozen-identity
+verification passes offline and live. CPU collocation is seed preparation; the
+stalled .5 collocation result remains explicitly unsuccessful, followed by a
+passing final modes solve. No idle timing, cutoff or default change follows.
+[Full records and remaining scope](../benchmarks/experiments/section9_converged_sweep.md).

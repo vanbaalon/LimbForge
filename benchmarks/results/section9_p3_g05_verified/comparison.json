@@ -1,0 +1,63 @@
+[
+  {
+    "input": "/Users/k0959535/Dropbox/IntegrabilityProjects/2026 Near N=4/qsccpp/runs/wolfnum_converged_fixtures/collocation_seed_g05_continuation/j3_X2Y_g0.5_nc33.txt",
+    "sha256": "6db9e5b396f14116ff99be920b277c92cb5d3358cb1bbd373fcc9c8651630b47",
+    "g": [
+      "0.500000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000e0",
+      "0"
+    ],
+    "dims": [
+      "33",
+      "33",
+      "2235",
+      "39"
+    ],
+    "prec": [
+      "440"
+    ],
+    "binary": "/Users/k0959535/Dropbox/IntegrabilityProjects/2026 Near N=4/qsccpp/build-wolfnum-section9/qscmx",
+    "binary_sha256": "8428f4decc52d9d76de355fcf148474c2431600f13e8d062193b1e5d36872259",
+    "load_before": [
+      [
+        6.11962890625,
+        8.30126953125,
+        7.7880859375
+      ],
+      [
+        6.8505859375,
+        8.0986328125,
+        7.74365234375
+      ]
+    ],
+    "timing_accepted": false,
+    "combined_exact_normal": true,
+    "selected_gpu_switches": {
+      "QSC_GPU_NORMAL": true,
+      "QSC_GPU_FOURIER": true,
+      "QSC_GPU_PRODUCTS4": true,
+      "QSC_GPU_LU4": true
+    },
+    "required_candidate_markers": [
+      "exact normal equations:",
+      "Fourier Jacobian (GPU)",
+      "exact Fourier:",
+      "tangent 4x4 Jacobian (GPU)",
+      "tangent products4:",
+      "descent inverses4 (GPU)",
+      "gluing inverses4 (GPU)",
+      "inverse4 LU:"
+    ],
+    "delta_max_component_error": "3.18794599751093712379857372972E-101",
+    "cpu_iterations": 2,
+    "gpu_iterations": 2,
+    "history_max_relative_error": "0",
+    "cpu_residual": "3.08195358630895966E-23",
+    "gpu_residual": "3.08195358630895966E-23",
+    "gtol": "1E-22",
+    "adjoint_checks_pass": true,
+    "all_three_gpu_paths_exercised": true,
+    "agreement_pass": true,
+    "converged": true,
+    "acceptance_pass": true
+  }
+]

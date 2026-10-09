@@ -270,10 +270,10 @@ candidate or an unconverged diagnostic as accepted production behavior.
 | Algebra prewarm | Delivered in 1.2.0 and wired locally in qscmx: futures overlap CPU setup and both are drained before solver construction; startup failure disables GPU helpers for CPU fallback. Focused normal/shader checks and a real main startup eval pass; consumer records are in `runs/limbforge/prewarm_1_2`. First-Jacobian timing and converged-history acceptance remain pending |
 | Keep `adj_prep` CPU-only; select stage 2 after the glue | Preserved; do not move the glue or invoke GPU work inside stage 1 |
 | Relative MPFR adjoint check in units of `2^-prec` | Implemented; finite, nonempty checks require <=65536 normalized units; report finite-difference amplification separately |
-| Converged CPU/GPU g=.1/.2/.5 checks | Partial: the matching 1.3.1 combined-switch g=.2 fixture now converges at its original 1e-22 tolerance, with equal two-entry histories and Delta error 3.05e-89. Requested full-sweep evidence remains open; save inputs and both logs |
+| Converged CPU/GPU g=.1/.2/.5 checks | Complete for the recorded matching 1.3.1 combined-switch J3 fixtures: all final modes solves converge at original gtol=1e-22, histories match and Delta error is below 1e-25. Raw inputs/logs/outputs and identities independently verify; idle timing remains separate |
 | Idle-host Jacobian timings | Pending: all load averages <4 before each solve; 352 bits, Nc=23/31/59, with the large case Nsh=160 and nPts=65 |
-| Fold `J^T G` into exact augmented SYRK | Local candidate behind explicit `QSC_GPU_NORMAL=1`; default off, CPU fallback and `QSC_GPU_SYRK` gate retained; full converged-history and timing acceptance pending |
-| Fourier residual -> complex GEMM | Integrated locally behind off-default switch; matching 1.3.1 build passes MPFR normal/Metal checks and saved J3 default/combined GPU replay. Full g sweep and idle timings pending |
+| Fold `J^T G` into exact augmented SYRK | Local candidate behind explicit `QSC_GPU_NORMAL=1`; default off, CPU fallback and `QSC_GPU_SYRK` gate retained; requested combined-switch g sweep passes; idle timing remains pending |
+| Fourier residual -> complex GEMM | Integrated locally behind off-default switch; matching 1.3.1 build passes MPFR normal/Metal checks and saved J3 default/combined GPU replay. Requested combined-switch g sweep passes; idle timings remain pending |
 | Per-column 4x4 products and LU4 | Integrated locally behind off-default switches; matching 1.3.1 build passes MPFR normal/Metal checks and saved J3 default/combined GPU replay. Full g sweep and idle timings pending. See [integration](../benchmarks/experiments/section9_consumer_integrated.md) |
 | Remaining damping trials | Pending; preserve the first exact factor path, use batched trials only after P1.2/P2.2 numerical/performance acceptance; keep the new switch off until current-backend acceptance; historical small-matrix ratios are insufficient |
 | Optional base polynomial recurrence | Pending; measure shared Horner sources (P1.5) before switching the solver |
@@ -349,3 +349,14 @@ match and component Delta error is 3.05e-89. All existing and selected new GPU
 paths and adjoint checks pass without fallback. This completes that g=.2 case,
 with the full requested sweep and idle timing still separate requirements.
 [Raw outputs and independent checker](../benchmarks/experiments/section9_converged_g02.md).
+
+### Current requested sweep result
+
+All g=.1/.2/.5 combined-switch J3 comparisons now pass final modes convergence at
+the original gtol 1e-22. Two history entries match per case, with component Delta
+errors 3.56e-88/3.05e-89/3.19e-101. Every existing and selected new GPU path and
+adjoint check passes without fallback. Raw records independently verify offline
+and against the frozen local consumer. This supersedes the pending-sweep status
+in the historical replay/preparation notes above. Idle Nc23/31/59 timings, memory,
+remaining damping and optional base work remain open.
+[Complete convergence sweep and seed-preparation scope](../benchmarks/experiments/section9_converged_sweep.md).

@@ -1,0 +1,23 @@
+{
+  "status": "PREPARED_FINAL_MODES_CONVERGENCE_PENDING",
+  "collocation_source": "/Users/k0959535/Dropbox/IntegrabilityProjects/2026 Near N=4/qsccpp/runs/wolfnum_converged_fixtures/collocation_seeds/j3_X2Y_g0.5_nc33_collocation.m",
+  "collocation_source_sha256": "a2a73cf0f775214d52b38100ff8ebea1e13b7039df0d53a49b4fd892c59e08ed",
+  "collocation_residual": "6.37011557145661349E-20",
+  "seed_handoff_criterion": "finite residual<1e-8 as qsc-j3-run.wl; preparatory collocation not counted as modes acceptance",
+  "gtol": "1e-22 unchanged in final modes solve",
+  "exporter_sha256": "e00ea72a1210b37e148320f0717254b7e3d0f048c004a2759f48265522a01250",
+  "fixtures": [
+    {
+      "input": "/Users/k0959535/Dropbox/IntegrabilityProjects/2026 Near N=4/qsccpp/runs/wolfnum_converged_fixtures/collocation_seed_g05_continuation/j3_X2Y_g0.5_nc33.txt",
+      "sha256": "6db9e5b396f14116ff99be920b277c92cb5d3358cb1bbd373fcc9c8651630b47",
+      "g": "1/2",
+      "dims": [
+        33,
+        33,
+        2235,
+        39
+      ],
+      "precision_bits": 440
+    }
+  ]
+}

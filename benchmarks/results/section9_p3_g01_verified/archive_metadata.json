@@ -1,0 +1,20 @@
+{
+  "status": "PASS",
+  "case": ".1",
+  "scope": "Final modes CPU/GPU convergence at original1e-22 with all4 candidate switches; collocation is only seed preparation, no idle timing acceptance",
+  "source_directory": "/Users/k0959535/Dropbox/IntegrabilityProjects/2026 Near N=4/qsccpp/runs/wolfnum_converged_fixtures/collocation_seeds",
+  "consumer_directory": "/Users/k0959535/Dropbox/IntegrabilityProjects/2026 Near N=4/qsccpp",
+  "timing_accepted": false,
+  "evidence_sha256": {
+    "j3_X2Y_g0.1_nc21_collocation.log": "c648429ede6ad9fe18b2fb5e1d32c842a6b9f8d9739837eda84c4c82a696872e",
+    "j3_X2Y_g0.1_nc21_collocation.m": "0a9d29ede8c7ddaeaea4ca1dbe5b0be1b3c2d8c4a4ff3670493723f252cea557",
+    "j3_X2Y_g0.1_nc21_prepared_modes_cpu.m": "2da857be6cebeacf880df0b10fc8284bf62138a44e8f0c97c73a8f6a3cdbb96f",
+    "j3_X2Y_g0.1_nc21_prepared_modes.txt": "f2e3aabfff902765c9d85e5781a8def12c866d173a78817194bc70ea87d450bf",
+    "metadata.json": "1671608c97f76f4ef8a27783e5794a21b0898328eb9c7e18e660e7a20cf25f8a",
+    "comparison.json": "39c89982d6d3e163952fe5ebfc12cbc6557f3edd87a327f7fd1ed0976099a738",
+    "j3_X2Y_g0.1_nc21_prepared_modes_gpu.m": "b2ef4f6a6f47ebd9406e3210f833e2b10f54b83fa1f4b505ce32920d4b7988da",
+    "j3_X2Y_g0.1_nc21_collocation.txt": "20db0a9ccc173f0ae56e5d6c3a7ae5b344709a2e60e9752a701e0cc87acbf088",
+    "j3_X2Y_g0.1_nc21_prepared_modes_cpu.log": "a1084458f3d26031f16b78b46085a34762b838867bf943dc8c56a46c81451f22",
+    "j3_X2Y_g0.1_nc21_prepared_modes_gpu.log": "fa0e50c49c1f64968eeb7cddd8b1466b8c74f9dac0b7afb214ebfb8f5da1161c"
+  }
+}
