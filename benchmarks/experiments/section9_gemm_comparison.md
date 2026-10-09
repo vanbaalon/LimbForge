@@ -1,0 +1,55 @@
+# Section 9 P1.3: complex GEMM contract comparison
+
+Base `70ec257` / numerical release 1.1.0. No library arithmetic, API or default change.
+`section9_gemm_limbforge` is an opt-in benchmark excluded from routine builds/CTest.
+No timings have been recorded or speed claims accepted.
+
+The four paths have separate MPFR references:
+
+| Path | Rounding contract |
+|---|---|
+| Complex composed | Four rounded real products per complex product, rounded real difference/imaginary sum, then ascending rounded accumulation |
+| Complex fused | Each real/imaginary component rounds once from the two exact signed products plus the previous rounded component, at every ascending inner index |
+| Exact real embedding | Rows `[ar,-ai]` and `[ai,ar]` times stacked `[br;bi]`; one exact real dot over `2k` terms per component, then one rounding |
+| Gauss three real composed | Round `ar+ai` and `br+bi`; independently accumulate `P=ar*br`, `Q=ai*bi`, `S=(ar+ai)*(br+bi)` using rounded real multiply/add; output `RN(P-Q)` and `RN(RN(S-P)-Q)` |
+
+Gauss here is a matrix-level three-real-GEMM experiment. It is a different sequence
+from a three-product complex multiply followed by complex accumulation. It can lose
+accuracy through cancellation and must not silently replace an existing complex GEMM.
+The exact embedding uses one Linalg call per matrix; it is not a new batched exact API.
+Its outputs are final only after wait, including any host exact fallback, which is timed.
+
+MPFR storage, pointer tables, worker scratch and output buffers are prepared once.
+The exact timed CPU path uses `mpfr_dot` at B bits, checked against an independent
+2B+64-bit sum of exact products. Fixture exponents lie in [-4,4] and k<=4096, so this
+precision retains the exact sum. All 31 CPU widths pass that check. Gauss input sums
+and reconstruction are inside both CPU/GPU timings. Every initial, optional warm-up
+and timed GPU result is checked against its own MPFR sequence; timed CPU outputs
+are rechecked outside timing. Accuracy includes the count of complex entries that
+differ from the once-rounded result and maximum component error normalized by the
+maximum exact component magnitude, in units of 2^-B.
+
+Host staging includes split/embedding preparation, uploads, downloads and output
+reconstruction using reused buffers. MPFR/MPC bridge conversion remains excluded
+and belongs in the consumer measurement. Resident mode starts with path-specific
+resident layouts and excludes transfers and host output reconstruction; Gauss
+device sums/reconstruction remain timed. It does not promise an interleaved complex
+input/output interface for either real-path experiment.
+
+CPU and GPU path orders rotate over repetitions. CSV retains medians, quartiles and
+range; stderr preserves raw sample order, wall and device times. `--warm` performs
+one verified untimed call before each sample, without claiming continuously warm clocks.
+The default is CPU-interleaved rather than a controlled cold-clock measurement.
+
+Build with `cmake --build build --target section9_gemm_limbforge -j4`.
+352-bit 2x(9x17x7) host-staging and 1024-bit 3x(4x4x4) resident check-only cases pass,
+both normally and under shader validation. Logs: `section9_p13_gemm_*_reference.txt`
+and `...validation.txt`; CPU-only all-width log: `section9_p13_gemm_cpu_reference.txt`.
+These are focused checks, not all-width certification of a new primitive.
+
+The default shape is the Fourier 66x130 times 130x3800. For large 4x4 batches, select
+`--path composed`, `fused` or `gauss` to avoid the unrelated per-matrix Linalg encoding
+cost and extra buffers of the exact embedding. A fair large-batch exact comparison
+still needs measurement and may motivate an exact batched API. Fourier/other §9.2
+shapes, 1e4/1e5 batches, register blocking/TK variants and performance acceptance
+remain pending; the historical 7.9x ratio is not a current baseline.
