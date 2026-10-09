@@ -1,4 +1,4 @@
-# Contributing to LimbForge
+# Contributing to WolfNum
 
 Open an issue with a concrete use case, a reproducible bug, or a proposed
 optimization. Small, focused pull requests are easiest to review.

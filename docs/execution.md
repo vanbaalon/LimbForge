@@ -314,7 +314,7 @@ are specified in Numerics.
 With `mpc_staging.hpp`, call `describe_inline_mpc(bits,allocation,bytes,pointers,count)`
 then `import_inline_complex(batch,allocation,bytes,records,count,out)`. The GPU reads
 the original significands and writes ordinary resident Complex values. **No host limb
-repacking occurs**, but this is not an alias between the incompatible MPC/LimbForge layouts.
+repacking occurs**, but this is not an alias between the incompatible MPC/WolfNum layouts.
 Small exponent/sign/status metadata is copied. Precisions must already equal bits;
 otherwise use the ordinary bridge. This includes both odd 32-bit limb counts (e.g. 352-bit
 values in six 64-bit limbs) and even counts (e.g. 640 bits in ten limbs).

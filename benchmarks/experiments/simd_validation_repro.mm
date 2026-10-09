@@ -1,4 +1,4 @@
-// Round 41-L4b: a LimbForge-independent reproducer for wrong cross-lane values under MTL_SHADER_VALIDATION.
+// Round 41-L4b: a WolfNum-independent reproducer for wrong cross-lane values under MTL_SHADER_VALIDATION.
 // Each thread keeps K words; every round, word j becomes v_j*1664525 + w_{r,j} + shuffle(v_j, lane ^ s_j) + v_{j+1},
 // with the round weights w read from device memory (as the recurrence reads its weights). The CPU replays the
 // same lockstep semantics; every dispatch is compared word for word. Exchange modes (--mode):

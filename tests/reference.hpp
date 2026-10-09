@@ -6,7 +6,7 @@
 #include <iostream>
 #include <cstring>
 namespace reference {
-// Keep the oracle finite for products/quotients beyond LimbForge's exponent
+// Keep the oracle finite for products/quotients beyond WolfNum's exponent
 // limits, so conversion can report exponent_overflow rather than MPFR infinity.
 struct ExponentRange {
     mpfr_exp_t emin=mpfr_get_emin(),emax=mpfr_get_emax();

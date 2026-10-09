@@ -1,8 +1,11 @@
 # Building and integration
 
+The CMake project is named `WolfNum`. Existing package, target, header and option
+names remain compatible with production integrations; see [naming notes](naming.md).
+
 ## Local build
 
-LimbForge's GPU backend requires macOS 15 or newer, a Metal GPU, CMake 3.20 or
+WolfNum's GPU backend requires macOS 15 or newer, a Metal GPU, CMake 3.20 or
 newer, and Apple Command Line Tools. The shared arithmetic header also compiles
 as ordinary C++17; the CMake project builds the macOS GPU library.
 

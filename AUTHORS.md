@@ -1,4 +1,4 @@
-# People
+# WolfNum authors
 
 - **Author:** Nikolay Gromov
 - **Project maintainer:** [vanbaalon](https://github.com/vanbaalon)

@@ -1,0 +1,38 @@
+{
+  "timestamp_utc": "2026-10-09T04:54:25.325094+00:00",
+  "baseline_commit": "52bbd5038be82b20c1f391db299715358ad4563c",
+  "scope": "Unreleased WolfNum branding; no numerical implementation or public API identifier changes; no GPU execution or performance measurement",
+  "project": "WolfNum",
+  "family": "Wolfbook",
+  "build_directory": "/tmp/wolfnum-branding-check-20261009",
+  "configured_gpu_tests": false,
+  "built_targets": [
+    "test_limbforge_version",
+    "test_limbforge_bridge",
+    "limbforge_division",
+    "cholesky_limbforge",
+    "qr_limbforge",
+    "qr_complex_limbforge",
+    "residue_gemm"
+  ],
+  "tests": [
+    "version_cpu",
+    "package_version_cpu",
+    "bridge_cpu"
+  ],
+  "test_result": "3/3 PASS",
+  "embedded_consumer": "PASS: existing source-tree targets and cached source/build directory variables",
+  "unchanged_numerical_source_sha256": {
+    "include/limbforge/core.hpp": "12cc4bcd199bc0957275f55f7e7462f79918ad19fb3f21b55404d08119ef2ce8",
+    "src/kernels.metal": "72dcc8f6f7fa99d09f004bc2e418d2ebd1c4a0b0ea6750f2e771458c74e8d2e0",
+    "src/cooperative.metal": "039517e619630d7a207107259deb5ca8c6b75e7f43f4f242e5f93befbe438ef8",
+    "src/linalg.metal": "fa7cac7ac80fab5ba5648ef2bc002c496415f4ac394e160cf52b489d7a1a65e3",
+    "src/batched_linalg.metal": "71b8e269d0db50a76b20d2a8df65e3d3efcc587c9812ac598ebd0a19620f5507",
+    "src/numerics.metal": "25fde2e93c39c16087a2960bf813136e8276ee72396502fc3b0d282faf5f1289",
+    "src/transcendental.metal": "038a96d5da3033db00ef9b5333a5acba3063aeeb56d69e598e28c1dddd7b84a3",
+    "src/transcendental_core.hpp": "98531a9c0ae22c449451706d40e2b94d58f04f99ea91ad18ae69e424d9ee282c"
+  },
+  "archive_sha256": "971210bd639c3b0ee54d4ce43556641eac08fdc5df75775e8a8d9632354d8722",
+  "historical_results_and_patches_modified": false,
+  "repository_rename": "Deferred to maintainer; existing remote unchanged"
+}

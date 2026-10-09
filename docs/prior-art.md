@@ -13,5 +13,5 @@ A newer [mpc_cuda project](https://github.com/tkouya/mpc_cuda/blob/main/README.m
 advertises CUDA ports of GMP/MPFR/MPC plus fixed-precision fast paths. That is a
 useful candidate for an NVIDIA implementation; its performance and correctness
 claims were not independently tested here. These CUDA implementations do not
-directly execute on this Mac's Metal GPU. LimbForge addresses that local backend
+directly execute on this Mac's Metal GPU. WolfNum addresses that local backend
 need; it does not introduce GPU multiprecision as a new capability.

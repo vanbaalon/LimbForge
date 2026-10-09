@@ -44,7 +44,7 @@ static std::vector<mpfr_prec_t> precisions(int bits){
         if(p>=MPFR_PREC_MIN&&std::find(list.begin(),list.end(),p)==list.end())list.push_back(p);
     return list;
 }
-// MPFR exponents near LimbForge's ±1e9 limit and near each tested range's emin / emax and the Bits scaling bound.
+// MPFR exponents near WolfNum's ±1e9 limit and near each tested range's emin / emax and the Bits scaling bound.
 static mpfr_exp_t pick_exponent(std::mt19937_64& rng,int bits){
     static const long fixed[]={1000000001,1000000002,1000000000,999999999,-999999999,-1000000000,-1000000001,-998999999};
     switch(rng()%4){case 0:return long(rng()%601)-300;case 1:return fixed[rng()%8];

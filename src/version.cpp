@@ -8,7 +8,7 @@ void require_library_version(Version required,bool exact){
     const auto available=library_version();
     if(version_compatible(available,required) && (!exact ||
        (available.minor==required.minor && available.patch==required.patch)))return;
-    throw std::runtime_error(std::string("LimbForge library version ")+library_version_string()+
+    throw std::runtime_error(std::string("WolfNum library version ")+library_version_string()+
         (exact?" does not match headers ":" does not satisfy required API version ")+
         std::to_string(required.major)+"."+std::to_string(required.minor)+"."+std::to_string(required.patch));
 }

@@ -1,4 +1,4 @@
-# LimbForge
+# WolfNum
 
 **Multiprecision arithmetic on the Apple Silicon GPU.**
 
@@ -7,12 +7,18 @@
 [![C++17](https://img.shields.io/badge/C%2B%2B-17-00599C.svg)](https://en.cppreference.com/w/cpp/17)
 [![Backend: Metal](https://img.shields.io/badge/backend-Metal-555555.svg)](https://developer.apple.com/metal/)
 
-LimbForge is a standalone library for batched, high-precision real and complex
-arithmetic. It stores significands in 32-bit integer limbs and executes
+WolfNum is the standalone numerical library in the **Wolfbook family**, providing
+batched, high-precision real and complex arithmetic. It stores significands in
+32-bit integer limbs and executes
 precision-specialized Metal kernels, supporting **64–1024 significand bits** in
 steps of 32. Real arithmetic uses round-to-nearest, ties-to-even.
 
 **Author: Nikolay Gromov.**
+
+Previously named LimbForge. Existing `limbforge` headers, namespace, CMake package,
+targets and configuration names remain supported for production consumers. The
+GitHub repository still uses its original URL until it is renamed.
+See the [naming and compatibility notes](docs/naming.md).
 
 > **Versioned API 1.x:** the compatibility baseline is **1.0.0**; the current release is
 > **1.3.0**, adding reusable polynomial-source tables and an explicit shared-source recurrence option.
@@ -213,4 +219,4 @@ context and the Metal target.
 See [CONTRIBUTING.md](CONTRIBUTING.md) for the validation and measurement workflow.
 Authored by **Nikolay Gromov** and maintained by
 [vanbaalon](https://github.com/vanbaalon); see [AUTHORS.md](AUTHORS.md).
-LimbForge is distributed under the [MIT license](LICENSE).
+WolfNum is distributed under the [MIT license](LICENSE).

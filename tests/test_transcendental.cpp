@@ -26,7 +26,7 @@
 using namespace limbforge;
 namespace tr=limbforge::transcendental;
 namespace {
-struct Wide { // the widest MPFR exponent range: the reference never overflows where LimbForge's range check decides
+struct Wide { // the widest MPFR exponent range: the reference never overflows where WolfNum's range check decides
     mpfr_exp_t emin=mpfr_get_emin(),emax=mpfr_get_emax();
     Wide(){mpfr_set_emin(mpfr_get_emin_min());mpfr_set_emax(mpfr_get_emax_max());}
     ~Wide(){mpfr_set_emin(emin);mpfr_set_emax(emax);}
@@ -37,7 +37,7 @@ template<class F> void parallel(std::size_t n,F f){
     {Wide r;f(std::size_t(0),n/t);}for(auto& x:w)x.join();
 }
 const char* name(Function f){static const char* n[]={"exp","expm1","log","log1p","sin","cos","atan2","complex_exp","complex_log","complex_powi"};return n[int(f)];}
-// MPFR value -> LimbForge with the contract's range rule (MPFR infinities and underflows to zero: exponent_overflow).
+// MPFR value -> WolfNum with the contract's range rule (MPFR infinities and underflows to zero: exponent_overflow).
 template<int Bits> Float<Bits> convert(mpfr_srcptr z,bool exact_zero_possible=false){
     if(mpfr_inf_p(z))return zero<Bits/32>(exponent_overflow);
     if(mpfr_zero_p(z)&&!exact_zero_possible)return zero<Bits/32>(exponent_overflow);
@@ -98,7 +98,7 @@ template<int Bits> Complex<Bits/32> ref_complex(Function f,const Complex<Bits/32
     return r;
 #endif
 }
-// MPFR replay of tr::cpowi (fused products, binary powering, reciprocal), with LimbForge's range check after each
+// MPFR replay of tr::cpowi (fused products, binary powering, reciprocal), with WolfNum's range check after each
 // rounded component and status propagation (a status in any input component reaches both output components).
 template<int Bits> struct Replay {
     using C=Complex<Bits/32>;static constexpr int N=Bits/32;

@@ -225,7 +225,7 @@ entries at QSC shapes for the remaining operations and idle-host profiles.
 ### P3 handoff checklist from `qsccpp/LIMBFORGE_NEXT.md` (2026-10-08)
 
 Source: the consumer's `LIMBFORGE_NEXT.md`; implementation/verification detail lives in
-`qsccpp/LIMBFORGE_STATUS.md`. Keep universal numerical APIs in LimbForge and solver
+`qsccpp/LIMBFORGE_STATUS.md`. Keep universal numerical APIs in WolfNum and solver
 switches in qscmx. The following records each handoff item, without treating a local
 candidate or an unconverged diagnostic as accepted production behavior.
 

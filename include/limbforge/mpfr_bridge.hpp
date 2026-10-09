@@ -33,13 +33,13 @@ template<int Bits> inline Float<Bits> from_mpfr_slow(mpfr_srcptr input) {
     mpz_clear(z);mpfr_clear(x);return r;
 }
 template<int Bits> inline void to_mpfr_slow(mpfr_ptr out,const Float<Bits>& x) {
-    if(x.status)throw std::runtime_error("LimbForge arithmetic status "+std::to_string(x.status));
+    if(x.status)throw std::runtime_error("WolfNum arithmetic status "+std::to_string(x.status));
     if(!x.sign){mpfr_set_zero(out,1);return;}
     mpz_t z;mpz_init(z);mpz_import(z,Bits/32,-1,sizeof(word),0,0,x.limb);
     mpfr_set_z(out,z,MPFR_RNDN);mpfr_mul_2si(out,out,x.exponent-(Bits-1),MPFR_RNDN);
     if(x.sign<0)mpfr_neg(out,out,MPFR_RNDN);mpz_clear(z);
 }
-// A 64-bit little-endian MPFR limb is two LimbForge words, low half first, so significands map by memcpy.
+// A 64-bit little-endian MPFR limb is two WolfNum words, low half first, so significands map by memcpy.
 #if defined(__BYTE_ORDER__)&&__BYTE_ORDER__==__ORDER_LITTLE_ENDIAN__&&GMP_NUMB_BITS==64&&GMP_NAIL_BITS==0
 constexpr bool direct_limbs=true;
 #else
@@ -73,7 +73,7 @@ template<int Bits> inline Float<Bits> from_mpfr_fast(mpfr_srcptr input,Range ran
 // position prec exactly as mpfr_set_z does. Results outside the current MPFR range take the slow path.
 template<int Bits> inline void to_mpfr_fast(mpfr_ptr out,const Float<Bits>& x,Range range) {
     constexpr int N=Bits/32;
-    if(x.status)throw std::runtime_error("LimbForge arithmetic status "+std::to_string(x.status));
+    if(x.status)throw std::runtime_error("WolfNum arithmetic status "+std::to_string(x.status));
     if(!x.sign){mpfr_set_zero(out,1);return;}
     if(!direct_limbs)return to_mpfr_slow<Bits>(out,x);
     mpfr_prec_t p=mpfr_get_prec(out);std::size_t D=significand_words(p);mpfr_exp_t e=mpfr_exp_t(x.exponent)+1;
@@ -129,7 +129,7 @@ template<int Bits> inline void to_mpfr_array(mpfr_t* out,const Float<Bits>* in,s
 template<int Bits> inline Complex<Bits/32> from_mpc(mpc_srcptr z){auto r=detail::current_range();return {detail::from_mpfr_fast<Bits>(mpc_realref(z),r),detail::from_mpfr_fast<Bits>(mpc_imagref(z),r)};}
 namespace detail {
 template<int Bits> inline void to_mpc_fast(mpc_ptr out,const Complex<Bits/32>& x,Range r) {
-    if(x.re.status|x.im.status)throw std::runtime_error("LimbForge arithmetic status "+std::to_string(x.re.status|x.im.status));
+    if(x.re.status|x.im.status)throw std::runtime_error("WolfNum arithmetic status "+std::to_string(x.re.status|x.im.status));
     to_mpfr_fast<Bits>(mpc_realref(out),x.re,r);to_mpfr_fast<Bits>(mpc_imagref(out),x.im,r);
 }
 }

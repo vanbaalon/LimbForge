@@ -123,7 +123,7 @@ template<int Bits> void sweep(Linalg& la,const Options& o,std::size_t n,std::mt1
 // log2 of a nonnegative MPFR value (-1e9 for zero).
 double lg(mpfr_srcptr x){if(mpfr_zero_p(x))return -1e9;long e;double d=mpfr_get_d_2exp(&e,x,MPFR_RNDN);return std::log2(std::fabs(d))+double(e);}
 // Errors of least-squares solutions against x* from an MPFR Householder solve at P = 3*bits + 2*kappa bits (J and b exact).
-// Each J is factored once (x*, LimbForge QR, consumer MPFR at bits) for both right-hand-side kinds: random b (large
+// Each J is factored once (x*, WolfNum QR, consumer MPFR at bits) for both right-hand-side kinds: random b (large
 // residual) and consistent b = RN(J x0) (residual at rounding level).
 template<int Bits> void accuracy(Linalg& la,Workers& workers,const Options& o,std::size_t n,int kappa,std::mt19937_64& rng,bool header){
     if(header)std::cout<<"bits,m,n,kappa,rhs,nrhs,method,log2_fwd_norm,log2_fwd_comp,log2_ne_bwd_comp,log2_rel_residual,log2_opt_residual,log2_residual_excess\n";
@@ -163,12 +163,12 @@ template<int Bits> void accuracy(Linalg& la,Workers& workers,const Options& o,st
                 for(double x:e)bc=std::max(bc,x);}
             std::cout<<std::setprecision(5)<<Bits<<','<<m<<','<<n<<','<<kappa<<','<<(consistent?"consistent":"random")<<','<<nrhs<<','<<method<<','<<fn<<','<<fc<<','<<bc<<','<<rr<<','<<ro<<','<<rx<<std::endl;};
         std::vector<Float<Bits>> X(n*nrhs),XN;qr.solve(B.data(),nrhs,X.data());
-        report("limbforge_qr",[&](std::size_t q,mpfr_ptr out){to_mpfr<Bits>(out,X[q]);});
+        report("wolfnum_qr",[&](std::size_t q,mpfr_ptr out){to_mpfr<Bits>(out,X[q]);});
         std::vector<Float<Bits>> XP(n*nrhs);qp.solve(B.data(),nrhs,XP.data());
-        report(qp.full_rank()?"limbforge_qr_pivoted":"limbforge_qr_pivoted_basic",[&](std::size_t q,mpfr_ptr out){to_mpfr<Bits>(out,XP[q]);});
+        report(qp.full_rank()?"wolfnum_qr_pivoted":"wolfnum_qr_pivoted_basic",[&](std::size_t q,mpfr_ptr out){to_mpfr<Bits>(out,XP[q]);});
         bool ok=true;normal_equations<Bits>(la,J,m,n,B,nrhs,XN,ok);
-        if(ok)report("limbforge_normal_equations",[&](std::size_t q,mpfr_ptr out){to_mpfr<Bits>(out,XN[q]);});
-        else std::cout<<Bits<<','<<m<<','<<n<<','<<kappa<<','<<(consistent?"consistent":"random")<<','<<nrhs<<",limbforge_normal_equations,cholesky_failed,,,,\n";
+        if(ok)report("wolfnum_normal_equations",[&](std::size_t q,mpfr_ptr out){to_mpfr<Bits>(out,XN[q]);});
+        else std::cout<<Bits<<','<<m<<','<<n<<','<<kappa<<','<<(consistent?"consistent":"random")<<','<<nrhs<<",wolfnum_normal_equations,cholesky_failed,,,,\n";
         report("mpfr_householder",[&](std::size_t q,mpfr_ptr out){mpfr_set(out,cx[q],MPFR_RNDN);});}
 }
 int main(int argc,char** argv){try{

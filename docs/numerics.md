@@ -44,14 +44,14 @@ the requested precision and operation.
 
 `from_mpfr<bits>(x)` rounds to nearest, ties to even, to `bits`; NaN and
 infinity give `invalid`, either zero gives canonical zero, and a rounded
-LimbForge exponent (MPFR exponent − 1) outside ±1,000,000,000 gives
+WolfNum exponent (MPFR exponent − 1) outside ±1,000,000,000 gives
 `exponent_overflow`. `to_mpfr<bits>(out, x)` is exact when
 `mpfr_get_prec(out) >= bits` and otherwise rounds to nearest, ties to even, to
 the output precision; zero becomes +0 and an error status throws. Both set the
 MPFR inexact flag exactly when they round.
 
 On little-endian 64-bit-limb GMP builds (arm64 macOS), a 64-bit MPFR limb is two
-LimbForge words, low half first. The significand is therefore copied by
+WolfNum words, low half first. The significand is therefore copied by
 `memcpy` between the top words of MPFR's left-aligned significand and
 `limb[]`; lower MPFR words are zero-filled. A wider MPFR input is rounded from
 its discarded words directly; a narrower output is rounded at bit position
@@ -1120,7 +1120,7 @@ Jacobian of the Cholesky benchmark (column scales 2^±60, 25% zeros, outliers); 
 is `J = G1 diag(2^(-kappa j/(n-1))) G2` (random G1, G2, one rounding per entry) with the same column
 scales, so its singular values spread over about `kappa` more binades. "random" b has a residual of
 the size of b; "consistent" b = RN(J x0) has a residual at the rounding level of b. Methods at the
-same precision: LimbForge QR (block 32), the normal equations (LimbForge SYRK, `J^T b` by `gemm`,
+same precision: WolfNum QR (block 32), the normal equations (WolfNum SYRK, `J^T b` by `gemm`,
 blocked Cholesky and `cholesky_solve`, round 23), and the consumer-style MPFR Householder
 (qsccpp `mx.hpp` `QR`: unblocked, every operation rounded). Errors are log2, maximum over the
 right-hand sides: forward normwise `max|x - x*| / max|x*|`, and the residual excess
@@ -1353,8 +1353,8 @@ and b. "QSC" is the QSC-like J of the real benchmark with independent real and i
 `kappa = 40, 100` is `J = G1 diag(2^(-kappa j/(n-1))) G2` with complex random G1, G2 and the same column scales.
 The methods, all at the same precision, are:
 
-- LimbForge complex QR (block 32);
-- the LimbForge real QR of the 2m × 2n real embedding `[[Re J, -Im J], [Im J, Re J]]` with `[Re b; Im b]`;
+- WolfNum complex QR (block 32);
+- the WolfNum real QR of the 2m × 2n real embedding `[[Re J, -Im J], [Im J, Re J]]` with `[Re b; Im b]`;
 - the normal equations of that embedding (real SYRK, `gemm`, Cholesky: the complex normal equations in real form);
 - the consumer-style MPC Householder (qsccpp `mx.hpp` `QR`: Hermitian reflectors, every operation rounded).
 

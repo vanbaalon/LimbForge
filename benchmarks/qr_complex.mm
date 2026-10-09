@@ -169,15 +169,15 @@ template<int Bits> void accuracy(Linalg& la,Workers& workers,const Options& o,st
                 if(!mpfr_zero_p(rsn)){mpfr_sub(t,rn,rsn,MPFR_RNDN);mpfr_abs(t,t,MPFR_RNDN);mpfr_div(t,t,rsn,MPFR_RNDN);rx=std::max(rx,lg(t)/2);}}
             std::cout<<std::setprecision(5)<<Bits<<','<<m<<','<<n<<','<<kappa<<','<<(consistent?"consistent":"random")<<','<<nrhs<<','<<method<<','<<fn<<','<<rr<<','<<ro<<','<<rx<<std::endl;};
         std::vector<CF<Bits>> X(n*nrhs);qr.solve(B.data(),nrhs,X.data());
-        report("limbforge_complex_qr",[&](std::size_t q,mpc_ptr out){to_mpc<Bits>(out,X[q]);});
+        report("wolfnum_complex_qr",[&](std::size_t q,mpc_ptr out){to_mpc<Bits>(out,X[q]);});
         auto S=stacked<Bits>(B,m,nrhs);std::vector<Float<Bits>> XE(2*n*nrhs);qe.solve(S.data(),nrhs,XE.data());
-        report("limbforge_real_qr_embedding",[&](std::size_t q,mpc_ptr out){std::size_t i=q/nrhs,col=q%nrhs;to_mpfr<Bits>(mpc_realref(out),XE[i*nrhs+col]);to_mpfr<Bits>(mpc_imagref(out),XE[(n+i)*nrhs+col]);});
+        report("wolfnum_real_qr_embedding",[&](std::size_t q,mpc_ptr out){std::size_t i=q/nrhs,col=q%nrhs;to_mpfr<Bits>(mpc_realref(out),XE[i*nrhs+col]);to_mpfr<Bits>(mpc_imagref(out),XE[(n+i)*nrhs+col]);});
         // Normal equations of the embedding (the complex normal equations J^H J x = J^H b in real form): SYRK, gemm, Cholesky, solve.
         {std::vector<Float<Bits>> Ae(4*n*n,zero<Bits/32>()),Ce(2*n*nrhs),XN(2*n*nrhs);la.syrk(Bits,E.data(),2*m,2*n,Ae.data(),true);la.gemm(Bits,true,E.data(),S.data(),2*n,nrhs,2*m,Ce.data());
          CholeskyInfo ci=la.cholesky(Bits,Ae.data(),2*n,Ae.data());
          if(ci.pivot==2*n){la.cholesky_solve(Bits,Ae.data(),2*n,Ce.data(),nrhs,XN.data());
-             report("limbforge_normal_equations_embedding",[&](std::size_t q,mpc_ptr out){std::size_t i=q/nrhs,col=q%nrhs;to_mpfr<Bits>(mpc_realref(out),XN[i*nrhs+col]);to_mpfr<Bits>(mpc_imagref(out),XN[(n+i)*nrhs+col]);});}
-         else std::cout<<Bits<<','<<m<<','<<n<<','<<kappa<<','<<(consistent?"consistent":"random")<<','<<nrhs<<",limbforge_normal_equations_embedding,cholesky_failed,,,\n";}
+             report("wolfnum_normal_equations_embedding",[&](std::size_t q,mpc_ptr out){std::size_t i=q/nrhs,col=q%nrhs;to_mpfr<Bits>(mpc_realref(out),XN[i*nrhs+col]);to_mpfr<Bits>(mpc_imagref(out),XN[(n+i)*nrhs+col]);});}
+         else std::cout<<Bits<<','<<m<<','<<n<<','<<kappa<<','<<(consistent?"consistent":"random")<<','<<nrhs<<",wolfnum_normal_equations_embedding,cholesky_failed,,,\n";}
         report("mpc_householder",[&](std::size_t q,mpc_ptr out){mpc_set(out,cx[q],MPC_RNDNN);});}
 }
 int main(int argc,char** argv){try{

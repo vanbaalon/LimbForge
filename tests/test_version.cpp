@@ -21,6 +21,6 @@ int main(){try{
     for(auto requested:bad){bool rejected=false;try{require_library_version(requested);}catch(const std::runtime_error&){rejected=true;}require(rejected,"incompatible version accepted");}
     require(sizeof(Number<11>)==56&&sizeof(Complex<11>)==112,"352-bit public representation changed");
     require(ok==0&&division_by_zero==1&&exponent_overflow==2&&invalid==4,"public status values changed");
-    std::cout<<"LimbForge "<<library_version_string()<<": API/version checks passed (no GPU execution).\n";
+    std::cout<<"WolfNum "<<library_version_string()<<": API/version checks passed (no GPU execution).\n";
     return 0;
 }catch(const std::exception& e){std::cerr<<e.what()<<'\n';return 1;}}

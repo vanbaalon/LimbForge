@@ -3,7 +3,7 @@
 #include "batched_linalg.hpp"
 #ifdef LIMBFORGE_HAS_MPC
 namespace limbforge {
-// Describe MPC numbers whose significands live inside allocation. No LimbForge limb arrays are copied
+// Describe MPC numbers whose significands live inside allocation. No WolfNum limb arrays are copied
 // on the host. The GPU import reads the original allocation and writes ordinary resident Complex values.
 // Source precisions must equal bits. Use the ordinary bridge if rounding or widening is required.
 inline std::vector<InlineComplexRecord> describe_inline_mpc(int bits,const void* allocation,std::size_t bytes,const mpc_srcptr* values,std::size_t count){

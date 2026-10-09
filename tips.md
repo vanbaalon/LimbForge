@@ -1,6 +1,6 @@
 # API requests from the twisted-QSC workload
 
-This note lists the features LimbForge would need in order to serve as the GPU backend of the
+This note lists the features WolfNum would need in order to serve as the GPU backend of the
 twisted Quantum Spectral Curve solver `qscmx`. Requests are ordered by expected payoff.
 Its source lives in `2026 Near N=4/qsccpp/include/mx.hpp`. Each request states the operation, the sizes involved and
 how to check it, written against the API at the time of writing (`ba14968`): elementwise `add/sub/mul/div`,
@@ -112,7 +112,7 @@ For every kernel we integrate:
 
 ### 9.0 Where we stand
 
-`qscmx` uses LimbForge for the normal equations (build option `-DQSC_LIMBFORGE`, run-time switch `QSC_GPU=1`):
+`qscmx` uses WolfNum for the normal equations (build option `-DQSC_LIMBFORGE`, run-time switch `QSC_GPU=1`):
 `Linalg::syrk` forms JᵀJ and `Linalg::cholesky` factors the damped matrix, at the working precision rounded up to a
 multiple of 32 bits (352 bits for 100 digits). Newton histories and Δ are identical to the MPFR path. Measured at Nc = 59
 (m2 ≈ 944 real unknowns, K ≈ 1100 rows): normal matrix 11.8 s → 0.7 s, LM phase 6.9 s → 1.4 s per 3 iterations. Standalone,

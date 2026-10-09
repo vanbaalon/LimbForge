@@ -18,6 +18,6 @@ int main() {
         std::cout<<"Batch: "<<out.size()<<" values, GPU wall time: "<<time.wall_seconds<<" s\n";
         return 0;
     } catch(const std::exception& error) {
-        std::cerr<<"LimbForge: "<<error.what()<<"\n";return 1;
+        std::cerr<<"WolfNum: "<<error.what()<<"\n";return 1;
     }
 }

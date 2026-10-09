@@ -1,4 +1,8 @@
-# LimbForge contribution rules
+# WolfNum contribution rules
+
+Use WolfNum for project prose and diagnostics. Preserve existing production API,
+package and build identifiers and historical measurement records as described in
+`docs/naming.md`; do not mechanically rename `limbforge` symbols or profile keys.
 
 The current public API baseline is 1.0.0. Read `docs/versioning.md` before changing an
 installed header, documented numerical behavior, storage format, or ownership contract.

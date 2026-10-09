@@ -2,7 +2,17 @@
 
 ## Unreleased
 
-No unreleased changes.
+- Renamed the project to **WolfNum**, the numerical library in the Wolfbook family.
+  Updated documentation, comments, diagnostics and benchmark method labels. The
+  CMake project is now `WolfNum`; former project variables remain available.
+  Existing `limbforge` headers, C++ symbols, version macros, package, build targets,
+  options and environment variables retain their production-compatible names.
+  Repository URLs, published tags and recorded benchmark evidence retain their
+  original identities. Numerical behavior and API version are unchanged.
+  Validation: rebuilt the affected library, example and benchmark targets; all
+  three focused CPU version/package/bridge checks pass. An embedded consumer
+  also confirms legacy targets and directory variables remain available. Core
+  arithmetic and shader sources are byte-identical to the pre-rename baseline.
 
 ## 1.3.0 — 2026-10-08
 

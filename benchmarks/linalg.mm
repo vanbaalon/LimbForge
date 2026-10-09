@@ -1,5 +1,5 @@
 // Round 20 (plan D6 via L1c): dense SYRK C = A^T A (A: rows = 2*cols, QSC normal-equation shape) and GEMM C = A^T B
-// with one rounding per output (Linalg, residue GEMM over exponent bands), against (a) a straightforward LimbForge limb
+// with one rounding per output (Linalg, residue GEMM over exponent bands), against (a) a straightforward WolfNum limb
 // kernel, one thread per output with sequential composed mul+add (or fma), and (b) a consumer-style MPFR loop
 // (sequential mpfr_mul + mpfr_add per output), serial and multithreaded. Optional CPU MPFR Cholesky of the result.
 #import <Foundation/Foundation.h>

@@ -88,7 +88,7 @@ GPU/MPFR validation and was removed from the installed implementation.
   compared with the CPU. It found the divergent rounding ballot and bisected the remaining
   validation-only G = 4/8 failures (they need concurrent GPU work from another process to
   appear often). `simd_validation_repro.mm` (target `simd_validation_repro`) is a
-  LimbForge-independent shuffle kernel that did not reproduce them. See
+  WolfNum-independent shuffle kernel that did not reproduce them. See
   ../../docs/experiments.md (41-L4b) and ../../docs/gpu-codegen.md section 10.
 
 - `vr_compile_probe.mm` (diagnostic, built by hand; see its header): cold pipeline compile time of one

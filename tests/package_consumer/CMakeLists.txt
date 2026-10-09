@@ -1,5 +1,5 @@
 cmake_minimum_required(VERSION 3.20)
-project(LimbForgePackageConsumer LANGUAGES CXX)
+project(WolfNumPackageConsumer LANGUAGES CXX)
 find_package(LimbForge ${LF_REQUIRED_VERSION} CONFIG REQUIRED)
 if(NOT LimbForge_VERSION STREQUAL LF_EXPECTED_VERSION OR NOT LimbForge_API_VERSION STREQUAL LF_EXPECTED_API)
   message(FATAL_ERROR "Installed package reports an unexpected version/API")

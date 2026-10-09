@@ -1,10 +1,10 @@
-# LimbForge optimisation plan (rounds 13+)
+# WolfNum optimisation plan (rounds 13+)
 
 *Written for coding agents that will implement rounds independently. Self-contained; read fully before starting a round.*
 
 ## Context
 
-LimbForge (`/Users/k0959535/Dropbox/IntegrabilityProjects/2026 4d SoV/LimbForge`) is a Metal (Apple GPU) library for batched
+WolfNum (`/Users/k0959535/Dropbox/IntegrabilityProjects/2026 4d SoV/LimbForge`) is a Metal (Apple GPU) library for batched
 fixed-precision real/complex floating-point arithmetic, 64–1024 bits in 32-bit limbs, round-to-nearest-even, validated
 bit-for-bit against MPFR. Twelve optimisation rounds are done (below). Two consumers now drive priorities:
 
@@ -195,7 +195,7 @@ Each item: written contract → MPFR/MPC reference → CPU implementation in `co
 
 - **D1. Faster MPFR/MPC bridge (tips #7)** — S/M, CPU only, start immediately. Direct limb copy when the MPFR precision
   ≤ target bits: on arm64 a 64-bit MPFR limb is two little-endian 32-bit words, so the top `bits/32` words of the
-  left-aligned MPFR significand map by `memcpy`; LimbForge exponent = MPFR exponent − 1; handle zero/NaN/Inf/precision >
+  left-aligned MPFR significand map by `memcpy`; WolfNum exponent = MPFR exponent − 1; handle zero/NaN/Inf/precision >
   bits via the existing slow path. Array versions for `mpfr_t[]` and `mpc_t[]` (`Complex<N>` ↔ `mpc_t`), multithreaded.
   Optional fixed-limb layout compatible with `mpfr_custom_init` (ties to C6 padding). Test: round-trip at all 31 precisions,
   including 224 (odd word count) and specials.
@@ -361,7 +361,7 @@ D6 ← D3 microkernel; C6 ← B (re-measure once compute is cheaper). T3 may add
 ## 7. Additional APIs motivated by BSolver and QSC (2026-10-07)
 
 **Design proposal, not implemented functionality.** This extends C/D/E rather than replacing them.
-LimbForge remains a standalone numerical library: model equations, gluing rules, branch selection,
+WolfNum remains a standalone numerical library: model equations, gluing rules, branch selection,
 Newton/LM acceptance and truncation choices belong to consumers. API names below are sketches.
 Priorities are inferred from inspected consumer code, not measured speedup claims.
 
@@ -734,7 +734,7 @@ propagation also requires an explicit overflow bound before any integer addition
 
 [Oancea and Watt, GPU Implementations for Midsize Integer Addition and Multiplication (2024)](https://cs.uwaterloo.ca/~smwatt/pub/reprints/2024-langcompan-gpu-arith.pdf)
 describes parallel carry propagation and register-oriented multiplication work partitioning.
-Its largest-integer results do not predict performance at LimbForge's 64–1024 bits.
+Its largest-integer results do not predict performance at WolfNum's 64–1024 bits.
 
 Use it to make E1 concrete: prototype 4/8/16/32 cooperating SIMD lanes per number, with an associative
 generate/propagate carry scan and a bounded number of limbs per lane. Preserve the exact integer result
@@ -770,7 +770,7 @@ describes `mpc_cuda`, per-thread scratch arenas and compile-time fixed-precision
 host-identical arithmetic for those types but gives a different accuracy contract for fixed-precision
 elementary functions. These are reported CUDA results, not reproduced Metal benchmarks.
 
-Use its contracts and workloads when designing comparisons. LimbForge's fixed-size core is already
+Use its contracts and workloads when designing comparisons. WolfNum's fixed-size core is already
 allocation-free; adding an arena to basic arithmetic would not address the same bottleneck. Explicit
 workspace sizing/reuse may matter later for transcendental or dynamically sized operations. Match
 precision, rounding, operation order and timing boundaries before comparing implementations.

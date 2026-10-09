@@ -1,6 +1,6 @@
 // Experiment L1b (plan section 8): exact integer GEMM of P-bit signed integers through residues on
 // Metal TensorOps int8 matmul, reconstructed by Garner's algorithm on the GPU and checked against GMP.
-// Baselines: a LimbForge floating GEMM per output, with sequential fma and with composed mul+add.
+// Baselines: a WolfNum floating GEMM per output, with sequential fma and with composed mul+add.
 #import <Foundation/Foundation.h>
 #import <Metal/Metal.h>
 #include "reference.hpp"
@@ -114,7 +114,7 @@ int main(int argc,char** argv){try{
     if(!bl)throw std::runtime_error("baseline library: "+text(e));
     auto pa=pipeline(rl,@"residues_a"),pb=pipeline(rl,@"residues_b"),pp=pipeline(rl,@"product"),pc=pipeline(rl,@"combine"),pr=pipeline(rl,@"reconstruct");
     auto pf=pipeline(bl,@"gemm_fma"),pm=pipeline(bl,@"gemm_composed");
-    std::cerr<<[device.name UTF8String]<<"; exact "<<P<<"-bit integer GEMM via int8 TensorOps residues; baseline: LimbForge 256-bit floating GEMM\n";
+    std::cerr<<[device.name UTF8String]<<"; exact "<<P<<"-bit integer GEMM via int8 TensorOps residues; baseline: WolfNum 256-bit floating GEMM\n";
     std::cout<<std::setprecision(5)<<"n,moduli,residue_total_ms,residues_ms,products_ms,combine_ms,reconstruct_ms,verified,baseline_fma_ms,baseline_composed_ms,fma_over_residue,composed_over_residue\n";
     const std::uint32_t W=P/32;std::mt19937_64 rng(20261007);
     for(int n:sizes){@autoreleasepool{

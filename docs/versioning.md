@@ -1,5 +1,8 @@
 # API versions and production integration
 
+WolfNum is the new project name; the existing `limbforge` API and `LimbForge`
+CMake package keep their names throughout 1.x. See [naming notes](naming.md).
+
 **1.0.0 establishes the current public API baseline.** Releases follow
 [Semantic Versioning 2.0.0](https://semver.org/spec/v2.0.0.html):
 
@@ -59,7 +62,7 @@ source-tree and header-only consumers see the same release number.
 #include <limbforge/version.hpp>
 
 #if LIMBFORGE_API_VERSION != 1 || !LIMBFORGE_VERSION_AT_LEAST(1,0,1)
-#error This application requires LimbForge API 1, release 1.0.1 or newer
+#error This application requires WolfNum API 1, release 1.0.1 or newer
 #endif
 
 int main() {

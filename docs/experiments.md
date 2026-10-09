@@ -159,7 +159,7 @@ G = 4/8 for `Engine::recurrence`. Tools:
 
 - `benchmarks/experiments/coop_validation_probe.mm` and `.metal`: a copy of `src/cooperative.metal` with switches
   that replace, fence or instrument its SIMD operations. Every dispatch is compared with the core (CPU).
-- `simd_validation_repro.mm`: a LimbForge-independent shuffle kernel.
+- `simd_validation_repro.mm`: a WolfNum-independent shuffle kernel.
 - `coop_recurrence.mm`, which now uses the library's `coop` templates. Since round 22 it no longer compiled, because
   its private copy of the namespace clashed with the library's.
 

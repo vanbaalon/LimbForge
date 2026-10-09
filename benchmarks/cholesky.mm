@@ -132,7 +132,7 @@ template<int Bits> void accuracy(Linalg& la,Workers& workers,const Options& o,st
             mpfr_mul(t,an,xn,MPFR_RNDN);mpfr_add(t,t,bn,MPFR_RNDN);mpfr_div(t,r,t,MPFR_RNDN);if(!mpfr_zero_p(t))bwd=std::max(bwd,double(mpfr_get_exp(t)));mpfr_clear(rowsum);mpfr_clear(s);mpfr_clear(cd);}
         std::cout<<Bits<<','<<n<<','<<nrhs<<','<<o.factor.block<<','<<method<<','<<fwd<<','<<comp<<','<<bwd<<','<<bwc<<std::endl;
         mpfr_clears(d,m,num,den,t,r,an,xn,bn,(mpfr_ptr)0);mpfr_clear(xq);};
-    report("limbforge_blocked",[&](std::size_t q,mpfr_t out){to_mpfr<Bits>(out,X[q]);});
+    report("wolfnum_blocked",[&](std::size_t q,mpfr_t out){to_mpfr<Bits>(out,X[q]);});
     report("mpfr_sequential",[&](std::size_t q,mpfr_t out){mpfr_set(out,xc[q],MPFR_RNDN);});
 }
 int main(int argc,char** argv){try{

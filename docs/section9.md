@@ -103,7 +103,7 @@ Runtime-width scalar/array MPFR/MPC conversions follow the [typed bridge contrac
 External MPC imports read original significands on the GPU, with metadata copied on the host.
 Allocation requirements, lifetime and `wait_all_async` completion are specified in
 [Execution](execution.md#batched-numerical-operations). This import writes ordinary resident values;
-it does not alias the incompatible MPC and LimbForge layouts.
+it does not alias the incompatible MPC and WolfNum layouts.
 
 ## Offline calibration and scope of this audit
 
