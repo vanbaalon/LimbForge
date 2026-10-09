@@ -1,0 +1,2 @@
+2026-10-08 22:53:11.687 test_limbforge_contract_names[95758:232313901] Metal GPU Validation Enabled
+Contract names: exact cancellation=1, composed/fused sequential=0; all additive signatures compile
