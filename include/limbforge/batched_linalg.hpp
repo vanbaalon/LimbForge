@@ -129,6 +129,13 @@ public:
     template<class T> void import_inline_complex(CommandBatch& b,const void* allocation,std::size_t bytes,const InlineComplexRecord* records,std::size_t count,Buffer<T>& out){
         static_assert(detail::Format<T>::complex,"inline complex staging needs complex output");
         encode_inline(b,detail::Format<T>::bits,allocation,bytes,records,count,detail::Access::operand(out));}
+    // Explicit sequential contract names; fused flags select the existing per-term FMA.
+    Timing gemm_sequential(int bits,bool complex,const StridedGemm& s,const void* A,const void* B,void* C){return gemm(bits,complex,s,A,B,C);}
+    template<class T> void gemm_sequential(CommandBatch& b,const StridedGemm& s,const Buffer<T>& A,const Buffer<T>& B,Buffer<T>& C){gemm(b,s,A,B,C);}
+    template<class T> void normal_equations_sequential(CommandBatch& b,const Buffer<T>& J,const Buffer<T>& g,std::size_t rows,std::size_t cols,Buffer<T>& A,Buffer<T>& rhs,bool fused=false){normal_equations(b,J,g,rows,cols,A,rhs,fused);}
+    template<class T> void cholesky_trials_sequential(CommandBatch& b,const CholeskyTrials& s,const Buffer<T>& A,const Buffer<T>& D,const Buffer<T>& mu,Buffer<T>& L,Buffer<std::uint32_t>& status){cholesky_trials(b,s,A,D,mu,L,status);}
+    template<class T> void cholesky_solve_sequential(CommandBatch& b,const Buffer<T>& L,const Buffer<std::uint32_t>& status,std::size_t count,std::size_t n,const Buffer<T>& B,std::size_t nrhs,Buffer<T>& X){cholesky_solve(b,L,status,count,n,B,nrhs,X);}
+
 };
 // Wait on already-submitted batches concurrently with host work. Errors drain every submission before rethrowing.
 std::future<std::vector<Timing>> wait_all_async(std::vector<Submission> submissions);

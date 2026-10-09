@@ -14,6 +14,12 @@
   numerical shader sources, public layouts, defaults and rounding sequences are unchanged.
   Version/package checks pass; focused reference/concurrency/lifetime checks are pending.
   This is not a released feature.
+- Candidate additive explicit contract names: Linalg exact GEMM/SYRK and blocked
+  Cholesky/solve; BatchedLinalg sequential GEMM, normal equations and damping
+  factor/solve. Existing entry points remain supported with identical defaults,
+  validation, status and completion behavior. No arithmetic/backend changes.
+  Build and version/package checks pass; focused cancellation and shader checks
+  remain pending before a compatible minor release.
 
 ## 1.1.0 — 2026-10-08
 

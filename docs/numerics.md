@@ -1420,6 +1420,28 @@ Shapes and buffer/completion rules are in [Execution](execution.md#batched-numer
 | `cholesky_trials` / `BatchedLinalg::cholesky_solve` | Scalar-column updates / sequential multiply-subtract-divide | Final within batch |
 | `Linalg::cholesky` / `Linalg::cholesky_solve` | Existing blocked exact-update / triangular-solve contracts above | Synchronous |
 
+### Explicit contract names (candidate)
+
+Additive names make the sequence visible at call sites. Existing names stay available
+through 1.x with their original defaults; these aliases forward to the same entry points,
+including buffer ownership, validation, statuses and ticket finality. This is an unreleased
+candidate; focused physical-GPU checks and a compatible minor release remain pending.
+
+| Explicit name | Existing name | Accuracy/rounding | Speed evidence | Residency/completion |
+|---|---|---|---|---|
+| `Linalg::gemm_exact`, `syrk_exact` | `gemm`, `syrk` | Correctly rounded exact dot per entry | Corrected-backend P1.3/P1.4 comparison pending; band/fallback work is data dependent | Host synchronous; Buffer batch ticket final at wait |
+| `BatchedLinalg::gemm_sequential` | `gemm` | Ascending composed or fused updates; per-step rounding can lose cancellation | P1.3 comparison pending; fused flag preserves its existing meaning | Host synchronous or immediately final in a batch |
+| `normal_equations_sequential` | `normal_equations` | Ascending-row composed/fused dots | P1.4 comparison pending | Immediately final in a batch |
+| `normal_equations_exact` | Same existing explicit name | Exact augmented SYRK, one rounding per dot | P1.4 comparison pending | Ticket final after wait/fallback repair |
+| `Linalg::cholesky_blocked`, `cholesky_solve_blocked` | `cholesky`, `cholesky_solve` | Blocked exact dot updates; `FactorOptions::block` determines the sequence; the full factor/solve is not rounded just once | Backend split changes speed but preserves bits for a fixed block | Host/Buffer synchronous |
+| `cholesky_trials_sequential`, `cholesky_solve_sequential` | Batched `cholesky_trials`, `cholesky_solve` | Scalar-column factor updates and sequential triangular multiply/subtract/divide | P1.2 measurements pending | Device buffers, immediately final within batch |
+
+For example, at 64 bits, the exact dot of `[2^100, 1, -2^100]` with `[1, 1, 1]`
+is 1. Ascending sequential composed and fused accumulation both return 0 because the
+middle term rounds away before cancellation. Fused per-term updates do not provide an
+exact whole-dot result. Factor/solve names use **blocked**, since exact updates do not
+make the complete factorization or linear solve a single correctly rounded operation.
+
 ### Sequential products and powers
 
 Products visit k in ascending order. By default, complex multiplication uses the existing

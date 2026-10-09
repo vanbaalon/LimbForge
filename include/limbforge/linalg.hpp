@@ -199,6 +199,15 @@ public:
         return solve_buffers(detail::real_bits<T>(),3,detail::Access::operand(L),n,detail::Access::operand(B),nrhs,detail::Access::operand(X),options);}
     template<class T> QRFactor factor_qr(const Buffer<T>& A,std::size_t m,std::size_t n,const QROptions& options={}){
         return factor_qr_buffer(detail::real_bits<T>(),detail::Access::operand(A),m,n,options);}
+    // Explicit contract names. Existing entry points keep identical defaults and behavior.
+    Timing gemm_exact(int bits,bool transpose_a,const void* A,const void* B,std::size_t m,std::size_t n,std::size_t k,void* C,bool subtract=false){return gemm(bits,transpose_a,A,B,m,n,k,C,subtract);}
+    Timing syrk_exact(int bits,const void* A,std::size_t rows,std::size_t cols,void* C,bool lower_only=true,bool subtract=false){return syrk(bits,A,rows,cols,C,lower_only,subtract);}
+    template<class T> LinalgTicket gemm_exact(CommandBatch& b,bool transpose_a,const Buffer<T>& A,const Buffer<T>& B,std::size_t m,std::size_t n,std::size_t k,Buffer<T>& C,bool subtract=false){return gemm(b,transpose_a,A,B,m,n,k,C,subtract);}
+    template<class T> LinalgTicket syrk_exact(CommandBatch& b,const Buffer<T>& A,std::size_t rows,std::size_t cols,Buffer<T>& C,bool lower_only=true,bool subtract=false){return syrk(b,A,rows,cols,C,lower_only,subtract);}
+    CholeskyInfo cholesky_blocked(int bits,const void* A,std::size_t n,void* L,const FactorOptions& o={}){return cholesky(bits,A,n,L,o);}
+    Timing cholesky_solve_blocked(int bits,const void* L,std::size_t n,const void* B,std::size_t nrhs,void* X,const FactorOptions& o={}){return cholesky_solve(bits,L,n,B,nrhs,X,o);}
+    template<class T> CholeskyInfo cholesky_blocked(const Buffer<T>& A,std::size_t n,Buffer<T>& L,const FactorOptions& o={}){return cholesky(A,n,L,o);}
+    template<class T> Timing cholesky_solve_blocked(const Buffer<T>& L,std::size_t n,const Buffer<T>& B,std::size_t nrhs,Buffer<T>& X,const FactorOptions& o={}){return cholesky_solve(L,n,B,nrhs,X,o);}
 private:
     LinalgTicket encode_product(CommandBatch&,int bits,bool syrk,bool transpose_a,const detail::Operand& A,const detail::Operand& B,std::size_t m,std::size_t n,
                                 std::size_t k,const detail::Operand& C,bool lower_only,bool subtract);
