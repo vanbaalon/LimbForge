@@ -1,7 +1,8 @@
-# Rejected arithmetic experiments
+# Arithmetic and integration experiments
 
-These patches are research records, not enabled library features. Each failed
-GPU/MPFR validation and was removed from the installed implementation.
+These patches retain research records outside the installed library. The reports
+identify rejected arithmetic attempts, validated prototypes and their acceptance
+limits. Consult the associated report before applying a patch.
 
 - `known_product_top_bit.patch`: based on accepted Round 3 (`2172965`); removes
   the generic highest-bit scan for multiplication. The Round 3 rejected CSV is
@@ -135,3 +136,8 @@ GPU tests before measuring it. Never overwrite accepted result files.
   1.3.1. MPFR normal/Metal helpers and saved J3 individual/combined GPU replays
   pass; original integration, the requested g sweep and idle timings remain open.
   `check_section9_consumer_records.py` verifies the archived outputs without GPU execution.
+
+- [Integrated consumer adapters](section9_consumer_integrated.md): a complete
+  source patch applies the three checked off-default adapters locally. A separate
+  matching 1.3.1 build passes focused normal/Metal and J3 default/combined checks.
+  Full g sweep, idle timings and remaining damping/base work are still pending.

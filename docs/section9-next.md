@@ -259,8 +259,8 @@ candidate or an unconverged diagnostic as accepted production behavior.
 | Converged CPU/GPU g=.1/.2/.5 checks | Pending: componentwise Delta agreement <=1e-25, equal iteration counts and matching residual histories; save inputs and both logs |
 | Idle-host Jacobian timings | Pending: all load averages <4 before each solve; 352 bits, Nc=23/31/59, with the large case Nsh=160 and nPts=65 |
 | Fold `J^T G` into exact augmented SYRK | Local candidate behind explicit `QSC_GPU_NORMAL=1`; default off, CPU fallback and `QSC_GPU_SYRK` gate retained; full converged-history and timing acceptance pending |
-| Fourier residual -> complex GEMM | Isolated opt-in adapter passes 352/374/448-bit MPFR normal/Metal checks and saved J3 GPU replay; full g sweep, original integration and idle timings pending |
-| Per-column 4x4 products and LU4 | Isolated product3 and batched LU4 adapters pass MPFR normal/Metal checks and saved J3 individual/combined GPU replays; full g sweep, original integration and idle timings pending. See [products](../benchmarks/experiments/section9_products4_consumer.md) and [LU4](../benchmarks/experiments/section9_lu4_consumer.md) |
+| Fourier residual -> complex GEMM | Integrated locally behind off-default switch; matching 1.3.1 build passes MPFR normal/Metal checks and saved J3 default/combined GPU replay. Full g sweep and idle timings pending |
+| Per-column 4x4 products and LU4 | Integrated locally behind off-default switches; matching 1.3.1 build passes MPFR normal/Metal checks and saved J3 default/combined GPU replay. Full g sweep and idle timings pending. See [integration](../benchmarks/experiments/section9_consumer_integrated.md) |
 | Remaining damping trials | Pending; preserve the first exact factor path, use batched trials only after P1.2/P2.2 numerical/performance acceptance; keep the new switch off until current-backend acceptance; historical small-matrix ratios are insufficient |
 | Optional base polynomial recurrence | Pending; measure shared Horner sources (P1.5) before switching the solver |
 | Large-shape memory | Pending consumer measurement: host W remains; compact 1.1.0 power storage is available explicitly, with a latency trade-off; chunk count if needed |
@@ -317,5 +317,13 @@ consumer precision. Every replay retains the three serialized CPU history values
 and converges below its original input tolerance, with all requested GPU paths
 and adjoint checks passing. Frozen source/binary and raw output hashes have been
 independently verified. These checks cover g=.202 only; the requested g=.1/.2/.5
-cases, idle Nc=23/31/59 timings, original consumer integration and remaining
-damping/base switches are still pending.
+cases, idle Nc=23/31/59 timings and remaining damping/base switches are still
+pending. Original integration is described below.
+
+These three adapters are subsequently integrated in the original consumer behind
+off-default switches, with a separate matching 1.3.1 build. Integrated normal/Metal
+helpers and saved J3 default/combined comparisons pass; both CPU runs exactly
+reproduce the recorded baseline. The new comparison runner controls inherited
+candidate/audit switches and requires every selected path's GPU marker. Existing
+binaries are retained. Full g sweep, idle timings, large-shape memory and the
+remaining damping/base switches stay pending. [Complete patch and evidence](../benchmarks/experiments/section9_consumer_integrated.md).

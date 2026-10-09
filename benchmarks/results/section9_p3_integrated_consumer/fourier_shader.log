@@ -1,0 +1,8 @@
+2026-10-09 05:28:09.625 qscmx_fourier_check[47316:263742041] Metal GPU Validation Enabled
+  exact Fourier: pack 8.1583e-05 s, library wall 0.0328051 s (device 0.00151413 s), unpack 0.000198292 s
+WolfNum Fourier: Fourier: short sample table; using CPU fallback
+352 bits: Fourier MPFR exact-dot, packing, output and failure guards pass
+  exact Fourier: pack 7.8541e-05 s, library wall 0.200687 s (device 0.001724 s), unpack 8.1084e-05 s
+374 bits: Fourier MPFR exact-dot, packing, output and failure guards pass
+  exact Fourier: pack 6.375e-05 s, library wall 0.181745 s (device 0.0022025 s), unpack 7.5459e-05 s
+448 bits: Fourier MPFR exact-dot, packing, output and failure guards pass

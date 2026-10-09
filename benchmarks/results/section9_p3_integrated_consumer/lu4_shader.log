@@ -1,0 +1,8 @@
+2026-10-09 05:28:15.185 qscmx_lu4_check[47388:263742460] Metal GPU Validation Enabled
+  inverse4 LU: 17 matrices, pack 4.625e-05 s, library wall 0.571744 s (device 0.0115641 s), unpack 9.5542e-05 s
+WolfNum inverse4 LU: inverse4: row shape; using CPU fallback
+352 bits: MPFR LU4 inverse, row swaps/ties/scales, rounded width and failure guards pass
+  inverse4 LU: 17 matrices, pack 2.8667e-05 s, library wall 0.536583 s (device 0.0118381 s), unpack 8.4875e-05 s
+374 bits: MPFR LU4 inverse, row swaps/ties/scales, rounded width and failure guards pass
+  inverse4 LU: 17 matrices, pack 3.4917e-05 s, library wall 0.536666 s (device 0.0133267 s), unpack 8.1583e-05 s
+448 bits: MPFR LU4 inverse, row swaps/ties/scales, rounded width and failure guards pass

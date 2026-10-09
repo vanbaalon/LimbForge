@@ -5,8 +5,10 @@
 - Archived isolated Fourier, tangent product3 and batched LU4 consumer prototypes
   with completed MPFR/Metal checks and independently verified saved J3 GPU
   replays. LU4 covers all supported widths plus 374-bit consumer precision.
-  Original consumer integration, the requested g sweep and idle timings remain
-  pending; production library/API/defaults stay at 1.3.1.
+  Integrated these adapters locally behind off-default switches in a separate
+  matching 1.3.1 consumer build. Focused normal/Metal helpers and default/combined
+  J3 replays pass; original CPU results are preserved exactly. The requested g
+  sweep and idle timings remain pending; production library/API/defaults stay at 1.3.1.
 
 - Retained rejected 8x8 complex register-blocking attempts and all-width tile
   evidence; no numerical kernel/default or performance acceptance.

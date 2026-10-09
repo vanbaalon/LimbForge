@@ -1,0 +1,25 @@
+{
+  "scope": "Integrated J3 g=.202 only; full requested g sweep and idle timings remain open",
+  "state": "terminal",
+  "exit": 0,
+  "frozen_source_binary_hashes_verified": true,
+  "reference_sha256": "c840246a9b187881aef16603c52070ec1e000335f8252dee5c3d4c7a3c5ca7bc",
+  "records": [
+    {
+      "name": "default_replay",
+      "CPU_matches_recorded_baseline_exactly": true,
+      "Delta_max_component_error": "7.10245197342712E-125",
+      "history_exact_serialized_match": true,
+      "residual": "5.57752179966997436E-25",
+      "acceptance_pass": true
+    },
+    {
+      "name": "combined_replay",
+      "CPU_matches_recorded_baseline_exactly": true,
+      "Delta_max_component_error": "2.307675812432015830E-92",
+      "history_exact_serialized_match": true,
+      "residual": "5.57752179966997436E-25",
+      "acceptance_pass": true
+    }
+  ]
+}

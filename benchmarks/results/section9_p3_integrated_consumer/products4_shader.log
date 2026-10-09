@@ -1,0 +1,10 @@
+2026-10-09 05:28:11.607 qscmx_products4_check[47352:263742268] Metal GPU Validation Enabled
+  tangent products4: 28 matrices, pack/upload 0.0197178 s, library wall 0.0147286 s (device 0.00166746 s), download/unpack 9.8709e-05 s
+WolfNum tangent products4: tangent products4: derivative shape; using CPU fallback
+352 bits: MPFR product3, rounded width, cancellation/wide data, mapping and failure guards pass
+  tangent products4: 28 matrices, pack/upload 6.9333e-05 s, library wall 0.620032 s (device 0.00190362 s), download/unpack 9.9875e-05 s
+WolfNum tangent products4: tangent products4: derivative shape; using CPU fallback
+374 bits: MPFR product3, rounded width, cancellation/wide data, mapping and failure guards pass
+  tangent products4: 28 matrices, pack/upload 7.6458e-05 s, library wall 1.07517 s (device 0.00219454 s), download/unpack 9.875e-05 s
+WolfNum tangent products4: tangent products4: derivative shape; using CPU fallback
+448 bits: MPFR product3, rounded width, cancellation/wide data, mapping and failure guards pass

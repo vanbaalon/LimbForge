@@ -4,6 +4,9 @@ This isolated qscmx adapter leaves the user's original consumer sources, binarie
 and running jobs untouched. `QSC_GPU_FOURIER=1` is explicit and off by default.
 The existing residual implementation remains the baseline.
 
+The subsequent [local integration](section9_consumer_integrated.md) applies this
+checked prototype with a separate matching build and its switch off by default.
+
 Each Jacobian worker constructs the fitted gluing matrix and its point samples for
 both finite-difference directions. One real-embedding exact GEMM projects all saved
 samples using the shared Fourier phases; postprocessing then assembles the Jacobian.

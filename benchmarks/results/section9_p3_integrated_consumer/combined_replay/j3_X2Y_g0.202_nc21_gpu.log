@@ -1,0 +1,29 @@
+WolfNum algebra prewarm: 1.3.1, 384 bits, startup wait 6.7000000000000002e-05 s (outside solve timing)
+Dset: rank 32 of 168  (1.6350254580000001 s)
+  inverse4 LU: 27 matrices, pack 7.9791000000000009e-05 s, library wall 0.026512292000000003 s (device 0.010827958351001143 s), unpack 0.000142917 s
+  descent inverses4 (GPU): 27 matrices
+  start |G| = 1.0243522681269547e-10  |cons| = 4.1028220842960933e-94  (0.386674833 s)
+  inverse4 LU: 27 matrices, pack 7.6833000000000001e-05 s, library wall 0.011185792 s (device 0.010398375045042485 s), unpack 0.00015154200000000001 s
+  descent inverses4 (GPU): 27 matrices
+  power moments: pack 0.010322417 s, library wall 0.11782675000000001 s (device 0.10156466672196984 s), unpack 0.0015352920000000002 s
+  adjoint tables: stage 1 0.069444083000000004 s, stage 2 (GPU) 0.14936175000000002 s
+  adjoint check: PASS relative max difference 0, 0 units of 2^-374 (limit 65536; scale max |rows|; 12 columns), relative to max |dRows| 0
+  inverse4 LU: 27 matrices, pack 5.1458000000000001e-05 s, library wall 0.01794625 s (device 0.01075929164653644 s), unpack 0.000102792 s
+  descent inverses4 (GPU): 27 matrices
+  tangent products4: 4536 matrices, pack/upload 0.0029462910000000002 s, library wall 0.0041734170000000004 s (device 0.0033202083432115614 s), download/unpack 0.0024215 s
+  tangent 4x4 Jacobian (GPU)
+  inverse4 LU: 338 matrices, pack 0.00011625000000000001 s, library wall 0.0060677910000000003 s (device 0.0051652499823831022 s), unpack 0.00022400000000000002 s
+  gluing inverses4 (GPU): 338 matrices
+  exact Fourier: pack 0.0025213750000000002 s, library wall 0.020892583000000003 s (device 0.012344208371359855 s), unpack 0.0028596670000000002 s
+  Fourier Jacobian (GPU): 338 projections
+  normal matrix (GPU): 0.0144335 s, CPU J^T G: 0.00077579200000000008 s
+  first Cholesky (GPU): 0.015218208 s
+  inverse4 LU: 27 matrices, pack 8.7416000000000005e-05 s, library wall 0.012855042000000001 s (device 0.012158333323895931 s), unpack 0.00014341700000000001 s
+  descent inverses4 (GPU): 27 matrices
+  it 1  |G| = 1.2649616737754718e-21  mu = 1.0000000000000001e-21  Delta = 2 + 1.0012726137914625 + 2.069011156244995e-31 i  (2.951392083 s)
+  inverse4 LU: 27 matrices, pack 8.3459000000000002e-05 s, library wall 0.014050583 s (device 0.01338608335936442 s), unpack 0.00014308300000000001 s
+  descent inverses4 (GPU): 27 matrices
+  it 2 (chord)  |G| = 5.5775217996699744e-25  Delta = 2 + 1.0012726137914625 + -1.2665295352789159e-29 i  (3.1079322500000002 s)
+  timing: Jc 0.28978745900000003  JG 2.0395637080000002  lin 0.063050458000000004  LM 0.17227504199999999  chord 0.153910292 s (1 chord steps)
+  JG split (thread-summed s): dB 0.36857734200000003  descent 3.0652920830000001  residual 1.9297452430000002
+done (4.8348375409999997 s)

@@ -1,0 +1,36 @@
+{
+  "state": "prepared",
+  "production_library": "WolfNum1.3.1, main0a08644",
+  "source": "/Users/k0959535/Dropbox/IntegrabilityProjects/2026 Near N=4/qsccpp",
+  "build": "build-wolfnum-section9",
+  "original_source_sha256": {
+    "CMakeLists.txt": "f3c0e004bf5520f84133a1b89b0194489267b7f5137c4530a5c691f290aa1af1",
+    "include/mx.hpp": "e88a0498fe417f3a5fb7f126b1f9164b17e4beddf70469a40c9b3e4248d13010",
+    "src/qscmx.cpp": "679b75e38054dde0747499583814f52d9ad57c848ce5fd728ef3f3b25be104e4"
+  },
+  "patches": [
+    {
+      "patch": "/Users/k0959535/Dropbox/IntegrabilityProjects/2026 4d SoV/LimbForge/benchmarks/experiments/section9_fourier_consumer.patch",
+      "sha256": "2eeb43375cb948596607bdb3c58b8226ae3810ef4b6669f6d1c3fb9989e552f3"
+    },
+    {
+      "patch": "/Users/k0959535/Dropbox/IntegrabilityProjects/2026 4d SoV/LimbForge/benchmarks/experiments/section9_products4_consumer.patch",
+      "sha256": "20be187d2c9098554bf9aeaf951aee5bc4974b8da885d5ac82bde3a4c5738383"
+    },
+    {
+      "patch": "/Users/k0959535/Dropbox/IntegrabilityProjects/2026 4d SoV/LimbForge/benchmarks/experiments/section9_lu4_consumer.patch",
+      "sha256": "2ad8f6bdf895aaecb4dc3d77982d65927d25635a9f3eb6f0542a5ba0694d788f"
+    }
+  ],
+  "prepared_sha256": {
+    "include/mx.hpp": "3f987442d37fe62ae6f30502991604012795ecebba3420885368ccf58524b6fb",
+    "CMakeLists.txt": "d110301e3a2a4776934de601479ce17fc7b2d17058fa61b2110c6ad939b7a400",
+    "tools/test_fourier_candidate.cpp": "33b86491268eae5c599ec32210bae7261ba36362b5ad8a7e3731300b10da814a",
+    "tools/test_products4_candidate.cpp": "e3c888dd3920aaf1cdfeaf4f06f229807033a90af3d5fae3e66b9b6508b6892f",
+    "tools/test_lu4_candidate.cpp": "12ddc8e20fa073f03e1d2e44c3ccc5eb547d74fb8d00f5d631ad9c16ce26fa1b"
+  },
+  "all_prepared_files_match_checked_prototype": true,
+  "default_switches": "FOURIER/PRODUCTS4/LU4 all off",
+  "existing_binaries_untouched": true,
+  "remaining": "Matching build checks, integrated replay, full g sweep and idle timings"
+}

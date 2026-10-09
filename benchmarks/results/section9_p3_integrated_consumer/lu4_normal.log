@@ -1,0 +1,7 @@
+  inverse4 LU: 17 matrices, pack 5.1834e-05 s, library wall 0.550659 s (device 0.0107921 s), unpack 0.000116625 s
+WolfNum inverse4 LU: inverse4: row shape; using CPU fallback
+352 bits: MPFR LU4 inverse, row swaps/ties/scales, rounded width and failure guards pass
+  inverse4 LU: 17 matrices, pack 3.4291e-05 s, library wall 0.492596 s (device 0.0114903 s), unpack 8.5334e-05 s
+374 bits: MPFR LU4 inverse, row swaps/ties/scales, rounded width and failure guards pass
+  inverse4 LU: 17 matrices, pack 3.0958e-05 s, library wall 0.500718 s (device 0.0128494 s), unpack 9.3875e-05 s
+448 bits: MPFR LU4 inverse, row swaps/ties/scales, rounded width and failure guards pass

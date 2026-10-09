@@ -7,6 +7,9 @@ consumer. Base/prepared hashes are in
 `benchmarks/results/section9_p3_products4_prototype/preparation_manifest.json`.
 Original consumer files, binaries and running jobs are untouched.
 
+The subsequent [local integration](section9_consumer_integrated.md) applies this
+checked prototype with a separate matching build and its switch off by default.
+
 `QSC_GPU_PRODUCTS4=1` explicitly opts into batching the inverse derivative
 `-Qi * dQ * Qi` for every tangent column and collocation point. Workers prepare
 their tangent descent matrices first. One resident `product3` submission computes

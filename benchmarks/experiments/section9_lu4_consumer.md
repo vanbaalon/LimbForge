@@ -6,6 +6,9 @@ This isolated qscmx source builds on the prepared
 incremental on their frozen source. The original consumer and running jobs are
 untouched; production WolfNum remains 1.3.1.
 
+The subsequent [local integration](section9_consumer_integrated.md) applies this
+checked prototype with a separate matching build and its switch off by default.
+
 `QSC_GPU_LU4=1` explicitly selects the existing library's composed, pivoted 4x4
 inverse. Descent matrices are collected across all collocation points before one
 LU4 call; cut-row construction follows the completed inverses. Mode Jacobian

@@ -1,0 +1,785 @@
+--- a/include/mx.hpp
++++ b/include/mx.hpp
+@@ -443,6 +443,12 @@
+   std::vector<C> Plc, Puc;       // [j][s][4]  P_a, P^a on the cut (sheet s)
+ };  // Q_{a|i}^+ and its inverse at each point (for the mode residual)
+ template <class Fn> inline void par_for(int n, int T, Fn f);
++#ifdef QSC_LIMBFORGE
++namespace lfx {
++inline bool lu4_enabled();
++inline bool inverse4_batch(const std::vector<Mat>&,std::vector<Mat>&,int);
++}
++#endif
+ inline Rows glue_rows(const Setup& S, const CD& X, const TData* T = nullptr, const Amats* Am0 = nullptr, Trace* tr = nullptr, int thr = 1) {
+   Amats AmL; if (!Am0) AmL = amats(S, X, T);
+   const Amats& Am = Am0 ? *Am0 : AmL;
+@@ -451,6 +457,13 @@
+   Rows out; out.L.assign(2 * nP, Vec()); out.R.assign(2 * nP, Vec()); out.Q.assign(nP, Mat()); out.Qi.assign(nP, Mat());
+   if (tr) { tr->L = Lg; tr->fac.assign(size_t(nP) * 16, C()); tr->pl.assign(size_t(nP) * Nsh * 4, C()); tr->pu = tr->pl; tr->row = tr->pl;
+             tr->Qold.assign(size_t(nP) * Nsh * 16, C()); tr->Plc.assign(size_t(nP) * 8, C()); tr->Puc = tr->Plc; }
++  bool deferred_inverse=false;
++#ifdef QSC_LIMBFORGE
++  deferred_inverse=lfx::lu4_enabled();
++#endif
++  const char* inverse_split=std::getenv("QSC_LU4_CPU_SPLIT");
++  if(inverse_split&&!std::strcmp(inverse_split,"1"))deferred_inverse=true;
++  std::vector<std::array<C,4>> cut_lower(deferred_inverse?size_t(nP)*2:0);
+   par_for(nP, thr, [&](int j) {
+     C t;
+     Mat Q(4, Vec(4));
+@@ -476,7 +489,7 @@
+       }
+       for (int a = 0; a < 4; ++a) for (int i = 0; i < 4; ++i) fma_(Q[a][i], pl[a], row[i], t);
+     }
+-    Mat Qi = inverse(Q);  // QinvT[a][i] = Qi[i][a]
++    Mat Qi; if(!deferred_inverse)Qi=inverse(Q);  // QinvT[a][i] = Qi[i][a]
+     out.Q[j] = Q; out.Qi[j] = Qi;
+     for (int s = 0; s < 2; ++s) {
+       std::array<C, 4> Pl, Pu;
+@@ -486,15 +499,27 @@
+         Pl[a] = S.ELc[a * nP + j] * sl; Pu[a] = S.EUc[a * nP + j] * su;
+         if (tr) { tr->Plc[(size_t(j) * 2 + s) * 4 + a] = Pl[a]; tr->Puc[(size_t(j) * 2 + s) * 4 + a] = Pu[a]; }
+       }
++      if(deferred_inverse)cut_lower[size_t(j)*2+s]=Pl;
+       Vec rl(4), rr(4);
+       for (int i = 0; i < 4; ++i) {
+         C sl, sr;
+-        for (int a = 0; a < 4; ++a) { fma_(sl, Pu[a], Q[a][i], t); fma_(sr, Pl[a], Qi[i][a], t); }
++        for (int a = 0; a < 4; ++a) { fma_(sl, Pu[a], Q[a][i], t); if(!deferred_inverse)fma_(sr, Pl[a], Qi[i][a], t); }
+         rl[i] = -sl; rr[i] = conj(-sr);
+       }
+       out.L[2 * j + s] = rl; out.R[2 * j + s] = rr;
+     }
+   });
++  if(deferred_inverse){std::vector<Mat> inverses;bool gpu_inverse=false;
++#ifdef QSC_LIMBFORGE
++    gpu_inverse=lfx::inverse4_batch(out.Q,inverses,thr);
++#endif
++    if(!gpu_inverse){inverses.resize(nP);par_for(nP,thr,[&](int j){inverses[j]=inverse(out.Q[j]);});}
++    out.Qi.swap(inverses);
++    par_for(nP,thr,[&](int j){C t;for(int sheet=0;sheet<2;++sheet)for(int i=0;i<4;++i){C sr;
++      for(int a=0;a<4;++a)fma_(sr,cut_lower[size_t(j)*2+sheet][a],out.Qi[j][i][a],t);
++      out.R[2*j+sheet][i]=conj(-sr);}});
++    if(std::getenv("QSC_GPU_PROFILE"))std::cerr<<"  descent inverses4 ("<<(gpu_inverse?"GPU":"CPU fallback")<<"): "<<nP<<" matrices\n";
++  }
+   return out;
+ }
+ // Exact first-order rows R0 + h dR for a change of ONE coefficient: ty = 0 -> c[a0][n0], ty = 1 -> d[a0][n0] (n0 >= 1),
+@@ -571,8 +596,31 @@
+ struct JGProf { std::atomic<long long> dB{0}, desc{0}, res{0}; };
+ inline JGProf& jgprof() { static JGProf p; return p; }
+ inline long long nowns() { return std::chrono::duration_cast<std::chrono::nanoseconds>(std::chrono::steady_clock::now().time_since_epoch()).count(); }
++inline Mat tangent_inverse_product_cpu(const Mat& Qi,const Mat& dQ){
++  C t;Mat tmp(4,Vec(4)),dQi(4,Vec(4));
++  for(int a=0;a<4;++a)for(int b=0;b<4;++b)for(int c=0;c<4;++c)fma_(tmp[a][b],Qi[a][c],dQ[c][b],t);
++  for(int a=0;a<4;++a)for(int b=0;b<4;++b){for(int c=0;c<4;++c)fma_(dQi[a][b],tmp[a][c],Qi[c][b],t);dQi[a][b]=-dQi[a][b];}
++  return dQi;
++}
++inline void rows_tangent_finish_point(const Setup& S,const Trace& tr,const Rows& R0,int ty,int a0,int n0,const C& h,
++                                      int j,const Mat& dQ,const Mat& dQi,Rows& out){
++  const int nP=S.nPts;C t;const Mat& Q=R0.Q[j];const Mat& Qi=R0.Qi[j];
++    for (int s2 = 0; s2 < 2; ++s2) {
++      int r = 2 * j + s2;
++      const C* Pl = &tr.Plc[(size_t(j) * 2 + s2) * 4]; const C* Pu = &tr.Puc[(size_t(j) * 2 + s2) * 4];
++      C dP = (ty == 0) ? S.ELc[a0 * nP + j] * S.powLc[S.iPc(a0, s2, j, n0)] : S.EUc[a0 * nP + j] * S.powUc[S.iPc(a0, s2, j, n0)];
++      for (int i = 0; i < 4; ++i) {
++        C dl, dsr;
++        for (int a = 0; a < 4; ++a) { fma_(dl, Pu[a], dQ[a][i], t); fma_(dsr, Pl[a], dQi[i][a], t); }
++        if (ty == 1) fma_(dl, dP, Q[a0][i], t); else fma_(dsr, dP, Qi[i][a0], t);
++        out.L[r][i] -= h * dl;
++        out.R[r][i] -= h * conj(dsr);
++      }
++    }
++    for (int a = 0; a < 4; ++a) for (int b = 0; b < 4; ++b) { out.Q[j][a][b] += h * dQ[a][b]; out.Qi[j][a][b] += h * dQi[a][b]; }
++}
+ inline Rows rows_tangent(const Setup& S, const CD& X, const TData& T, const Amats& Am, const HLR& HL, const HLR& HR,
+-                         const Trace& tr, const Rows& R0, int ty, int a0, int n0, const C& h, const AdjPrep* ap = nullptr) {
++                         const Trace& tr, const Rows& R0, int ty, int a0, int n0, const C& h, const AdjPrep* ap = nullptr, std::vector<Mat>* deferred_dQ = nullptr) {
+   int N = S.NQ + 1, s = S.band, nP = S.nPts, Nsh = S.Nsh, NQ = S.NQ; C t; long long tp0 = nowns();
+   // derivative series of vl_a0 (ty 0) or vu_a0 (ty 1)
+   Ser dv(N);
+@@ -618,6 +666,7 @@
+       dB[a][i] = v;
+     }
+   }
++  if(deferred_dQ)deferred_dQ->resize(nP);
+   Rows out = R0; jgprof().dB += nowns() - tp0; tp0 = nowns();
+   for (int j = 0; j < nP; ++j) {
+     Mat dQ(4, Vec(4));
+@@ -645,23 +694,9 @@
+       for (int a = 0; a < 4; ++a) for (int i = 0; i < 4; ++i) fma_(dQ[a][i], tr.pl[o + a], drow[i], t);
+       if (ty == 0) for (int i = 0; i < 4; ++i) fma_(dQ[a0][i], dp, tr.row[o + i], t);
+     }
+-    const Mat& Q = R0.Q[j]; const Mat& Qi = R0.Qi[j];
+-    Mat tmp(4, Vec(4)), dQi(4, Vec(4));
+-    for (int a = 0; a < 4; ++a) for (int b = 0; b < 4; ++b) for (int c = 0; c < 4; ++c) fma_(tmp[a][b], Qi[a][c], dQ[c][b], t);
+-    for (int a = 0; a < 4; ++a) for (int b = 0; b < 4; ++b) { for (int c = 0; c < 4; ++c) fma_(dQi[a][b], tmp[a][c], Qi[c][b], t); dQi[a][b] = -dQi[a][b]; }
+-    for (int s2 = 0; s2 < 2; ++s2) {
+-      int r = 2 * j + s2;
+-      const C* Pl = &tr.Plc[(size_t(j) * 2 + s2) * 4]; const C* Pu = &tr.Puc[(size_t(j) * 2 + s2) * 4];
+-      C dP = (ty == 0) ? S.ELc[a0 * nP + j] * S.powLc[S.iPc(a0, s2, j, n0)] : S.EUc[a0 * nP + j] * S.powUc[S.iPc(a0, s2, j, n0)];
+-      for (int i = 0; i < 4; ++i) {
+-        C dl, dsr;
+-        for (int a = 0; a < 4; ++a) { fma_(dl, Pu[a], dQ[a][i], t); fma_(dsr, Pl[a], dQi[i][a], t); }
+-        if (ty == 1) fma_(dl, dP, Q[a0][i], t); else fma_(dsr, dP, Qi[i][a0], t);
+-        out.L[r][i] -= h * dl;
+-        out.R[r][i] -= h * conj(dsr);
+-      }
+-    }
+-    for (int a = 0; a < 4; ++a) for (int b = 0; b < 4; ++b) { out.Q[j][a][b] += h * dQ[a][b]; out.Qi[j][a][b] += h * dQi[a][b]; }
++    if(deferred_dQ){(*deferred_dQ)[j]=std::move(dQ);continue;}
++    Mat dQi=tangent_inverse_product_cpu(R0.Qi[j],dQ);
++    rows_tangent_finish_point(S,tr,R0,ty,a0,n0,h,j,dQ,dQi,out);
+   }
+   jgprof().desc += nowns() - tp0;
+   return out;
+@@ -766,6 +801,69 @@
+   out.norm = absd(sqrt(n2)); out.acc = absd(sqrt(a2)); out.accNeg = absd(sqrt(an2)); out.accPos = absd(sqrt(ap2));
+   return out;
+ }
++// Store only the point samples and fitted M, then project all Jacobian columns together.
++struct ModeProjection {Mat M;std::vector<C> samples;};
++inline Mat mode_projection_cpu(const Setup& S,const ModeProjection& data){
++  int N2=2*S.nPts,nm=S.Nc+2*S.modeK+1;Mat projection(nm,Vec(8));C t;
++  for(int r=0;r<N2;++r)for(int a=0;a<8;++a)for(int q=0;q<nm;++q)
++    fma_(projection[q][a],data.samples[size_t(r)*8+a],S.mph[size_t(r)*nm+q],t);
++  return projection;
++}
++inline ModeProjection mode_projection_prepare(const Setup& S, const Rows& W, const CD& X,
++                                                const Mat* fitted=nullptr,const Mat* fitted_inverse=nullptr) {
++  Glue Gl;if(fitted)Gl.M=*fitted;else Gl=glue_fit(S,W,X.Delta,true);
++  ModeProjection data; data.M = Gl.M;
++  const Mat& M = Gl.M; Mat Mi = fitted_inverse?*fitted_inverse:inverse(M);
++  int nP = S.nPts, N2 = 2 * nP, Nc = S.Nc, nlo = -S.modeK, nhi = Nc + S.modeK, nm = nhi - nlo + 1;
++  C I = C::imag_unit(), g = S.g, g2 = g * g, ig = C(1) / g, t;
++  data.samples.assign(size_t(N2)*8, C());
++  for (int j = 0; j < nP; ++j) {
++    for (int s = 0; s < 2; ++s) {
++      int r = 2 * j + s;
++      const Vec& rl = W.L[r]; const Vec& rr = W.R[r]; const Mat& Q = W.Q[j]; const Mat& Qi = W.Qi[j];
++      std::array<C, 4> qu, mq;
++      for (int i = 0; i < 4; ++i) { C a1, a2; for (int k = 0; k < 4; ++k) { fma_(a1, Mi[i][k], rl[k], t); fma_(a2, M[i][k], rr[k], t); } qu[i] = conj(a1); mq[i] = a2; }
++      const C* ph = &S.mph[(size_t(j) * 2 + s) * nm];
++      for (int a = 0; a < 4; ++a) {
++        C Pa, Pua;
++        for (int i = 0; i < 4; ++i) { fma_(Pa, Q[a][i], qu[i], t); fma_(Pua, Qi[i][a], mq[i], t); }
++        C f = -(Pa * S.mfl[(size_t(j) * 2 + s) * 4 + a]);
++        C h = -(Pua * S.mfu[(size_t(j) * 2 + s) * 4 + a]);
++        data.samples[size_t(r)*8+a] = f; data.samples[size_t(r)*8+4+a] = h;
++      }
++    }
++  }
++  return data;
++}
++inline Glue mode_projection_finish(const Setup& S,const CD& X,const ModeProjection& data,const Mat& projection){
++  Glue out;out.M=data.M;int N2=2*S.nPts,Nc=S.Nc,nlo=-S.modeK,nm=Nc+2*S.modeK+1;
++  C ig=C(1)/S.g;
++  C iN = C(1) / C(N2), n2, a2, an2, ap2;
++  for (int typ = 0; typ < 2; ++typ)
++    for (int a = 0; a < 4; ++a) {
++      const std::vector<C>& co = typ == 0 ? X.c[a] : X.d[a];
++      C nrm = C(1) / C(absd(co[0]) > 0 ? absd(co[0]) : 1.0);
++      C gp = ipow(ig, nlo);
++      for (int q = 0; q < nm; ++q) {
++        int n = nlo + q;
++        C val = (typ == 0 ? projection[q][a] : projection[q][4+a]) * iN;
++        if (n >= 0 && n <= Nc) { val -= co[n] * gp; val *= nrm; out.r.push_back(val); n2 += norm2(val); }
++        else { val *= nrm; a2 += norm2(val); if (n < 0) an2 += norm2(val); else ap2 += norm2(val); }
++        gp *= ig;
++      }
++    }
++  out.norm = absd(sqrt(n2)); out.acc = absd(sqrt(a2)); out.accNeg = absd(sqrt(an2)); out.accPos = absd(sqrt(ap2));
++  return out;
++}
++#ifdef QSC_LIMBFORGE
++namespace lfx {
++inline bool fourier_enabled();
++inline bool products4_enabled();
++inline bool tangent_products4(const Rows&,const std::vector<std::vector<Mat>>&,std::vector<std::vector<Mat>>&,int);
++inline bool fourier_batch(const Setup&,const std::vector<ModeProjection>&,std::vector<Mat>&,int);
++}
++#endif
++
+ inline Glue resid(const Setup& S, const Rows& W, const CD& X) { return S.modes ? glue_modes(S, W, X) : glue_fit(S, W, X.Delta); }
+ inline Glue glue(const Setup& S, const CD& X, const TData* T = nullptr, int thr = 1) {
+   if (T && same(T->Delta, X.Delta)) return resid(S, glue_rows(S, X, T, nullptr, nullptr, thr), X);
+@@ -915,7 +1013,7 @@
+ // Keep both futures during independent CPU setup, then drain them before any timed solve.
+ // A startup error disables GPU helpers for this process, preserving their CPU fallback.
+ struct StartupPrewarm {
+-  std::future<void> power, exact;
++  std::future<void> power, exact, small_systems;
+   std::exception_ptr failure;
+   int width = 0;
+   bool requested = false, finished = false;
+@@ -923,7 +1021,7 @@
+     if (finished) return;
+     finished = true;
+     const long long start = nowns();
+-    for (auto* future : {&power, &exact}) if (future->valid()) {
++    for (auto* future : {&power, &exact, &small_systems}) if (future->valid()) {
+       try { future->get(); } catch (...) { if (!failure) failure = std::current_exception(); }
+     }
+     if (failure) {
+@@ -944,18 +1042,27 @@
+   task.width = bits();
+   if (!operation_enabled("QSC_GPU_PREWARM") || task.width < 64 || task.width > 1024) return task;
+   try {
+-    if (operation_enabled("QSC_GPU_POWER")) {
++    const bool prepare_power=operation_enabled("QSC_GPU_POWER");
++    const bool prepare_products4=S.tangent&&products4_enabled();
++    if (prepare_power || prepare_products4) {
+       if (S.nPts < 0 || S.Nsh < 0 || S.Nc < 0) throw std::invalid_argument("prewarm: negative power shape");
+       limbforge::BatchedPrewarm request;
+       request.bits = {task.width};
+-      request.complex_power = {{size_t(S.nPts)*8, unsigned(S.Nsh), unsigned(S.Nc), 16, 0}};
++      if(prepare_power)request.complex_power = {{size_t(S.nPts)*8, unsigned(S.Nsh), unsigned(S.Nc), 16, 0}};
++      if(prepare_products4){limbforge::StridedGemm shape;shape.count=1;shape.m=shape.n=shape.k=4;
++        shape.stride_a=shape.stride_b=shape.stride_c=16;request.complex_gemm.push_back(shape);}
+       task.power = batched().prewarm_async(std::move(request));
+       task.requested = true;
+     }
+     // Current exact helpers use host-array products/factors; no resident K tables needed.
+-    if (task.width >= 256 && (operation_enabled("QSC_GPU_SYRK") || operation_enabled("QSC_GPU_CHOL"))) {
++    if (task.width >= 256 && (operation_enabled("QSC_GPU_SYRK") || operation_enabled("QSC_GPU_CHOL") || (S.modes&&fourier_enabled()))) {
+       task.exact = la().prewarm_async({{task.width}, {}, false});
+       task.requested = true;
++    }
++    if(lu4_enabled()){
++      limbforge::Prewarm request;request.bits={task.width};
++      limbforge::Batched4 shape;shape.count=1;shape.inverse=true;request.lu4.push_back(shape);
++      task.small_systems=engine().prewarm_async(std::move(request));task.requested=true;
+     }
+   } catch (...) { task.failure = std::current_exception(); }
+ #else
+@@ -1035,6 +1142,150 @@
+       << " s (device " << timing.gpu_seconds << " s), unpack " << (nowns()-t2)*1e-9 << " s\n";
+     return true;
+   } catch (const std::exception& e) { static std::atomic_flag warned = ATOMIC_FLAG_INIT; warning("power moments", e, warned); return false; }
++}
++// Explicit exact-dot candidate; existing sequential MPC residuals stay the default.
++inline bool fourier_enabled(){const char* v=std::getenv("QSC_GPU_FOURIER");return v&&!std::strcmp(v,"1")&&operation_enabled("QSC_GPU_FOURIER")&&bits()>=256&&bits()<=1024;}
++inline bool products4_enabled(){
++  const char* v=std::getenv("QSC_GPU_PRODUCTS4");
++  return v&&!std::strcmp(v,"1")&&operation_enabled("QSC_GPU_PRODUCTS4")&&bits()>=256&&bits()<=1024;
++}
++inline bool lu4_enabled(){
++  const char* v=std::getenv("QSC_GPU_LU4");
++  return v&&!std::strcmp(v,"1")&&operation_enabled("QSC_GPU_LU4")&&bits()>=64&&bits()<=1024;
++}
++// One runtime-width LU4 call for every matrix in this consumer stage. The library
++// pivot/rounding contract is explicit; the CPU fallback keeps Gauss-Jordan/MPC.
++inline bool inverse4_batch(const std::vector<Mat>& matrices,std::vector<Mat>& out,int thr){
++  if(!lu4_enabled())return false;
++  try{
++    const size_t count=matrices.size();const int B=bits();const size_t eb=limbforge::bridge_element_bytes(B,true);
++    if(count>size_t(INT_MAX)||count>size_t(-1)/16/eb)throw std::invalid_argument("inverse4: size overflow");
++    for(auto& m:matrices){if(m.size()!=4)throw std::invalid_argument("inverse4: matrix shape");
++      for(auto& row:m)if(row.size()!=4)throw std::invalid_argument("inverse4: row shape");}
++    if(!count){std::vector<Mat> empty;out.swap(empty);return true;}
++    const long long t0=nowns();std::vector<unsigned char> A(count*16*eb),X(count*16*eb);std::vector<std::uint32_t> status(count);
++    bridge_par_for(int(count),thr,[&](int job){for(int i=0;i<4;++i)for(int j=0;j<4;++j){const C& value=matrices[job][i][j];
++      if(!mpfr_number_p(mpc_realref(value.v))||!mpfr_number_p(mpc_imagref(value.v)))throw std::invalid_argument("inverse4: nonfinite input");
++      limbforge::from_mpc(B,value.v,A.data()+(size_t(job)*16+i*4+j)*eb);}});
++    const long long t1=nowns();limbforge::Batched4 shape;shape.count=count;shape.inverse=true;
++    // Engine's synchronous host LU4 call reuses shared host staging buffers.
++    // Non-tangent finite-difference columns can reach this helper concurrently.
++    static std::mutex dispatch_mutex;limbforge::Timing timing;
++    {std::lock_guard<std::mutex> guard(dispatch_mutex);
++      timing=engine().lu4(B,shape,A.data(),nullptr,X.data(),nullptr,status.data());}
++    const long long t2=nowns();
++    for(size_t job=0;job<count;++job)if(status[job])throw std::runtime_error("inverse4: singular matrix "+std::to_string(job)+", pivot "+std::to_string(status[job]));
++    std::vector<Mat> result(count,Mat(4,Vec(4)));
++    bridge_par_for(int(count),thr,[&](int job){for(int i=0;i<4;++i)for(int j=0;j<4;++j){C& value=result[job][i][j];
++      limbforge::to_mpc(B,value.v,X.data()+(size_t(job)*16+i*4+j)*eb);
++      if(!mpfr_number_p(mpc_realref(value.v))||!mpfr_number_p(mpc_imagref(value.v)))throw std::runtime_error("inverse4: arithmetic/conversion status");}});
++    out.swap(result);
++    if(std::getenv("QSC_GPU_PROFILE"))std::cerr<<"  inverse4 LU: "<<count<<" matrices, pack "<<(t1-t0)*1e-9
++      <<" s, library wall "<<(t2-t1)*1e-9<<" s (device "<<timing.gpu_seconds<<" s), unpack "<<(nowns()-t2)*1e-9<<" s\n";
++    return true;
++  }catch(const std::exception& e){static std::atomic_flag warned=ATOMIC_FLAG_INIT;warning("inverse4 LU",e,warned);return false;}
++}
++// All tangent columns and collocation points in one product3 submission.
++// This is the library's composed scalar-product sequence at the rounded GPU width,
++// followed by conversion to the consumer precision, not MPC's complex-mul sequence.
++template<int B> bool tangent_products4_t(const Rows& base,const std::vector<std::vector<Mat>>& derivatives,
++                                         std::vector<std::vector<Mat>>& out,int thr){
++  try{
++    using T=limbforge::Complex<B/32>;
++    auto matrix_ok=[](const Mat& m){if(m.size()!=4)return false;for(auto& row:m)if(row.size()!=4)return false;return true;};
++    const size_t points=base.Qi.size();
++    std::vector<size_t> columns;
++    for(size_t col=0;col<derivatives.size();++col){if(derivatives[col].empty())continue;
++      if(!points||derivatives[col].size()!=points)throw std::invalid_argument("tangent products4: point count");
++      for(auto& m:derivatives[col])if(!matrix_ok(m))throw std::invalid_argument("tangent products4: derivative shape");
++      columns.push_back(col);
++    }
++    for(auto& m:base.Qi)if(!matrix_ok(m))throw std::invalid_argument("tangent products4: inverse shape");
++    if(columns.empty()){std::vector<std::vector<Mat>> result(derivatives.size());out.swap(result);return true;}
++    if(points>size_t(-1)/columns.size())throw std::invalid_argument("tangent products4: count overflow");
++    const size_t count=points*columns.size();
++    if(count>size_t(INT_MAX)||count>size_t(-1)/16)throw std::invalid_argument("tangent products4: size overflow");
++    const long long t0=nowns();std::vector<T> inverse(count*16),delta(count*16),values(count*16);
++    bridge_par_for(int(count),thr,[&](int job){size_t point=size_t(job)%points,col=columns[size_t(job)/points];
++      for(int i=0;i<4;++i)for(int j=0;j<4;++j){size_t x=size_t(job)*16+i*4+j;
++        limbforge::from_mpc(B,base.Qi[point][i][j].v,&inverse[x]);
++        limbforge::from_mpc(B,derivatives[col][point][i][j].v,&delta[x]);
++        if(inverse[x].re.status||inverse[x].im.status||delta[x].re.status||delta[x].im.status)
++          throw std::runtime_error("tangent products4: input conversion status");
++      }});
++    auto a=engine().make_buffer<T>(count*16),b=engine().make_buffer<T>(count*16),c=engine().make_buffer<T>(count*16);
++    a.upload(inverse.data(),inverse.size());b.upload(delta.data(),delta.size());
++    const long long t1=nowns();auto batch=engine().batch();
++    limbforge::StridedGemm shape;shape.count=count;shape.m=shape.n=shape.k=4;
++    shape.stride_a=shape.stride_b=shape.stride_c=16;
++    batched().product3(batch,shape,shape,a,b,a,c,true);
++    auto timing=batch.submit().wait();const long long t2=nowns();c.download(values.data(),values.size());
++    std::vector<std::vector<Mat>> result(derivatives.size());
++    for(auto col:columns)result[col].assign(points,Mat(4,Vec(4)));
++    bridge_par_for(int(count),thr,[&](int job){size_t point=size_t(job)%points,col=columns[size_t(job)/points];
++      for(int i=0;i<4;++i)for(int j=0;j<4;++j){auto& value=values[size_t(job)*16+i*4+j];
++        if(value.re.status||value.im.status)throw std::runtime_error("tangent products4: output arithmetic status");
++        limbforge::to_mpc(B,result[col][point][i][j].v,&value);}});
++    out.swap(result);
++    if(std::getenv("QSC_GPU_PROFILE"))std::cerr<<"  tangent products4: "<<count<<" matrices, pack/upload "<<(t1-t0)*1e-9
++      <<" s, library wall "<<(t2-t1)*1e-9<<" s (device "<<timing.gpu_seconds<<" s), download/unpack "<<(nowns()-t2)*1e-9<<" s\n";
++    return true;
++  }catch(const std::exception& e){static std::atomic_flag warned=ATOMIC_FLAG_INIT;warning("tangent products4",e,warned);return false;}
++}
++inline bool tangent_products4(const Rows& base,const std::vector<std::vector<Mat>>& derivatives,
++                              std::vector<std::vector<Mat>>& out,int thr){
++  if(!products4_enabled())return false;
++  const int width=bits();
++#define QSC_PRODUCTS4_CASE(B) case B:return tangent_products4_t<B>(base,derivatives,out,thr);
++  switch(width){
++    QSC_PRODUCTS4_CASE(256) QSC_PRODUCTS4_CASE(288) QSC_PRODUCTS4_CASE(320) QSC_PRODUCTS4_CASE(352)
++    QSC_PRODUCTS4_CASE(384) QSC_PRODUCTS4_CASE(416) QSC_PRODUCTS4_CASE(448) QSC_PRODUCTS4_CASE(480)
++    QSC_PRODUCTS4_CASE(512) QSC_PRODUCTS4_CASE(544) QSC_PRODUCTS4_CASE(576) QSC_PRODUCTS4_CASE(608)
++    QSC_PRODUCTS4_CASE(640) QSC_PRODUCTS4_CASE(672) QSC_PRODUCTS4_CASE(704) QSC_PRODUCTS4_CASE(736)
++    QSC_PRODUCTS4_CASE(768) QSC_PRODUCTS4_CASE(800) QSC_PRODUCTS4_CASE(832) QSC_PRODUCTS4_CASE(864)
++    QSC_PRODUCTS4_CASE(896) QSC_PRODUCTS4_CASE(928) QSC_PRODUCTS4_CASE(960) QSC_PRODUCTS4_CASE(992)
++    QSC_PRODUCTS4_CASE(1024) default:return false;
++  }
++#undef QSC_PRODUCTS4_CASE
++}
++inline bool fourier_batch(const Setup& S,const std::vector<ModeProjection>& data,std::vector<Mat>& out,int thr){
++  if(!fourier_enabled())return false;
++  try{
++    if(S.nPts<=0||S.Nc<0||S.modeK<0||data.empty())throw std::invalid_argument("Fourier: invalid shape");
++    auto multiply=[](size_t a,size_t b){if(b&&a>size_t(-1)/b)throw std::invalid_argument("Fourier: size overflow");return a*b;};
++    size_t points=multiply(size_t(S.nPts),2),modes=size_t(S.Nc)+2*size_t(S.modeK)+1,cols=multiply(data.size(),8);
++    size_t inner=multiply(points,2),rows=multiply(modes,2),eb=limbforge::bridge_element_bytes(bits(),false);
++    if(S.mph.size()!=multiply(points,modes))throw std::invalid_argument("Fourier: invalid phase table");
++    for(auto& item:data)if(item.samples.size()!=multiply(points,8))throw std::invalid_argument("Fourier: short sample table");
++    size_t as=multiply(rows,inner),bs=multiply(inner,cols),cs=multiply(rows,cols);
++    auto groups=[](size_t n){size_t count=n/4096+(n%4096!=0);if(count>size_t(INT_MAX))throw std::invalid_argument("Fourier: bridge grid overflow");return int(count);};
++    const int B=bits();const long long t0=nowns();std::vector<unsigned char> A(multiply(as,eb)),BB(multiply(bs,eb)),Cout(multiply(cs,eb));
++    bridge_par_for(groups(multiply(modes,points)),thr,[&](int group){C negative;
++      size_t last=std::min(multiply(modes,points),size_t(group+1)*4096);
++      for(size_t x=size_t(group)*4096;x<last;++x){size_t q=x/points,r=x%points;const C& phase=S.mph[r*modes+q];
++        limbforge::from_mpfr(B,mpc_realref(phase.v),A.data()+((2*q)*inner+r)*eb);
++        mpfr_neg(mpc_realref(negative.v),mpc_imagref(phase.v),MPFR_RNDN);
++        limbforge::from_mpfr(B,mpc_realref(negative.v),A.data()+((2*q)*inner+points+r)*eb);
++        limbforge::from_mpfr(B,mpc_imagref(phase.v),A.data()+((2*q+1)*inner+r)*eb);
++        limbforge::from_mpfr(B,mpc_realref(phase.v),A.data()+((2*q+1)*inner+points+r)*eb);
++      }});
++    bridge_par_for(groups(multiply(points,cols)),thr,[&](int group){size_t last=std::min(multiply(points,cols),size_t(group+1)*4096);
++      for(size_t x=size_t(group)*4096;x<last;++x){size_t r=x/cols,c=x%cols;const C& sample=data[c/8].samples[r*8+c%8];
++        limbforge::from_mpfr(B,mpc_realref(sample.v),BB.data()+x*eb);
++        limbforge::from_mpfr(B,mpc_imagref(sample.v),BB.data()+((points+r)*cols+c)*eb);
++      }});
++    const long long t1=nowns();auto timing=la().gemm(B,false,A.data(),BB.data(),rows,cols,inner,Cout.data());const long long t2=nowns();
++    std::vector<Mat> result(data.size(),Mat(modes,Vec(8)));
++    bridge_par_for(groups(multiply(modes,cols)),thr,[&](int group){size_t last=std::min(multiply(modes,cols),size_t(group+1)*4096);
++      for(size_t x=size_t(group)*4096;x<last;++x){size_t q=x/cols,c=x%cols;C& value=result[c/8][q][c%8];
++        limbforge::to_mpfr(B,mpc_realref(value.v),Cout.data()+((2*q)*cols+c)*eb);
++        limbforge::to_mpfr(B,mpc_imagref(value.v),Cout.data()+((2*q+1)*cols+c)*eb);
++      }});
++    out.swap(result);
++    if(std::getenv("QSC_GPU_PROFILE"))std::cerr<<"  exact Fourier: pack "<<(t1-t0)*1e-9<<" s, library wall "<<(t2-t1)*1e-9
++      <<" s (device "<<timing.gpu_seconds<<" s), unpack "<<(nowns()-t2)*1e-9<<" s\n";
++    return true;
++  }catch(const std::exception& e){static std::atomic_flag warned=ATOMIC_FLAG_INIT;warning("Fourier",e,warned);return false;}
+ }
+ #define QSC_LF_WIDTHS(X) X(256) X(288) X(320) X(352) X(384) X(416) X(448) X(480) X(512) X(544) X(576) X(608) X(640) X(672) X(704) X(736) X(768) X(800) X(832) X(864) X(896) X(928) X(960) X(992) X(1024)
+ // A = J^T J from the rows JtT[p][r] (real parts); false if the width is not supported (caller falls back to the CPU)
+@@ -1365,17 +1616,37 @@
+         std::cerr << "  adjoint check: " << (pass ? "PASS" : "FAIL") << " relative max difference " << absd(relative)
+                   << ", " << absd(units) << " units of 2^-" << prec_ref() << " (limit 65536; scale max |rows|; " << checked_columns << " columns), relative to max |dRows| " << absd(change_relative) << "\n";
+       }
++      bool batch_modes=false,batch_mode_inverse=false;
++#ifdef QSC_LIMBFORGE
++      batch_mode_inverse=S.modes&&lfx::lu4_enabled();
++      batch_modes=S.modes&&lfx::fourier_enabled();
++#endif
++      // Private prototype audit switch: replay the split path entirely on the CPU.
++      const char* split_audit=std::getenv("QSC_FOURIER_CPU_SPLIT");
++      if(S.modes&&split_audit&&!std::strcmp(split_audit,"1"))batch_modes=true;
++      const char* mode_inverse_split=std::getenv("QSC_LU4_CPU_SPLIT");
++      if(S.modes&&mode_inverse_split&&!std::strcmp(mode_inverse_split,"1"))batch_mode_inverse=true;
++      if(batch_mode_inverse)batch_modes=true;
++      std::vector<Rows> mode_rows(batch_mode_inverse?size_t(nFD)*2:0);
++      std::vector<ModeProjection> mode_data(batch_modes?size_t(nFD)*2:0);
++      std::vector<CD> mode_states(batch_modes?size_t(nFD)*2:0);
+       Mat JGre(mG, Vec(nFD)), JGim(mG, Vec(nFD));
+-      par_for(nFD, S.threads, [&](int col) {
+-        Vec zz = z; zz[FD[col]] += h;
+-        CD X1 = unpack(S, zz);
+-        int sp = species(FD[col]);
+-        Rows R1;
+-        if (sp >= 0 && S.tangent) { auto u = uid[FD[col]]; R1 = rows_tangent(S, X0, t, A0, HL, HR, tr0, R0, u[0], u[1], u[2], h, useAdj ? &apx : nullptr); }
+-        else if (sp >= 0 && !noUpd) { Amats A1 = amats_upd(S, X1, A0, sp, &t); R1 = glue_rows(S, X1, &t, &A1); }
+-        else R1 = glue_rows(S, X1, &t);
++      bool batch_products4=false;
++#ifdef QSC_LIMBFORGE
++      batch_products4=S.tangent&&lfx::products4_enabled();
++#endif
++      // Private audit: the deferred schedule without GPU or a changed arithmetic sequence.
++      const char* product_split=std::getenv("QSC_PRODUCTS4_CPU_SPLIT");
++      if(S.tangent&&product_split&&!std::strcmp(product_split,"1"))batch_products4=true;
++      std::vector<Rows> deferred_rows(batch_products4?size_t(nFD):0);
++      std::vector<CD> deferred_states(batch_products4?size_t(nFD):0);
++      std::vector<std::vector<Mat>> deferred_dQ(batch_products4?size_t(nFD):0);
++      auto project_column=[&](int col,const CD& X1,const Rows& R1){
+         long long tr0n = nowns();
+-        Vec g1 = revec(resid(S, R1, X1).r);
++        Vec g1;
++        if(batch_modes){if(batch_mode_inverse){mode_data[size_t(col)*2].M=glue_fit(S,R1,X1.Delta,true).M;mode_rows[size_t(col)*2]=R1;}
++          else mode_data[size_t(col)*2]=mode_projection_prepare(S,R1,X1);mode_states[size_t(col)*2]=X1;}
++        else g1=revec(resid(S,R1,X1).r);
+         Rows R2 = R0;  // R0 + i (R1 - R0): rows L, Q, Qi and c, d are holomorphic in z, rows R antiholomorphic
+         for (size_t r = 0; r < R2.L.size(); ++r)
+           for (int k = 0; k < 4; ++k) { R2.L[r][k] += I * (R1.L[r][k] - R0.L[r][k]); R2.R[r][k] += conj(I) * (R1.R[r][k] - R0.R[r][k]); }
+@@ -1385,11 +1656,63 @@
+             for (int a = 0; a < 4; ++a) for (int b = 0; b < 4; ++b) { R2.Q[j][a][b] += I * (R1.Q[j][a][b] - R0.Q[j][a][b]); R2.Qi[j][a][b] += I * (R1.Qi[j][a][b] - R0.Qi[j][a][b]); }
+           for (int a = 0; a < 4; ++a) for (int n = 0; n <= S.Nc; ++n) { X2.c[a][n] += I * (X1.c[a][n] - X0.c[a][n]); X2.d[a][n] += I * (X1.d[a][n] - X0.d[a][n]); }
+         }
++        if(batch_modes){if(batch_mode_inverse){mode_data[size_t(col)*2+1].M=glue_fit(S,R2,X2.Delta,true).M;mode_rows[size_t(col)*2+1]=std::move(R2);}
++          else mode_data[size_t(col)*2+1]=mode_projection_prepare(S,R2,X2);mode_states[size_t(col)*2+1]=X2;
++          jgprof().res+=nowns()-tr0n;return;}
+         Vec g2 = revec(resid(S, R2, X2).r);
+         jgprof().res += nowns() - tr0n;
+         C ih = C(1) / h;
+         for (size_t i = 0; i < mG; ++i) { JGre[i][col] = (g1[i] - Gr[i]) * ih; JGim[i][col] = (g2[i] - Gr[i]) * ih; }
++      };
++      par_for(nFD, S.threads, [&](int col) {
++        Vec zz = z; zz[FD[col]] += h;
++        CD X1 = unpack(S, zz);
++        int sp = species(FD[col]);
++        Rows R1;
++        if (sp >= 0 && S.tangent) { auto u = uid[FD[col]]; R1 = rows_tangent(S, X0, t, A0, HL, HR, tr0, R0, u[0], u[1], u[2], h, useAdj ? &apx : nullptr,batch_products4?&deferred_dQ[col]:nullptr); }
++        else if (sp >= 0 && !noUpd) { Amats A1 = amats_upd(S, X1, A0, sp, &t); R1 = glue_rows(S, X1, &t, &A1); }
++        else R1 = glue_rows(S, X1, &t);
++
++        if(batch_products4&&sp>=0&&S.tangent){deferred_rows[col]=std::move(R1);deferred_states[col]=std::move(X1);return;}
++        project_column(col,X1,R1);
+       });
++      if(batch_products4){std::vector<std::vector<Mat>> inverse_products;bool gpu_products4=false;
++#ifdef QSC_LIMBFORGE
++        gpu_products4=lfx::tangent_products4(R0,deferred_dQ,inverse_products,S.threads);
++#endif
++        par_for(nFD,S.threads,[&](int col){if(deferred_dQ[col].empty())return;
++          const auto u=uid[FD[col]];long long tp=nowns();
++          for(int j=0;j<S.nPts;++j){Mat dQi=gpu_products4?inverse_products[col][j]:tangent_inverse_product_cpu(R0.Qi[j],deferred_dQ[col][j]);
++            rows_tangent_finish_point(S,tr0,R0,u[0],u[1],u[2],h,j,deferred_dQ[col][j],dQi,deferred_rows[col]);}
++          jgprof().desc+=nowns()-tp;project_column(col,deferred_states[col],deferred_rows[col]);
++        });
++        if(std::getenv("QSC_GPU_PROFILE"))std::cerr<<"  tangent 4x4 Jacobian ("<<(gpu_products4?"GPU":"CPU fallback")<<")\n";
++      }
++      if(batch_modes){
++        if(batch_mode_inverse){std::vector<Mat> fitted;fitted.reserve(mode_data.size());for(auto& item:mode_data)fitted.push_back(item.M);
++          std::vector<Mat> inverses;bool gpu_inverse=false;
++#ifdef QSC_LIMBFORGE
++          gpu_inverse=lfx::inverse4_batch(fitted,inverses,S.threads);
++#endif
++          par_for(int(mode_data.size()),S.threads,[&](int job){long long tp=nowns();mode_data[job]=mode_projection_prepare(S,mode_rows[job],mode_states[job],
++            &fitted[job],gpu_inverse?&inverses[job]:nullptr);jgprof().res+=nowns()-tp;});
++          mode_rows.clear();mode_rows.shrink_to_fit();
++          if(std::getenv("QSC_GPU_PROFILE"))std::cerr<<"  gluing inverses4 ("<<(gpu_inverse?"GPU":"CPU fallback")<<"): "<<mode_data.size()<<" matrices\n";
++        }
++        std::vector<Mat> projected;bool gpu_fourier=false;
++#ifdef QSC_LIMBFORGE
++        gpu_fourier=lfx::fourier_batch(S,mode_data,projected,S.threads);
++#endif
++        if(!gpu_fourier){projected.resize(mode_data.size());par_for(int(mode_data.size()),S.threads,[&](int q){long long tp=nowns();
++          projected[q]=mode_projection_cpu(S,mode_data[q]);jgprof().res+=nowns()-tp;});}
++        par_for(nFD,S.threads,[&](int col){long long tr0n=nowns();
++          Vec g1=revec(mode_projection_finish(S,mode_states[size_t(col)*2],mode_data[size_t(col)*2],projected[size_t(col)*2]).r);
++          Vec g2=revec(mode_projection_finish(S,mode_states[size_t(col)*2+1],mode_data[size_t(col)*2+1],projected[size_t(col)*2+1]).r);
++          C ih=C(1)/h;for(size_t i=0;i<mG;++i){JGre[i][col]=(g1[i]-Gr[i])*ih;JGim[i][col]=(g2[i]-Gr[i])*ih;}
++          jgprof().res+=nowns()-tr0n;
++        });
++        if(std::getenv("QSC_GPU_PROFILE"))std::cerr<<"  Fourier Jacobian ("<<(gpu_fourier?"GPU":"CPU fallback")<<"): "<<mode_data.size()<<" projections\n";
++      }
+       tJG += dt(ta); ta = tick();
+       // chain rule through the constraint manifold. All entries are real (revec'd residual rows): real MPFR fma on the
+       // real parts, Re/Im of Mh taken once, the result stored transposed (JtT[col][r], contiguous per column)
+--- a/CMakeLists.txt
++++ b/CMakeLists.txt
+@@ -53,3 +53,15 @@
+   target_compile_options(lsqsolve PRIVATE -O2)
+   target_link_libraries(lsqsolve ${FLINT_LIB} ${MPFR_LIB} ${GMP_LIB})
+ endif()
++
++if(_qsc_gpu_source)
++  add_executable(qscmx_fourier_check EXCLUDE_FROM_ALL tools/test_fourier_candidate.cpp)
++  target_compile_definitions(qscmx_fourier_check PRIVATE QSC_LIMBFORGE)
++  target_link_libraries(qscmx_fourier_check PRIVATE LimbForge::limbforge ${MPC_LIB} ${MPFR_LIB} ${GMP_LIB} pthread)
++  add_executable(qscmx_products4_check EXCLUDE_FROM_ALL tools/test_products4_candidate.cpp)
++  target_compile_definitions(qscmx_products4_check PRIVATE QSC_LIMBFORGE)
++  target_link_libraries(qscmx_products4_check PRIVATE LimbForge::limbforge ${MPC_LIB} ${MPFR_LIB} ${GMP_LIB} pthread)
++  add_executable(qscmx_lu4_check EXCLUDE_FROM_ALL tools/test_lu4_candidate.cpp)
++  target_compile_definitions(qscmx_lu4_check PRIVATE QSC_LIMBFORGE)
++  target_link_libraries(qscmx_lu4_check PRIVATE LimbForge::limbforge ${MPC_LIB} ${MPFR_LIB} ${GMP_LIB} pthread)
++endif()
+--- a/tools/check_limbforge_solver.py
++++ b/tools/check_limbforge_solver.py
+@@ -20,7 +20,22 @@
+     return [number(delta[1]),number(delta[2])], [number(x) for x in hist[1].split(',') if x],number(norm[1])
+ 
+ def main():
+-    p=argparse.ArgumentParser(description=__doc__);p.add_argument('binary',type=Path);p.add_argument('inputs',nargs='+',type=Path);p.add_argument('--out',type=Path,required=True);p.add_argument('--timings',action='store_true');p.add_argument('--normal-equations',action='store_true',help='opt into the combined exact normal-matrix/RHS candidate');a=p.parse_args()
++    p=argparse.ArgumentParser(description=__doc__)
++    p.add_argument('binary',type=Path)
++    p.add_argument('inputs',nargs='+',type=Path)
++    p.add_argument('--out',type=Path,required=True)
++    p.add_argument('--timings',action='store_true')
++    p.add_argument('--normal-equations',action='store_true',help='opt into the combined exact normal-matrix/RHS candidate')
++    p.add_argument('--fourier',action='store_true',help='opt into batched exact Fourier projection')
++    p.add_argument('--products4',action='store_true',help='opt into batched tangent matrix products')
++    p.add_argument('--lu4',action='store_true',help='opt into batched descent/gluing LU inverses')
++    a=p.parse_args()
++    selected={'QSC_GPU_NORMAL':a.normal_equations,'QSC_GPU_FOURIER':a.fourier,
++              'QSC_GPU_PRODUCTS4':a.products4,'QSC_GPU_LU4':a.lu4}
++    markers={'QSC_GPU_NORMAL':['exact normal equations:'],
++             'QSC_GPU_FOURIER':['Fourier Jacobian (GPU)','exact Fourier:'],
++             'QSC_GPU_PRODUCTS4':['tangent 4x4 Jacobian (GPU)','tangent products4:'],
++             'QSC_GPU_LU4':['descent inverses4 (GPU)','gluing inverses4 (GPU)','inverse4 LU:']}
+     a.out.mkdir(parents=True,exist_ok=True);records=[]
+     if (a.out/'comparison.json').exists():raise FileExistsError('choose a fresh output directory; existing comparison records are preserved')
+     for source in a.inputs:
+@@ -31,8 +46,11 @@
+             load=os.getloadavg();loads.append(load)
+             if a.timings and max(load)>=4:raise RuntimeError('idle-host timing gate: all load averages must be <4')
+             label=a.out/(key+('_gpu' if gpu else '_cpu'));env=dict(os.environ)
+-            for v in ('QSC_GPU_POWER','QSC_GPU_SYRK','QSC_GPU_CHOL'):env.pop(v,None)
+-            env.update(QSC_GPU=str(gpu),QSC_ADJCHECK='1',QSC_GPU_PROFILE='1',QSC_GPU_NORMAL='1' if a.normal_equations and gpu else '0')
++            for v in ('QSC_GPU_POWER','QSC_GPU_SYRK','QSC_GPU_CHOL',
++                      'QSC_FOURIER_CPU_SPLIT','QSC_PRODUCTS4_CPU_SPLIT','QSC_LU4_CPU_SPLIT'):
++                env.pop(v,None)
++            env.update(QSC_GPU=str(gpu),QSC_ADJCHECK='1',QSC_GPU_PROFILE='1')
++            env.update({name:'1' if enabled and gpu else '0' for name,enabled in selected.items()})
+             with Path(str(label)+'.log').open('x') as log:subprocess.run([str(a.binary.resolve()),str(source.resolve()),str(Path(str(label)+'.m').resolve())],env=env,stdout=log,stderr=subprocess.STDOUT,check=True)
+             outputs.append(read(Path(str(label)+'.m')))
+         with localcontext() as ctx:
+@@ -43,9 +61,10 @@
+             glog=(a.out/(key+'_gpu.log')).read_text();clog=(a.out/(key+'_cpu.log')).read_text()
+             checks='adjoint check: FAIL' not in glog+clog and 'adjoint check: PASS' in glog and 'adjoint check: PASS' in clog
+             exercised=all(x in glog for x in ('stage 2 (GPU)','normal matrix (GPU)','first Cholesky (GPU)')) and 'using CPU fallback' not in glog
+-            if a.normal_equations:exercised=exercised and 'exact normal equations:' in glog
++            requested_markers=[marker for name,enabled in selected.items() if enabled for marker in markers[name]]
++            exercised=exercised and all(marker in glog for marker in requested_markers)
+             agreement=delta_error<=Decimal('1e-25') and iterations and history_error<=Decimal('1e-10') and checks and exercised
+-            row=dict(input=str(source),sha256=hashlib.sha256(source.read_bytes()).hexdigest(),g=cfg.get('g'),dims=cfg.get('dims'),prec=cfg.get('prec'),binary=str(a.binary.resolve()),load_before=loads,timing_accepted=a.timings,combined_exact_normal=a.normal_equations,
++            row=dict(input=str(source),sha256=hashlib.sha256(source.read_bytes()).hexdigest(),g=cfg.get('g'),dims=cfg.get('dims'),prec=cfg.get('prec'),binary=str(a.binary.resolve()),binary_sha256=hashlib.sha256(a.binary.read_bytes()).hexdigest(),load_before=loads,timing_accepted=a.timings,combined_exact_normal=a.normal_equations,selected_gpu_switches=selected,required_candidate_markers=requested_markers,
+                      delta_max_component_error=str(delta_error),cpu_iterations=len(c[1]),gpu_iterations=len(g[1]),history_max_relative_error=str(history_error),cpu_residual=str(c[2]),gpu_residual=str(g[2]),gtol=str(gtol),adjoint_checks_pass=checks,all_three_gpu_paths_exercised=exercised,agreement_pass=agreement,converged=converged,acceptance_pass=agreement and converged)
+         records.append(row);(a.out/'comparison.json').write_text(json.dumps(records,indent=2)+'\n');print(key,'agreement',agreement,'converged',converged,'Delta error',delta_error,flush=True)
+     return 0 if all(x['acceptance_pass'] for x in records) else 2
+--- /dev/null
++++ b/tools/test_fourier_candidate.cpp
+@@ -0,0 +1,35 @@
++#include "mx.hpp"
++#include <iostream>
++using namespace mx;
++int main(int argc,char** argv){try{
++  bool cpu=argc>1&&std::string(argv[1])=="--cpu-only";setenv("QSC_GPU",cpu?"0":"1",1);setenv("QSC_GPU_FOURIER","1",1);
++  for(long precision:{352L,374L,448L}){
++    set_prec(precision);Setup S;S.nPts=4;S.Nc=4;S.modeK=2;size_t points=8,modes=9;
++    S.mph.resize(points*modes);C I=C::imag_unit();
++    for(size_t x=0;x<S.mph.size();++x)S.mph[x]=C(double(int(x%11)-5)/8)+I*C(double(int(x%7)-3)/16);
++    std::vector<ModeProjection> data(3);for(size_t j=0;j<data.size();++j){data[j].samples.resize(points*8);
++      for(size_t x=0;x<data[j].samples.size();++x)data[j].samples[x]=C(double(int((x+j)%13)-6)/32)+I*C(double(int((2*x+j)%17)-8)/64);}
++    C phase_seed,sample_seed;
++    mpfr_set_str(mpc_realref(phase_seed.v),"0.123456789123456789123456789123456789123456789123456789123456789123456789123456789123456789123456789",10,MPFR_RNDN);
++    mpfr_set_str(mpc_realref(sample_seed.v),"0.987654321987654321987654321987654321987654321987654321987654321987654321987654321987654321987654321",10,MPFR_RNDN);
++    for(size_t x=0;x<S.mph.size();++x)S.mph[x]*=phase_seed;
++    for(auto& item:data)for(auto& x:item.samples)x*=sample_seed;
++    if(cpu){for(auto& d:data){auto out=mode_projection_cpu(S,d);if(out.size()!=modes||out[0].size()!=8)throw std::runtime_error("CPU projection shape");}
++      std::vector<Mat> out(1,Mat(1,Vec(1,C(123))));if(lfx::fourier_batch(S,data,out,2)||!same(out[0][0][0],C(123)))throw std::runtime_error("global CPU switch/output preservation");
++      std::cout<<precision<<" bits: CPU projection fixtures and disabled GPU guard pass\n";continue;}
++    std::vector<Mat> out;if(!lfx::fourier_batch(S,data,out,2))throw std::runtime_error("Fourier GPU fallback");
++    int B=lfx::bits();std::vector<C> negative(S.mph.size());for(size_t x=0;x<negative.size();++x)negative[x]=-S.mph[x];
++    for(size_t j=0;j<data.size();++j)for(size_t q=0;q<modes;++q)for(size_t c=0;c<8;++c){
++      std::vector<mpfr_ptr> x(2*points),y(2*points),xi(2*points);
++      for(size_t r=0;r<points;++r){x[r]=mpc_realref(S.mph[r*modes+q].v);x[points+r]=mpc_imagref(negative[r*modes+q].v);
++        xi[r]=mpc_imagref(S.mph[r*modes+q].v);xi[points+r]=mpc_realref(S.mph[r*modes+q].v);
++        y[r]=mpc_realref(data[j].samples[r*8+c].v);y[points+r]=mpc_imagref(data[j].samples[r*8+c].v);}
++      C truth;mpfr_set_prec(mpc_realref(truth.v),B);mpfr_set_prec(mpc_imagref(truth.v),B);
++      mpfr_dot(mpc_realref(truth.v),x.data(),y.data(),2*points,MPFR_RNDN);mpfr_dot(mpc_imagref(truth.v),xi.data(),y.data(),2*points,MPFR_RNDN);
++      C expected;mpc_set(expected.v,truth.v,RND);if(!same(out[j][q][c],expected))throw std::runtime_error("exact Fourier MPFR dot mismatch");
++    }
++    std::vector<Mat> preserved(1,Mat(1,Vec(1,C(123))));data[0].samples.pop_back();if(lfx::fourier_batch(S,data,preserved,2)||!same(preserved[0][0][0],C(123)))throw std::runtime_error("malformed sample/output preservation");
++    std::cout<<precision<<" bits: Fourier MPFR exact-dot, packing, output and failure guards pass\n";
++  }
++  return 0;
++}catch(const std::exception& e){std::cerr<<e.what()<<'\n';return 1;}}
+--- /dev/null
++++ b/tools/test_products4_candidate.cpp
+@@ -0,0 +1,68 @@
++#include "mx.hpp"
++#include <iostream>
++using namespace mx;
++static void require(bool ok,const char* message){if(!ok)throw std::runtime_error(message);}
++// Independent MPFR primitives replay the public composed GEMM contract.
++static C composed_product(const C& a,const C& b,long width){
++  C result,p,q;
++  for(C* x:{&result,&p,&q}){mpfr_set_prec(mpc_realref(x->v),width);mpfr_set_prec(mpc_imagref(x->v),width);}
++  mpfr_mul(mpc_realref(p.v),mpc_realref(a.v),mpc_realref(b.v),MPFR_RNDN);
++  mpfr_mul(mpc_realref(q.v),mpc_imagref(a.v),mpc_imagref(b.v),MPFR_RNDN);
++  mpfr_sub(mpc_realref(result.v),mpc_realref(p.v),mpc_realref(q.v),MPFR_RNDN);
++  mpfr_mul(mpc_realref(p.v),mpc_realref(a.v),mpc_imagref(b.v),MPFR_RNDN);
++  mpfr_mul(mpc_realref(q.v),mpc_imagref(a.v),mpc_realref(b.v),MPFR_RNDN);
++  mpfr_add(mpc_imagref(result.v),mpc_realref(p.v),mpc_realref(q.v),MPFR_RNDN);
++  return result;
++}
++static Mat composed_matmul(const Mat& a,const Mat& b,long width){
++  Mat result(4,Vec(4));
++  for(auto& row:result)for(auto& x:row){mpfr_set_prec(mpc_realref(x.v),width);mpfr_set_prec(mpc_imagref(x.v),width);mpc_set_ui(x.v,0,RND);}
++  for(int i=0;i<4;++i)for(int j=0;j<4;++j)for(int k=0;k<4;++k){C product=composed_product(a[i][k],b[k][j],width);
++    mpfr_add(mpc_realref(result[i][j].v),mpc_realref(result[i][j].v),mpc_realref(product.v),MPFR_RNDN);
++    mpfr_add(mpc_imagref(result[i][j].v),mpc_imagref(result[i][j].v),mpc_imagref(product.v),MPFR_RNDN);}
++  return result;
++}
++static C number(int key,int scale){
++  C x;mpfr_set_str(mpc_realref(x.v),"0.123456789123456789123456789123456789123456789123456789123456789123456789123456789123456789123456789",10,MPFR_RNDN);
++  mpfr_set_str(mpc_imagref(x.v),"0.987654321987654321987654321987654321987654321987654321987654321987654321987654321987654321987654321",10,MPFR_RNDN);
++  mpfr_mul_si(mpc_realref(x.v),mpc_realref(x.v),(key%11)-5,MPFR_RNDN);
++  mpfr_mul_si(mpc_imagref(x.v),mpc_imagref(x.v),(key%7)-3,MPFR_RNDN);
++  mpfr_mul_2si(mpc_realref(x.v),mpc_realref(x.v),scale,MPFR_RNDN);
++  mpfr_mul_2si(mpc_imagref(x.v),mpc_imagref(x.v),scale,MPFR_RNDN);
++  return x;
++}
++int main(int argc,char** argv){try{
++  bool cpu=argc>1&&std::string(argv[1])=="--cpu-only";
++  setenv("QSC_GPU",cpu?"0":"1",1);setenv("QSC_GPU_PRODUCTS4","1",1);
++  for(long precision:{352L,374L,448L}){set_prec(precision);
++    Rows base;base.Qi.assign(7,Mat(4,Vec(4)));
++    std::vector<std::vector<Mat>> derivatives(5);for(size_t col:{0u,1u,3u,4u})derivatives[col].assign(7,Mat(4,Vec(4)));
++    for(size_t j=0;j<7;++j)for(int a=0;a<4;++a)for(int b=0;b<4;++b){
++      base.Qi[j][a][b]=number(int(j)*17+a*4+b,j==6?((a+b)%2?500:-500):0);
++      for(size_t col:{0u,1u,3u,4u})derivatives[col][j][a][b]=number(int(col)*19+int(j)*3+a*4+b,j==6?((a+b)%2?-500:500):0);
++    }
++    // Exact cancellation in one inner dot, plus a skipped column and an odd point count.
++    for(int a=0;a<4;++a){base.Qi[0][a][1]=base.Qi[0][a][0];derivatives[0][0][1][a]=-derivatives[0][0][0][a];}
++    std::vector<std::vector<Mat>> out(1,std::vector<Mat>(1,Mat(1,Vec(1,C(123)))));
++    if(cpu){require(!lfx::tangent_products4(base,derivatives,out,2),"global GPU guard");require(same(out[0][0][0][0],C(123)),"disabled output changed");
++      for(size_t col:{0u,1u,3u,4u})for(size_t j=0;j<7;++j){auto result=tangent_inverse_product_cpu(base.Qi[j],derivatives[col][j]);require(result.size()==4&&result[0].size()==4,"CPU shape");}
++      std::cout<<precision<<" bits: CPU fixtures and global guard pass\n";continue;}
++    require(lfx::tangent_products4(base,derivatives,out,2),"GPU products4 fallback");
++    require(out.size()==5&&out[2].empty(),"column mapping");
++    int B=lfx::bits();
++    for(size_t col:{0u,1u,3u,4u})for(size_t j=0;j<7;++j){auto intermediate=composed_matmul(base.Qi[j],derivatives[col][j],B);auto truth=composed_matmul(intermediate,base.Qi[j],B);
++      for(int a=0;a<4;++a)for(int b=0;b<4;++b){mpc_neg(truth[a][b].v,truth[a][b].v,RND);C expected;mpc_set(expected.v,truth[a][b].v,RND);
++        require(same(out[col][j][a][b],expected),"MPFR two-stage product mismatch");}}
++    std::vector<std::vector<Mat>> preserved(1,std::vector<Mat>(1,Mat(1,Vec(1,C(123)))));
++    derivatives[0][0][0].pop_back();require(!lfx::tangent_products4(base,derivatives,preserved,2),"malformed derivative accepted");
++    require(same(preserved[0][0][0][0],C(123)),"failure changed output");
++    derivatives[0][0][0].push_back(C(0));mpfr_set_nan(mpc_realref(derivatives[0][0][0][0].v));
++    require(!lfx::tangent_products4(base,derivatives,preserved,2),"nonfinite conversion accepted");
++    require(same(preserved[0][0][0][0],C(123)),"conversion failure changed output");
++    setenv("QSC_GPU_PRODUCTS4","0",1);require(!lfx::tangent_products4(base,derivatives,preserved,2),"sub-switch ignored");setenv("QSC_GPU_PRODUCTS4","1",1);
++    std::cout<<precision<<" bits: MPFR product3, rounded width, cancellation/wide data, mapping and failure guards pass\n";
++  }
++  set_prec(1056);Rows empty;std::vector<std::vector<Mat>> derivatives,out;
++  require(!lfx::tangent_products4(empty,derivatives,out,1),">1024-bit fallback");
++  return 0;
++}catch(const std::exception& e){std::cerr<<e.what()<<'\n';return 1;}}
+--- /dev/null
++++ b/tools/test_lu4_candidate.cpp
+@@ -0,0 +1,86 @@
++#include "mx.hpp"
++#include <iostream>
++using namespace mx;
++static void require(bool ok,const char* message){if(!ok)throw std::runtime_error(message);}
++// MPFR at each scalar rounding site of the public LU4 composed sequence.
++static C product(const C& a,const C& b){C p,q,r;
++  mpfr_mul(mpc_realref(p.v),mpc_realref(a.v),mpc_realref(b.v),MPFR_RNDN);
++  mpfr_mul(mpc_realref(q.v),mpc_imagref(a.v),mpc_imagref(b.v),MPFR_RNDN);
++  mpfr_sub(mpc_realref(r.v),mpc_realref(p.v),mpc_realref(q.v),MPFR_RNDN);
++  mpfr_mul(mpc_realref(p.v),mpc_realref(a.v),mpc_imagref(b.v),MPFR_RNDN);
++  mpfr_mul(mpc_realref(q.v),mpc_imagref(a.v),mpc_realref(b.v),MPFR_RNDN);
++  mpfr_add(mpc_imagref(r.v),mpc_realref(p.v),mpc_realref(q.v),MPFR_RNDN);return r;
++}
++static C divide(const C& a,const C& b){C p,q,den,r;
++  mpfr_mul(mpc_realref(p.v),mpc_realref(b.v),mpc_realref(b.v),MPFR_RNDN);
++  mpfr_mul(mpc_realref(q.v),mpc_imagref(b.v),mpc_imagref(b.v),MPFR_RNDN);
++  mpfr_add(mpc_realref(den.v),mpc_realref(p.v),mpc_realref(q.v),MPFR_RNDN);
++  mpfr_mul(mpc_realref(p.v),mpc_realref(a.v),mpc_realref(b.v),MPFR_RNDN);
++  mpfr_mul(mpc_realref(q.v),mpc_imagref(a.v),mpc_imagref(b.v),MPFR_RNDN);
++  mpfr_add(mpc_realref(r.v),mpc_realref(p.v),mpc_realref(q.v),MPFR_RNDN);
++  mpfr_div(mpc_realref(r.v),mpc_realref(r.v),mpc_realref(den.v),MPFR_RNDN);
++  mpfr_mul(mpc_realref(p.v),mpc_imagref(a.v),mpc_realref(b.v),MPFR_RNDN);
++  mpfr_mul(mpc_realref(q.v),mpc_realref(a.v),mpc_imagref(b.v),MPFR_RNDN);
++  mpfr_sub(mpc_imagref(r.v),mpc_realref(p.v),mpc_realref(q.v),MPFR_RNDN);
++  mpfr_div(mpc_imagref(r.v),mpc_imagref(r.v),mpc_realref(den.v),MPFR_RNDN);return r;
++}
++static C subtract_product(const C& c,const C& a,const C& b){C p=product(a,b),r;
++  mpfr_sub(mpc_realref(r.v),mpc_realref(c.v),mpc_realref(p.v),MPFR_RNDN);
++  mpfr_sub(mpc_imagref(r.v),mpc_imagref(c.v),mpc_imagref(p.v),MPFR_RNDN);return r;
++}
++static mpfr_srcptr magnitude(const C& x){return mpfr_cmpabs(mpc_realref(x.v),mpc_imagref(x.v))>=0?mpc_realref(x.v):mpc_imagref(x.v);}
++static Mat inverse_reference(const Mat& input){
++  Mat a=input,result(4,Vec(4));int permutation[4]={0,1,2,3};
++  for(int k=0;k<4;++k){int pivot=k;
++    for(int row=k+1;row<4;++row)if(mpfr_cmpabs(magnitude(a[row][k]),magnitude(a[pivot][k]))>0)pivot=row;
++    require(!mpfr_zero_p(mpc_realref(a[pivot][k].v))||!mpfr_zero_p(mpc_imagref(a[pivot][k].v)),"singular reference fixture");
++    if(pivot!=k){std::swap(a[pivot],a[k]);std::swap(permutation[pivot],permutation[k]);}
++    for(int row=k+1;row<4;++row){C l=divide(a[row][k],a[k][k]);a[row][k]=l;
++      for(int col=k+1;col<4;++col)a[row][col]=subtract_product(a[row][col],l,a[k][col]);}
++  }
++  for(int col=0;col<4;++col){Vec y(4);for(int i=0;i<4;++i)y[i]=C(permutation[i]==col?1:0);
++    for(int i=1;i<4;++i)for(int t=0;t<i;++t)y[i]=subtract_product(y[i],a[i][t],y[t]);
++    for(int i=3;i>=0;--i){for(int t=i+1;t<4;++t)y[i]=subtract_product(y[i],a[i][t],y[t]);y[i]=divide(y[i],a[i][i]);}
++    for(int i=0;i<4;++i)result[i][col]=y[i];
++  }
++  return result;
++}
++static C number(int key){C x;
++  mpfr_set_str(mpc_realref(x.v),"0.123456789123456789123456789123456789123456789123456789123456789123456789123456789123456789123456789",10,MPFR_RNDN);
++  mpfr_set_str(mpc_imagref(x.v),"0.987654321987654321987654321987654321987654321987654321987654321987654321987654321987654321987654321",10,MPFR_RNDN);
++  mpfr_mul_si(mpc_realref(x.v),mpc_realref(x.v),key%11-5,MPFR_RNDN);
++  mpfr_mul_si(mpc_imagref(x.v),mpc_imagref(x.v),key%7-3,MPFR_RNDN);return x;
++}
++int main(int argc,char** argv){try{
++  bool cpu=false,all=false;for(int i=1;i<argc;++i){std::string arg=argv[i];if(arg=="--cpu-only")cpu=true;else if(arg=="--all-widths")all=true;else throw std::invalid_argument("unknown option");}
++  setenv("QSC_GPU",cpu?"0":"1",1);setenv("QSC_GPU_LU4","1",1);
++  std::vector<long> widths={352,374,448};if(all){widths.clear();for(long b=64;b<=1024;b+=32)widths.push_back(b);widths.push_back(374);}
++  for(long precision:widths){set_prec(precision);std::vector<Mat> input(17,Mat(4,Vec(4)));
++    for(size_t job=0;job<input.size();++job)for(int i=0;i<4;++i)for(int j=0;j<4;++j){input[job][i][j]=number(int(job)*17+i*4+j);if(i==j)input[job][i][j]+=C(8);}
++    input[1]=Mat(4,Vec(4));for(int i=0;i<4;++i)input[1][i][(i+1)%4]=C(1); // row swaps
++    input[2][0][0]=C(1,1);input[2][1][0]=C(1,-1); // exact magnitude tie
++    input[2][2][0]=C(0);input[2][3][0]=C(0);
++    for(int i=0;i<4;++i)for(int j=0;j<4;++j){mpfr_mul_2si(mpc_realref(input[3][i][j].v),mpc_realref(input[3][i][j].v),i%2?300:-300,MPFR_RNDN);
++      mpfr_mul_2si(mpc_imagref(input[3][i][j].v),mpc_imagref(input[3][i][j].v),i%2?300:-300,MPFR_RNDN);}
++    std::vector<Mat> out(1,Mat(1,Vec(1,C(123))));
++    if(cpu){require(!lfx::inverse4_batch(input,out,2),"global GPU guard");require(same(out[0][0][0],C(123)),"disabled output changed");
++      for(auto& m:input){auto result=inverse(m);require(result.size()==4&&result[0].size()==4,"CPU fixture shape");}
++      std::cout<<precision<<" bits: CPU inverse fixtures and global guard pass\n";continue;}
++    require(lfx::inverse4_batch(input,out,2),"LU4 helper fallback");require(out.size()==input.size(),"inverse batch shape");
++    const long B=lfx::bits();for(size_t job=0;job<input.size();++job){set_prec(B);Mat truth=inverse_reference(input[job]);set_prec(precision);
++      for(int i=0;i<4;++i)for(int j=0;j<4;++j){C expected;mpc_set(expected.v,truth[i][j].v,RND);
++        if(!same(expected,out[job][i][j]))throw std::runtime_error("LU4 MPFR mismatch: precision="+std::to_string(precision)+
++          " width="+std::to_string(B)+" matrix="+std::to_string(job)+" row="+std::to_string(i)+" col="+std::to_string(j));}}
++    std::vector<Mat> preserved(1,Mat(1,Vec(1,C(123))));auto malformed=input;malformed[0][0].pop_back();
++    require(!lfx::inverse4_batch(malformed,preserved,2)&&same(preserved[0][0][0],C(123)),"malformed output preservation");
++    auto nonfinite=input;mpfr_set_nan(mpc_realref(nonfinite[0][0][0].v));
++    require(!lfx::inverse4_batch(nonfinite,preserved,2)&&same(preserved[0][0][0],C(123)),"nonfinite output preservation");
++    auto singular=input;singular[2]=Mat(4,Vec(4));
++    require(!lfx::inverse4_batch(singular,preserved,2)&&same(preserved[0][0][0],C(123)),"singular companion preservation");
++    setenv("QSC_GPU_LU4","0",1);require(!lfx::inverse4_batch(input,preserved,2),"LU4 sub-switch");setenv("QSC_GPU_LU4","1",1);
++    std::vector<Mat> empty;require(lfx::inverse4_batch(empty,out,2)&&out.empty(),"empty inverse batch");
++    std::cout<<precision<<" bits: MPFR LU4 inverse, row swaps/ties/scales, rounded width and failure guards pass"<<std::endl;
++  }
++  set_prec(1056);std::vector<Mat> input,out;require(!lfx::inverse4_batch(input,out,1),">1024-bit fallback");
++  return 0;
++}catch(const std::exception& e){std::cerr<<e.what()<<'\n';return 1;}}

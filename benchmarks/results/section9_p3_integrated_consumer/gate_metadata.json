@@ -1,0 +1,285 @@
+{
+  "state": "terminal",
+  "runner_pid": 47283,
+  "scope": "Integrated build checks and saved J3 g=.202 default/combined replay only; no timings or full g sweep",
+  "sha256": {
+    "CMakeLists.txt": "d110301e3a2a4776934de601479ce17fc7b2d17058fa61b2110c6ad939b7a400",
+    "include/mx.hpp": "3f987442d37fe62ae6f30502991604012795ecebba3420885368ccf58524b6fb",
+    "include/mp.hpp": "d5695b6aef005a3a5472e115c9355b55dc634df8bbbbe41768b7a2e28f6c73b7",
+    "src/qscmx.cpp": "679b75e38054dde0747499583814f52d9ad57c848ce5fd728ef3f3b25be104e4",
+    "tools/check_limbforge_solver.py": "40f517b86673871d5e6b23d15ae969376d61492658c639afb6a0cb9b85d72edd",
+    "tools/test_limbforge.cpp": "42e740df6bf3a92747be6421c2a98f82a6159ef3331d93d226528df446b7e64f",
+    "tools/test_fourier_candidate.cpp": "33b86491268eae5c599ec32210bae7261ba36362b5ad8a7e3731300b10da814a",
+    "tools/test_products4_candidate.cpp": "e3c888dd3920aaf1cdfeaf4f06f229807033a90af3d5fae3e66b9b6508b6892f",
+    "tools/test_lu4_candidate.cpp": "12ddc8e20fa073f03e1d2e44c3ccc5eb547d74fb8d00f5d631ad9c16ce26fa1b",
+    "build-wolfnum-section9/qscmx": "8428f4decc52d9d76de355fcf148474c2431600f13e8d062193b1e5d36872259",
+    "build-wolfnum-section9/qscmx_limbforge_check": "6d811ce1371941f7fee928aa59cfc921cd250ebb01304ce418dd2078536f37c6",
+    "build-wolfnum-section9/qscmx_fourier_check": "795335a787b03ea590ecfa8349902b4f6e215b957a2893ad0d1d853381cb8a04",
+    "build-wolfnum-section9/qscmx_products4_check": "ed52de94a2b89795401d963f9704234637a6405adfdb9198223004e3437849f2",
+    "build-wolfnum-section9/qscmx_lu4_check": "0cba7d7b94f411e5f17e126d5753769911e692d3b435e3f42f5705e009102095",
+    "build-wolfnum-section9/limbforge/liblimbforge.a": "b1ed7252a69a6090baabcc6c83e849223e77c4920995f8004e5a3cac2bbc78e7"
+  },
+  "steps": [
+    {
+      "name": "limbforge_normal",
+      "command": [
+        "./build-wolfnum-section9/qscmx_limbforge_check"
+      ],
+      "shader_validation": false,
+      "state": "terminal",
+      "log": "limbforge_normal.log",
+      "pid": 47284,
+      "exit": 0,
+      "log_sha256": "735c9169e1aebcd66bd51679d533d8a898f12d8771a860518f8e8b5ed100a0f0"
+    },
+    {
+      "name": "limbforge_shader",
+      "command": [
+        "./build-wolfnum-section9/qscmx_limbforge_check"
+      ],
+      "shader_validation": true,
+      "state": "terminal",
+      "log": "limbforge_shader.log",
+      "pid": 47293,
+      "exit": 0,
+      "log_sha256": "4c54b4cdfce5b6ebad9d1b0b783abb123da71e2464f220dc4d1951402e59c50a"
+    },
+    {
+      "name": "fourier_normal",
+      "command": [
+        "./build-wolfnum-section9/qscmx_fourier_check"
+      ],
+      "shader_validation": false,
+      "state": "terminal",
+      "log": "fourier_normal.log",
+      "pid": 47304,
+      "exit": 0,
+      "log_sha256": "ee44ae90cdb6f35220ec90a7fa9982dbcd8308457840ecfd7a211f68e7ec2975"
+    },
+    {
+      "name": "fourier_shader",
+      "command": [
+        "./build-wolfnum-section9/qscmx_fourier_check"
+      ],
+      "shader_validation": true,
+      "state": "terminal",
+      "log": "fourier_shader.log",
+      "pid": 47316,
+      "exit": 0,
+      "log_sha256": "449c27f9997739ddbccc71b787fcfd2e64d15863d85121c550cd1e308aa46efc"
+    },
+    {
+      "name": "products4_normal",
+      "command": [
+        "./build-wolfnum-section9/qscmx_products4_check"
+      ],
+      "shader_validation": false,
+      "state": "terminal",
+      "log": "products4_normal.log",
+      "pid": 47320,
+      "exit": 0,
+      "log_sha256": "c4e7340c7c6e25cc60ee055b8c3e620cd2c579fba0bbbc9c47e53c45fcc2d34a"
+    },
+    {
+      "name": "products4_shader",
+      "command": [
+        "./build-wolfnum-section9/qscmx_products4_check"
+      ],
+      "shader_validation": true,
+      "state": "terminal",
+      "log": "products4_shader.log",
+      "pid": 47352,
+      "exit": 0,
+      "log_sha256": "6d2e7b0051e8f25387bd7df8dadd49b0c64c7f9666928e7ff73582cbe4afdad5"
+    },
+    {
+      "name": "lu4_normal",
+      "command": [
+        "./build-wolfnum-section9/qscmx_lu4_check"
+      ],
+      "shader_validation": false,
+      "state": "terminal",
+      "log": "lu4_normal.log",
+      "pid": 47369,
+      "exit": 0,
+      "log_sha256": "3fea75a0836967b8663f67bfb18f025d94382d365c7f6c735a1ad367e065a087"
+    },
+    {
+      "name": "lu4_shader",
+      "command": [
+        "./build-wolfnum-section9/qscmx_lu4_check"
+      ],
+      "shader_validation": true,
+      "state": "terminal",
+      "log": "lu4_shader.log",
+      "pid": 47388,
+      "exit": 0,
+      "log_sha256": "993d291206dc135d4fdd688d819dbe629e0ed2da5441f4a72f9787af5b7bc4ea"
+    },
+    {
+      "name": "default_replay",
+      "command": [
+        "python3",
+        "tools/check_limbforge_solver.py",
+        "build-wolfnum-section9/qscmx",
+        "runs/wolfnum_1_3_1/inputs/j3_X2Y_g0.202_nc21.txt",
+        "--out",
+        "runs/wolfnum_section9_integration/default_replay"
+      ],
+      "shader_validation": false,
+      "state": "terminal",
+      "log": "default_replay.log",
+      "pid": 47409,
+      "exit": 0,
+      "log_sha256": "7c63c4c40243fc80568a62f46437360672c5b027e2b5bf755201f170a39a967c",
+      "comparison": {
+        "input": "runs/wolfnum_1_3_1/inputs/j3_X2Y_g0.202_nc21.txt",
+        "sha256": "4545c163d78f20017d5626019a3530dab7897a368a3765c5661220137d38a6b2",
+        "g": [
+          "0.20200000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000e0",
+          "0"
+        ],
+        "dims": [
+          "21",
+          "25",
+          "300",
+          "27"
+        ],
+        "prec": [
+          "374"
+        ],
+        "binary": "/Users/k0959535/Dropbox/IntegrabilityProjects/2026 Near N=4/qsccpp/build-wolfnum-section9/qscmx",
+        "binary_sha256": "8428f4decc52d9d76de355fcf148474c2431600f13e8d062193b1e5d36872259",
+        "load_before": [
+          [
+            5.20458984375,
+            3.70703125,
+            4.54736328125
+          ],
+          [
+            5.02783203125,
+            3.69482421875,
+            4.5380859375
+          ]
+        ],
+        "timing_accepted": false,
+        "combined_exact_normal": false,
+        "selected_gpu_switches": {
+          "QSC_GPU_NORMAL": false,
+          "QSC_GPU_FOURIER": false,
+          "QSC_GPU_PRODUCTS4": false,
+          "QSC_GPU_LU4": false
+        },
+        "required_candidate_markers": [],
+        "delta_max_component_error": "7.10245197342712E-125",
+        "cpu_iterations": 3,
+        "gpu_iterations": 3,
+        "history_max_relative_error": "0",
+        "cpu_residual": "5.57752179966997436E-25",
+        "gpu_residual": "5.57752179966997436E-25",
+        "gtol": "1E-22",
+        "adjoint_checks_pass": true,
+        "all_three_gpu_paths_exercised": true,
+        "agreement_pass": true,
+        "converged": true,
+        "acceptance_pass": true
+      },
+      "artifacts_sha256": {
+        "j3_X2Y_g0.202_nc21_cpu.m": "780a2c457b8be758d4c32b7b10a892cdaa507b97760f583938c3d6eed511af7a",
+        "j3_X2Y_g0.202_nc21_gpu.m": "9b37b67003ed2e1149dc8ac06e5838a7eab9b0d015f5ebdb6e2e5ba46b090788",
+        "j3_X2Y_g0.202_nc21_cpu.log": "445c34f218711a8cf7ced01ae54f642a6d3ae44452e4dda9c8fe2929337845ca",
+        "comparison.json": "4e4e77d5863be2aa2f33fb7aa17937461439fca07c33e9df35ef23da1340a683",
+        "j3_X2Y_g0.202_nc21_gpu.log": "8138608fbd38bc667be9ec5a73f7a437e20c2309295a81530b74598cd5c78e00"
+      }
+    },
+    {
+      "name": "combined_replay",
+      "command": [
+        "python3",
+        "tools/check_limbforge_solver.py",
+        "build-wolfnum-section9/qscmx",
+        "runs/wolfnum_1_3_1/inputs/j3_X2Y_g0.202_nc21.txt",
+        "--fourier",
+        "--products4",
+        "--lu4",
+        "--out",
+        "runs/wolfnum_section9_integration/combined_replay"
+      ],
+      "shader_validation": false,
+      "state": "terminal",
+      "log": "combined_replay.log",
+      "pid": 47442,
+      "exit": 0,
+      "log_sha256": "c8e0ac85df5e435b86dcb317741257e546d954abfa95efadc15d6bdc308d89d8",
+      "comparison": {
+        "input": "runs/wolfnum_1_3_1/inputs/j3_X2Y_g0.202_nc21.txt",
+        "sha256": "4545c163d78f20017d5626019a3530dab7897a368a3765c5661220137d38a6b2",
+        "g": [
+          "0.20200000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000e0",
+          "0"
+        ],
+        "dims": [
+          "21",
+          "25",
+          "300",
+          "27"
+        ],
+        "prec": [
+          "374"
+        ],
+        "binary": "/Users/k0959535/Dropbox/IntegrabilityProjects/2026 Near N=4/qsccpp/build-wolfnum-section9/qscmx",
+        "binary_sha256": "8428f4decc52d9d76de355fcf148474c2431600f13e8d062193b1e5d36872259",
+        "load_before": [
+          [
+            5.10546875,
+            3.73291015625,
+            4.54638671875
+          ],
+          [
+            5.7373046875,
+            3.88671875,
+            4.595703125
+          ]
+        ],
+        "timing_accepted": false,
+        "combined_exact_normal": false,
+        "selected_gpu_switches": {
+          "QSC_GPU_NORMAL": false,
+          "QSC_GPU_FOURIER": true,
+          "QSC_GPU_PRODUCTS4": true,
+          "QSC_GPU_LU4": true
+        },
+        "required_candidate_markers": [
+          "Fourier Jacobian (GPU)",
+          "exact Fourier:",
+          "tangent 4x4 Jacobian (GPU)",
+          "tangent products4:",
+          "descent inverses4 (GPU)",
+          "gluing inverses4 (GPU)",
+          "inverse4 LU:"
+        ],
+        "delta_max_component_error": "2.307675812432015830E-92",
+        "cpu_iterations": 3,
+        "gpu_iterations": 3,
+        "history_max_relative_error": "0",
+        "cpu_residual": "5.57752179966997436E-25",
+        "gpu_residual": "5.57752179966997436E-25",
+        "gtol": "1E-22",
+        "adjoint_checks_pass": true,
+        "all_three_gpu_paths_exercised": true,
+        "agreement_pass": true,
+        "converged": true,
+        "acceptance_pass": true
+      },
+      "artifacts_sha256": {
+        "j3_X2Y_g0.202_nc21_cpu.m": "441a1cc3ed8447ff41ddf2b4e416c99573e3bcdbf6b36cf2ee312c042857d3ee",
+        "j3_X2Y_g0.202_nc21_gpu.m": "57a12e4fa2f395a44d3ac404d8dacfccf1462bb00594c8a61f8d17587bceee45",
+        "j3_X2Y_g0.202_nc21_cpu.log": "8a690e961440523e8c3e2d6aa96617ab85b9f5182d231771153774bda09c472d",
+        "comparison.json": "040aa656e6bdf9b1a99665ecc145fbedacc97e9bdd184d77f965bc212b82d0c6",
+        "j3_X2Y_g0.202_nc21_gpu.log": "cec9ba61b04089a91ccf601573d212e0e02caf838fdebe5d8389ef2bac7be10e"
+      }
+    }
+  ],
+  "exit": 0,
+  "remaining": "Required g=.1/.2/.5, idle Nc23/31/59 timings, damping/base switches and memory acceptance remain open"
+}

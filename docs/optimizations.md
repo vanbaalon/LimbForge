@@ -242,3 +242,13 @@ pass independently checked Delta/history/convergence and all-path markers.
 The requested g sweep, idle timings and original consumer integration remain open;
 no original consumer/default, speed claim or library release
 is promoted. [Prototype](../benchmarks/experiments/section9_lu4_consumer.md).
+
+## Section 9 P3: local integration of the checked adapters
+
+Fourier, tangent product3 and batched LU4 are now integrated in the original
+consumer with off-default switches and a separate matching WolfNum 1.3.1 build.
+Focused normal/Metal helper checks and saved J3 default/combined comparisons pass;
+both CPU results match the recorded baseline exactly. The runner controls every
+candidate switch and requires all selected GPU markers. Existing binaries are
+retained. Requested g=.1/.2/.5, idle timing, memory and damping/base work remains
+open. [Complete patch and independently checked records](../benchmarks/experiments/section9_consumer_integrated.md).

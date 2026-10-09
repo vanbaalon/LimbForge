@@ -1,0 +1,54 @@
+[
+  {
+    "input": "runs/wolfnum_1_3_1/inputs/j3_X2Y_g0.202_nc21.txt",
+    "sha256": "4545c163d78f20017d5626019a3530dab7897a368a3765c5661220137d38a6b2",
+    "g": [
+      "0.20200000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000e0",
+      "0"
+    ],
+    "dims": [
+      "21",
+      "25",
+      "300",
+      "27"
+    ],
+    "prec": [
+      "374"
+    ],
+    "binary": "/Users/k0959535/Dropbox/IntegrabilityProjects/2026 Near N=4/qsccpp/build-wolfnum-section9/qscmx",
+    "binary_sha256": "8428f4decc52d9d76de355fcf148474c2431600f13e8d062193b1e5d36872259",
+    "load_before": [
+      [
+        5.20458984375,
+        3.70703125,
+        4.54736328125
+      ],
+      [
+        5.02783203125,
+        3.69482421875,
+        4.5380859375
+      ]
+    ],
+    "timing_accepted": false,
+    "combined_exact_normal": false,
+    "selected_gpu_switches": {
+      "QSC_GPU_NORMAL": false,
+      "QSC_GPU_FOURIER": false,
+      "QSC_GPU_PRODUCTS4": false,
+      "QSC_GPU_LU4": false
+    },
+    "required_candidate_markers": [],
+    "delta_max_component_error": "7.10245197342712E-125",
+    "cpu_iterations": 3,
+    "gpu_iterations": 3,
+    "history_max_relative_error": "0",
+    "cpu_residual": "5.57752179966997436E-25",
+    "gpu_residual": "5.57752179966997436E-25",
+    "gtol": "1E-22",
+    "adjoint_checks_pass": true,
+    "all_three_gpu_paths_exercised": true,
+    "agreement_pass": true,
+    "converged": true,
+    "acceptance_pass": true
+  }
+]
